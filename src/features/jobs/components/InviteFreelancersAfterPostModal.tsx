@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Search, Send, X } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, LoaderCircle, MapPin, Search, Send, Sparkles, UserPlus, Users, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { jobInvitationAPI } from '../../../api/jobInvitationAPI';
 import type { FreelancerSummaryDto } from '../../../types/models/Profile';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 
 interface InviteFreelancersAfterPostModalProps {
   jobPostId: string;
@@ -22,6 +24,7 @@ export function InviteFreelancersAfterPostModal({
   jobTitle,
   onClose,
 }: InviteFreelancersAfterPostModalProps) {
+  const { t } = useTranslation('jobs');
   const [freelancers, setFreelancers] = useState<FreelancerSummaryDto[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -45,7 +48,7 @@ export function InviteFreelancersAfterPostModal({
           sort: 'featured',
         });
         if (!response.success || !response.data) {
-          throw new Error(response.message || 'Unable to load freelancer profiles.');
+          throw new Error(response.message || t('inviteModal.unableToLoad', 'Không thể tải danh sách ứng viên.'));
         }
 
         if (isMounted) {
@@ -56,7 +59,7 @@ export function InviteFreelancersAfterPostModal({
       } catch (err) {
         if (!isMounted) return;
         setFreelancers([]);
-        setError(err instanceof Error ? err.message : 'Unable to load freelancer profiles.');
+        setError(err instanceof Error ? err.message : t('inviteModal.unableToLoad', 'Không thể tải danh sách ứng viên.'));
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -70,7 +73,7 @@ export function InviteFreelancersAfterPostModal({
       isMounted = false;
       window.clearTimeout(timeoutId);
     };
-  }, [query]);
+  }, [query, t]);
 
   const toggleFreelancer = (freelancerProfileId: string) => {
     setSelectedIds(prev =>
@@ -81,9 +84,13 @@ export function InviteFreelancersAfterPostModal({
     setError(null);
   };
 
+  const applyPresetMessage = () => {
+    setMessage(t('inviteModal.presetMessage', 'Chào bạn, dự án của chúng tôi rất phù hợp với chuyên môn của bạn. Mời bạn xem chi tiết và nộp proposal nhé!'));
+  };
+
   const submitInvites = async () => {
     if (!jobPostId || selectedIds.length === 0) {
-      setError('Select at least one freelancer to invite.');
+      setError(t('inviteModal.selectAtLeastOne', 'Vui lòng chọn ít nhất 1 freelancer để gửi lời mời.'));
       return;
     }
 
@@ -97,14 +104,14 @@ export function InviteFreelancersAfterPostModal({
       });
 
       if (result.created.length === 0) {
-        setError(result.skipped[0]?.reason || 'No invitations were sent.');
+        setError(result.skipped[0]?.reason || 'Không thể gửi lời mời.');
         return;
       }
 
-      toast.success(`${result.created.length} invitation${result.created.length === 1 ? '' : 's'} sent.`);
+      toast.success(t('inviteModal.successSent', 'Đã gửi thành công {{count}} lời mời!', { count: result.created.length }));
       setSuccess(true);
       setSelectedIds([]);
-      setTimeout(onClose, 1300);
+      setTimeout(onClose, 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invitations could not be sent.');
     } finally {
@@ -113,48 +120,71 @@ export function InviteFreelancersAfterPostModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[86vh] overflow-hidden">
-        <div className="px-6 py-5 border-b border-border flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-foreground">Invite freelancers</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Send invitations for {jobTitle || 'your new job post'}.
-            </p>
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+      <div className="bg-card border border-border/80 rounded-3xl shadow-2xl w-full max-w-6xl max-h-[78vh] sm:max-h-[620px] flex flex-col overflow-hidden relative">
+        {/* HERO HEADER */}
+        <div className="px-6 py-4.5 border-b border-border/70 bg-gradient-to-r from-[var(--brand)]/10 via-purple-500/5 to-card flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 rounded-2xl bg-gradient-to-br from-[var(--brand)]/15 to-purple-500/15 text-[var(--brand)] shrink-0">
+              <UserPlus size={20} />
+            </span>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                {t('inviteModal.title', 'Mời Freelancer ứng tuyển')}
+              </h2>
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                {t('inviteModal.subtitle', 'Gửi lời mời trực tiếp cho dự án "{{jobTitle}}" đến các freelancer hàng đầu.', { jobTitle: jobTitle || 'dự án của bạn' })}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground flex items-center justify-center cursor-pointer"
+            aria-label="Close modal"
+            className="w-8 h-8 rounded-full border border-border/80 bg-background hover:bg-muted text-muted-foreground flex items-center justify-center cursor-pointer transition-colors shrink-0"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 overflow-y-auto max-h-[64vh]">
-          <div>
-            <div className="relative mb-4">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        {/* MODAL BODY SPLIT */}
+        <div className="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 overflow-y-auto min-h-0 flex-1">
+          {/* LEFT: SEARCH & FREELANCERS GRID */}
+          <div className="space-y-4">
+            <div className="relative">
+              <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="Search freelancers by name, title, location, or skill..."
-                className="w-full rounded-xl border border-border bg-background py-3 pl-10 pr-4 text-sm text-foreground outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/30"
+                placeholder={t('inviteModal.searchPlaceholder', 'Tìm kiếm theo tên, chuyên môn, thành phố hoặc kỹ năng...')}
+                className="w-full rounded-2xl border border-border/80 bg-background py-3 pl-10 pr-4 text-sm font-medium text-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15 transition-all"
               />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             {loading ? (
-              <div className="rounded-xl border border-border bg-background p-8 text-center text-sm text-muted-foreground">
-                Loading freelancers...
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-12 text-center text-sm font-medium text-muted-foreground flex flex-col items-center justify-center gap-2">
+                <LoaderCircle className="animate-spin text-[var(--brand)]" size={24} />
+                <span>{t('inviteModal.loadingFreelancers', 'Đang tìm kiếm freelancer phù hợp...')}</span>
               </div>
-            ) : error ? (
-              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
+            ) : error && freelancers.length === 0 ? (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500 font-bold flex items-center gap-2">
                 <AlertCircle size={16} />
                 {error}
               </div>
             ) : freelancers.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-background p-8 text-center text-sm text-muted-foreground">
-                No freelancers found.
+              <div className="rounded-2xl border-2 border-dashed border-border/80 bg-muted/20 p-12 text-center text-sm font-medium text-muted-foreground space-y-2">
+                <Users size={32} className="mx-auto text-muted-foreground/60" />
+                <p className="font-bold text-foreground">{t('inviteModal.noFreelancers', 'Không tìm thấy freelancer phù hợp.')}</p>
+                <p className="text-xs text-muted-foreground">Thử tìm kiếm với từ khóa khác như kỹ năng hoặc chuyên môn.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -164,52 +194,118 @@ export function InviteFreelancersAfterPostModal({
                   const skillNames = (freelancer.skills || []).map(skill => skill.skillName).filter(Boolean);
 
                   return (
-                    <label
+                    <div
                       key={freelancerProfileId}
-                      className={`rounded-xl border p-4 bg-background cursor-pointer flex gap-3 transition-all ${checked ? 'border-[var(--gb-cyan)] ring-2 ring-[var(--gb-cyan)]/15' : 'border-border hover:border-[var(--gb-cyan)]/60'}`}
+                      onClick={() => !submitting && !success && toggleFreelancer(freelancerProfileId)}
+                      className={`group rounded-2xl border p-4 bg-card cursor-pointer flex items-start gap-3.5 transition-all shadow-2xs ${
+                        checked
+                          ? 'border-[var(--brand)] ring-2 ring-[var(--brand)]/20 bg-[var(--brand)]/5'
+                          : 'border-border/80 hover:border-[var(--brand)]/50 hover:shadow-md'
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleFreelancer(freelancerProfileId)}
-                        className="mt-1"
-                        disabled={submitting || success}
-                      />
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-foreground">{getFreelancerName(freelancer)}</h3>
-                        <p className="text-xs text-muted-foreground mt-1">{freelancer.title || 'Freelancer'} {freelancer.location ? `- ${freelancer.location}` : ''}</p>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {skillNames.slice(0, 5).map(skill => (
-                            <span key={skill} className="tag-pill">{skill}</span>
-                          ))}
+                      <div className="mt-0.5 shrink-0">
+                        <div
+                          className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                            checked
+                              ? 'bg-[var(--brand)] border-[var(--brand)] text-white shadow-2xs'
+                              : 'border-border/80 bg-background group-hover:border-[var(--brand)]/60'
+                          }`}
+                        >
+                          {checked && <Check size={13} className="stroke-[3]" />}
                         </div>
                       </div>
-                    </label>
+
+                      <div className="shrink-0">
+                        <UserAvatar
+                          name={getFreelancerName(freelancer)}
+                          src={freelancer.userAvatar}
+                          size="md"
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h3 className="text-sm font-extrabold text-foreground group-hover:text-[var(--brand)] transition-colors">
+                            {getFreelancerName(freelancer)}
+                          </h3>
+                          {freelancer.location && (
+                            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 shrink-0">
+                              <MapPin size={11} className="text-[var(--brand)]" />
+                              {freelancer.location}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-xs font-semibold text-muted-foreground line-clamp-1">
+                          {freelancer.title || 'Freelancer Professional'}
+                        </p>
+
+                        {skillNames.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {skillNames.slice(0, 5).map(skill => (
+                              <span
+                                key={skill}
+                                className="inline-flex items-center bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 px-2.5 py-0.5 text-[10px] font-extrabold rounded-full"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-background p-4 h-fit sticky top-0">
-            <h3 className="text-sm font-bold text-foreground">Invitation message</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {selectedIds.length} freelancer{selectedIds.length === 1 ? '' : 's'} selected.
-            </p>
-            <textarea
-              value={message}
-              onChange={event => setMessage(event.target.value.slice(0, 1000))}
-              className="mt-4 w-full rounded-xl border border-border bg-card p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/30"
-              rows={8}
-              placeholder="Optional note for invited freelancers..."
+          {/* RIGHT: PERSONAL INVITATION STICKY CARD */}
+          <div className="rounded-2xl border border-border/80 bg-muted/20 p-5 space-y-4 h-fit sticky top-0">
+            <div className="space-y-1">
+              <h3 className="text-sm font-black text-foreground flex items-center gap-2">
+                <Send size={15} className="text-[var(--brand)]" />
+                {t('inviteModal.messageTitle', 'Lời nhắn gửi kèm')}
+              </h3>
+              <p className="text-xs font-extrabold text-[var(--brand)]">
+                {t('inviteModal.selectedCount', 'Đã chọn {{count}} ứng viên', { count: selectedIds.length })}
+              </p>
+            </div>
+
+            {/* PRESET MESSAGE BUTTON */}
+            <button
+              type="button"
+              onClick={applyPresetMessage}
               disabled={submitting || success}
-            />
-            <div className="text-right text-[10px] text-muted-foreground mt-1">{message.length}/1000</div>
+              className="w-full text-left text-[11px] font-bold text-[var(--brand)] bg-[var(--brand)]/10 hover:bg-[var(--brand)]/15 border border-[var(--brand)]/20 rounded-xl p-2.5 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles size={13} className="shrink-0" />
+              <span>+ Chèn lời mời mẫu tự động</span>
+            </button>
+
+            <div className="space-y-1">
+              <textarea
+                value={message}
+                onChange={event => setMessage(event.target.value.slice(0, 1000))}
+                className="w-full rounded-xl border border-border/80 bg-background p-3 text-xs font-medium text-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15 transition-all resize-none"
+                rows={4}
+                placeholder={t('inviteModal.messagePlaceholder', 'Nhập lời nhắn cá nhân hóa gửi đến các freelancer được chọn...')}
+                disabled={submitting || success}
+              />
+              <div className="text-right text-[10px] font-semibold text-muted-foreground">{message.length}/1000</div>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-500 font-bold flex items-center gap-2">
+                <AlertCircle size={15} className="shrink-0" />
+                {error}
+              </div>
+            )}
 
             {success && (
-              <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-500 flex items-center gap-2">
-                <CheckCircle2 size={16} />
-                Invitations sent.
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-2">
+                <CheckCircle2 size={16} className="shrink-0" />
+                {t('inviteModal.successSent', 'Đã gửi lời mời thành công!', { count: selectedIds.length })}
               </div>
             )}
 
@@ -217,10 +313,10 @@ export function InviteFreelancersAfterPostModal({
               type="button"
               onClick={submitInvites}
               disabled={submitting || success || selectedIds.length === 0}
-              className="mt-4 w-full rounded-full bg-[var(--gb-cyan)] text-white px-5 py-3 text-sm font-bold border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full rounded-xl bg-[var(--brand)] text-white px-5 py-3 text-xs font-black border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:opacity-95 transition-all"
             >
-              <Send size={16} />
-              {submitting ? 'Sending...' : 'Send invitations'}
+              {submitting ? <LoaderCircle className="animate-spin" size={16} /> : <Send size={15} />}
+              {submitting ? t('inviteModal.sending', 'Đang gửi lời mời...') : t('inviteModal.sendInvites', 'Gửi lời mời ngay ({{count}})', { count: selectedIds.length })}
             </button>
           </div>
         </div>

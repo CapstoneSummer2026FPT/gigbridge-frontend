@@ -3,7 +3,7 @@ import {
   FileText, Image as ImageIcon, ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
-  Wifi, WifiOff, Loader2, AlertCircle, Clock3,
+  Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
   ShieldAlert,
 } from 'lucide-react';
@@ -51,6 +51,22 @@ function countdown(start: string, now: number) {
 
 function vietnamDate(value: string) {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) + ' Vietnam Time (ICT)';
+}
+
+function MessageContent({ content, mine }: { content: string; mine: boolean }) {
+  const isGoogleMeetLink = /^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?$/i.test(content.trim());
+  if (!isGoogleMeetLink) return <>{content}</>;
+
+  return (
+    <a
+      href={content}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`font-semibold underline underline-offset-2 ${mine ? 'text-white' : 'text-[var(--gb-cyan)]'}`}
+    >
+      {content}
+    </a>
+  );
 }
 
 function ScheduleCard({ schedule, latest, onEdit, onCancel, onRetry, onLatest, onAccept, onReject, onCounterProposal, actionBusy }: {
@@ -151,9 +167,7 @@ export default function MessagesScreen() {
     user,
     isClient,
     loading,
-    signalRStatus,
     navigate,
-    openRooms,
     conversationsState,
     activeConvId,
     activeConv,
@@ -189,7 +203,6 @@ export default function MessagesScreen() {
     chatEndRef,
     chatHistoryRef,
     convMenuRef,
-    toggleRoom,
     handleSelectConv,
     handleSendMessage,
     handleProposeDeal,
@@ -212,6 +225,7 @@ export default function MessagesScreen() {
     scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed,
     scheduleAddGoogleMeet, setScheduleAddGoogleMeet, scheduleSendEmail, setScheduleSendEmail,
     googleMeetStatus, googleMeetStatusLoading, googleMeetConnecting, connectGoogleMeet,
+    creatingGoogleMeet, handleCreateGoogleMeetRoom,
     highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
@@ -243,6 +257,25 @@ export default function MessagesScreen() {
   const closeReportDetail = () => {
     setViewReportId(null);
     clearSelectedReport();
+  };
+
+  const [activeRoomId, setActiveRoomId] = useState<string>(() => {
+    if (activeConv?.roomId) return activeConv.roomId;
+    return MESSAGE_ROOMS[0].id;
+  });
+
+  useEffect(() => {
+    if (activeConv?.roomId && activeConv.roomId !== activeRoomId) {
+      setActiveRoomId(activeConv.roomId);
+    }
+  }, [activeConv?.id, activeConv?.roomId]);
+
+  const handleSelectRoomTab = (roomId: string) => {
+    setActiveRoomId(roomId);
+    const roomConvos = conversationsState.filter(c => c.roomId === roomId);
+    if (roomConvos.length > 0 && activeConv?.roomId !== roomId) {
+      handleSelectConv(roomConvos[0].id);
+    }
   };
 
   const activeConvProfilePath = getProfilePath(activeConv?.participantId ?? null, activeConv?.participantRole);
@@ -277,36 +310,15 @@ export default function MessagesScreen() {
 
           {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
           <section className="messages-conversation-list w-80 shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-                {t('messages.conversations')}
-              </span>
-              <span
-                title={`Chat realtime: ${signalRStatus}`}
-                aria-label={`Chat realtime: ${signalRStatus}`}
-                className={`w-6 h-6 rounded-full border flex items-center justify-center ${
-                  signalRStatus === 'connected'
-                    ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/10'
-                    : signalRStatus === 'connecting' || signalRStatus === 'reconnecting'
-                    ? 'text-amber-600 border-amber-500/20 bg-amber-500/10'
-                    : 'text-red-600 border-red-500/20 bg-red-500/10'
-                }`}
-              >
-                {signalRStatus === 'connected' ? (
-                  <Wifi size={12} />
-                ) : signalRStatus === 'connecting' || signalRStatus === 'reconnecting' ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <WifiOff size={12} />
-                )}
-              </span>
-            </div>
+            {/* ── Document Folder Index Tabs ── */}
+            <div className="pt-2.5 px-2 bg-muted/30 flex items-end gap-1 relative shrink-0">
+              {/* Bottom 1px divider line for inactive tabs only */}
+              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-border pointer-events-none z-0" />
 
-            <div className="flex-1 overflow-y-auto messages-custom-scroll">
               {MESSAGE_ROOMS.map(room => {
                 const convos = conversationsState.filter(c => c.roomId === room.id);
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
-                const isOpen = !!openRooms[room.id];
+                const isSelected = activeRoomId === room.id;
                 const RoomIcon = room.type === 'invited'
                   ? Briefcase
                   : room.type === 'workspace'
@@ -315,82 +327,137 @@ export default function MessagesScreen() {
                       ? ShieldAlert
                       : Layers;
 
+                const shortLabel = room.type === 'invited'
+                  ? t('messages.tabInvited', { defaultValue: 'Invited' })
+                  : room.type === 'negotiation'
+                    ? t('messages.tabNegotiation', { defaultValue: 'Negotiation' })
+                    : room.type === 'workspace'
+                      ? t('messages.tabWorkspace', { defaultValue: 'Workspace' })
+                      : t('messages.tabDispute', { defaultValue: 'Dispute' });
+
+                const activeThemeClass = room.type === 'invited'
+                  ? 'border-t-teal-500 text-teal-600 dark:text-teal-400'
+                  : room.type === 'dispute'
+                    ? 'border-t-amber-500 text-amber-600 dark:text-amber-400'
+                    : room.type === 'workspace'
+                      ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
+                      : 'border-t-brand text-brand';
+
                 return (
-                  <div key={room.id}>
-                    <button
-                      className="msg-room-header w-full"
-                      onClick={() => toggleRoom(room.id)}
-                      aria-expanded={isOpen}
-                    >
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        room.type === 'invited'
-                          ? 'bg-teal-500/10 text-teal-500'
-                          : room.type === 'dispute'
-                            ? 'bg-amber-500/10 text-amber-600'
-                          : 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
-                      }`}>
-                        <RoomIcon size={14} />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <span className="text-sm font-semibold text-foreground">
-                          {t(ROOM_COPY[room.type].label)}
-                        </span>
-                        <p className="text-[10px] text-muted-foreground leading-tight">
-                          {t(ROOM_COPY[room.type].description)}
-                        </p>
-                      </div>
+                  <button
+                    key={room.id}
+                    onClick={() => handleSelectRoomTab(room.id)}
+                    className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
+                      isSelected
+                        ? `bg-card font-black border-t-2 border-x border-b-0 border-border ${activeThemeClass} -mb-[1px] z-20 pt-2 pb-2.5 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]`
+                        : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
+                    }`}
+                    title={t(ROOM_COPY[room.type].label)}
+                  >
+                    <div className="flex items-center justify-center gap-1 w-full">
+                      <RoomIcon size={13} className={isSelected ? '' : 'opacity-65'} />
                       {roomUnread > 0 && (
-                        <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-[var(--gb-cyan)] text-white rounded-full">
+                        <span className="min-w-[15px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-brand text-white rounded-full leading-none shrink-0">
                           {roomUnread}
                         </span>
                       )}
-                      <ChevronDown
-                        size={14}
-                        className={`msg-room-chevron text-muted-foreground ${isOpen ? 'open' : ''}`}
-                      />
-                    </button>
-
-                    {isOpen && (
-                      <div className="pl-2 pb-1">
-                        {convos.map(conv => (
-                          <div
-                            key={conv.id}
-                            id={`conv-item-${conv.id}`}
-                            className={`msg-conv-item ${conv.id === activeConvId ? 'active' : ''}`}
-                            onClick={() => handleSelectConv(conv.id)}
-                          >
-                            <UserProfileLink userId={conv.participantId} role={conv.participantRole} className="relative flex-shrink-0">
-                              <img
-                                src={conv.participantAvatar}
-                                alt={conv.participantName}
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                              {conv.participantOnline && (
-                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
-                              )}
-                            </UserProfileLink>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-baseline">
-                                <UserProfileLink userId={conv.participantId} role={conv.participantRole} className="text-sm font-semibold truncate">{conv.participantName}</UserProfileLink>
-                                <span className="text-[10px] text-muted-foreground ml-1 flex-shrink-0">
-                                  {formatTime(conv.lastMessageAt)}
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-muted-foreground truncate mt-0.5">{conv.job.title}</p>
-                              <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                                {conv.lastMessage}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                        {convos.length === 0 && (
-                          <p className="text-xs text-muted-foreground p-4 text-center">{t('messages.emptyRoom')}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                    <span className="text-[10px] tracking-tight leading-tight mt-1 truncate max-w-full font-extrabold uppercase">
+                      {shortLabel}
+                    </span>
+                  </button>
                 );
               })}
+            </div>
+
+            {/* ── Document Folder Body Container ── */}
+            <div className="flex-1 overflow-y-auto messages-custom-scroll bg-card relative z-10">
+              {(() => {
+                const currentRoom = MESSAGE_ROOMS.find(r => r.id === activeRoomId) || MESSAGE_ROOMS[0];
+                const CurrentRoomIcon = currentRoom.type === 'invited'
+                  ? Briefcase
+                  : currentRoom.type === 'workspace'
+                    ? CheckCircle
+                    : currentRoom.type === 'dispute'
+                      ? ShieldAlert
+                      : Layers;
+                const convos = conversationsState.filter(c => c.roomId === currentRoom.id);
+
+                return (
+                  <div>
+                    {/* Active room description banner */}
+                    <div className="px-4 py-2.5 bg-muted/20 border-b border-border/40 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+                          currentRoom.type === 'invited'
+                            ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
+                            : currentRoom.type === 'dispute'
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                              : currentRoom.type === 'workspace'
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-brand/15 text-brand'
+                        }`}>
+                          <CurrentRoomIcon size={13} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-black text-foreground block leading-tight tracking-wide">
+                            {t(ROOM_COPY[currentRoom.type].label)}
+                          </span>
+                          <p className="text-[10px] text-muted-foreground leading-tight">
+                            {t(ROOM_COPY[currentRoom.type].description)}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40">
+                        {convos.length}
+                      </span>
+                    </div>
+
+                    {/* Conversations */}
+                    <div className="p-2 space-y-1">
+                      {convos.map(conv => (
+                        <div
+                          key={conv.id}
+                          id={`conv-item-${conv.id}`}
+                          className={`msg-conv-item ${conv.id === activeConvId ? 'active' : ''}`}
+                          onClick={() => handleSelectConv(conv.id)}
+                        >
+                          <div className="relative flex-shrink-0">
+                            <img
+                              src={conv.participantAvatar}
+                              alt={conv.participantName}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                            {conv.participantOnline && (
+                              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-sm font-semibold truncate text-foreground">
+                                {conv.participantName}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground ml-1 flex-shrink-0">
+                                {formatTime(conv.lastMessageAt)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{conv.job.title}</p>
+                            <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                              {conv.lastMessage}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {convos.length === 0 && (
+                        <div className="p-8 text-center flex flex-col items-center justify-center text-muted-foreground my-4">
+                          <CurrentRoomIcon size={28} className="mb-2 opacity-30 text-muted-foreground" />
+                          <p className="text-xs font-medium">{t('messages.emptyRoom')}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Bottom prominent Go to Workspace button */}
@@ -448,12 +515,13 @@ export default function MessagesScreen() {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.open('https://meet.google.com/new', '_blank', 'noopener,noreferrer')}
-                  className="w-9 h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer"
-                  title={t('messages.createGoogleMeet')}
-                  aria-label={t('messages.createGoogleMeet')}
+                  onClick={() => void handleCreateGoogleMeetRoom()}
+                  disabled={creatingGoogleMeet || isActiveWorkspaceDisputed}
+                  className="w-9 h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  title={creatingGoogleMeet ? t('messages.creatingGoogleMeet') : t('messages.createGoogleMeet')}
+                  aria-label={creatingGoogleMeet ? t('messages.creatingGoogleMeet') : t('messages.createGoogleMeet')}
                 >
-                  <Video size={18} />
+                  {creatingGoogleMeet ? <Loader2 size={18} className="animate-spin" /> : <Video size={18} />}
                 </button>
                 <button
                   onClick={() => setShowInfo(!showInfo)}
@@ -716,7 +784,7 @@ export default function MessagesScreen() {
                           } ${msg.sendStatus === 'pending' ? 'opacity-80' : ''}`}
                           title={msg.sendStatus === 'failed' ? msg.sendError : undefined}
                         >
-                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-sm"><MessageContent content={msg.content} mine={mine} /></p>
                         </div>
                       )}
 

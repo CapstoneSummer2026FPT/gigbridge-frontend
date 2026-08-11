@@ -18,6 +18,7 @@ import type {
   PublicJobPromotionCardDto,
   JobPostSummaryDto,
   AdminJobPostListResponse,
+  RecommendedJobPostDto,
 } from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
@@ -113,6 +114,12 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   isFeatured: Boolean(job.isFeatured),
   isAiRecommended: Boolean(job.isAiGenerated),
   hasAiInterview: Boolean(job.hasAiInterview),
+});
+
+const toLegacyJobFromRecommended = (item: RecommendedJobPostDto): Job => ({
+  ...toLegacyJobFromSummary(item.jobPost),
+  aiMatchScore: Math.round(item.matchPercentage),
+  matchReasons: item.matchReasons,
 });
 
 const toLegacyStatusFromJobPost = (status: number | string | null | undefined): Job['status'] => {
@@ -258,6 +265,20 @@ export const jobGetAPI = {
       ...response.data,
       items: response.data.items.map(toLegacyJobFromSummary),
     };
+  },
+
+  /**
+   * GET /api/JobPosts/recommended
+   * Freelancer-only: jobs ranked by AI match against the current user's profile.
+   */
+  getRecommendedJobs: async (topK = 20): Promise<Job[]> => {
+    const response = await apiService.get<RecommendedJobPostDto[]>(
+      `${jobPostsUrl}/recommended`, { topK },
+    );
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Unable to load recommended jobs.');
+    }
+    return response.data.map(toLegacyJobFromRecommended);
   },
 
   recordJobOpen: async (jobPostId: string, searchEventId?: string | null): Promise<void> => {

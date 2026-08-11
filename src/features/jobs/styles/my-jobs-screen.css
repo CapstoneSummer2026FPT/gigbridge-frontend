@@ -463,16 +463,20 @@
 /* ─── AI Features Dropdown Panel Theme Colors ─── */
 .mj-ai-dropdown-panel {
   position: absolute;
+  top: 100%;
   left: 0;
   margin-top: 0.5rem;
-  width: 15rem;
+  width: 15.5rem;
   border-radius: 1rem;
   padding: 0.5rem;
-  background: #ffffff;
-  color: #0f0f1a;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.18);
-  z-index: 100;
+  background: var(--card, #ffffff);
+  color: var(--text-primary, #0f0f1a);
+  border: 1px solid var(--border, #e5e7eb);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35);
+  z-index: 9999;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.25rem !important;
 }
 @media (min-width: 640px) {
   .mj-ai-dropdown-panel {
@@ -480,11 +484,12 @@
     right: 0;
   }
 }
+.dark .mj-ai-dropdown-panel,
 .black .mj-ai-dropdown-panel {
-  background: #1e1e2d;
-  color: #f0f0ff;
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+  background: var(--card, #1e1e2d);
+  color: var(--text-primary, #f0f0ff);
+  border-color: var(--border, rgba(255, 255, 255, 0.15));
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
 }
 
 .mj-ai-dropdown-item {

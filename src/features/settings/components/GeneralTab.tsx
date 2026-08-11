@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router';
-import { User, FileText, Briefcase, Building2, MapPin, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X, Image as ImageIcon } from 'lucide-react';
+import { User, FileText, Briefcase, Building2, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -17,7 +17,7 @@ import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow'
 
 import { AvatarCropModal } from './AvatarCropModal';
 import { PortfolioImageCropModal } from './PortfolioImageCropModal';
-import { LocationPickerModal } from '../../../shared/components/LocationPickerModal';
+import { VietnamLocationSelect } from '../../../shared/components/VietnamLocationSelect';
 
 type SubTab = 'basic' | 'details' | 'portfolio' | 'experience';
 
@@ -982,23 +982,12 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                     </div>
                   </div>
 
-                  <div className="settings-form-group">
-                    <label className="settings-form-label">{t('settings.location')}</label>
-                    <div className="settings-input-wrapper relative flex items-center">
-                      <MapPin size={16} className="settings-input-icon" />
-                      <input
-                        value={formData.location}
-                        onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                        placeholder={t('settings.locationPlaceholder')}
-                        className="settings-form-input pr-12"
-                      />
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                        <LocationPickerModal
-                          value={formData.location}
-                          onSelect={loc => setFormData(prev => ({ ...prev, location: loc }))}
-                        />
-                      </div>
-                    </div>
+                  <div className="settings-form-group full-width">
+                    <VietnamLocationSelect
+                      value={formData.location}
+                      onChange={loc => setFormData(prev => ({ ...prev, location: loc }))}
+                      label={t('settings.location')}
+                    />
                   </div>
 
                   <div className="settings-form-group">
@@ -1144,23 +1133,12 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                     </div>
                   </div>
 
-                  <div className="settings-form-group">
-                    <label className="settings-form-label">{t('settings.location')}</label>
-                    <div className="settings-input-wrapper relative flex items-center">
-                      <MapPin size={16} className="settings-input-icon" />
-                      <input
-                        value={formData.location}
-                        onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                        placeholder={t('settings.locationPlaceholder')}
-                        className="settings-form-input pr-12"
-                      />
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                        <LocationPickerModal
-                          value={formData.location}
-                          onSelect={loc => setFormData(prev => ({ ...prev, location: loc }))}
-                        />
-                      </div>
-                    </div>
+                  <div className="settings-form-group full-width">
+                    <VietnamLocationSelect
+                      value={formData.location}
+                      onChange={loc => setFormData(prev => ({ ...prev, location: loc }))}
+                      label={t('settings.location')}
+                    />
                   </div>
 
                   <div className="settings-form-group">

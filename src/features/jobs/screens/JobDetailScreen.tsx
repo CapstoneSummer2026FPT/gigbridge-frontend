@@ -6,11 +6,13 @@ import {
   Clock, Users, Globe, CheckCircle,
   Bot, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText,
   Briefcase, ArrowUpRight, Lock, ShieldCheck, Sparkles, Award,
-  Check, DollarSign, Calendar, MapPin, Building2, Shield,
+  Check, DollarSign, Calendar, MapPin, Building2,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserRole } from '../../../types/models/User';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
+import { useProposalAnswersModal } from '../../proposals/hooks/useProposalAnswersModal';
+import { ProposalAnswersModal } from '../../proposals/components/ProposalAnswersModal';
 import { useJobDetail } from '../hooks/useJobDetail';
 import '../styles/job-detail-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
@@ -25,6 +27,9 @@ export default function JobDetailScreen() {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+
+  // Proposal Answers Modal Hook
+  const answersModal = useProposalAnswersModal();
 
   const {
     navigate,
@@ -508,8 +513,9 @@ export default function JobDetailScreen() {
 
                     {canViewProposalAnswers(myProposal.status) && (
                       <button
+                        type="button"
                         className="jd-btn-secondary"
-                        onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}
+                        onClick={() => void answersModal.openModal(myProposal.proposalId, job.title, myProposal.status, job.id)}
                       >
                         <FileText size={14} />
                         {t('jobDetail.viewAnswers')}
@@ -541,29 +547,34 @@ export default function JobDetailScreen() {
               </div>
             )}
 
-            {/* About Client Card */}
+            {/* ── ABOUT THE CLIENT CARD (EDITORIAL LUXURY REDESIGN) ── */}
             {!isClientMode && (
-              <div className="jd-glass-card rounded-2xl p-6 jd-gsap-sidebar">
-                <h3 className="jd-section-title">{t('jobDetail.aboutClient')}</h3>
+              <div className="jd-glass-card rounded-2xl p-6 jd-gsap-sidebar space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center shrink-0">
+                    <Building2 size={16} />
+                  </div>
+                  <h3 className="jd-section-title mb-0">{t('jobDetail.aboutClient', { defaultValue: 'About the Client' })}</h3>
+                </div>
 
-                <UserProfileLink userId={clientProfileUserId} role="client" className="flex items-center gap-3.5 mb-4 group">
+                <UserProfileLink userId={clientProfileUserId} role="client" className="flex items-center gap-3.5 p-3 rounded-xl bg-surface-muted/60 border border-border group hover:border-brand/30 transition-all">
                   <UserAvatar name={client?.fullName || job?.clientFullName || 'Client'} src={clientProfile?.userAvatar} userId={clientProfileUserId} size="md" />
-                  <div className="min-w-0">
-                    <p className="text-text-primary font-bold text-sm truncate group-hover:text-brand transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-text-primary font-extrabold text-sm truncate group-hover:text-brand transition-colors">
                       {client?.fullName || job?.clientFullName || 'Client'}
                     </p>
-                    <p className="text-[11px] text-text-muted font-medium truncate flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] text-text-muted font-semibold truncate flex items-center gap-1 mt-0.5">
                       <Building2 size={12} className="text-brand shrink-0" />
                       {clientProfile?.companyName || 'Individual Client'}
                     </p>
                   </div>
                 </UserProfileLink>
 
-                <div className="space-y-0.5 mb-4">
+                <div className="space-y-1">
                   {clientProfile?.industry && (
                     <div className="jd-spec-row">
-                      <span className="jd-spec-label flex items-center gap-1">
-                        <Building2 size={12} /> Industry
+                      <span className="jd-spec-label flex items-center gap-1.5">
+                        <Building2 size={13} className="text-brand" /> Industry
                       </span>
                       <span className="jd-spec-val">{clientProfile.industry}</span>
                     </div>
@@ -571,48 +582,56 @@ export default function JobDetailScreen() {
 
                   {clientProfile?.location && (
                     <div className="jd-spec-row">
-                      <span className="jd-spec-label flex items-center gap-1">
-                        <MapPin size={12} /> {t('jobDetail.location')}
+                      <span className="jd-spec-label flex items-center gap-1.5">
+                        <MapPin size={13} className="text-brand" /> {t('jobDetail.location')}
                       </span>
-                      <span className="jd-spec-val">{clientProfile.location}</span>
+                      <span className="jd-spec-val text-right text-xs max-w-[180px] truncate">{clientProfile.location}</span>
                     </div>
                   )}
 
                   <div className="jd-spec-row">
-                    <span className="jd-spec-label flex items-center gap-1">
-                      <ShieldCheck size={12} className="text-success" /> Payment Verified
+                    <span className="jd-spec-label flex items-center gap-1.5">
+                      <ShieldCheck size={13} className="text-emerald-500" /> Payment Status
                     </span>
-                    <span className="text-[10px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full border border-success/20">
-                      Verified
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/25">
+                      Verified ✦
                     </span>
                   </div>
                 </div>
 
                 <button
-                  className="jd-btn-secondary"
+                  type="button"
+                  className="jd-btn-secondary w-full justify-center"
                   disabled={!clientProfilePath}
                   onClick={() => clientProfilePath && navigate(clientProfilePath)}
                 >
-                  {t('jobDetail.viewClientProfile')}
+                  <span>{t('jobDetail.viewClientProfile', { defaultValue: 'View Client Profile' })}</span>
+                  <ArrowUpRight size={14} />
                 </button>
               </div>
             )}
 
-            {/* Redesigned Quick Facts Card (Clean Executive List) */}
-            <div className="jd-glass-card rounded-2xl p-6 jd-gsap-sidebar">
-              <h3 className="jd-section-title">{t('jobDetail.quickFacts')}</h3>
-
-              <div className="space-y-1 mb-5">
-                <div className="jd-spec-row">
-                  <span className="jd-spec-label flex items-center gap-1.5">
-                    <DollarSign size={13} className="text-brand" />
-                    {t('jobDetail.budget')}
-                  </span>
-                  <span className="jd-spec-val text-brand font-bold">
-                    <GigCoinBudget min={job.budgetMin} max={job.budgetMax} />
-                  </span>
+            {/* ── QUICK FACTS CARD (CLEAN EXECUTIVE REDESIGN) ── */}
+            <div className="jd-glass-card rounded-2xl p-6 jd-gsap-sidebar space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center shrink-0">
+                  <Sparkles size={16} />
                 </div>
+                <h3 className="jd-section-title mb-0">{t('jobDetail.quickFacts', { defaultValue: 'Quick Facts' })}</h3>
+              </div>
 
+              {/* BUDGET HIGHLIGHT BANNER */}
+              <div className="p-3.5 rounded-xl bg-brand/5 border border-brand/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign size={16} className="text-brand shrink-0" />
+                  <span className="text-xs font-bold text-text-muted">{t('jobDetail.budget')}</span>
+                </div>
+                <span className="text-sm font-black text-brand">
+                  <GigCoinBudget min={job.budgetMin} max={job.budgetMax} />
+                </span>
+              </div>
+
+              <div className="space-y-1">
                 <div className="jd-spec-row">
                   <span className="jd-spec-label flex items-center gap-1.5">
                     <Briefcase size={13} className="text-brand" />
@@ -653,17 +672,32 @@ export default function JobDetailScreen() {
                   <span className="jd-spec-val">{job.postedAt || t('jobDetail.recently')}</span>
                 </div>
               </div>
+            </div>
 
-              {/* Escrow Protection Badge */}
-              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-surface-muted border border-border text-xs font-medium text-text-secondary">
-                <Shield size={15} className="text-brand shrink-0" />
-                <span>Protected by GigBridge Escrow Protection</span>
+            {/* ── ESCROW SECURITY SHIELD CARD ── */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-brand/10 via-brand/5 to-transparent border border-brand/20 flex items-start gap-3.5 shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0 mt-0.5">
+                <ShieldCheck size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <h4 className="text-xs font-black text-text-primary tracking-tight">GigBridge Escrow Protection</h4>
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
+                    SECURE ✦
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-muted font-medium leading-relaxed">
+                  Funds are safely held in escrow and released only upon your milestone completion approval.
+                </p>
               </div>
             </div>
 
           </div>
         </div>
       </div>
+
+      {/* ── PROPOSAL ANSWERS MODAL ── */}
+      <ProposalAnswersModal modalState={answersModal} />
     </AppLayout>
   );
 }
