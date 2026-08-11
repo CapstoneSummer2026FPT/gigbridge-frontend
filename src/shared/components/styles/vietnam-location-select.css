@@ -1,0 +1,77 @@
+/* =========================================================
+   VietnamLocationSelect - Reusable Shared Component Styles
+   100% Theme-Integrated & Responsive across all screen sizes & containers.
+   ========================================================= */
+
+.vls-container {
+  background: var(--brand-soft, rgba(73, 75, 231, 0.08));
+  border: 1px solid var(--brand-border, rgba(73, 75, 231, 0.25));
+  border-radius: 18px;
+  padding: 18px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vls-header-label {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gb-text-secondary, var(--text-secondary, #353540));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.vls-header-label svg {
+  color: var(--brand, #494be7);
+}
+
+.vls-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+@media (min-width: 540px) {
+  .vls-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.vls-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.vls-sub-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gb-text-secondary, var(--text-secondary, #353540));
+}
+
+.vls-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--gb-bg-secondary, var(--surface, #ffffff));
+  border: 1px solid var(--brand-border, rgba(73, 75, 231, 0.35));
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brand, #494be7);
+  word-break: break-word;
+  min-width: 0;
+}
+
+.vls-preview-icon {
+  flex-shrink: 0;
+  color: var(--brand, #494be7);
+}

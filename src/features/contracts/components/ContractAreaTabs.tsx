@@ -1,5 +1,6 @@
 import { FileCheck, FileText } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
+import '../../../shared/components/styles/contract-area-tabs.css';
 
 export function ContractAreaTabs(): JSX.Element {
   const navigate = useNavigate();

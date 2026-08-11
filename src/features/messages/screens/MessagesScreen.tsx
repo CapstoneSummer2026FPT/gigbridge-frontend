@@ -673,8 +673,8 @@ export default function MessagesScreen() {
                   >
                     {!mine && (
                       <img
-                        src={activeConv.participantAvatar}
-                        alt=""
+                        src={msg.senderAvatar || '/img/avatar-fallback.png'}
+                        alt={msg.senderName || 'Message sender'}
                         className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                       />
                     )}

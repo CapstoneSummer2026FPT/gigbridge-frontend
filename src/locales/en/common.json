@@ -45,6 +45,21 @@
     "loadError": "Unable to load the GigBridge Policy.",
     "retry": "Retry"
   },
+  "adminNav": {
+    "groups": {
+      "overview": "OVERVIEW & ANALYTICS",
+      "users": "USER MANAGEMENT",
+      "marketplace": "MARKETPLACE WORKFLOWS",
+      "finance": "FINANCIAL OPERATIONS",
+      "moderation": "MODERATION & DISPUTES",
+      "configuration": "SYSTEM CONFIGURATION",
+      "monitoring": "SYSTEM & MONITORING"
+    },
+    "contractReports": "Contract Reports",
+    "contractsEsign": "Contracts & E-sign",
+    "esign": "E-sign Agreements",
+    "assets": "Assets & Deliverables"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "browseJobs": "Browse Jobs",
@@ -73,6 +88,12 @@
     "smartMatching": "Smart Matching",
     "savedFreelancers": "Saved Freelancers",
     "work": "Work",
+    "findWork": "Find Work",
+    "myWork": "My Work",
+    "searchJobs": "Search Jobs",
+    "myContracts": "My Contracts",
+    "myProjects": "My Projects",
+    "myReviews": "My Reviews",
     "contracts": "Contracts",
     "financialOverview": "Financial Overview",
     "savedJobs": "Saved Jobs",
@@ -567,5 +588,12 @@
       "2": "Partial correction",
       "3": "Custom adjustment"
     }
+  },
+  "sidebar": {
+    "toggleHelpLabel": "Sidebar Mode Explanation",
+    "toggleHelpTitle": "Persistent Sidebar",
+    "toggleHelpDesc": "Turn ON to keep the sidebar pinned across page navigation. Turn OFF to auto-close the sidebar when navigating or clicking outside.",
+    "pinnedTitle": "Persistent Sidebar (Active)",
+    "unpinnedTitle": "Auto-close Sidebar (Inactive)"
   }
 }

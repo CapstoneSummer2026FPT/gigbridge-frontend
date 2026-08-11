@@ -1,0 +1,60 @@
+{
+  "title": "Complete Your Profile",
+  "subtitle": "Welcome to GigBridge! Complete a few essential details to start hiring or finding projects.",
+  "clientRoleBadge": "Client Profile",
+  "freelancerRoleBadge": "Freelancer Profile",
+  "steps": {
+    "step1Client": "1. Company Info",
+    "step2Client": "2. Size & Location",
+    "step1Freelancer": "1. Expertise & Skills",
+    "step2Freelancer": "2. Bio & Location"
+  },
+  "client": {
+    "step1Title": "Brand & Business Information",
+    "step1Subtitle": "Provide your company name and industry to build trust with top freelancers.",
+    "companyName": "Company / Organization Name",
+    "companyNamePlaceholder": "e.g. GigBridge Technology Solutions Co., Ltd.",
+    "companyWebsite": "Company Website (Optional)",
+    "companyWebsitePlaceholder": "https://example.com",
+    "industry": "Primary Industry",
+    "selectIndustry": "-- Select primary industry --",
+    "companySize": "Company Size",
+    "companyDescription": "Brief Business Summary",
+    "companyDescriptionPlaceholder": "Introduce your company's mission, products, or services...",
+    "step2Title": "Location & Details",
+    "step2Subtitle": "Help candidates locate your company headquarters or office."
+  },
+  "freelancer": {
+    "step1Title": "Expertise & Fields",
+    "step1Subtitle": "Select your core discipline and categories so AI matching can recommend optimal jobs.",
+    "professionalTitle": "Professional Title / Role",
+    "professionalTitlePlaceholder": "e.g. Senior Fullstack Developer / UI/UX Designer Specialist",
+    "major": "Primary Discipline / Major",
+    "selectMajor": "-- Select primary major --",
+    "categories": "Specific Skills & Categories (Select at least 1)",
+    "selectMajorFirst": "Please select a primary major above first.",
+    "loadingTaxonomy": "Loading skill categories...",
+    "availability": "Work Availability Status",
+    "step2Title": "Personal Bio & Location",
+    "step2Subtitle": "Describe your background and location so clients can discover you easily.",
+    "bio": "Personal Bio & Work Experience",
+    "bioPlaceholder": "Share your background, work style, key projects, and value you deliver..."
+  },
+  "location": {
+    "title": "Work Location (Vietnam)",
+    "provinceLabel": "Province / City",
+    "selectProvince": "-- Select Province / City --",
+    "wardLabel": "Ward / Commune / District",
+    "selectWard": "-- Select Ward / Commune --",
+    "formattedPreview": "Formatted Location:"
+  },
+  "buttons": {
+    "back": "Back",
+    "continue": "Continue",
+    "complete": "Complete Setup",
+    "completing": "Saving Profile..."
+  },
+  "errors": {
+    "setupFailed": "Could not complete setup. Please try again."
+  }
+}

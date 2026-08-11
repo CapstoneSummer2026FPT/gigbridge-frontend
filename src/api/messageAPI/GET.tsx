@@ -62,6 +62,16 @@ export interface MessageResponse {
   isDeleted: boolean;
   attachments: MessageAttachmentResponse[];
   schedule?: ScheduleEvent | null;
+  senderName?: string | null;
+  senderAvatar?: string | null;
+  senderRole?: number | null;
+  disputeRecipient?: DisputeMessageRecipient | null;
+}
+
+export enum DisputeMessageRecipient {
+  Client = 0,
+  Freelancer = 1,
+  Both = 2,
 }
 
 export interface ConversationUpdatedEvent {

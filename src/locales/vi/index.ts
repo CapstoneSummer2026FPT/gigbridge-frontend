@@ -17,6 +17,7 @@ import messages from './messages.json';
 import settings from './settings.json';
 import notifications from './notifications.json';
 import talentMatching from './talentMatching.json';
+import onboarding from './onboarding.json';
 
 const vi = {
   common,
@@ -38,6 +39,7 @@ const vi = {
   settings,
   notifications,
   talentMatching,
+  onboarding,
 };
 
 export default vi;

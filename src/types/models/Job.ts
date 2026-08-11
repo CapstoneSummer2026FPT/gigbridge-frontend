@@ -74,6 +74,7 @@ export interface Job {
   proposalCount: number;
   viewCount: number;
   aiMatchScore?: number;
+  matchReasons?: string[];
   isAiRecommended?: boolean;
   isFeatured?: boolean;
   hasAiInterview?: boolean;
@@ -124,6 +125,12 @@ export interface JobPostSummaryDto {
   featuredUntil?: string | null;
   isAiGenerated?: boolean;
   hasAiInterview?: boolean;
+}
+
+export interface RecommendedJobPostDto {
+  jobPost: JobPostSummaryDto;
+  matchPercentage: number;
+  matchReasons: string[];
 }
 
 export interface AdminJobPostStatsDto {
@@ -196,6 +203,7 @@ export interface GetMyJobPostDto {
   isFeatured?: boolean;
   featuredUntil?: string | null;
   setupProgress?: JobPostSetupProgressDto | null;
+  hasAiInterview?: boolean;
 }
 
 export interface JobPostSkillDto {

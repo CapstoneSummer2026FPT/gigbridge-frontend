@@ -351,6 +351,32 @@ export function useJobDetail() {
     }
   };
 
+  const handleContinueEditingProposal = async () => {
+    if (!job || !myProposal) return;
+
+    setIsApplying(true);
+    try {
+      // A draft with screening questions must resume from the question step.
+      // The question screen loads any previously saved answers for this proposal.
+      if (Number(myProposal.status) === ProposalStatus.Draft) {
+        const questionsResponse = await jobGetAPI.getJobPostQuestions(job.id);
+        if (questionsResponse.success && (questionsResponse.data?.length ?? 0) > 0) {
+          navigate(`/proposals/create/${encodeURIComponent(job.id)}/questions?proposalId=${encodeURIComponent(myProposal.proposalId)}`, {
+            state: {
+              jobPostId: job.id,
+              proposalId: myProposal.proposalId,
+            },
+          });
+          return;
+        }
+      }
+
+      navigate(`/proposals/${myProposal.proposalId}/edit`);
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
   const handleWithdrawProposal = async () => {
     if (!myProposal) return;
     if (Number(myProposal.status) !== ProposalStatus.Pending) {
@@ -426,6 +452,7 @@ export function useJobDetail() {
     // Actions
     toggleSavedJob,
     handleApplyJob,
+    handleContinueEditingProposal,
     handleWithdrawProposal,
     generateAIProposal,
 

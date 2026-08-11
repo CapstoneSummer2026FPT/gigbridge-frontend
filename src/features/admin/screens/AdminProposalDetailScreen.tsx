@@ -526,7 +526,7 @@ export default function AdminProposalDetailScreen() {
                 <div className="space-y-3">
                   {data.internalNotes.map(item => (
                     <article key={item.noteId} className="rounded-xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-                      <header className="flex items-center gap-3"><UserAvatar name={item.adminName} src={item.adminAvatar} size="sm" /><div><strong className="block text-sm text-primary">{item.adminName}</strong><span className="text-[11px] text-muted">{new Date(item.createdAt).toLocaleString()}</span></div></header>
+                      <header className="flex items-center gap-3"><UserAvatar name={item.adminName} src={item.adminAvatar} role={2} size="sm" /><div><strong className="block text-sm text-primary">{item.adminName}</strong><span className="text-[11px] text-muted">{new Date(item.createdAt).toLocaleString()}</span></div></header>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-secondary">{item.content}</p>
                     </article>
                   ))}
@@ -542,7 +542,7 @@ export default function AdminProposalDetailScreen() {
                   {data.auditHistory.map(item => (
                     <details key={item.auditId} className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
                       <summary className="flex cursor-pointer items-center gap-3">
-                        <UserAvatar name={item.adminName} src={item.adminAvatar} size="sm" />
+                        <UserAvatar name={item.adminName} src={item.adminAvatar} role={2} size="sm" />
                         <span className="min-w-0"><strong className="block text-sm text-primary truncate">{item.action}</strong><span className="block text-[11px] text-muted mt-0.5">{item.adminName} · {new Date(item.createdAt).toLocaleString()}</span></span>
                       </summary>
                       <pre className="mt-4 max-w-full overflow-auto rounded-lg bg-black/20 p-4 text-xs leading-5 text-secondary whitespace-pre-wrap break-words">OLD {formatJson(item.oldValues)}{`\n`}NEW {formatJson(item.newValues)}</pre>

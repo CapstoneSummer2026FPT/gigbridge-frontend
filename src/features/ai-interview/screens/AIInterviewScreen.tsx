@@ -257,6 +257,29 @@ export default function AIInterviewScreen() {
     questionAudioUrlRef.current = '';
   };
 
+  useEffect(() => {
+    if (!jobPostId) return;
+    const saved = localStorage.getItem(`ai_interview_session_${jobPostId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.sessionId) {
+          setSessionId(parsed.sessionId);
+          setAudioAccessToken(parsed.audioAccessToken || '');
+          setQuestionIndex(parsed.questionIndex || 1);
+          setQuestionCount(parsed.questionCount || 3);
+          setQuestionText(parsed.questionText || '');
+          setInterviewLanguage(parsed.interviewLanguage || 'auto');
+          setTtsProvider(parsed.ttsProvider || 'streaming');
+          setStage('interview');
+          setAnswerState('idle');
+        }
+      } catch (e) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+      }
+    }
+  }, [jobPostId]);
+
   useEffect(() => () => {
     clearRecordingTimers();
     const recorder = mediaRecorderRef.current;
@@ -331,6 +354,18 @@ export default function AIInterviewScreen() {
       setInterviewLanguage(responseLanguage || 'auto');
       setAnswerState('idle');
       setStage('interview');
+
+      // Save state to localStorage for resume support
+      const sessionState = {
+        sessionId: nextSessionId,
+        audioAccessToken: nextAudioToken || '',
+        questionIndex: nextQuestionIndex,
+        questionCount: Math.max(nextQuestionIndex, nextQuestionCount),
+        questionText: nextQuestion,
+        interviewLanguage: responseLanguage || 'auto',
+        ttsProvider: nextTtsProvider || 'streaming'
+      };
+      localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify(sessionState));
     } catch {
       setStartError(t('aiInterview.errors.startFailed'));
     } finally {
@@ -343,6 +378,10 @@ export default function AIInterviewScreen() {
     const response = await aiInterviewAPI.transcribeAudio(sessionId, audioBlob, 'auto');
     if (!response.success || !response.data) {
       setActionError(response.message || t('aiInterview.errors.transcriptionFailed'));
+      if (response.statusCode === 401 || response.statusCode === 404 || response.message?.includes("not found")) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+        setStage('intro');
+      }
       setAnswerState('idle');
       return;
     }
@@ -512,12 +551,17 @@ export default function AIInterviewScreen() {
     const data = response.data;
     if (!response.success || !data) {
       setActionError(t('aiInterview.errors.submitFailed'));
+      if (response.statusCode === 401 || response.statusCode === 404 || response.message?.includes("not found")) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+        setStage('intro');
+      }
       setAnswerState('review');
       return;
     }
 
     const completed = responseValue<boolean>(data, 'isCompleted', 'is_completed') ?? false;
     if (completed) {
+      localStorage.removeItem(`ai_interview_session_${jobPostId}`);
       if (proposalId) {
         setAnswerState('submitting');
         try {
@@ -564,6 +608,18 @@ export default function AIInterviewScreen() {
     setRecordingSeconds(0);
     setSilenceCountdown(null);
     setAnswerState('idle');
+
+    // Save updated question progress to localStorage
+    const sessionState = {
+      sessionId,
+      audioAccessToken,
+      questionIndex: nextQuestionIndex,
+      questionCount: nextQuestionCount ? Math.max(nextQuestionIndex, nextQuestionCount) : questionCount,
+      questionText: nextQuestion,
+      interviewLanguage: data.language || interviewLanguage,
+      ttsProvider: nextTtsProvider || 'streaming'
+    };
+    localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify(sessionState));
   };
 
   const playQuestion = async () => {
@@ -695,6 +751,11 @@ export default function AIInterviewScreen() {
       setSubtitleCueIndex(-1);
       setTtsState('failed');
       setActionError(t('aiInterview.errors.audioStreamFailed'));
+      const errorMsg = error instanceof Error ? error.message : '';
+      if (errorMsg.includes("401") || errorMsg.includes("403") || errorMsg.includes("404")) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+        setStage('intro');
+      }
     } finally {
       if (questionAudioAbortRef.current === controller) questionAudioAbortRef.current = null;
     }

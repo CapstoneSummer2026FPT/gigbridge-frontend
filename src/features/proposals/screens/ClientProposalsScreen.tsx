@@ -4,13 +4,10 @@ import {
   Brain,
   Check,
   CircleDollarSign,
-  FileQuestion,
   FileSearch,
-  FileText,
   Filter,
   LayoutList,
   Loader2,
-  MessageSquare,
   Search,
   ShieldAlert,
   SlidersHorizontal,
@@ -19,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import {
   AlertDialog,
@@ -35,6 +33,7 @@ import type { ProposalStatusFilter } from '../types';
 import { getStatusLabel } from '../utils/statusHelpers';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { ProposalJudgingListView } from '../components/ProposalJudgingListView';
+import { ProposalDetailModal } from '../components/ProposalDetailModal';
 import ClientProposalJobSidebar from '../components/ClientProposalJobSidebar';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { CustomSelect } from '../../../shared/components/CustomSelect';
@@ -59,13 +58,6 @@ const previewText = (value?: string | null, max = 120) => {
   const text = (value || '').replace(/[*_`>#-]/g, '').replace(/\s+/g, ' ').trim();
   if (!text) return '';
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
-};
-
-const getScoreColorClass = (score?: number | null) => {
-  if (typeof score !== 'number') return 'border-border text-text-muted bg-surface-muted';
-  if (score >= 80) return 'border-emerald-500/40 text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 font-bold';
-  if (score >= 60) return 'border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400 font-bold';
-  return 'border-rose-500/40 text-rose-600 bg-rose-500/10 dark:text-rose-400 font-bold';
 };
 
 const inputClass =
@@ -158,15 +150,6 @@ export default function ClientProposalsScreen() {
 
 
   const detailMilestoneTotal = detail?.milestonePlans?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ?? 0;
-
-  const section = (title: string, value?: string | null, fullText: boolean = false) => value ? (
-    <section className="rounded-2xl border border-border bg-background p-4 space-y-1.5 shadow-sm">
-      <h3 className="text-xs font-extrabold uppercase tracking-wider text-text-muted">{title}</h3>
-      <p className="m-0 text-xs font-medium leading-relaxed text-text-primary whitespace-pre-wrap bg-surface-muted/40 p-3.5 rounded-xl border border-border/50" title={value}>
-        {fullText ? value : previewText(value, 110)}
-      </p>
-    </section>
-  ) : null;
 
   const metricCards = [
     { label: t('proposalReview.metrics.total'), value: stats.total, icon: LayoutList, tone: 'text-brand' },
@@ -488,357 +471,33 @@ export default function ClientProposalsScreen() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* ── Proposal Detail & Evaluation Modal (GSAP Enhanced) ────────── */}
-        {evalModalOpen && (
-          <div>
-            <div
-              className="cps-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 overflow-y-auto"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="proposal-modal-title"
-              onClick={e => {
-                if (e.target === e.currentTarget && !rejectProposalId) setEvalModalOpen(false);
-              }}
-            >
-              <div className="cps-modal-card relative w-full max-w-4xl rounded-3xl border border-border bg-background shadow-2xl p-6 text-text-primary max-h-[90vh] flex flex-col overflow-hidden">
-                
-                {/* Modal Header */}
-                <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 gap-3">
-                  <div className="cps-modal-anim-header min-w-0">
-                    <div className="flex items-center gap-2.5">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand">
-                        <Sparkles size={16} />
-                      </span>
-                      <h3 id="proposal-modal-title" className="text-lg font-black text-text-primary truncate">
-                        {detail?.freelancerName || proposals.find(p => p.proposalsId === activeId)?.freelancerName || 'Freelancer Proposal'}
-                      </h3>
-                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-black ${badgeClass(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status))}`}>
-                        {getStatusLabel(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-text-muted mt-1 font-semibold flex flex-wrap items-center gap-2">
-                      <span>{t('proposalReview.columns.offer')}: <strong className="text-brand font-extrabold">{formatGigCoin(detail?.proposedBudget || proposals.find(p => p.proposalsId === activeId)?.proposedBudget || 0)}</strong></span>
-                      <span>·</span>
-                      <span>Milestones: <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">{formatGigCoin(detailMilestoneTotal)}</strong></span>
-                      <span>·</span>
-                      <span>Duration: <strong className="text-text-primary font-bold">{detail?.proposedDuration || proposals.find(p => p.proposalsId === activeId)?.proposedDuration || 'N/A'}</strong></span>
-                    </p>
-                  </div>
-
-                  {/* Modal Tabs & Close */}
-                  <div className="cps-modal-anim-header flex items-center gap-3">
-                    <div className="flex items-center rounded-xl border border-border bg-surface-muted/60 p-1 text-xs font-bold shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => setModalTab('userAnswers')}
-                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition-all cursor-pointer ${modalTab === 'userAnswers' ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30 dark:text-amber-400 shadow-xs' : 'text-text-muted hover:text-text-primary'}`}
-                      >
-                        <FileQuestion size={14} /> Interview Answers
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setModalTab('proposalDetails')}
-                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition-all cursor-pointer ${modalTab === 'proposalDetails' ? 'bg-brand/20 text-brand border border-brand/30 shadow-xs' : 'text-text-muted hover:text-text-primary'}`}
-                      >
-                        <FileText size={14} /> Proposal Details
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setModalTab('aiReport')}
-                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition-all cursor-pointer ${modalTab === 'aiReport' ? 'bg-purple-500/20 text-purple-600 border border-purple-500/30 dark:text-purple-400 shadow-xs' : 'text-text-muted hover:text-text-primary'}`}
-                      >
-                        <Brain size={14} /> AI Evaluation Report
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setEvalModalOpen(false)}
-                      aria-label="Close modal"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-background text-text-muted hover:border-brand/40 hover:text-brand transition cursor-pointer"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Modal Body */}
-                <div className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 custom-scrollbar">
-                {modalTab === 'userAnswers' && (
-                  <>
-                    {evalLoading && (
-                      <div className="flex flex-col items-center justify-center py-16 space-y-4">
-                        <LemniscateBloomLoader label="Loading interview answers..." size={48} />
-                      </div>
-                    )}
-
-                    {!evalLoading && (
-                      rawAnswers.length > 0 ? (
-                        <div className="space-y-4">
-                          <h4 className="text-xs font-extrabold text-text-primary uppercase tracking-wider border-b border-border pb-2 flex items-center justify-between">
-                            <span>Screening Questions & Freelancer Answers</span>
-                            <span className="text-[11px] font-bold text-text-muted">({rawAnswers.length} questions)</span>
-                          </h4>
-
-                          {rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
-                            <div key={ans.proposalAnswersId || idx} className="rounded-2xl border border-border bg-surface-muted/30 p-4 space-y-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <h5 className="text-xs font-bold text-text-primary leading-snug">
-                                  {ans.orderIndex || idx + 1}. {ans.questionText}
-                                </h5>
-                                {ans.isRequired && (
-                                  <span className="shrink-0 rounded-full bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-rose-500">
-                                    Required
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="rounded-xl bg-background border border-border p-3 text-xs space-y-1">
-                                <span className="block text-[10px] font-black uppercase text-text-muted tracking-wider">
-                                  Freelancer Answer
-                                </span>
-                                <p className="text-text-primary whitespace-pre-wrap leading-relaxed font-medium">
-                                  {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="rounded-2xl border border-border bg-surface-muted/20 p-8 text-center text-xs text-text-muted space-y-2">
-                          <FileQuestion size={32} className="mx-auto text-text-muted/40" />
-                          <p className="font-bold text-text-primary">No freelancer interview answers available.</p>
-                        </div>
-                      )
-                    )}
-                  </>
-                )}
-
-                {modalTab === 'proposalDetails' && (
-                  <div className="space-y-6">
-                    {detailLoading ? (
-                      <div className="py-10 text-center text-xs text-text-muted">
-                        <LemniscateBloomLoader label="Loading proposal details..." size={48} />
-                      </div>
-                    ) : detailError ? (
-                      <div role="alert" className="py-10 text-center text-xs font-bold text-rose-600 dark:text-rose-400">{detailError}</div>
-                    ) : !detail ? (
-                      <div className="py-10 text-center text-xs font-semibold text-text-muted">No proposal details available.</div>
-                    ) : (
-                      <>
-                        {section('Introduction', detail.coverLetter, true)}
-                        {section('Analysis', detail.analysisSummary, true)}
-                        {section('Solution approach', detail.solutionApproach, true)}
-                        {section('Overall deliverables', detail.deliverables, true)}
-                        {section('Assumptions', detail.assumptions, true)}
-                        {section('Out of scope', detail.outOfScope, true)}
-
-                        <section className="space-y-3">
-                          <h3 className="text-xs font-extrabold uppercase tracking-wider text-text-muted">Milestone plan</h3>
-                          <div className="space-y-3">
-                            {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (
-                              <div key={item.id || index} className="rounded-2xl border border-border bg-background p-4 text-xs space-y-3">
-                                <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
-                                  <strong className="text-xs font-bold text-text-primary">{index + 1}. {item.title || 'Untitled milestone'}</strong>
-                                  <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">{formatGigCoin(item.amount)}</span>
-                                </div>
-                                {item.estimatedDuration && (
-                                  <div className="text-xs text-text-muted">
-                                    <strong>Duration:</strong> {item.estimatedDuration}
-                                  </div>
-                                )}
-                                {item.dueDate && (
-                                  <div className="text-xs text-text-muted">
-                                    <strong>Deadline:</strong> {item.dueDate}
-                                  </div>
-                                )}
-                                {item.description && (
-                                  <div className="space-y-1">
-                                    <span className="block text-[10px] font-black uppercase text-text-muted tracking-wider">Description</span>
-                                    <p className="leading-relaxed whitespace-pre-wrap bg-surface-muted/40 p-3 rounded-xl border border-border/50 text-text-primary">{item.description}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )) : <p className="text-xs text-text-muted">Legacy proposal: no milestone plan.</p>}
-                          </div>
-                        </section>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {modalTab === 'aiReport' && (
-                  <>
-                    {evalLoading && (
-                      <div className="flex flex-col items-center justify-center py-16 space-y-4">
-                        <LemniscateBloomLoader label="Loading AI Evaluation..." size={48} />
-                      </div>
-                    )}
-
-                    {evalError && (
-                      <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 text-center text-rose-500 text-xs font-bold">
-                        {evalError}
-                      </div>
-                    )}
-                    {!evalLoading && !evalResult && (
-                      <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-4">
-                        <Brain size={32} className="mx-auto text-purple-500/60" />
-                        <div>
-                          <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
-                          {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
-                            <p className="text-muted-foreground mt-1">This proposal has not been evaluated by AI yet.</p>
-                          )}
-                        </div>
-                        {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
-                          <button
-                            onClick={() => activeId && openProposalModal(activeId)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md cursor-pointer border-none"
-                          >
-                            <Brain size={14} /> Evaluate Proposal with AI
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {!evalLoading && evalResult && (
-                      <div className="space-y-6">
-                        {/* Summary Card */}
-                        <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
-                          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/10 pb-4">
-                            {/* Overall Score */}
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/10 border border-purple-500/20">
-                                <span className="text-xl font-black text-purple-600 dark:text-purple-400">{evalResult.score}</span>
-                              </div>
-                              <div>
-                                <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">{t('proposalAnswers.overallScore')}</h4>
-                                <p className="text-xs font-bold">{t('proposalAnswers.aiScore', { score: evalResult.score })}</p>
-                              </div>
-                            </div>
-
-                            {/* Recommendation Badge */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-text-muted font-bold">{t('proposalAnswers.recommendation')}:</span>
-                              {evalResult.recommendedHire ? (
-                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                                  {t('proposalAnswers.recommended')}
-                                </span>
-                              ) : (
-                                <span className="rounded-full bg-rose-500/15 border border-rose-500/30 px-3 py-1 text-xs font-black text-rose-500">
-                                  {t('proposalAnswers.notRecommended')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Summary */}
-                          <div>
-                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted mb-1">{t('proposalAnswers.summary')}</h4>
-                            <p className="text-xs leading-relaxed text-text-primary font-medium whitespace-pre-wrap">{evalResult.summary}</p>
-                          </div>
-                        </div>
-
-                        {/* Questions Breakdown */}
-                        {evalResult.gradedQuestions?.length > 0 && (
-                          <div className="space-y-4">
-                            <h4 className="text-xs font-extrabold text-text-primary uppercase tracking-wider border-b border-border pb-2">
-                              {t('proposalAnswers.questionBreakdown')}
-                            </h4>
-
-                            {evalResult.gradedQuestions.map((q, idx) => (
-                              <div key={idx} className="rounded-2xl border border-border p-4 space-y-3.5 bg-background">
-                                <div className="flex justify-between items-start gap-4">
-                                  <h5 className="text-xs font-bold text-text-primary leading-snug">
-                                    {q.questionIndex + 1}. {q.questionText}
-                                  </h5>
-                                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-black ${getScoreColorClass(q.score)}`}>
-                                    {q.score}/100
-                                  </span>
-                                </div>
-
-                                <div className="rounded-xl bg-surface-muted/40 border border-border p-3 text-xs space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-text-muted tracking-wider">Candidate Answer</span>
-                                  <p className="text-text-primary whitespace-pre-wrap leading-relaxed font-medium">{q.candidateAnswer || t('proposalAnswers.noAnswerProvided')}</p>
-                                </div>
-
-                                <div className="rounded-xl bg-purple-500/5 border border-purple-500/10 p-3 text-xs space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-purple-600 dark:text-purple-400 tracking-wider">AI Feedback</span>
-                                  <p className="text-text-primary leading-relaxed font-medium">{q.feedback}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex flex-wrap items-center justify-between border-t border-border pt-4 mt-6 gap-3">
-                <div className="flex items-center gap-2">
-                  {activeId && !selectedJobCanNegotiate && (
-                    <span className="text-xs font-extrabold text-amber-600">
-                      Proposal review is read-only.
-                    </span>
-                  )}
-                  {activeId && canClientAct(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)) && selectedJobCanNegotiate && (
-                    <button
-                      type="button"
-                      disabled={isBusy(activeId, 'shortlist')}
-                      onClick={() => updateStatus(activeId, ProposalStatus.Shortlisted, 'shortlist')}
-                      className="inline-flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-xs font-extrabold text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 disabled:opacity-50 cursor-pointer"
-                    >
-                      <Check size={14} /> Shortlist
-                    </button>
-                  )}
-                  {activeId && canClientAct(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)) && selectedJobCanNegotiate && (
-                    <>
-                      <button
-                        type="button"
-                        disabled={isBusy(activeId, 'reject')}
-                        onClick={() => setRejectProposalId(activeId)}
-                        className="inline-flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-xs font-extrabold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-50 cursor-pointer"
-                      >
-                        <X size={14} /> Reject
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isBusy(activeId, 'accept')}
-                        onClick={() => acceptForNegotiation(activeId)}
-                        className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition-all shadow-sm cursor-pointer"
-                        style={{ background: 'var(--brand)' }}
-                      >
-                        <MessageSquare size={14} /> Start negotiation
-                      </button>
-                    </>
-                  )}
-                  {activeId && Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status) === ProposalStatus.Accepted && selectedJobCanNegotiate && (
-                    <button
-                      type="button"
-                      disabled={isBusy(activeId, 'open')}
-                      onClick={() => openNegotiation(activeId)}
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50 cursor-pointer shadow-sm"
-                    >
-                      <MessageSquare size={14} /> Open negotiation
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setEvalModalOpen(false)}
-                  className="rounded-xl border border-border bg-background px-4 py-2 text-xs font-bold text-text-primary hover:bg-surface-muted transition cursor-pointer"
-                >
-                  {t('proposalAnswers.close')}
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-        )}
+        {/* ── Proposal Detail & Evaluation Modal (Extracted Component) ────────── */}
+        <ProposalDetailModal
+          isOpen={evalModalOpen}
+          onClose={() => setEvalModalOpen(false)}
+          activeId={activeId}
+          detail={detail}
+          detailLoading={detailLoading}
+          detailError={detailError}
+          proposals={proposals}
+          detailMilestoneTotal={detailMilestoneTotal}
+          modalTab={modalTab}
+          setModalTab={setModalTab}
+          evalLoading={evalLoading}
+          evalError={evalError}
+          evalResult={evalResult}
+          rawAnswers={rawAnswers}
+          rejectProposalId={rejectProposalId}
+          setRejectProposalId={setRejectProposalId}
+          selectedJobCanNegotiate={selectedJobCanNegotiate}
+          canClientAct={(status?: number) => canClientAct(status ?? 0)}
+          isBusy={isBusy}
+          updateStatus={updateStatus}
+          acceptForNegotiation={acceptForNegotiation}
+          openNegotiation={openNegotiation}
+          badgeClass={badgeClass}
+          t={t}
+        />
       </div>
     </AppLayout>
   );
@@ -890,9 +549,11 @@ function ProposalTableRow({ item, t, onOpen }: {
       <td className="px-4 py-4 align-top overflow-hidden">
         <div className="flex items-center gap-3">
           <UserProfileLink userId={item.freelancerUserId} role="freelancer" className="flex items-center gap-3 min-w-0">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10 font-extrabold text-brand">
-              {(item.freelancerName || 'F').slice(0, 1).toUpperCase()}
-            </span>
+            <UserAvatar
+              userId={item.freelancerUserId}
+              name={item.freelancerName || 'Freelancer'}
+              size="md"
+            />
             <div className="min-w-0">
               <p className="truncate font-bold text-text-primary max-w-[130px]">{item.freelancerName || t('proposalReview.freelancer')}</p>
               <p className="mt-0.5 text-xs font-semibold text-text-muted">{t('proposalReview.candidate')}</p>
@@ -941,9 +602,11 @@ function ProposalCard({ item, t, onOpen }: {
     >
       <div className="flex items-start justify-between gap-3">
         <UserProfileLink userId={item.freelancerUserId} role="freelancer" className="flex min-w-0 items-center gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10 font-black text-brand">
-            {(item.freelancerName || 'F').slice(0, 1).toUpperCase()}
-          </span>
+          <UserAvatar
+            userId={item.freelancerUserId}
+            name={item.freelancerName || 'Freelancer'}
+            size="md"
+          />
           <div className="min-w-0">
             <h2 className="truncate font-extrabold text-text-primary text-sm">{item.freelancerName || t('proposalReview.freelancer')}</h2>
             <p className="text-xs font-semibold text-text-muted">{formatDate(item.submittedAt)}</p>

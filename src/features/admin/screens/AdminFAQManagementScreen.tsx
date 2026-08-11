@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   BookOpen,
@@ -9,15 +9,18 @@ import {
   Eye,
   FileText,
   FolderPlus,
+  HelpCircle,
   Plus,
   Save,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import type { FAQCategoryDto, FAQDto } from '../../../types/models/FAQ';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import '../styles/admin-faq-management-screen.css';
 
 type FAQStatus = 'published' | 'draft';
@@ -51,6 +54,7 @@ const getStatus = (item: { isActive?: boolean | null }): FAQStatus =>
   item.isActive === true ? 'published' : 'draft';
 
 export default function AdminFAQManagementScreen() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [categories, setCategories] = useState<FAQCategoryDto[]>([]);
   const [articles, setArticles] = useState<FAQDto[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +69,19 @@ export default function AdminFAQManagementScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // GSAP Entrance Animations Hook
+  usePageGSAP({
+    containerRef,
+    loading: isLoading,
+    groups: [
+      { selector: '.faq-admin-hero', y: 20, duration: 0.5 },
+      { selector: '.faq-stat-card', y: 16, duration: 0.45, stagger: 0.08 },
+      { selector: '.faq-admin-grid > div', y: 20, duration: 0.5, stagger: 0.1 },
+      { selector: '.faq-list-card', y: 24, duration: 0.5 },
+      { selector: '.faq-article-row', y: 16, duration: 0.4, stagger: 0.06 },
+    ],
+  });
 
   const orderedCategories = useMemo(
     () =>
@@ -360,41 +377,82 @@ export default function AdminFAQManagementScreen() {
 
   return (
     <AppLayout>
-      <div className="admin-faq-wrapper">
+      <div className="admin-faq-wrapper" ref={containerRef}>
+        {/* Hero Header Banner */}
         <section className="faq-admin-hero">
           <div>
-            <p className="faq-admin-kicker">Admin CMS</p>
-            <h1>FAQ Management</h1>
-            <p>Create, organize, draft, and publish FAQ articles for the public FAQ page.</p>
+            <p className="faq-admin-kicker">
+              <Sparkles size={14} /> Admin CMS
+            </p>
+            <h1>FAQ Content Management</h1>
+            <p>Create, organize, draft, and publish help articles for the public FAQ knowledge center.</p>
           </div>
           <div className="faq-admin-policy">
             <Eye size={18} />
-            Published FAQs are immediately visible to users. Draft FAQs stay hidden.
+            <span>Published FAQs are immediately visible to users. Draft FAQs stay hidden.</span>
           </div>
         </section>
 
+        {/* Stat Metrics Grid */}
         <section className="faq-admin-stats">
-          <div><span>Total FAQs</span><strong>{stats.total}</strong></div>
-          <div><span>Published</span><strong>{stats.published}</strong></div>
-          <div><span>Drafts</span><strong>{stats.drafts}</strong></div>
-          <div><span>Categories</span><strong>{stats.categories}</strong></div>
+          <div className="faq-stat-card">
+            <div className="faq-stat-icon cyan">
+              <BookOpen size={20} />
+            </div>
+            <div className="faq-stat-info">
+              <span>Total FAQs</span>
+              <strong>{stats.total}</strong>
+            </div>
+          </div>
+
+          <div className="faq-stat-card">
+            <div className="faq-stat-icon green">
+              <CheckCircle size={20} />
+            </div>
+            <div className="faq-stat-info">
+              <span>Published</span>
+              <strong>{stats.published}</strong>
+            </div>
+          </div>
+
+          <div className="faq-stat-card">
+            <div className="faq-stat-icon amber">
+              <FileText size={20} />
+            </div>
+            <div className="faq-stat-info">
+              <span>Drafts</span>
+              <strong>{stats.drafts}</strong>
+            </div>
+          </div>
+
+          <div className="faq-stat-card">
+            <div className="faq-stat-icon purple">
+              <FolderPlus size={20} />
+            </div>
+            <div className="faq-stat-info">
+              <span>Categories</span>
+              <strong>{stats.categories}</strong>
+            </div>
+          </div>
         </section>
 
+        {/* Error / Success Notifications */}
         {error && (
           <div className="faq-message error">
             <AlertCircle size={18} />
             <span>{error}</span>
-            <button onClick={() => setError(null)}><X size={16} /></button>
+            <button type="button" onClick={() => setError(null)} aria-label="Dismiss error"><X size={16} /></button>
           </div>
         )}
         {success && (
           <div className="faq-message success">
             <CheckCircle size={18} />
             <span>{success}</span>
-            <button onClick={() => setSuccess(null)}><X size={16} /></button>
+            <button type="button" onClick={() => setSuccess(null)} aria-label="Dismiss success"><X size={16} /></button>
           </div>
         )}
 
+        {/* Main Content Area */}
         {isLoading ? (
           <section className="faq-list-card">
             <div className="faq-empty">
@@ -404,7 +462,9 @@ export default function AdminFAQManagementScreen() {
           </section>
         ) : (
           <>
+            {/* Editor & Category Management Grid */}
             <section className="faq-admin-grid">
+              {/* Article Editor Form Card */}
               <div className="faq-editor-card">
                 <div className="faq-section-header">
                   <div>
@@ -414,16 +474,18 @@ export default function AdminFAQManagementScreen() {
                   <FileText size={22} />
                 </div>
 
-                <label>Question</label>
+                <label htmlFor="faq-question">Question</label>
                 <input
+                  id="faq-question"
                   value={articleForm.question}
                   onChange={(event) => setArticleForm({ ...articleForm, question: event.target.value })}
                   maxLength={500}
-                  placeholder="Enter FAQ question"
+                  placeholder="Enter FAQ question..."
                 />
 
-                <label>Category</label>
+                <label htmlFor="faq-category">Category</label>
                 <select
+                  id="faq-category"
                   value={articleForm.faqCategoryId}
                   onChange={(event) => setArticleForm({ ...articleForm, faqCategoryId: Number(event.target.value) })}
                 >
@@ -433,43 +495,47 @@ export default function AdminFAQManagementScreen() {
                   ))}
                 </select>
 
-                <label>Status</label>
+                <label htmlFor="faq-status">Status</label>
                 <select
+                  id="faq-status"
                   value={articleForm.status}
                   onChange={(event) => setArticleForm({ ...articleForm, status: event.target.value as FAQStatus })}
                 >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
+                  <option value="draft">Draft (Hidden)</option>
+                  <option value="published">Published (Visible)</option>
                 </select>
 
-                <label>Sort Order</label>
+                <label htmlFor="faq-sortorder">Sort Order</label>
                 <input
+                  id="faq-sortorder"
                   value={articleForm.sortOrder}
                   onChange={(event) => setArticleForm({ ...articleForm, sortOrder: event.target.value })}
-                  placeholder="Optional display order"
+                  placeholder="Optional display order number..."
                 />
 
-                <label>Answer</label>
+                <label htmlFor="faq-answer">Answer</label>
                 <textarea
+                  id="faq-answer"
                   value={articleForm.answer}
                   onChange={(event) => setArticleForm({ ...articleForm, answer: event.target.value })}
-                  rows={9}
-                  placeholder="Write the FAQ answer..."
+                  rows={8}
+                  placeholder="Write detailed FAQ answer..."
                 />
 
                 <div className="faq-editor-actions">
                   {editingArticleId && (
-                    <button className="faq-secondary-btn" onClick={resetArticleForm} disabled={isSaving}>
+                    <button type="button" className="faq-secondary-btn" onClick={resetArticleForm} disabled={isSaving}>
                       Cancel
                     </button>
                   )}
-                  <button className="faq-primary-btn" onClick={handleSaveArticle} disabled={isSaving || orderedCategories.length === 0}>
+                  <button type="button" className="faq-primary-btn" onClick={handleSaveArticle} disabled={isSaving || orderedCategories.length === 0}>
                     <Save size={16} />
                     {editingArticleId ? 'Save Changes' : 'Create FAQ'}
                   </button>
                 </div>
               </div>
 
+              {/* Category Management Card */}
               <div className="faq-category-card">
                 <div className="faq-section-header">
                   <div>
@@ -486,9 +552,9 @@ export default function AdminFAQManagementScreen() {
                       setCategoryName(event.target.value);
                       if (!editingCategoryId) setCategorySlug(slugify(event.target.value));
                     }}
-                    placeholder="Category name"
+                    placeholder="Category name..."
                   />
-                  <button className="faq-primary-btn" onClick={handleSaveCategory} disabled={isSaving}>
+                  <button type="button" className="faq-primary-btn" onClick={handleSaveCategory} disabled={isSaving}>
                     <Plus size={16} />
                     {editingCategoryId ? 'Save' : 'Add'}
                   </button>
@@ -497,7 +563,7 @@ export default function AdminFAQManagementScreen() {
                   className="category-slug-input"
                   value={categorySlug}
                   onChange={(event) => setCategorySlug(slugify(event.target.value))}
-                  placeholder="Category slug"
+                  placeholder="category-slug"
                 />
 
                 <div className="category-list">
@@ -505,20 +571,28 @@ export default function AdminFAQManagementScreen() {
                     <div key={category.id} className="category-row">
                       <div>
                         <strong>{category.name}</strong>
-                        <span>{category.faqCount} articles | {getStatus(category)}</span>
+                        <span>{category.faqCount} articles • {getStatus(category)}</span>
                       </div>
                       <div className="category-actions">
-                        <button onClick={() => moveCategory(category.id, 'up')} disabled={index === 0}><ChevronUp size={15} /></button>
-                        <button onClick={() => moveCategory(category.id, 'down')} disabled={index === orderedCategories.length - 1}><ChevronDown size={15} /></button>
-                        <button onClick={() => handleToggleCategoryActivity(category.id)}>
+                        <button type="button" title="Move Up" onClick={() => moveCategory(category.id, 'up')} disabled={index === 0}>
+                          <ChevronUp size={15} />
+                        </button>
+                        <button type="button" title="Move Down" onClick={() => moveCategory(category.id, 'down')} disabled={index === orderedCategories.length - 1}>
+                          <ChevronDown size={15} />
+                        </button>
+                        <button type="button" title={category.isActive === true ? 'Deactivate Category' : 'Activate Category'} onClick={() => handleToggleCategoryActivity(category.id)}>
                           {category.isActive === true ? <X size={15} /> : <CheckCircle size={15} />}
                         </button>
-                        <button onClick={() => {
+                        <button type="button" title="Edit Category" onClick={() => {
                           setEditingCategoryId(category.id);
                           setCategoryName(category.name);
                           setCategorySlug(category.slug);
-                        }}><Edit size={15} /></button>
-                        <button onClick={() => handleDeleteCategory(category.id)}><Trash2 size={15} /></button>
+                        }}>
+                          <Edit size={15} />
+                        </button>
+                        <button type="button" title="Delete Category" onClick={() => handleDeleteCategory(category.id)}>
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -526,6 +600,7 @@ export default function AdminFAQManagementScreen() {
               </div>
             </section>
 
+            {/* Articles List & Filtering */}
             <section className="faq-list-card">
               <div className="faq-list-controls">
                 <div className="faq-search">
@@ -533,7 +608,7 @@ export default function AdminFAQManagementScreen() {
                   <input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search FAQ articles..."
+                    placeholder="Search FAQ articles by title or content..."
                   />
                 </div>
                 <select
@@ -566,16 +641,20 @@ export default function AdminFAQManagementScreen() {
                         </div>
                         <p>{article.answer}</p>
                         <div className="faq-article-meta">
-                          <span>{getCategoryName(article.faqCategoryId)}</span>
-                          <span>Updated {new Date(article.updatedAt || article.createdAt).toLocaleDateString()}</span>
+                          <span>📁 {getCategoryName(article.faqCategoryId)}</span>
+                          <span>🕒 Updated {new Date(article.updatedAt || article.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <div className="faq-article-actions">
-                        <button onClick={() => handleToggleStatus(article.id)} className="faq-secondary-btn">
+                        <button type="button" onClick={() => handleToggleStatus(article.id)} className="faq-secondary-btn">
                           {status === 'published' ? 'Move to Draft' : 'Publish'}
                         </button>
-                        <button onClick={() => handleEditArticle(article)} className="faq-icon-btn"><Edit size={16} /></button>
-                        <button onClick={() => handleDeleteArticle(article.id)} className="faq-icon-btn danger"><Trash2 size={16} /></button>
+                        <button type="button" title="Edit Article" onClick={() => handleEditArticle(article)} className="faq-icon-btn">
+                          <Edit size={16} />
+                        </button>
+                        <button type="button" title="Delete Article" onClick={() => handleDeleteArticle(article.id)} className="faq-icon-btn danger">
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </article>
                   );
@@ -583,9 +662,9 @@ export default function AdminFAQManagementScreen() {
 
                 {filteredArticles.length === 0 && (
                   <div className="faq-empty">
-                    <BookOpen size={42} />
+                    <HelpCircle size={42} />
                     <strong>No FAQ articles found</strong>
-                    <span>Try adjusting search, category, or status filters.</span>
+                    <span>Try adjusting search query, category, or status filters.</span>
                   </div>
                 )}
               </div>

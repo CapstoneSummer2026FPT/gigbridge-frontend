@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp } from 'lucide-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Flame, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -42,7 +42,10 @@ const getSavedJobPostId = (job: SavedJobDto): string => job.jobPostId ?? job.job
 export default function BrowseJobsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params, setParams] = useSearchParams();
+  const isAiMatchHighlighted = params.get('aiMatch') === 'true' || Boolean((location.state as { highlightAiMatch?: boolean })?.highlightAiMatch);
+
   const setParamsRef = useRef(setParams);
   useEffect(() => {
     setParamsRef.current = setParams;
@@ -74,6 +77,9 @@ export default function BrowseJobsScreen() {
   const [page, setPage] = useState(() => Math.max(1, Number(params.get('page')) || 1));
   const [totalResults, setTotalResults] = useState(0);
   const [searchEventId, setSearchEventId] = useState<string | null>(null);
+  const [recommendedMode, setRecommendedMode] = useState(false);
+  const [recommendedJobs, setRecommendedJobs] = useState<BrowseJob[]>([]);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isFreelancer = role === UserRole.Freelancer;
@@ -83,12 +89,11 @@ export default function BrowseJobsScreen() {
     containerRef,
     loading,
     groups: [
-      { selector: '.browse-jobs-header-card', y: 20, duration: 0.4 },
-      { selector: '.browse-category-pill', scale: 0.9, stagger: 0.03, duration: 0.35 },
-      { selector: '.browse-jobs-job-card', y: 25, stagger: 0.05, duration: 0.4, clearProps: 'transform,opacity' },
-      { selector: '.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', x: 20, stagger: 0.08, duration: 0.4, clearProps: 'transform,opacity' },
+      { selector: '.browse-jobs-header-card', y: 20, duration: 0.4, clearProps: 'all' },
+      { selector: '.browse-category-pill', scale: 0.9, stagger: 0.02, duration: 0.3, clearProps: 'all' },
+      { selector: '.browse-jobs-job-card', y: 20, stagger: 0.03, duration: 0.35, clearProps: 'all' },
+      { selector: '.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', x: 20, stagger: 0.05, duration: 0.35, clearProps: 'all' },
     ],
-    dependencies: [allJobs.length],
   });
 
   useEffect(() => {
@@ -246,7 +251,7 @@ export default function BrowseJobsScreen() {
   const budgetInvalid = Boolean(budgetMin && budgetMax && Number(budgetMin) > Number(budgetMax));
   const jobs = budgetInvalid ? [] : allJobs;
   const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
-  const pagedJobs = jobs;
+  const pagedJobs = recommendedMode ? recommendedJobs : jobs;
 
   useEffect(() => {
     setParamsRef.current(current => {
@@ -270,6 +275,40 @@ export default function BrowseJobsScreen() {
   const openJob = (job: BrowseJob) => {
     void jobGetAPI.recordJobOpen(job.id, searchEventId);
     navigate(`/jobs/${job.id}`, { state: { job, searchEventId } });
+  };
+
+  const exitRecommendedMode = () => {
+    setRecommendedMode(false);
+    setRecommendedJobs([]);
+  };
+
+  const findMatchingJobs = async () => {
+    if (!user || !isFreelancer) {
+      toast.error(t('jobs.onlyFreelancersCanSave'));
+      return;
+    }
+
+    if (recommendedMode) {
+      exitRecommendedMode();
+      return;
+    }
+
+    setRecommendedMode(true);
+    setRecommendedLoading(true);
+    try {
+      const jobs = await jobGetAPI.getRecommendedJobs(20);
+      setRecommendedJobs(jobs.map(job => ({
+        ...job,
+        datePosted: job.createdAt || '',
+        isFeatured: Boolean(job.isFeatured),
+      })));
+    } catch (error) {
+      console.error('Failed to fetch recommended jobs:', error);
+      toast.error(error instanceof Error ? error.message : t('jobs.recommendedError'));
+      setRecommendedJobs([]);
+    } finally {
+      setRecommendedLoading(false);
+    }
   };
 
   const toggleSave = async (id: string) => {
@@ -357,10 +396,21 @@ export default function BrowseJobsScreen() {
                   <Filter size={16} />
                   <span>{t('jobs.filters')}</span>
                 </button>
+                {user && isFreelancer && (
+                  <button
+                    type="button"
+                    onClick={findMatchingJobs}
+                    disabled={recommendedLoading}
+                    className={`browse-jobs-filter-btn ${recommendedMode ? 'active' : ''} ${isAiMatchHighlighted ? 'ai-match-breathe' : ''}`}
+                  >
+                    <Sparkles size={16} />
+                    <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : recommendedMode ? t('jobs.exitRecommended') : t('jobs.findMatchingJobs')}</span>
+                  </button>
+                )}
               </div>
 
               {/* Filter Expansion Grid */}
-              {showFilters && (
+              {!recommendedMode && showFilters && (
                 <div className="mt-4 pt-4 border-t browse-jobs-divider">
                   <div className="browse-jobs-filter-grid">
                     <label>
@@ -400,41 +450,65 @@ export default function BrowseJobsScreen() {
             </div>
 
             {/* Category Filter Horizontal Smooth Scroll Pill Container */}
-            <div className="browse-category-scroll-container">
-              {categoryOptions.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => { setCategory(cat); resetBrowsePage(); }}
-                  className={`browse-category-pill ${category === cat ? 'active' : ''}`}
-                >
-                  {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
-                </button>
-              ))}
-            </div>
+            {!recommendedMode && (
+              <div className="browse-category-scroll-container">
+                {categoryOptions.map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => { setCategory(cat); resetBrowsePage(); }}
+                    className={`browse-category-pill ${category === cat ? 'active' : ''}`}
+                  >
+                    {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Results Count & Sort Dropdown */}
             <div>
               <div className="flex items-center justify-between mb-3.5">
-                <p className="text-sm browse-jobs-desc font-medium">
-                  <span className="text-[var(--brand,#494be7)] font-bold">{totalResults}</span> {t('jobs.openJobsFound')}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs browse-jobs-desc font-medium">{t('jobs.sortBy')}:</span>
+                {recommendedMode ? (
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-[var(--brand,#494be7)]" />
+                    <p className="text-sm browse-jobs-desc font-medium">
+                      {t('jobs.recommendedJobsTitle')}
+                      {!recommendedLoading && (
+                        <span className="text-[var(--brand,#494be7)] font-bold"> · {recommendedJobs.length}</span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm browse-jobs-desc font-medium">
+                    <span className="text-[var(--brand,#494be7)] font-bold">{totalResults}</span> {t('jobs.openJobsFound')}
+                  </p>
+                )}
+                {recommendedMode ? (
                   <button
                     type="button"
-                    onClick={() => { setSortBy(sortBy === 'relevance' ? 'date' : 'relevance'); resetBrowsePage(); }}
-                    className="flex items-center gap-1 text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
+                    onClick={exitRecommendedMode}
+                    className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
                   >
-                    {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')}
-                    <ChevronDown size={14} />
+                    {t('jobs.exitRecommended')}
                   </button>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs browse-jobs-desc font-medium">{t('jobs.sortBy')}:</span>
+                    <button
+                      type="button"
+                      onClick={() => { setSortBy(sortBy === 'relevance' ? 'date' : 'relevance'); resetBrowsePage(); }}
+                      className="flex items-center gap-1 text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
+                    >
+                      {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')}
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Job Cards List */}
               <div className="space-y-3.5">
-                {pagedJobs.map((job) => (
+                {!recommendedLoading && pagedJobs.map((job) => (
                   <div
                     key={job.id}
                     className="browse-jobs-job-card"
@@ -504,7 +578,10 @@ export default function BrowseJobsScreen() {
                           return (
                             <div className="flex items-center gap-2">
                               {job.aiMatchScore && user && (
-                                <div className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
+                                <div
+                                  className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1"
+                                  title={job.matchReasons?.length ? `${t('jobs.matchReasonsTitle')}: ${job.matchReasons.join(' · ')}` : undefined}
+                                >
                                   <Bot size={11} />
                                   <span>{job.aiMatchScore}% {t('jobs.match')}</span>
                                 </div>
@@ -535,18 +612,28 @@ export default function BrowseJobsScreen() {
                 ))}
               </div>
 
+              {/* Recommended Loading State */}
+              {recommendedMode && recommendedLoading && (
+                <div className="text-center py-16 browse-jobs-glass-card">
+                  <Sparkles size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)] animate-pulse" />
+                  <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
+                    {t('jobs.findingMatchingJobs')}
+                  </p>
+                </div>
+              )}
+
               {/* Empty State */}
-              {!loading && jobs.length === 0 && (
+              {!recommendedLoading && !loading && pagedJobs.length === 0 && (
                 <div className="text-center py-16 browse-jobs-glass-card">
                   <Bot size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)]" />
                   <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
-                    {loadError || t('jobs.noJobsFound')}
+                    {recommendedMode ? t('jobs.noRecommendedJobs') : (loadError || t('jobs.noJobsFound'))}
                   </p>
                 </div>
               )}
 
               {/* Pagination */}
-              {totalResults > PAGE_SIZE && (
+              {!recommendedMode && totalResults > PAGE_SIZE && (
                 <div className="browse-jobs-pagination">
                   <button type="button" disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>
                     {t('jobs.previous')}
@@ -565,26 +652,64 @@ export default function BrowseJobsScreen() {
             {/* Promoted Job Card (Featured Opportunities) */}
             <SponsoredPromotionCard promotionType="job" />
 
-            {/* Premium upgrade card */}
+            {/* Fashion-Forward Premium & Profile Promotion Card */}
             {isPremium !== null && (
-              <div className="system-ad-card">
-                <div className="system-ad-title">
-                  {isPremium ? <TrendingUp size={18} className="text-emerald-500" /> : <Sparkles size={18} className="text-[var(--brand,#494be7)]" />}
-                  <span>{isPremium ? t('jobs.promotionTitle') : t('jobs.premiumTitle')}</span>
+              <div className={`system-ad-card ${isPremium ? 'system-ad-card-premium' : ''}`}>
+                <div className="system-ad-premium-orb" aria-hidden />
+
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="system-ad-title" style={{ margin: 0 }}>
+                    {isPremium ? (
+                      <div className="w-8 h-8 rounded-xl bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] flex items-center justify-center flex-shrink-0">
+                        <Flame size={18} />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-xl bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] flex items-center justify-center flex-shrink-0">
+                        <Sparkles size={18} />
+                      </div>
+                    )}
+                    <span className="font-extrabold text-[15px]">{isPremium ? t('jobs.promotionTitle') : t('jobs.premiumTitle')}</span>
+                  </div>
+
+                  {isPremium && (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] border border-[rgba(99,102,241,0.2)]">
+                      {isPromotionActive ? 'ACTIVE ✦' : 'PROMOTION'}
+                    </span>
+                  )}
                 </div>
-                <p className="system-ad-subtitle">
+
+                <p className="system-ad-subtitle" style={{ fontSize: 12, lineHeight: 1.55, margin: '0 0 16px' }}>
                   {isPremium ? t('jobs.promotionDesc') : t('jobs.premiumDesc')}
                 </p>
-                <button
-                  type="button"
-                  className="system-ad-btn system-ad-btn-primary"
-                  disabled={Boolean(isPremium && isPromotionActive)}
-                  onClick={() => navigate(isPremium ? '/premium/freelancer/promotions' : '/premium/freelancer/pricing')}
-                >
-                  {isPremium
-                    ? t(isPromotionActive ? 'jobs.promotionActive' : 'jobs.startPromotion')
-                    : t('jobs.upgradePlan')}
-                </button>
+
+                {isPremium ? (
+                  isPromotionActive ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, background: 'var(--cp-accent-dim,#6366f11c)', border: '1px solid var(--cp-border,rgba(99,102,241,0.2))', color: 'var(--brand,#494be7)', fontSize: 13, fontWeight: 800 }}>
+                      <Sparkles size={15} />
+                      <span>{t('jobs.promotionActive')}</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="system-ad-btn system-ad-btn-primary"
+                      onClick={() => navigate('/premium/freelancer/promotions')}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 18px', fontSize: 13, fontWeight: 800 }}
+                    >
+                      <Flame size={15} />
+                      <span>{t('jobs.startPromotion')}</span>
+                    </button>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    className="system-ad-btn system-ad-btn-primary"
+                    onClick={() => navigate('/premium/freelancer/pricing')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 18px', fontSize: 13, fontWeight: 800 }}
+                  >
+                    <Sparkles size={15} />
+                    <span>{t('jobs.upgradePlan')}</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -592,55 +717,43 @@ export default function BrowseJobsScreen() {
             <div className="freelancer-ranking-card">
               <div className="freelancer-ranking-header">
                 <div className="freelancer-ranking-title">
-                  <Trophy size={18} className="text-amber-500" />
-                  <span>{t('jobs.topFreelancers')}</span>
+                  <div className="w-8 h-8 rounded-xl bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] flex items-center justify-center flex-shrink-0">
+                    <Trophy size={18} />
+                  </div>
+                  <span className="font-extrabold text-[15px]">{t('jobs.topFreelancers')}</span>
                 </div>
-                <span className="text-xs text-[var(--text-secondary)] font-medium flex items-center gap-1">
-                  <TrendingUp size={12} className="text-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] border border-[rgba(99,102,241,0.2)] flex items-center gap-1">
+                  <TrendingUp size={12} />
                   {t('jobs.eloRatings')}
                 </span>
               </div>
 
               <div className="ranking-list">
                 {topFreelancers.length === 0 ? (
-                  <p className="p-3 text-xs text-[var(--text-muted)] text-center">No freelancer ranking data is available.</p>
+                  <p className="p-4 text-xs text-[var(--text-muted)] text-center font-medium">No freelancer ranking data available.</p>
                 ) : (
                   topFreelancers.map((freelancer, index) => {
                     const rank = index + 1;
-                    const isGold = rank === 1;
-                    const isSilver = rank === 2;
-                    const isBronze = rank === 3;
-                    
+                    const isTop1 = rank === 1;
+
                     return (
-                      <div 
+                      <div
                         key={freelancer.freelancerProfilesId}
                         onClick={() => {
                           const path = getProfilePath(freelancer.userId || freelancer.freelancerProfilesId, 'freelancer');
                           if (path) navigate(path);
                         }}
-                        className={`ranking-item ${
-                          isGold ? 'ranking-item-top1' : 
-                          isSilver ? 'ranking-item-top2' : 
-                          isBronze ? 'ranking-item-top3' : ''
-                        }`}
+                        className={`ranking-item ${isTop1 ? 'ranking-item-top1' : ''}`}
                       >
                         <div className="ranking-user-info">
-                          <div className={`ranking-position ${
-                            isGold ? 'text-amber-500 font-black' : 
-                            isSilver ? 'text-slate-400 font-bold' : 
-                            isBronze ? 'text-amber-700 font-bold' : 'text-[var(--text-muted)] font-medium'
-                          }`}>
-                            {isGold ? '👑' : `#${rank}`}
+                          <div className={`ranking-position ${isTop1 ? 'ranking-position-top1' : ''}`}>
+                            {isTop1 ? <Crown size={14} /> : `#${rank}`}
                           </div>
                           <div className="relative shrink-0">
-                            <img 
+                            <img
                               src={freelancer.userAvatar || '/img/avatar-fallback.png'}
                               alt={freelancer.userFullName || 'Freelancer'}
-                              className={`ranking-avatar ${
-                                isGold ? 'ranking-avatar-gold' : 
-                                isSilver ? 'ranking-avatar-silver' : 
-                                isBronze ? 'ranking-avatar-bronze' : ''
-                              }`}
+                              className={`ranking-avatar ${isTop1 ? 'ranking-avatar-top1' : ''}`}
                             />
                           </div>
                           <div className="ranking-text-details">
@@ -652,7 +765,7 @@ export default function BrowseJobsScreen() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end shrink-0 pl-1">
+                        <div className="flex flex-col items-end shrink-0 pl-2">
                           <span className="ranking-elo-value">{freelancer.eloPoints}</span>
                           <span className="ranking-elo-label">{t('jobs.elo')}</span>
                         </div>

@@ -3,7 +3,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, CircleDollarSign, Cloud, Refr
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import JobPostStepper from '../../../shared/components/JobPostStepper';
-import { formatGigCoin, formatGigCoinNumber } from '../../../shared/utils/gigcoin';
+import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import type { AutosaveStatus } from '../hooks/usePostJob';
 import '../../../shared/styles/job-post-stepper.css';
 import '../styles/post-job-wizard.css';
@@ -100,7 +100,7 @@ export function PostJobWizardShell({
 
         <div className="job-post-wizard__layout">
           <main className="job-post-wizard__main">{children}</main>
-<aside className="job-post-wizard__sidebar" aria-label={t('postJobWizard.summary')}>
+          <aside className="job-post-wizard__sidebar" aria-label={t('postJobWizard.summary')}>
             <div className="job-post-wizard__sidebar-card">
               <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />
             </div>
@@ -155,7 +155,13 @@ export function PostJobWizardShell({
               </div>
               <div className="job-post-wizard__completion-track"><span style={{ width: `${completion}%` }} /></div>
               <dl className="job-post-wizard__stats">
-                <div><dt><CircleDollarSign size={14} />{t('postJobWizard.budget')}</dt><dd>{budget.toLocaleString()} G-coin</dd></div>
+                <div>
+                  <dt><CircleDollarSign size={14} />{t('postJobWizard.budget')}</dt>
+                  <dd className="flex flex-col items-end">
+                    <span>{budget.toLocaleString()} G-coin</span>
+                    {budget > 0 && <small className="text-[11px] font-normal text-muted-foreground">≈ {formatGigCoinToVnd(budget)}</small>}
+                  </dd>
+                </div>
                 <div><dt>{t('postJobWizard.milestones')}</dt><dd>{milestoneCount}</dd></div>
                 <div><dt>{t('postJobWizard.questions')}</dt><dd>{questionCount}</dd></div>
               </dl>

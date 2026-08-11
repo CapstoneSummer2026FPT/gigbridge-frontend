@@ -80,6 +80,9 @@ export interface ProposalDto {
   aiEvaluatedAt?: string | null;
   aiTechnicalSkills?: string[] | null;
   aiSoftSkills?: string[] | null;
+  aiHolisticAdjustmentReason?: string | null;
+  aiHolisticAdjustment?: number | null;
+  aiGradedQuestions?: GradedQuestionDto[] | null;
 
   // AI Interview Status Attributes (from remote develop)
   hasAiInterview?: boolean;
@@ -172,6 +175,10 @@ export interface ProposalDetailDto {
   outOfScope?: string | null;
   workBreakdownItems?: ProposalWorkBreakdownItemDto[];
   milestonePlans?: ProposalMilestonePlanDto[];
+  hasAiInterview?: boolean;
+  aiInterviewCompleted?: boolean;
+  aiInterviewInProgress?: boolean;
+  aiInterviewDefinitionId?: string | null;
 }
 
 export interface CreateProposalRequest {
