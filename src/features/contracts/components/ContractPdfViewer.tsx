@@ -13,9 +13,10 @@ interface ContractPdfViewerProps {
   document: ESignDocumentDto;
   title?: string;
   sourceBlob?: Blob;
+  hideHeaderToolbar?: boolean;
 }
 
-export function ContractPdfViewer({ document, title, sourceBlob }: ContractPdfViewerProps): JSX.Element {
+export function ContractPdfViewer({ document, title, sourceBlob, hideHeaderToolbar = false }: ContractPdfViewerProps): JSX.Element {
   const { t } = useTranslation();
   const defaultPreviewError = t('contracts.pdfPreviewError');
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -66,29 +67,31 @@ export function ContractPdfViewer({ document, title, sourceBlob }: ContractPdfVi
 
   return (
     <div className="contract-pdf-viewer">
-      <div className="contract-pdf-toolbar">
-        <span className="contract-pdf-label">
-          <FileText size={17} aria-hidden="true" />
-          {t('contracts.pdfPreview')}
-        </span>
-        <div className="contract-pdf-actions">
-          {pdfUrl ? (
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="contract-pdf-action">
-              <ExternalLink size={16} aria-hidden="true" />
-              <span>{t('contracts.openPdf')}</span>
-            </a>
-          ) : null}
-          <button
-            type="button"
-            className="contract-pdf-action"
-            onClick={handleDownload}
-            disabled={!pdfBlob || isLoading}
-          >
-            <Download size={16} aria-hidden="true" />
-            <span>{t('contracts.downloadPdf')}</span>
-          </button>
+      {!hideHeaderToolbar && (
+        <div className="contract-pdf-toolbar">
+          <span className="contract-pdf-label">
+            <FileText size={17} aria-hidden="true" />
+            {t('contracts.pdfPreview')}
+          </span>
+          <div className="contract-pdf-actions">
+            {pdfUrl ? (
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="contract-pdf-action">
+                <ExternalLink size={16} aria-hidden="true" />
+                <span>{t('contracts.openPdf')}</span>
+              </a>
+            ) : null}
+            <button
+              type="button"
+              className="contract-pdf-action"
+              onClick={handleDownload}
+              disabled={!pdfBlob || isLoading}
+            >
+              <Download size={16} aria-hidden="true" />
+              <span>{t('contracts.downloadPdf')}</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="contract-pdf-viewport">
         {isLoading ? (
@@ -108,7 +111,7 @@ export function ContractPdfViewer({ document, title, sourceBlob }: ContractPdfVi
           <iframe
             title={viewerTitle}
             className="contract-pdf-frame"
-            src={`${pdfUrl}#toolbar=1&navpanes=0&view=FitH`}
+            src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
           />
         ) : null}
       </div>

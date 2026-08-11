@@ -7,9 +7,12 @@ import {
   ChevronDown,
   Clock,
   Eye,
+  Layers,
+  ListChecks,
   PenTool,
   RotateCcw,
   Search,
+  ShieldAlert,
   Sparkles,
   TrendingUp,
   Zap,
@@ -40,6 +43,7 @@ export default function FreelancerContractScreen() {
 
   const {
     navigate,
+    contracts,
     filteredContracts,
     pagedContracts,
     totalPages,
@@ -49,12 +53,13 @@ export default function FreelancerContractScreen() {
     error,
     searchQuery,
     setSearchQuery,
-    activeTab,
-    setActiveTab,
+    selectedStatus,
+    setSelectedStatus,
     sortBy,
     setSortBy,
     expandedContractIds,
     toggleExpand,
+    resetFilters,
     stats,
     loadContracts,
   } = useFreelancerContracts();
@@ -69,6 +74,15 @@ export default function FreelancerContractScreen() {
       { selector: '.fcs-gsap-main', y: 24, duration: 0.5 },
     ],
   });
+
+  const statusPills: Array<{ value: ContractStatus | 'All'; label: string; icon: React.ReactNode; colorClass: string }> = [
+    { value: 'All', label: t('contracts.allContracts'), icon: <Layers size={14} />, colorClass: 'bg-brand text-white shadow-sm' },
+    { value: ContractStatus.Active, label: t('contracts.active'), icon: <Zap size={14} />, colorClass: 'bg-emerald-600 text-white shadow-sm' },
+    { value: ContractStatus.PendingSignature, label: t('contracts.pendingSignature'), icon: <Clock size={14} />, colorClass: 'bg-amber-500 text-white shadow-sm' },
+    { value: ContractStatus.Completed, label: t('contracts.completed'), icon: <CheckCircle2 size={14} />, colorClass: 'bg-blue-600 text-white shadow-sm' },
+    { value: ContractStatus.Draft, label: t('contracts.legal.status.draft'), icon: <PenTool size={14} />, colorClass: 'bg-slate-600 text-white shadow-sm' },
+    { value: ContractStatus.Disputed, label: t('contracts.disputeTerms'), icon: <ShieldAlert size={14} />, colorClass: 'bg-rose-600 text-white shadow-sm' },
+  ];
 
   return (
     <AppLayout fullWidth>
@@ -155,54 +169,32 @@ export default function FreelancerContractScreen() {
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 
                 {/* Horizontal Selectable Status Pills */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('active')}
-                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition cursor-pointer ${
-                      activeTab === 'active'
-                        ? 'bg-brand text-white shadow-sm'
-                        : 'border border-border bg-surface-muted/40 text-text-muted hover:border-brand/40 hover:text-text-primary'
-                    }`}
-                  >
-                    <Zap size={14} />
-                    {t('contracts.tabActive')}
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${activeTab === 'active' ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
-                      {stats.activeCount}
-                    </span>
-                  </button>
+                <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+                  {statusPills.map(pill => {
+                    const isSelected = selectedStatus === pill.value;
+                    const count = pill.value === 'All'
+                      ? stats.totalCount
+                      : contracts.filter(c => Number(c.status) === pill.value).length;
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('pending')}
-                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition cursor-pointer ${
-                      activeTab === 'pending'
-                        ? 'bg-amber-500 text-white shadow-sm'
-                        : 'border border-border bg-surface-muted/40 text-text-muted hover:border-brand/40 hover:text-text-primary'
-                    }`}
-                  >
-                    <Clock size={14} />
-                    {t('contracts.tabPending')}
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${activeTab === 'pending' ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
-                      {stats.pendingCount}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('completed')}
-                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition cursor-pointer ${
-                      activeTab === 'completed'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'border border-border bg-surface-muted/40 text-text-muted hover:border-brand/40 hover:text-text-primary'
-                    }`}
-                  >
-                    <Award size={14} />
-                    {t('contracts.tabCompleted')}
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${activeTab === 'completed' ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
-                      {stats.completedCount}
-                    </span>
-                  </button>
+                    return (
+                      <button
+                        key={String(pill.value)}
+                        type="button"
+                        onClick={() => setSelectedStatus(pill.value)}
+                        className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? pill.colorClass
+                            : 'border border-border bg-surface-muted/40 text-text-muted hover:border-brand/40 hover:text-text-primary'
+                        }`}
+                      >
+                        {pill.icon}
+                        {pill.label}
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Search & Sort Controls */}
@@ -217,6 +209,18 @@ export default function FreelancerContractScreen() {
                       className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-xs font-bold text-text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm"
                     />
                   </label>
+
+                  {(searchQuery || selectedStatus !== 'All') && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      title={t('contracts.clearAllFilters')}
+                      aria-label={t('contracts.clearAllFilters')}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-muted/50 text-brand hover:bg-surface-muted transition cursor-pointer"
+                    >
+                      <RotateCcw size={16} />
+                    </button>
+                  )}
 
                   <div className="w-full sm:w-44">
                     <CustomSelect
@@ -257,10 +261,10 @@ export default function FreelancerContractScreen() {
                   <PenTool className="mx-auto text-text-muted/40" size={40} />
                   <h3 className="font-extrabold text-text-primary text-base">{t('contracts.noContractsFound')}</h3>
                   <p className="text-xs font-semibold text-text-muted">{t('contracts.noContractsCategory')}</p>
-                  {searchQuery && (
+                  {(searchQuery || selectedStatus !== 'All') && (
                     <button
                       type="button"
-                      onClick={() => setSearchQuery('')}
+                      onClick={resetFilters}
                       className="mt-2 text-xs font-extrabold text-brand hover:underline cursor-pointer"
                     >
                       {t('contracts.clearAllFilters')}
@@ -345,6 +349,44 @@ function ContractCardItem({
   const totalMilestones = contract.milestones?.length || 0;
   const progressPercent = totalMilestones ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
+  // Determine dynamic primary action button based on contract status
+  let primaryAction: { label: string; icon: React.ReactNode; path: string; styleClass?: string } = {
+    label: t('contracts.viewDetails'),
+    icon: <Eye size={14} />,
+    path: `/contracts/${contract.contractsId}`,
+    styleClass: 'bg-brand text-white shadow-sm',
+  };
+
+  if (status === ContractStatus.Active) {
+    primaryAction = {
+      label: t('contracts.submitDeliverables'),
+      icon: <Zap size={14} />,
+      path: `/contracts/${contract.contractsId}/submit`,
+      styleClass: 'bg-brand text-white shadow-sm',
+    };
+  } else if (status === ContractStatus.Draft || status === ContractStatus.PendingSignature) {
+    primaryAction = {
+      label: t('contracts.signContract'),
+      icon: <PenTool size={14} />,
+      path: `/contracts/${contract.contractsId}/sign`,
+      styleClass: 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm',
+    };
+  } else if (status === ContractStatus.Completed) {
+    primaryAction = {
+      label: t('contracts.viewCompleted'),
+      icon: <Award size={14} />,
+      path: `/contracts/${contract.contractsId}`,
+      styleClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm',
+    };
+  } else if (status === ContractStatus.Disputed || status === ContractStatus.Cancelled) {
+    primaryAction = {
+      label: t('contracts.viewDispute'),
+      icon: <ShieldAlert size={14} />,
+      path: `/contracts/${contract.contractsId}`,
+      styleClass: 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm',
+    };
+  }
+
   return (
     <article className="rounded-2xl border border-border bg-background p-5 shadow-sm transition hover:border-brand/40 space-y-4">
       {/* Card Top Row */}
@@ -397,37 +439,36 @@ function ContractCardItem({
       {/* Action Buttons Footer */}
       <div className="flex flex-wrap items-center justify-between border-t border-border/60 pt-4 gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Sign Contract Button (if Draft or PendingSignature) */}
-          {(status === ContractStatus.Draft || status === ContractStatus.PendingSignature) && (
-            <button
-              type="button"
-              onClick={() => onNavigate(`/contracts/${contract.contractsId}/sign`)}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-white transition hover:bg-amber-600 cursor-pointer shadow-sm"
-            >
-              <PenTool size={14} /> {t('contracts.signContract')}
-            </button>
-          )}
+          {/* Primary Action Button */}
+          <button
+            type="button"
+            onClick={() => onNavigate(primaryAction.path)}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition cursor-pointer ${primaryAction.styleClass}`}
+          >
+            {primaryAction.icon} {primaryAction.label}
+          </button>
 
-          {/* Submit Deliverable Button (if Active) */}
+          {/* Manage Milestones button for Active Freelancer Contracts */}
           {status === ContractStatus.Active && (
             <button
               type="button"
-              onClick={() => onNavigate(`/contracts/${contract.contractsId}/submit`)}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition cursor-pointer shadow-sm"
-              style={{ background: 'var(--brand)' }}
+              onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
             >
-              <Zap size={14} /> {t('contracts.submitDeliverables')}
+              <ListChecks size={14} /> {t('contracts.manageMilestones')}
             </button>
           )}
 
-          {/* View Details Button */}
-          <button
-            type="button"
-            onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
-          >
-            <Eye size={14} /> {t('contracts.viewDetails')}
-          </button>
+          {/* Secondary View Details Button */}
+          {primaryAction.label !== t('contracts.viewDetails') && status !== ContractStatus.Active && (
+            <button
+              type="button"
+              onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
+            >
+              <Eye size={14} /> {t('contracts.viewDetails')}
+            </button>
+          )}
         </div>
 
         <button

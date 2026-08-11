@@ -499,6 +499,13 @@ export const contractGetAPI = {
    */
   getMyCompletedProjects: async (): Promise<ApiResponse<FreelancerCompletedProjectDto[]>> =>
     apiService.get<FreelancerCompletedProjectDto[]>(`${contractsUrl}/my-completed-projects`),
+
+  /**
+   * GET /api/Contracts/{contractId}/workspace/files
+   * All files shared inside a workspace (from messages, deliverables, handoffs).
+   */
+  getWorkspaceFiles: async (contractId: string): Promise<ApiResponse<WorkspaceFileDto[]>> =>
+    apiService.get<WorkspaceFileDto[]>(`${contractsUrl}/${contractId}/workspace/files`),
 };
 
 export interface FreelancerCompletedProjectDto {
@@ -521,3 +528,52 @@ export interface FreelancerCompletedProjectDto {
     majorName?: string;
   } | null;
 }
+
+export interface WorkspaceFileDto {
+  /** Unique identifier */
+  id?: string | null;
+  fileId?: string | null;
+  /** Original file name with extension */
+  fileName?: string | null;
+  FileName?: string | null;
+  /** Download / preview URL */
+  fileUrl?: string | null;
+  FileUrl?: string | null;
+  /** External link URL (if this is a link rather than a file) */
+  externalUrl?: string | null;
+  ExternalUrl?: string | null;
+  /** Source type: 0 = File, 1 = Link */
+  sourceType?: number | null;
+  SourceType?: number | null;
+  /** File size in bytes */
+  fileSize?: number | null;
+  FileSize?: number | null;
+  /** MIME type */
+  contentType?: string | null;
+  ContentType?: string | null;
+  /** ISO datetime of upload */
+  uploadedAt?: string | null;
+  UploadedAt?: string | null;
+  createdAt?: string | null;
+  CreatedAt?: string | null;
+  /** Uploader name */
+  uploaderName?: string | null;
+  UploaderName?: string | null;
+  uploaderUserId?: string | null;
+  UploaderUserId?: string | null;
+  /** Optional note / description */
+  note?: string | null;
+  Note?: string | null;
+  /** Version number (for product handoffs) */
+  version?: number | null;
+  Version?: number | null;
+  /** Context: "message", "deliverable", "handoff" etc. */
+  context?: string | null;
+  Context?: string | null;
+  /** Milestone this file belongs to (if any) */
+  milestoneId?: string | null;
+  MilestoneId?: string | null;
+  milestoneTitle?: string | null;
+  MilestoneTitle?: string | null;
+}
+

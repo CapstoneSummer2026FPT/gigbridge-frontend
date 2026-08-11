@@ -168,7 +168,7 @@ export default function ViewContractDetailsScreen() {
       setLoading(false);
       setActiveDisputeLoading(false);
     }
-  }, [contractId, t, user?.role]);
+  }, [contractId, user?.role]);
 
   useEffect(() => {
     void loadContractDetails();
