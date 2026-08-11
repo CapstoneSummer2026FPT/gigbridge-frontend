@@ -22,13 +22,20 @@ import {
   ContractReportStatus,
 } from '../../../types/models/ReportContract';
 import '../styles/project-workspace-screen.css';
-import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
-import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { EarlyWithdrawalDialog } from '../../../shared/components/EarlyWithdrawalDialog';
-import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
 import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../app/components/ui/alert-dialog';
 import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
 import { toast } from 'sonner';
 import {
@@ -142,9 +149,6 @@ export default function ProjectWorkspaceScreen() {
     availableAmount: number;
   } | null>(null);
   const [endProjectModalOpen, setEndProjectModalOpen] = useState(false);
-  const [endProjectFeeMode, setEndProjectFeeMode] = useState<'confirmation' | 'insufficient'>('confirmation');
-  const [endProjectBalance, setEndProjectBalance] = useState<number | null>(null);
-  const [isLoadingEndProjectBalance, setIsLoadingEndProjectBalance] = useState(false);
   const [isEndingProject, setIsEndingProject] = useState(false);
   const [endProjectError, setEndProjectError] = useState<string | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -228,9 +232,9 @@ export default function ProjectWorkspaceScreen() {
   const workspaceContractId = activeProjectId || contractId || '';
   const isFreelancer = user?.role === UserRole.Freelancer;
   const allMilestonesSubmittedOrApproved = project.milestones.length > 0 &&
-    project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved');
+    project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved' || milestone.status === 'completed');
   const allMilestonesApproved = project.milestones.length > 0 &&
-    project.milestones.every(milestone => milestone.status === 'approved');
+    project.milestones.every(milestone => milestone.status === 'approved' || milestone.status === 'completed');
   const showEndProjectButton = isClient &&
     activeContract?.status === ContractStatus.Active &&
     allMilestonesSubmittedOrApproved;
@@ -240,8 +244,6 @@ export default function ProjectWorkspaceScreen() {
   const showFreelancerPayoutCard = !isClient &&
     activeContract?.status === ContractStatus.Completed &&
     allMilestonesApproved;
-  const completedJobAmount = project.milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
-  const endProjectServiceFee = calculateServiceFee(completedJobAmount);
   const reviewRole = isClient ? UserRole.Client : UserRole.Freelancer;
 
   useEffect(() => {
@@ -637,21 +639,9 @@ export default function ProjectWorkspaceScreen() {
     };
   }, [escalateToDispute, selectedReport, t, workspaceContractId]);
 
-  const openEndProjectDialog = async () => {
+  const openEndProjectDialog = () => {
     setEndProjectError(null);
-    setEndProjectFeeMode('confirmation');
-    setEndProjectBalance(null);
     setEndProjectModalOpen(true);
-    setIsLoadingEndProjectBalance(true);
-
-    const response = await walletGetAPI.getMyWallet();
-    if (response.success && response.data) {
-      // End-project service fee is an in-platform payment, spendable from either pool.
-      setEndProjectBalance(response.data.totalSpendableGigCoin);
-    } else {
-      setEndProjectError(response.message || t('workspace.unableLoadGigCoinBalance'));
-    }
-    setIsLoadingEndProjectBalance(false);
   };
 
   const closeEndProjectDialog = () => {
@@ -677,22 +667,10 @@ export default function ProjectWorkspaceScreen() {
   };
 
   const handleConfirmEndProject = async () => {
-    if (endProjectBalance === null) return;
-    if (endProjectBalance < endProjectServiceFee) {
-      setEndProjectFeeMode('insufficient');
-      return;
-    }
-
     setIsEndingProject(true);
     setEndProjectError(null);
     const result = await handleEndProject();
     if (!result.success) {
-      if (isInsufficientServiceFeeError(result.message)) {
-        setEndProjectFeeMode('insufficient');
-        setIsEndingProject(false);
-        return;
-      }
-
       setEndProjectError(result.message || t('workspace.failedEndProjectError'));
       setIsEndingProject(false);
       return;
@@ -1723,23 +1701,43 @@ export default function ProjectWorkspaceScreen() {
         onCancel={closeWithdrawDialog}
       />
 
-      <ServiceFeeDialog
-        open={endProjectModalOpen}
-        mode={endProjectFeeMode}
-        action="endProject"
-        jobAmount={completedJobAmount}
-        serviceFee={endProjectServiceFee}
-        balance={endProjectBalance}
-        loadingBalance={isLoadingEndProjectBalance}
-        submitting={isEndingProject}
-        error={endProjectError}
-        onConfirm={handleConfirmEndProject}
-        onCancel={closeEndProjectDialog}
-        onTopUp={() => {
-          setEndProjectModalOpen(false);
-          navigate('/wallet/deposit');
-        }}
-      />
+      <AlertDialog open={endProjectModalOpen} onOpenChange={(nextOpen) => !nextOpen && closeEndProjectDialog()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('workspace.endProjectModalTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('workspace.endProjectModalDesc')} {t('workspace.endProjectActionNotice')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {endProjectError && (
+            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle size={16} />
+              <span>{endProjectError}</span>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isEndingProject} onClick={closeEndProjectDialog}>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-w-24 border border-transparent"
+              style={{ backgroundColor: 'var(--brand, #494be7)', color: 'var(--brand-foreground, #ffffff)' }}
+              disabled={isEndingProject}
+              onClick={(event) => { event.preventDefault(); void handleConfirmEndProject(); }}
+            >
+              {isEndingProject ? (
+                <span className="flex items-center gap-2" style={{ color: 'var(--brand-foreground, #ffffff)' }}>
+                  <Loader2 size={15} className="animate-spin" />{t('workspace.ending')}
+                </span>
+              ) : (
+                <span style={{ color: 'var(--brand-foreground, #ffffff)' }}>{t('workspace.endProject')}</span>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ProjectReviewDialog
         open={reviewDialogOpen}

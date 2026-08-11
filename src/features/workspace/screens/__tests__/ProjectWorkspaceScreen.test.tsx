@@ -55,9 +55,10 @@ vi.mock('../../../../hooks/useTranslation', () => ({
         'earlyWithdrawal.cancel': 'Cancel',
         'earlyWithdrawal.submitting': 'Withdrawing...',
         'earlyWithdrawal.success': 'Milestone funds were added to your GigCoin wallet.',
-        'serviceFee.endProject.confirmationDescription': 'Final payout available to freelancer',
-        'serviceFee.confirm': 'End project',
-        'serviceFee.confirmAriaLabel': 'End project',
+        'workspace.endProjectModalTitle': 'End Project',
+        'workspace.endProjectModalDesc': 'Mark this contract completed and open the final payout for freelancer claim.',
+        'workspace.endProjectActionNotice': 'This action closes the project workflow. The freelancer must claim the remaining escrow to receive it in their GigBridge wallet.',
+        'workspace.ending': 'Ending...',
         'reviews.title': 'Review project partner',
         'reviews.subtitle': 'Share feedback after project completion',
         'reviews.leaveForFreelancer': 'Review freelancer',
@@ -76,12 +77,6 @@ vi.mock('../../../../hooks/useTranslation', () => ({
 
 vi.mock('../../hooks/useProjectWorkspace', () => ({
   useProjectWorkspace: vi.fn(),
-}));
-
-vi.mock('../../../../api/walletAPI/GET', () => ({
-  walletGetAPI: {
-    getMyWallet: vi.fn().mockResolvedValue({ success: true, data: { totalSpendableGigCoin: 1000 } }),
-  },
 }));
 
 vi.mock('../../../../shared/components/AppLayout', () => ({
@@ -332,10 +327,33 @@ describe('ProjectWorkspaceScreen', () => {
     render(<ProjectWorkspaceScreen />);
 
     fireEvent.click(screen.getByRole('button', { name: /end project/i }));
-    expect(screen.getByText(/final payout available to freelancer/i)).toBeInTheDocument();
+    expect(screen.getByText(/mark this contract completed/i)).toBeInTheDocument();
 
     const confirmButton = await screen.findByRole('button', { name: /end project/i });
     await waitFor(() => expect(confirmButton).toBeEnabled());
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(handleEndProjectMock).toHaveBeenCalled();
+    });
+  });
+
+  it('lets clients end project when a dispute-resolved milestone is completed alongside approved ones', async () => {
+    mockWorkspaceHook({
+      isClient: true,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 80, releasedAmount: 64 },
+        { ...pendingMilestone, id: 'milestone-2', title: 'Resolved via dispute', status: 'completed', amount: 20, releasedAmount: 20 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    const endProjectButton = screen.getByRole('button', { name: /end project/i });
+    expect(endProjectButton).toBeEnabled();
+
+    fireEvent.click(endProjectButton);
+    const confirmButton = await screen.findByRole('button', { name: /end project/i });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
