@@ -170,8 +170,8 @@ export function PromotionImageCropModal({
     const aspect = img.width / img.height;
     const targetAspect = 2 / 3;
 
-    let drawWidth = width;
-    let drawHeight = height;
+    let drawWidth: number;
+    let drawHeight: number;
 
     if (aspect > targetAspect) {
       drawWidth = height * aspect;
