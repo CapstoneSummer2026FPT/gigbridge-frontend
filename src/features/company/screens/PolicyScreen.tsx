@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { BookOpen, CalendarDays, FileCheck2, Mail, Printer, Scale, ShieldCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Link, useLocation } from 'react-router';
-import { policyAPI } from '../../../api/policyAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { GuestLayout } from '../../../shared/components/AppLayout';
+import { POLICY_CONTENT } from '../content/policyContent';
 import '../styles/policy-screen.css';
 
 interface PolicyHeading {
@@ -14,7 +14,7 @@ interface PolicyHeading {
 }
 
 const POLICY_VERSION = 'Ver 1.0 Gigbridge';
-const POLICY_UPDATED_AT = '10/08/2026';
+const POLICY_UPDATED_AT = '11/08/2026';
 
 const plainText = (value: ReactNode): string => {
   if (typeof value === 'string' || typeof value === 'number') return String(value);
@@ -45,33 +45,9 @@ const extractPartHeadings = (markdown: string): PolicyHeading[] => Array.from(
 export default function PolicyScreen() {
   const { t } = useTranslation();
   const location = useLocation();
-  const loadErrorMessage = t('policy.loadError');
-  const [content, setContent] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const headings = useMemo(() => extractPartHeadings(content), [content]);
-
-  const loadPolicy = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
-
-    const response = await policyAPI.getGigBridgeVietnamPolicy();
-    if (response.success && typeof response.data === 'string') {
-      setContent(response.data);
-    } else {
-      setError(response.message || loadErrorMessage);
-    }
-
-    setIsLoading(false);
-  }, [loadErrorMessage]);
+  const headings = useMemo(() => extractPartHeadings(POLICY_CONTENT), []);
 
   useEffect(() => {
-    void loadPolicy();
-  }, [loadPolicy]);
-
-  useEffect(() => {
-    if (!content) return;
-
     const routeTarget = location.pathname === '/terms'
       ? 'phan-i-dieu-khoan-su-dung'
       : location.pathname === '/privacy'
@@ -84,7 +60,7 @@ export default function PolicyScreen() {
     window.requestAnimationFrame(() => {
       document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [content, location.hash, location.pathname]);
+  }, [location.hash, location.pathname]);
 
   return (
     <GuestLayout>
@@ -116,82 +92,63 @@ export default function PolicyScreen() {
           </Link>
         </nav>
 
-        {isLoading && (
-          <div className="policy-state glass-card" role="status">
-            <span className="policy-state__loader" aria-hidden="true" />
-            <p>{t('policy.loading')}</p>
-          </div>
-        )}
+        <div className="policy-layout">
+          <aside className="policy-toc glass-card" aria-label={t('policy.tableOfContents')}>
+            <div className="policy-toc__heading">
+              <BookOpen size={18} />
+              <span>{t('policy.tableOfContents')}</span>
+            </div>
+            <ol>
+              {headings.map((heading, index) => (
+                <li key={heading.id}>
+                  <a href={`#${heading.id}`}>
+                    <span>{String(index + 1).padStart(2, '0')}</span>
+                    {heading.label}
+                  </a>
+                </li>
+              ))}
+            </ol>
+            <div className="policy-toc__actions">
+              <button type="button" onClick={() => window.print()}>
+                <Printer size={16} /> {t('policy.print')}
+              </button>
+              <a href="mailto:hello@gigbridge.com">
+                <Mail size={16} /> {t('policy.contact')}
+              </a>
+            </div>
+          </aside>
 
-        {!isLoading && error && (
-          <div className="policy-state glass-card" role="alert">
-            <ShieldCheck size={34} aria-hidden="true" />
-            <p className="text-red-500">{error}</p>
-            <button type="button" className="btn-cyan px-5 py-2.5" onClick={() => void loadPolicy()}>
-              {t('policy.retry')}
-            </button>
-          </div>
-        )}
-
-        {!isLoading && !error && (
-          <div className="policy-layout">
-            <aside className="policy-toc glass-card" aria-label={t('policy.tableOfContents')}>
-              <div className="policy-toc__heading">
-                <BookOpen size={18} />
-                <span>{t('policy.tableOfContents')}</span>
-              </div>
-              <ol>
-                {headings.map((heading, index) => (
-                  <li key={heading.id}>
-                    <a href={`#${heading.id}`}>
-                      <span>{String(index + 1).padStart(2, '0')}</span>
-                      {heading.label}
+          <article className="policy-document glass-card" lang="vi">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({ children }) => <h1>{children}</h1>,
+                h2: ({ children }) => {
+                  const label = plainText(children);
+                  return <h2 id={policySlug(label)}>{children}</h2>;
+                },
+                h3: ({ children }) => {
+                  const label = plainText(children);
+                  return <h3 id={policySlug(label)}>{children}</h3>;
+                },
+                a: ({ href, children }) => {
+                  const isExternal = /^https?:\/\//i.test(href || '');
+                  return (
+                    <a
+                      href={href}
+                      target={isExternal ? '_blank' : undefined}
+                      rel={isExternal ? 'noopener noreferrer' : undefined}
+                    >
+                      {children}
                     </a>
-                  </li>
-                ))}
-              </ol>
-              <div className="policy-toc__actions">
-                <button type="button" onClick={() => window.print()}>
-                  <Printer size={16} /> {t('policy.print')}
-                </button>
-                <a href="mailto:hello@gigbridge.com">
-                  <Mail size={16} /> {t('policy.contact')}
-                </a>
-              </div>
-            </aside>
-
-            <article className="policy-document glass-card" lang="vi">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h1: ({ children }) => <h1>{children}</h1>,
-                  h2: ({ children }) => {
-                    const label = plainText(children);
-                    return <h2 id={policySlug(label)}>{children}</h2>;
-                  },
-                  h3: ({ children }) => {
-                    const label = plainText(children);
-                    return <h3 id={policySlug(label)}>{children}</h3>;
-                  },
-                  a: ({ href, children }) => {
-                    const isExternal = /^https?:\/\//i.test(href || '');
-                    return (
-                      <a
-                        href={href}
-                        target={isExternal ? '_blank' : undefined}
-                        rel={isExternal ? 'noopener noreferrer' : undefined}
-                      >
-                        {children}
-                      </a>
-                    );
-                  },
-                }}
-              >
-                {content}
-              </ReactMarkdown>
-            </article>
-          </div>
-        )}
+                  );
+                },
+              }}
+            >
+              {POLICY_CONTENT}
+            </ReactMarkdown>
+          </article>
+        </div>
       </div>
     </GuestLayout>
   );
