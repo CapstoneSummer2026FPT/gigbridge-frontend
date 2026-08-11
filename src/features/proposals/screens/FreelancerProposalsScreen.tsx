@@ -18,6 +18,8 @@ import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
 import type { ProposalStatusFilter } from '../types';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
+import { useProposalAnswersModal } from '../hooks/useProposalAnswersModal';
+import { ProposalAnswersModal } from '../components/ProposalAnswersModal';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
@@ -33,6 +35,7 @@ export default function FreelancerProposalsScreen() {
   const location = useLocation();
   const { user } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
+  const answersModal = useProposalAnswersModal();
 
   const submittedProposalId = (location.state as { submittedProposalId?: string } | null)?.submittedProposalId;
 
@@ -401,7 +404,7 @@ export default function FreelancerProposalsScreen() {
                   {canViewProposalAnswers(activeProposal.status) && (
                     <button
                       type="button"
-                      onClick={() => navigate(`/proposals/${activeProposal.proposalsId}/answers`)}
+                      onClick={() => void answersModal.openModal(activeProposal.proposalsId, activeProposal.jobTitle, activeProposal.status, activeProposal.jobPostsId)}
                       className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-xs font-bold text-text-primary hover:border-brand/40 hover:text-brand transition-all"
                     >
                       <FileText size={15} />
@@ -484,6 +487,7 @@ export default function FreelancerProposalsScreen() {
 
         </div>
       </div>
+      <ProposalAnswersModal modalState={answersModal} />
     </AppLayout>
   );
 }

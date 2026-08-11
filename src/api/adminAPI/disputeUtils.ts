@@ -127,5 +127,6 @@ export const normalizeAdminDisputeDetail = (raw: unknown): AdminDisputeDetail =>
     milestoneDecisions: valueOf(source, 'milestoneDecisions', 'MilestoneDecisions') ?? [],
     penalties: valueOf(source, 'penalties', 'Penalties') ?? [],
     resolutionAuditId: nullableString(source, 'resolutionAuditId', 'ResolutionAuditId'),
+    userActionTimeline: valueOf(source, 'userActionTimeline', 'UserActionTimeline') ?? [],
   };
 };

@@ -27,6 +27,7 @@ export enum MilestoneStatus {
   PaymentConfirmed = 5,
   Disputed = 6,
   Cancelled = 7,
+  Completed = 8,
 }
 
 export enum ContractWorkItemStatus {

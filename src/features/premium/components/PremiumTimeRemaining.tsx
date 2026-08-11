@@ -8,7 +8,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const HOUR = 60 * 60 * 1000;
 
 export function PremiumTimeRemaining({ subscriptions }: { subscriptions: PremiumSubscription[] }) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useTranslation(['premium', 'common']);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {

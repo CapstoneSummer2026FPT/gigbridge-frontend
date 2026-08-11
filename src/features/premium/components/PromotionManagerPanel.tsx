@@ -16,7 +16,7 @@ const MANAGER_REFRESH_INTERVAL_MS = 15_000;
 const BOOST_LADDER_VISIBLE_ROWS = 8;
 
 export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['premium', 'common']);
   const [draft, setDraft] = useState<PromotionDraft>();
   const [manager, setManager] = useState<PromotionManager>();
   const [card, setCard] = useState<PromotionCardInput>({

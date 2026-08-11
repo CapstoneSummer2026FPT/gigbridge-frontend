@@ -21,7 +21,7 @@ interface WorkspaceMilestone {
   amount: number;
   releasedAmount: number;
   dueDate: string;
-  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'disputed';
+  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'disputed' | 'completed';
   completedAt?: string;
   workItems: ContractWorkItem[];
 }
@@ -116,6 +116,8 @@ const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status
       return 'approved';
     case MilestoneStatus.Disputed:
       return 'disputed';
+    case MilestoneStatus.Completed:
+      return 'completed';
     case MilestoneStatus.Pending:
     default:
       return 'pending';
@@ -123,7 +125,7 @@ const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status
 };
 
 const isMilestoneApproved = (milestone: WorkspaceMilestone): boolean =>
-  milestone.status === 'approved';
+  milestone.status === 'approved' || milestone.status === 'completed';
 
 const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
   id: milestone.id,

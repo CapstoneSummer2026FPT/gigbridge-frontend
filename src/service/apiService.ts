@@ -233,6 +233,23 @@ export const apiService = {
     }
   },
 
+  async postDownload(endpoint: string, data: unknown = {}): Promise<ApiResponse<Blob>> {
+    try {
+      const response = await apiClient.post<Blob>(normalizeEndpoint(endpoint), data, {
+        responseType: 'blob',
+      });
+
+      return {
+        success: true,
+        statusCode: response.status,
+        message: 'Success',
+        data: response.data,
+      };
+    } catch (error: unknown) {
+      return handleFailure<Blob>(error);
+    }
+  },
+
   async post<T>(
     endpoint: string,
     data: unknown = {},

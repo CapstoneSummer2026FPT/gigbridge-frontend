@@ -89,7 +89,7 @@ export default function ManageMilestonesScreen() {
   ));
   const shouldEnforceBudgetTotal = mode === 'contract-edit' || mode === 'jobpost-setup';
   const isMilestoneCompleteForReview = (milestone: Milestone) =>
-    milestone.status === MilestoneStatus.Approved;
+    milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.Completed;
   const getMilestoneDisplayLabel = (milestone: Milestone) => {
     const releasedAmount = Number(milestone.releasedAmount ?? 0);
     if (milestone.amount > 0 && releasedAmount >= milestone.amount) return t('workspace.releasedInFull');
@@ -532,6 +532,7 @@ export default function ManageMilestonesScreen() {
   const getNodeGlowClass = (status: MilestoneStatus) => {
     switch (status) {
       case MilestoneStatus.Approved:
+      case MilestoneStatus.Completed:
         return 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.25)] text-emerald-500';
       case MilestoneStatus.Submitted:
         return 'bg-purple-500/10 border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.25)] text-purple-500';
@@ -546,6 +547,7 @@ export default function ManageMilestonesScreen() {
   const getNodeIcon = (status: MilestoneStatus) => {
     switch (status) {
       case MilestoneStatus.Approved:
+      case MilestoneStatus.Completed:
         return <CheckCircle2 size={10} strokeWidth={2.5} className="text-emerald-500" />;
       case MilestoneStatus.Submitted:
         return <Layers size={10} className="text-purple-500" />;

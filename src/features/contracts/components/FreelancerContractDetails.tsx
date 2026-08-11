@@ -84,7 +84,9 @@ export function FreelancerContractDetails({
   );
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
-  const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
+  const milestonesApproved = milestones.filter(
+    m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.Completed,
+  ).length;
   const milestonesPaid = milestones.filter(m => (m.releasedAmount ?? 0) >= m.amount).length;
 
   const clientProfile = contract.clientProfile;
@@ -225,7 +227,7 @@ export function FreelancerContractDetails({
                   <span className="truncate max-w-[200px] md:max-w-xl">{contract.title}</span>
                   <span className="text-brand italic font-light">Details</span>
                   <span className={`status-badge ${getContractStatusClass(contract.status)} text-[10px] py-1 px-3`}>
-                    {t('contracts.status.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}
+                    {t('contracts.statusLabels.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}
                   </span>
                 </h1>
               </div>
@@ -246,7 +248,7 @@ export function FreelancerContractDetails({
                 { number: 1, label: t('contracts.reviewProjectPlan') },
                 { number: 2, label: t('contracts.esignContractDocument') },
                 { number: 3, label: t('contracts.waitingEscrowFunding') },
-                { number: 4, label: t('contracts.status.7') },
+                { number: 4, label: t('contracts.statusLabels.7', { defaultValue: getContractStatusLabel(7) }) },
               ].map((step, idx) => {
                 const isCompleted = currentStep > step.number;
                 const isActive = currentStep === step.number;
@@ -321,8 +323,8 @@ export function FreelancerContractDetails({
                       <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.milestoneChangeRequestSent')}</h2>
                     </div>
 
-                    <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 p-4 rounded-2xl text-xs font-semibold leading-relaxed flex items-start gap-3">
-                      <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                    <div className="bg-background text-amber-600 dark:text-amber-400 border border-amber-500/40 p-4 rounded-2xl text-xs font-semibold leading-relaxed flex items-start gap-3 shadow-xs">
+                      <AlertCircle size={18} className="shrink-0 mt-0.5 text-amber-500" />
                       <div>
                         {t('contracts.waitingClientMilestones')}
                       </div>
@@ -361,8 +363,8 @@ export function FreelancerContractDetails({
                       <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.reviewProjectPlan')}</h2>
                     </div>
 
-                    <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 p-4 rounded-2xl text-xs font-semibold leading-relaxed flex items-start gap-3">
-                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <div className="bg-background text-amber-600 dark:text-amber-400 border border-amber-500/40 p-4 rounded-2xl text-xs font-semibold leading-relaxed flex items-start gap-3 shadow-xs">
+                      <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
                       <div>
                         {t('contracts.reviewProjectPlanDesc')}
                       </div>
@@ -383,7 +385,7 @@ export function FreelancerContractDetails({
                         type="button"
                         disabled={actionLoading}
                         onClick={() => setShowChangeRequestModal(true)}
-                        className="flex-1 py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-xl text-xs font-extrabold cursor-pointer transition flex items-center justify-center gap-2"
+                        className="flex-1 py-3 bg-background hover:bg-surface-muted text-amber-600 dark:text-amber-400 border border-amber-500/50 rounded-xl text-xs font-extrabold cursor-pointer transition flex items-center justify-center gap-2"
                       >
                         <Edit3 size={16} />
                         {t('contracts.requestChanges')}

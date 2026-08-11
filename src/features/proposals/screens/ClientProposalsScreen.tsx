@@ -393,7 +393,7 @@ export default function ClientProposalsScreen() {
                             </thead>
                             <tbody className="divide-y divide-border">
                               {pagedVisible.map(item => (
-                                <ProposalTableRow key={item.proposalsId} item={item} t={t} onOpen={id => openProposalModal(id, 'userAnswers')} />
+                                <ProposalTableRow key={item.proposalsId} item={item} t={t} onOpen={id => openProposalModal(id)} />
                               ))}
                             </tbody>
                           </table>
@@ -402,7 +402,7 @@ export default function ClientProposalsScreen() {
                         {/* Responsive Cards for mobile */}
                         <div className="grid gap-3 p-3 md:hidden">
                           {pagedVisible.map(item => (
-                            <ProposalCard key={item.proposalsId} item={item} t={t} onOpen={id => openProposalModal(id, 'userAnswers')} />
+                            <ProposalCard key={item.proposalsId} item={item} t={t} onOpen={id => openProposalModal(id)} />
                           ))}
                         </div>
 
@@ -497,6 +497,7 @@ export default function ClientProposalsScreen() {
           openNegotiation={openNegotiation}
           badgeClass={badgeClass}
           t={t}
+          showAiReportTab={viewMode === 'aiJudging'}
         />
       </div>
     </AppLayout>

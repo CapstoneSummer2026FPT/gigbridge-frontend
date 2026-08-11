@@ -7,6 +7,7 @@
     "chatSend": "Send",
     "chatUnavailable": "The dispute conversation is not available yet.",
     "chatLoadFailed": "Unable to load the dispute conversation.",
-    "chatSendFailed": "Unable to send the message."
+    "chatSendFailed": "Unable to send the message.",
+    "chatClosed": "This conversation was locked after the dispute was closed."
   }
 }

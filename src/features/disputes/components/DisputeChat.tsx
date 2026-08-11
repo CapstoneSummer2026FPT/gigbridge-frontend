@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { AlertCircle, LoaderCircle, MessageSquare, Paperclip, Send, ShieldCheck } from 'lucide-react';
+import { AlertCircle, LoaderCircle, Lock, MessageSquare, Paperclip, Send, ShieldCheck } from 'lucide-react';
 import { messageGetAPI, type ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { MessageType } from '../../../types/models/Message';
+import { ConversationStatus, MessageType } from '../../../types/models/Message';
 import { UserRole } from '../../../types/models/User';
 import * as signalR from '@microsoft/signalr';
 import { getChatHubUrl } from '../../../service/apiService';
@@ -23,6 +23,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [closed, setClosed] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +41,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
         return;
       }
       setConversationId(conversation.conversationId);
+      setClosed(conversation.status === ConversationStatus.Closed);
       const response = await messageGetAPI.getConversationMessages(conversation.conversationId, undefined, 100);
       if (cancelled) return;
       if (response.success) setMessages(response.data ?? []);
@@ -69,6 +71,13 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
       void messageGetAPI.getConversationMessages(conversationId, undefined, 100).then(response => {
         if (!disposed && response.success) setMessages(response.data ?? []);
       });
+      // The admin closing the dispute flips the conversation status to Closed; refresh it
+      // so the chat locks live instead of waiting for a reload.
+      void messageGetAPI.getConversations().then(response => {
+        if (disposed || !response.success) return;
+        const updated = response.data?.find(item => item.conversationId === conversationId);
+        if (updated) setClosed(updated.status === ConversationStatus.Closed);
+      });
     };
     connection.on('ReceiveMessage', refreshMessages);
     connection.onreconnected(() => void connection.invoke('JoinConversation', conversationId));
@@ -84,7 +93,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
 
   const sendMessage = async () => {
     const content = input.trim();
-    if (!content || !conversationId || sending) return;
+    if (!content || !conversationId || sending || closed) return;
     setSending(true);
     setError(null);
     const response = await messagePostAPI.sendMessage({
@@ -225,25 +234,32 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
             </div>
           )}
 
-          <div className="dispute-chat-input-bar">
-            <textarea
-              value={input}
-              onChange={event => setInput(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('disputes.chatPlaceholder') || 'Write a message to dispute participants...'}
-              rows={2}
-              disabled={!conversationId || sending}
-            />
-            <button
-              type="button"
-              className="dispute-chat-send-btn"
-              onClick={() => void sendMessage()}
-              disabled={!input.trim() || !conversationId || sending}
-            >
-              {sending ? <LoaderCircle className="dispute-detail-spinner" size={17} /> : <Send size={17} />}
-              <span>{t('disputes.chatSend') || 'Send'}</span>
-            </button>
-          </div>
+          {closed ? (
+            <div className="dispute-chat-locked" role="status">
+              <Lock size={18} className="shrink-0" />
+              <span>{t('disputes.chatClosed') || 'This conversation is locked.'}</span>
+            </div>
+          ) : (
+            <div className="dispute-chat-input-bar">
+              <textarea
+                value={input}
+                onChange={event => setInput(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t('disputes.chatPlaceholder') || 'Write a message to dispute participants...'}
+                rows={2}
+                disabled={!conversationId || sending}
+              />
+              <button
+                type="button"
+                className="dispute-chat-send-btn"
+                onClick={() => void sendMessage()}
+                disabled={!input.trim() || !conversationId || sending}
+              >
+                {sending ? <LoaderCircle className="dispute-detail-spinner" size={17} /> : <Send size={17} />}
+                <span>{t('disputes.chatSend') || 'Send'}</span>
+              </button>
+            </div>
+          )}
         </>
       )}
     </section>

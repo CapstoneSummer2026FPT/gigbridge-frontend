@@ -1,11 +1,19 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { Dispute, DisputeEvidenceDownload } from '../../types/models/Dispute';
-import { normalizeDispute, normalizeEvidenceDownload } from './utils';
+import type { Dispute, DisputeEvidenceDownload, MyDisputesResponse } from '../../types/models/Dispute';
+import { normalizeDispute, normalizeEvidenceDownload, normalizeMyDisputesResponse } from './utils';
 
 const baseUrl = (contractId: string) => `contracts/${contractId}/disputes`;
 
 export const disputeGetAPI = {
+  getMyDisputes: async (page = 1, pageSize = 20): Promise<ApiResponse<MyDisputesResponse>> => {
+    const response = await apiService.get<unknown>('disputes/my', { page, pageSize });
+    return {
+      ...response,
+      data: response.data ? normalizeMyDisputesResponse(response.data) : undefined,
+    };
+  },
+
   getActiveDispute: async (contractId: string): Promise<ApiResponse<Dispute | null>> => {
     const response = await apiService.get<unknown | null>(`${baseUrl(contractId)}/active`);
     return {

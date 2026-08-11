@@ -347,16 +347,26 @@ export function useClientProposals() {
       setDetailLoading(true);
       setDetailError('');
       const detailRes = await proposalGetAPI.getProposalDetail(proposalId).catch(() => null);
+      let detailObj: any = null;
       if (detailRes?.success && detailRes.data) {
         setDetail(detailRes.data);
+        detailObj = detailRes.data;
       } else {
         setDetailError(detailRes?.message || 'Failed to load proposal detail');
       }
       setDetailLoading(false);
 
-      const prop = proposals.find(p => p.proposalsId === proposalId);
-      if (prop && prop.aiScore !== null && prop.aiScore !== undefined) {
-        const rawQuestions = prop.aiGradedQuestions || [];
+      const prop = proposals.find(p => p.proposalsId === proposalId) as any;
+      const aiScore = prop?.aiScore ?? detailObj?.aiScore;
+      const aiSummary = prop?.aiSummary ?? detailObj?.aiSummary;
+      const aiRecommendedHire = prop?.aiRecommendedHire ?? detailObj?.aiRecommendedHire;
+      const aiTechnicalSkills = prop?.aiTechnicalSkills ?? detailObj?.aiTechnicalSkills;
+      const aiSoftSkills = prop?.aiSoftSkills ?? detailObj?.aiSoftSkills;
+      const aiHolisticAdjustmentReason = prop?.aiHolisticAdjustmentReason ?? detailObj?.aiHolisticAdjustmentReason;
+      const aiHolisticAdjustment = prop?.aiHolisticAdjustment ?? detailObj?.aiHolisticAdjustment;
+      const rawQuestions = prop?.aiGradedQuestions ?? detailObj?.aiGradedQuestions ?? [];
+
+      if (aiScore !== null && aiScore !== undefined) {
         const gradedQuestions = rawQuestions.map((q: any) => ({
           questionIndex: typeof q.questionIndex === 'number' ? q.questionIndex : q.question_index,
           questionText: q.questionText ?? q.question_text ?? '',
@@ -368,13 +378,13 @@ export function useClientProposals() {
         }));
 
         setEvalResult({
-          score: prop.aiScore,
-          summary: prop.aiSummary || '',
-          technicalSkills: prop.aiTechnicalSkills || [],
-          softSkills: prop.aiSoftSkills || [],
-          recommendedHire: !!prop.aiRecommendedHire,
-          holisticAdjustment: prop.aiHolisticAdjustment ?? 0,
-          holisticAdjustmentReason: prop.aiHolisticAdjustmentReason || '',
+          score: aiScore,
+          summary: aiSummary || '',
+          technicalSkills: aiTechnicalSkills || [],
+          softSkills: aiSoftSkills || [],
+          recommendedHire: !!aiRecommendedHire,
+          holisticAdjustment: aiHolisticAdjustment ?? 0,
+          holisticAdjustmentReason: aiHolisticAdjustmentReason || '',
           gradedQuestions,
         });
       } else {
@@ -387,9 +397,10 @@ export function useClientProposals() {
     }
   };
 
-  const openProposalModal = (proposalId: string, initialTab: 'userAnswers' | 'proposalDetails' | 'aiReport' = 'userAnswers') => {
+  const openProposalModal = (proposalId: string, initialTab?: 'userAnswers' | 'proposalDetails' | 'aiReport') => {
     setActiveId(proposalId);
-    setModalTab(initialTab);
+    const targetTab = initialTab || 'proposalDetails';
+    setModalTab(targetTab);
     setEvalModalOpen(true);
     loadEvaluation(proposalId);
   };

@@ -104,3 +104,21 @@ export interface DisputeEvidenceDownload {
   fileName: string;
   downloadUrl: string;
 }
+
+export interface MyDisputeSummary {
+  disputeId: string;
+  contractId: string;
+  jobPostId: string;
+  projectName: string;
+  createdAt: string;
+  status: DisputeStatus;
+  milestoneId: string | null;
+  milestoneTitle: string | null;
+}
+
+export interface MyDisputesResponse {
+  items: MyDisputeSummary[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+}

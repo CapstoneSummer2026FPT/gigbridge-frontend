@@ -213,30 +213,21 @@ export default function WalletHistoryScreen() {
     }
   };
 
-  const getTypeIcon = (type: number) => {
-    switch (type) {
-      case 0:
-      case 5:
-        return <RefreshCw size={16} className="text-muted" />;
-      case 1:
-      case 4:
-      case 8:
-        return <ArrowUpRight size={16} className="text-green" />;
-      case 2:
-      case 3:
-      case 6:
-      case 7:
-      case 9:
-        return <ArrowDownRight size={16} className="text-red" />;
-      default:
-        return <Wallet size={16} className="text-cyan" />;
+  const getTypeIcon = (trans: WalletTransactionResponse) => {
+    // Direction (credit/debit) comes from the backend's isCredit, which correctly
+    // distinguishes the two sides of a dual-direction type like EscrowRelease
+    // (client debit vs. freelancer credit) — it is never inferred from type alone.
+    if (trans.type === 0 || trans.type === 5) {
+      return <RefreshCw size={16} className="text-muted" />;
     }
+    return trans.isCredit
+      ? <ArrowUpRight size={16} className="text-green" />
+      : <ArrowDownRight size={16} className="text-red" />;
   };
 
   const getAmountDisplay = (trans: WalletTransactionResponse) => {
-    const isPositive = trans.type === 0 || trans.type === 1 || trans.type === 4 || trans.type === 8;
-    const prefix = isPositive ? '+' : '-';
-    const colorClass = isPositive ? 'text-green' : 'text-red';
+    const prefix = trans.isCredit ? '+' : '-';
+    const colorClass = trans.isCredit ? 'text-green' : 'text-red';
 
     return (
       <div className="text-right ml-4 shrink-0">
@@ -371,7 +362,7 @@ export default function WalletHistoryScreen() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-                        {getTypeIcon(trans.type)}
+                        {getTypeIcon(trans)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">

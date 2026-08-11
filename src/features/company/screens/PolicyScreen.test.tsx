@@ -1,14 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PolicyScreen from './PolicyScreen';
-
-const getPolicyMock = vi.hoisted(() => vi.fn());
-
-vi.mock('../../../api/policyAPI', () => ({
-  policyAPI: {
-    getGigBridgeVietnamPolicy: getPolicyMock,
-  },
-}));
 
 vi.mock('../../../shared/components/AppLayout', () => ({
   GuestLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -16,57 +9,53 @@ vi.mock('../../../shared/components/AppLayout', () => ({
 
 vi.mock('../../../hooks/useTranslation', () => ({
   useTranslation: () => ({
-    t: (key: string) => ({
-      'policy.loading': 'Đang tải Bộ chính sách GigBridge...',
-      'policy.loadError': 'Không thể tải Bộ chính sách GigBridge.',
-      'policy.retry': 'Thử lại',
+    t: (key: string, values?: Record<string, string>) => ({
+      'policy.legalCenter': 'Trung tâm pháp lý',
+      'policy.pageTitle': 'Chính sách rõ ràng cho mọi dự án',
+      'policy.pageDescription': 'Quyền và nghĩa vụ của người dùng.',
+      'policy.documentInfo': 'Thông tin tài liệu',
+      'policy.version': values?.version || '',
+      'policy.updatedAt': `Cập nhật ${values?.date || ''}`,
+      'policy.policyViews': 'Các trang chính sách',
+      'policy.allPolicies': 'Toàn bộ chính sách',
+      'policy.terms': 'Điều khoản sử dụng',
+      'policy.privacy': 'Quyền riêng tư',
+      'policy.tableOfContents': 'Mục lục',
+      'policy.print': 'In chính sách',
+      'policy.contact': 'Liên hệ hỗ trợ',
     }[key] || key),
   }),
 }));
 
-afterEach(() => {
-  cleanup();
-  getPolicyMock.mockReset();
-});
+const renderPolicy = () => render(
+  <MemoryRouter initialEntries={['/policies']}>
+    <PolicyScreen />
+  </MemoryRouter>,
+);
+
+afterEach(cleanup);
 
 describe('PolicyScreen', () => {
-  it('shows a loading state while the Markdown request is pending', () => {
-    getPolicyMock.mockReturnValue(new Promise(() => undefined));
+  it('renders the frontend-hardcoded policy without a loading or error state', () => {
+    renderPolicy();
 
-    render(<PolicyScreen />);
-
-    expect(screen.getByRole('status')).toHaveTextContent('Đang tải Bộ chính sách GigBridge...');
+    expect(screen.getByRole('heading', { name: 'BỘ CHÍNH SÁCH SỬ DỤNG NỀN TẢNG GIGBRIDGE' })).toBeInTheDocument();
+    expect(screen.getAllByText('Ver 1.0 Gigbridge').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: '3. Quyền của Client' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '6. Nghĩa vụ của Freelancer' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '7. Quyền và nghĩa vụ của GigBridge' })).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('renders Vietnamese Markdown, GFM tables, and safe external links', async () => {
-    getPolicyMock.mockResolvedValue({
-      success: true,
-      statusCode: 200,
-      message: 'Success',
-      data: '# Bộ chính sách GigBridge\n\n| Vai trò | Quyền |\n| --- | --- |\n| Freelancer | Nhận việc |\n\n[Tra cứu pháp luật](https://vanban.chinhphu.vn)',
-    });
+  it('builds the table of contents and protects external legal links', () => {
+    renderPolicy();
 
-    render(<PolicyScreen />);
+    const termsLink = screen.getByRole('link', { name: /PHẦN I – ĐIỀU KHOẢN SỬ DỤNG/ });
+    expect(termsLink).toHaveAttribute('href', '#phan-i-dieu-khoan-su-dung');
 
-    expect(await screen.findByRole('heading', { name: 'Bộ chính sách GigBridge' })).toBeInTheDocument();
-    expect(screen.getByRole('table')).toBeInTheDocument();
-
-    const externalLink = screen.getByRole('link', { name: 'Tra cứu pháp luật' });
-    expect(externalLink).toHaveAttribute('target', '_blank');
-    expect(externalLink).toHaveAttribute('rel', 'noopener noreferrer');
-  });
-
-  it('shows an error and retries the request', async () => {
-    getPolicyMock
-      .mockResolvedValueOnce({ success: false, statusCode: 500, message: 'Không thể kết nối.' })
-      .mockResolvedValueOnce({ success: true, statusCode: 200, message: 'Success', data: '# Chính sách đã tải lại' });
-
-    render(<PolicyScreen />);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Không thể kết nối.');
-    fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
-
-    await waitFor(() => expect(getPolicyMock).toHaveBeenCalledTimes(2));
-    expect(await screen.findByRole('heading', { name: 'Chính sách đã tải lại' })).toBeInTheDocument();
+    const legalLink = screen.getByRole('link', { name: 'Luật Thương mại điện tử số 122/2025/QH15' });
+    expect(legalLink).toHaveAttribute('target', '_blank');
+    expect(legalLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });
