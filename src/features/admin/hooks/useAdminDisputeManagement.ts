@@ -96,7 +96,7 @@ export const formatSize = (bytes: number | null): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milestones' | 'evidence' | 'audit' | 'workspace';
+export type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milestones' | 'evidence' | 'audit' | 'userTimeline' | 'workspace';
 
 export function useAdminDisputeManagement() {
   const [disputes, setDisputes] = useState<AdminDisputeListItem[]>([]);

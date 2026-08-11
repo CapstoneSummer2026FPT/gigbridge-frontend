@@ -84,7 +84,9 @@ export function FreelancerContractDetails({
   );
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
-  const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
+  const milestonesApproved = milestones.filter(
+    m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.Completed,
+  ).length;
   const milestonesPaid = milestones.filter(m => (m.releasedAmount ?? 0) >= m.amount).length;
 
   const clientProfile = contract.clientProfile;

@@ -175,6 +175,7 @@ export interface MsgConversation {
   jobStatus?: number | null;
   jobVisibility?: number | null;
   canNegotiate?: boolean;
+  status?: ConversationStatus | null;
 }
 
 export interface NegotiationWorkItemDto {

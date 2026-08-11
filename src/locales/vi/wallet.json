@@ -253,12 +253,7 @@
       "confirmationDescription": "Bạn cần trả phí dịch vụ để nhận công việc này.",
       "insufficientDescription": "Bạn không có đủ GigCoin để trả phí dịch vụ. Vui lòng nạp thêm vào ví trước khi nhận công việc này."
     },
-    "endProject": {
-      "confirmationDescription": "Bạn cần trả phí dịch vụ để kết thúc dự án này.",
-      "insufficientDescription": "Bạn không có đủ GigCoin để trả phí dịch vụ. Vui lòng nạp thêm vào ví trước khi kết thúc dự án này."
-    },
     "jobAmount": "Giá Trị Công Việc",
-    "completedJobAmount": "Giá Trị Công Việc Hoàn Thành",
     "feeLabel": "Phí Dịch Vụ (1%)",
     "currentBalance": "Số Dư GigCoin Hiện Tại",
     "unavailable": "Không khả dụng",

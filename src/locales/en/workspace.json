@@ -112,6 +112,8 @@
     "submitDispute": "Submit Dispute",
     "disputeLockedTitle": "This contract is currently under dispute.",
     "disputeLockedDescription": "Please continue communication in the dispute conversation.",
+    "conversationClosedTitle": "This conversation has been locked.",
+    "conversationClosedDescription": "Messages can no longer be sent after the dispute was closed.",
     "disputedBadge": "Disputed",
     "openDispute": "Open Dispute",
     "version": "Version {{version}}",
