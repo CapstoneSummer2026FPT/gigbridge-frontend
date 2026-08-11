@@ -663,16 +663,6 @@ export default function SignatureWorkflowScreen() {
                 )}
               </div>
 
-              {document && (
-                <div className="contract-description">
-                  <h3>{t('contracts.generatedContractDoc')}</h3>
-                  <ContractPdfViewer
-                    document={document}
-                    title={t('contracts.generatedContractDoc')}
-                  />
-                </div>
-              )}
-
               <div className="signature-info-box">
                 <Clock size={20} />
                 <div>
