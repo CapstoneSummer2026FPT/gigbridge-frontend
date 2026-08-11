@@ -53,6 +53,22 @@ function vietnamDate(value: string) {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) + ' Vietnam Time (ICT)';
 }
 
+function MessageContent({ content, mine }: { content: string; mine: boolean }) {
+  const isGoogleMeetLink = /^https:\/\/meet\.google\.com\/[a-z0-9-]+\/?$/i.test(content.trim());
+  if (!isGoogleMeetLink) return <>{content}</>;
+
+  return (
+    <a
+      href={content}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`font-semibold underline underline-offset-2 ${mine ? 'text-white' : 'text-[var(--gb-cyan)]'}`}
+    >
+      {content}
+    </a>
+  );
+}
+
 function ScheduleCard({ schedule, latest, onEdit, onCancel, onRetry, onLatest, onAccept, onReject, onCounterProposal, actionBusy }: {
   schedule: ScheduleEvent; latest: boolean; onEdit: () => void; onCancel: () => void;
   onRetry: () => Promise<void>; onLatest: () => void; onAccept: () => Promise<void>; onReject: () => Promise<void>;
@@ -209,6 +225,7 @@ export default function MessagesScreen() {
     scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed,
     scheduleAddGoogleMeet, setScheduleAddGoogleMeet, scheduleSendEmail, setScheduleSendEmail,
     googleMeetStatus, googleMeetStatusLoading, googleMeetConnecting, connectGoogleMeet,
+    creatingGoogleMeet, handleCreateGoogleMeetRoom,
     highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
@@ -498,12 +515,13 @@ export default function MessagesScreen() {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.open('https://meet.google.com/new', '_blank', 'noopener,noreferrer')}
-                  className="w-9 h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer"
-                  title={t('messages.createGoogleMeet')}
-                  aria-label={t('messages.createGoogleMeet')}
+                  onClick={() => void handleCreateGoogleMeetRoom()}
+                  disabled={creatingGoogleMeet || isActiveWorkspaceDisputed}
+                  className="w-9 h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  title={creatingGoogleMeet ? t('messages.creatingGoogleMeet') : t('messages.createGoogleMeet')}
+                  aria-label={creatingGoogleMeet ? t('messages.creatingGoogleMeet') : t('messages.createGoogleMeet')}
                 >
-                  <Video size={18} />
+                  {creatingGoogleMeet ? <Loader2 size={18} className="animate-spin" /> : <Video size={18} />}
                 </button>
                 <button
                   onClick={() => setShowInfo(!showInfo)}
@@ -766,7 +784,7 @@ export default function MessagesScreen() {
                           } ${msg.sendStatus === 'pending' ? 'opacity-80' : ''}`}
                           title={msg.sendStatus === 'failed' ? msg.sendError : undefined}
                         >
-                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-sm"><MessageContent content={msg.content} mine={mine} /></p>
                         </div>
                       )}
 

@@ -6,6 +6,7 @@
     "goToWorkspace": "Go to Workspace",
     "clickViewJobPost": "Click to view job post",
     "createGoogleMeet": "Create a Google Meet room",
+    "creatingGoogleMeet": "Creating and sharing Google Meet room...",
     "toggleProjectInfo": "Toggle Project Info",
     "contractFlowReady": "Contract flow is ready",
     "contractFlowClientDesc": "Open the milestone and contract steps for this agreement.",

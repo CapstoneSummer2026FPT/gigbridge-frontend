@@ -7,6 +7,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
+import { esignPostAPI } from '../../../api/esignAPI/POST';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
@@ -16,9 +17,10 @@ import '../styles/signature-workflow-screen.css';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { prepareESignPdfById, useESignPdf } from '../hooks/useESignPdf';
+import { ContractPdfViewer } from '../components/ContractPdfViewer';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
-const POLICY_VERSION = '1.0-DATN';
+const POLICY_VERSION = 'Ver 1.0 Gigbridge';
 
 interface SignContractResponse {
   status?: ContractStatus;
@@ -32,6 +34,95 @@ interface SignContractResponse {
   message?: string;
   Message?: string;
 }
+
+interface PreparedSignatureImage {
+  imageUrl: string;
+  width: number;
+  height: number;
+}
+
+const PDF_SIGNATURE_MAX_WIDTH = 220;
+const PDF_SIGNATURE_MAX_HEIGHT = 80;
+
+const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImage => {
+  const fallbackScale = Math.min(
+    PDF_SIGNATURE_MAX_WIDTH / canvas.width,
+    PDF_SIGNATURE_MAX_HEIGHT / canvas.height,
+  );
+  const fallback = {
+    imageUrl: canvas.toDataURL('image/png'),
+    width: Math.round(canvas.width * fallbackScale),
+    height: Math.round(canvas.height * fallbackScale),
+  };
+  const context = canvas.getContext('2d');
+  if (!context) return fallback;
+
+  try {
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    let minX = canvas.width;
+    let minY = canvas.height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        const offset = (y * canvas.width + x) * 4;
+        const alpha = pixels.data[offset + 3];
+        const isInk = alpha > 0 && (
+          pixels.data[offset] < 245 ||
+          pixels.data[offset + 1] < 245 ||
+          pixels.data[offset + 2] < 245
+        );
+        if (!isInk) continue;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    if (maxX < minX || maxY < minY) return fallback;
+
+    const padding = 10;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(canvas.width - 1, maxX + padding);
+    maxY = Math.min(canvas.height - 1, maxY + padding);
+    const croppedWidth = maxX - minX + 1;
+    const croppedHeight = maxY - minY + 1;
+    const croppedPixels = context.getImageData(minX, minY, croppedWidth, croppedHeight);
+
+    for (let offset = 0; offset < croppedPixels.data.length; offset += 4) {
+      if (
+        croppedPixels.data[offset] > 245 &&
+        croppedPixels.data[offset + 1] > 245 &&
+        croppedPixels.data[offset + 2] > 245
+      ) {
+        croppedPixels.data[offset + 3] = 0;
+      }
+    }
+
+    const exportCanvas = window.document.createElement('canvas');
+    exportCanvas.width = croppedWidth;
+    exportCanvas.height = croppedHeight;
+    const exportContext = exportCanvas.getContext('2d');
+    if (!exportContext) return fallback;
+    exportContext.putImageData(croppedPixels, 0, 0);
+
+    const scale = Math.min(
+      PDF_SIGNATURE_MAX_WIDTH / croppedWidth,
+      PDF_SIGNATURE_MAX_HEIGHT / croppedHeight,
+    );
+    return {
+      imageUrl: exportCanvas.toDataURL('image/png'),
+      width: Math.max(1, Math.round(croppedWidth * scale)),
+      height: Math.max(1, Math.round(croppedHeight * scale)),
+    };
+  } catch (imageError) {
+    console.warn('Could not crop the signature image; using the fitted canvas.', imageError);
+    return fallback;
+  }
+};
 
 const formatMoney = (value?: number): string =>
   formatGigCoin(value ?? 0);
@@ -79,6 +170,11 @@ export default function SignatureWorkflowScreen() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDrawn, setSignatureDrawn] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [signaturePreviewPdf, setSignaturePreviewPdf] = useState<Blob | null>(null);
+  const [preparedSignature, setPreparedSignature] = useState<PreparedSignatureImage | null>(null);
+  const [signaturePreviewApplied, setSignaturePreviewApplied] = useState(false);
+  const [signaturePreviewError, setSignaturePreviewError] = useState('');
+  const [isApplyingSignature, setIsApplyingSignature] = useState(false);
   const [signingInProgress, setSigningInProgress] = useState(false);
   const submittingRef = useRef(false);
   const pdf = useESignPdf(document);
@@ -179,6 +275,10 @@ export default function SignatureWorkflowScreen() {
   useEffect(() => {
     if (signatureStep === 'capture') {
       resetCanvas();
+      setSignaturePreviewPdf(null);
+      setPreparedSignature(null);
+      setSignaturePreviewApplied(false);
+      setSignaturePreviewError('');
     }
   }, [resetCanvas, signatureStep]);
 
@@ -188,6 +288,19 @@ export default function SignatureWorkflowScreen() {
 
     const context = canvas.getContext('2d');
     if (!context) return;
+
+    if (signaturePreviewApplied) {
+      context.fillStyle = 'white';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.strokeStyle = '#111827';
+      context.lineWidth = 3;
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      setSignaturePreviewPdf(null);
+      setPreparedSignature(null);
+      setSignaturePreviewApplied(false);
+      setSignaturePreviewError('');
+    }
 
     const point = getCanvasPoint(canvas, event);
     context.beginPath();
@@ -215,6 +328,41 @@ export default function SignatureWorkflowScreen() {
 
   const handleClearSignature = (): void => {
     resetCanvas();
+    setSignaturePreviewPdf(null);
+    setPreparedSignature(null);
+    setSignaturePreviewApplied(false);
+    setSignaturePreviewError('');
+  };
+
+  const handleApplySignaturePreview = async (): Promise<void> => {
+    const canvas = canvasRef.current;
+    if (!canvas || !document || !signatureDrawn || isApplyingSignature) return;
+
+    try {
+      setIsApplyingSignature(true);
+      setSignaturePreviewError('');
+      const nextSignature = prepareSignatureImage(canvas);
+      const response = await esignPostAPI.previewDocumentPdf(
+        document.documentId,
+        nextSignature.imageUrl,
+        nextSignature.width,
+        nextSignature.height,
+      );
+
+      if (!response.success || !response.data) {
+        setSignaturePreviewError(response.message || t('contracts.signaturePreviewFailed'));
+        return;
+      }
+
+      setSignaturePreviewPdf(response.data);
+      setPreparedSignature(nextSignature);
+      setSignaturePreviewApplied(true);
+    } catch (previewError) {
+      console.error('Failed to preview signature in PDF:', previewError);
+      setSignaturePreviewError(t('contracts.signaturePreviewFailed'));
+    } finally {
+      setIsApplyingSignature(false);
+    }
   };
 
   const refreshAfterSigning = async (nextStatus?: ContractStatus): Promise<ContractStatus | undefined> => {
@@ -260,17 +408,21 @@ export default function SignatureWorkflowScreen() {
       return;
     }
 
+    if (!signaturePreviewApplied || !preparedSignature) {
+      setError(t('contracts.previewSignatureBeforeCompleting'));
+      return;
+    }
+
     try {
       submittingRef.current = true;
       setSigningInProgress(true);
       setError('');
       setSuccess('');
 
-      const signatureImageUrl = canvas.toDataURL('image/png');
       const response = await contractPostAPI.sign(contract.contractsId, {
-        signatureImageUrl,
-        signatureWidth: canvas.width,
-        signatureHeight: canvas.height,
+        signatureImageUrl: preparedSignature.imageUrl,
+        signatureWidth: preparedSignature.width,
+        signatureHeight: preparedSignature.height,
         policyAccepted: true,
         policyVersion: POLICY_VERSION,
       });
@@ -278,10 +430,17 @@ export default function SignatureWorkflowScreen() {
       if (!response.success) {
         if (response.statusCode === 409) {
           // Already signed, proceed as success!
-          setSignatureStep('complete');
           setSuccess('Your signature has already been recorded. Preparing PDF in the background.');
-          if (document?.documentId) void prepareESignPdfById(document.documentId).catch(console.warn);
+          if (document?.documentId) {
+            try {
+              await prepareESignPdfById(document.documentId);
+            } catch (pdfError) {
+              console.warn('The signed PDF could not be prepared immediately:', pdfError);
+              setDocumentWarning(t('contracts.signatureSavedPdfError'));
+            }
+          }
           await refreshAfterSigning();
+          setSignatureStep('complete');
           return;
         }
         setError(response.message || 'Failed to submit signature. Please try again.');
@@ -289,32 +448,34 @@ export default function SignatureWorkflowScreen() {
       }
 
       const documentId = getDocumentIdFromResponse(response.data);
-      setSignatureStep('complete');
-      setSuccess('Your signature has been recorded. Preparing PDF in the background.');
+      setSuccess('Your signature has been recorded. Preparing your signed PDF...');
       const signedDocumentId = documentId || document?.documentId;
-      if (signedDocumentId) void prepareESignPdfById(signedDocumentId).catch(console.warn);
+      if (signedDocumentId) {
+        try {
+          await prepareESignPdfById(signedDocumentId);
+        } catch (pdfError) {
+          console.warn('The signed PDF could not be prepared immediately:', pdfError);
+          setDocumentWarning(t('contracts.signatureSavedPdfError'));
+        }
+      }
       if (documentId) {
         await loadDocument(contract.contractsId);
       }
 
       const finalStatus = await refreshAfterSigning(getStatusFromResponse(response.data));
+      setSignatureStep('complete');
       if (finalStatus === ContractStatus.PendingEscrow) {
         setSuccess(isClient ? 'Contract fully signed. You can now fund escrow.' : 'Contract fully signed. Waiting for the client to fund escrow.');
-        if (isClient) {
-          window.setTimeout(() => navigate(`/contracts/${contract.contractsId}`), 1200);
-        }
         return;
       }
 
       if (finalStatus === ContractStatus.Active) {
-        setSuccess('Contract is active. Opening workspace...');
-        window.setTimeout(() => navigate(`/workspace/${contract.contractsId}`), 1200);
+        setSuccess('Contract is active. The signed PDF is ready below.');
         return;
       }
 
       if (!isClient && finalStatus === ContractStatus.PendingSignature) {
         setSuccess('Your signature has been recorded. Waiting for the other party to sign.');
-        window.setTimeout(() => navigate(`/contracts/${contract.contractsId}`), 1200);
         return;
       }
 
@@ -368,7 +529,7 @@ export default function SignatureWorkflowScreen() {
 
   return (
     <AppLayout>
-      <div className="signature-workflow-page">
+      <div className={`signature-workflow-page ${signatureStep === 'capture' ? 'signature-workflow-page--capture' : ''}`}>
         <div className="signature-header">
           <button className="back-btn" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
             {t('contracts.back')}
@@ -502,24 +663,6 @@ export default function SignatureWorkflowScreen() {
                 )}
               </div>
 
-              {document?.renderedHtmlContent && (
-                <div className="contract-description">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3>{t('contracts.generatedContractDoc')}</h3>
-                    <button type="button" className="btn-outline" onClick={() => void pdf.download()} disabled={pdf.isPreparing}>
-                      {pdf.isPreparing ? 'Preparing PDF…' : 'Download PDF'}
-                    </button>
-                  </div>
-                  {pdf.error && <p className="signature-inline-warning">{pdf.error}</p>}
-                  <iframe
-                    title={t('contracts.generatedContractDoc')}
-                    className="signature-document-frame"
-                    sandbox=""
-                    srcDoc={document.renderedHtmlContent}
-                  />
-                </div>
-              )}
-
               <div className="signature-info-box">
                 <Clock size={20} />
                 <div>
@@ -544,55 +687,108 @@ export default function SignatureWorkflowScreen() {
         )}
 
         {signatureStep === 'capture' && (
-          <div className="signature-step-content">
-            <div className="signature-section">
-              <h2>{t('contracts.drawYourSignature')}</h2>
-
-              <div className="signature-pad-wrapper">
-                <canvas
-                  ref={canvasRef}
-                  width={600}
-                  height={200}
-                  className="signature-pad"
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                />
-                <div className="signature-instructions">
-                  {t('contracts.signatureInstructions')}
+          <div className="signature-step-content signature-capture-step">
+            <div className="signature-capture-layout">
+              <div className="signature-section signature-capture-document">
+                <div className="signature-pdf-heading">
+                  <h2>{t('contracts.reviewPdfWhileSigning')}</h2>
+                  {signaturePreviewApplied ? (
+                    <span className="signature-preview-applied">
+                      <CheckCircle size={15} aria-hidden="true" />
+                      {t('contracts.signatureApplied')}
+                    </span>
+                  ) : null}
                 </div>
+                {document ? (
+                  <ContractPdfViewer
+                    document={document}
+                    title={t('contracts.generatedContractDoc')}
+                    sourceBlob={signaturePreviewPdf ?? undefined}
+                  />
+                ) : (
+                  <div className="signature-inline-warning">
+                    {documentWarning || t('contracts.pdfPreviewError')}
+                  </div>
+                )}
               </div>
 
-              <div className="signature-buttons">
-                <button className="btn-outline" onClick={handleClearSignature}>
-                  {t('contracts.clearSignature')}
-                </button>
-              </div>
+              <div className="signature-section signature-capture-panel">
+                <h2>{t('contracts.drawYourSignature')}</h2>
 
-              <div className="signature-info-box">
-                <FileText size={20} />
-                <div>
-                  <h3>{t('contracts.legalAgreement')}</h3>
-                  <p>{t('contracts.legalAgreementDesc')}</p>
+                <div className="signature-embed-notice">
+                  <FileText size={19} aria-hidden="true" />
+                  <p>{t('contracts.signatureEmbeddedDesc')}</p>
                 </div>
-              </div>
 
-              <label className="signature-policy-consent" htmlFor="signature-policy-consent">
-                <input
-                  id="signature-policy-consent"
-                  type="checkbox"
-                  checked={policyAccepted}
-                  onChange={event => setPolicyAccepted(event.target.checked)}
-                />
-                <span>
-                  Tôi đã đọc, hiểu và đồng ý với{' '}
-                  <a href="/policies" target="_blank" rel="noopener noreferrer">
-                    Bộ chính sách GigBridge phiên bản {POLICY_VERSION}
-                  </a>
-                  .
-                </span>
-              </label>
+                <div className="signature-pad-wrapper">
+                  <canvas
+                    ref={canvasRef}
+                    width={600}
+                    height={200}
+                    className="signature-pad"
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  />
+                  <div className="signature-instructions">
+                    {t('contracts.signatureInstructions')}
+                  </div>
+                </div>
+
+                <div className="signature-buttons">
+                  <button
+                    type="button"
+                    className="btn-primary signature-preview-button"
+                    onClick={() => void handleApplySignaturePreview()}
+                    disabled={!signatureDrawn || signaturePreviewApplied || isApplyingSignature}
+                  >
+                    {isApplyingSignature ? (
+                      <Loader size={16} className="spinner-small" aria-hidden="true" />
+                    ) : (
+                      <PenTool size={16} aria-hidden="true" />
+                    )}
+                    {isApplyingSignature
+                      ? t('contracts.applyingSignature')
+                      : signaturePreviewApplied
+                        ? t('contracts.signatureApplied')
+                        : t('contracts.applySignatureToPdf')}
+                  </button>
+                  <button type="button" className="btn-outline" onClick={handleClearSignature}>
+                    {t('contracts.clearSignature')}
+                  </button>
+                </div>
+
+                {signaturePreviewError ? (
+                  <div className="signature-inline-warning" role="alert">
+                    {signaturePreviewError}
+                  </div>
+                ) : null}
+
+                <div className="signature-info-box">
+                  <FileText size={20} />
+                  <div>
+                    <h3>{t('contracts.legalAgreement')}</h3>
+                    <p>{t('contracts.legalAgreementDesc')}</p>
+                  </div>
+                </div>
+
+                <label className="signature-policy-consent" htmlFor="signature-policy-consent">
+                  <input
+                    id="signature-policy-consent"
+                    type="checkbox"
+                    checked={policyAccepted}
+                    onChange={event => setPolicyAccepted(event.target.checked)}
+                  />
+                  <span>
+                    Tôi đã đọc, hiểu và đồng ý với{' '}
+                    <a href="/policies" target="_blank" rel="noopener noreferrer">
+                      Bộ chính sách GigBridge — {POLICY_VERSION}
+                    </a>
+                    .
+                  </span>
+                </label>
+              </div>
             </div>
 
             <div className="signature-actions">
@@ -602,7 +798,7 @@ export default function SignatureWorkflowScreen() {
               <button
                 className="btn-primary"
                 onClick={handleSubmitSignature}
-                disabled={!signatureDrawn || !policyAccepted || signingInProgress}
+                disabled={!signatureDrawn || !signaturePreviewApplied || !policyAccepted || signingInProgress}
               >
                 {signingInProgress ? (
                   <>
@@ -612,7 +808,7 @@ export default function SignatureWorkflowScreen() {
                 ) : (
                   <>
                     <PenTool size={16} />
-                    {t('contracts.signContract')}
+                    {t('contracts.completeSigning')}
                   </>
                 )}
               </button>
@@ -656,6 +852,16 @@ export default function SignatureWorkflowScreen() {
                     </strong>
                   </div>
                 </div>
+
+                {document ? (
+                  <div className="signature-completed-pdf">
+                    <h3>{t('contracts.signedPdfPreview')}</h3>
+                    <ContractPdfViewer
+                      document={document}
+                      title={t('contracts.signedPdfPreview')}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
 

@@ -28,6 +28,19 @@
     "tagline": "AI-Powered Freelance Marketplace"
   },
   "policy": {
+    "legalCenter": "Legal center",
+    "pageTitle": "Clear policies for every project",
+    "pageDescription": "Understand your rights, responsibilities, and how GigBridge protects transactions between Clients and Freelancers.",
+    "documentInfo": "Document information",
+    "version": "{{version}}",
+    "updatedAt": "Updated {{date}}",
+    "policyViews": "Policy pages",
+    "allPolicies": "All policies",
+    "terms": "Terms of use",
+    "privacy": "Privacy",
+    "tableOfContents": "Contents",
+    "print": "Print policy",
+    "contact": "Contact support",
     "loading": "Loading the GigBridge Policy...",
     "loadError": "Unable to load the GigBridge Policy.",
     "retry": "Retry"
