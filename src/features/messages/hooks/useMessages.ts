@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { Message as MsgMessage, MsgConversation } from '../../../types/models/Message';
-import { ConversationStatus } from '../../../types/models/Message';
+import { ConversationStatus, ConversationType } from '../../../types/models/Message';
 
 import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
@@ -128,6 +128,7 @@ function mapBackendConversation(c: any): MsgConversation {
     jobStatus,
     jobVisibility,
     canNegotiate,
+    contractStatus: c.contractStatus ?? c.ContractStatus ?? null,
   };
 }
 
@@ -548,25 +549,62 @@ export function useMessages() {
   // Fetch conversations on mount
   const loadConversations = useCallback(async () => {
     try {
-      const res = await messageGetAPI.getMyConversations();
+      const [res, contractsRes] = await Promise.all([
+        messageGetAPI.getMyConversations(),
+        contractGetAPI.getMyContracts(),
+      ]);
+
       if (res.success && res.data) {
-        const mapped = res.data
-          .map((c: any) => mapBackendConversation(c));
+        const contracts = contractsRes.success && contractsRes.data ? contractsRes.data : [];
+        const contractStatusMap = new Map<string, number>();
+        contracts.forEach((ct: any) => {
+          const cId = ct.contractsId || ct.ContractsId || ct.id || ct.Id;
+          const jId = ct.jobPostsId || ct.JobPostsId || ct.jobPostId || ct.JobPostId;
+          const convId = ct.conversationId || ct.ConversationId;
+          if (cId) contractStatusMap.set(String(cId), ct.status);
+          if (jId) contractStatusMap.set(`job_${jId}`, ct.status);
+          if (convId) contractStatusMap.set(`conv_${convId}`, ct.status);
+        });
+
+        const mapped = res.data.map((c: any) => {
+          const mappedConv = mapBackendConversation(c);
+          let status: number | undefined = undefined;
+
+          if (mappedConv.contractId && contractStatusMap.has(String(mappedConv.contractId))) {
+            status = contractStatusMap.get(String(mappedConv.contractId));
+          } else if (mappedConv.id && contractStatusMap.has(`conv_${mappedConv.id}`)) {
+            status = contractStatusMap.get(`conv_${mappedConv.id}`);
+          } else if (mappedConv.job?.id && contractStatusMap.has(`job_${mappedConv.job.id}`)) {
+            status = contractStatusMap.get(`job_${mappedConv.job.id}`);
+          }
+
+          if (status !== undefined) {
+            mappedConv.contractStatus = status;
+          }
+          return mappedConv;
+        });
+
         setConversationsState(mapped);
 
         // Auto select once, but keep the current room stable on later refreshes.
+        // Dispute conversations are never shown in this screen's room list (they have
+        // their own dedicated dispute-detail screen), so they must never be picked as
+        // the default either — otherwise landing here can silently open an admin/dispute
+        // chat just because it happened to have the most recent message.
+        const selectableConvos = mapped.filter((c: any) => c.conversationType !== ConversationType.Dispute);
+
         setActiveConvId(currentActiveConvId => {
-          if (mapped.length === 0) return '';
-          if (currentActiveConvId && mapped.some((c: any) => c.id === currentActiveConvId)) {
+          if (selectableConvos.length === 0) return '';
+          if (currentActiveConvId && selectableConvos.some((c: any) => c.id === currentActiveConvId)) {
             return currentActiveConvId;
           }
 
           const queryConvId = new URLSearchParams(location.search).get('conversationId');
           const stateConvId = queryConvId || location.state?.activeConvId;
           const stateProposalId = location.state?.proposalId;
-          const foundById = mapped.find((c: any) => c.id === stateConvId);
-          const foundByProposal = mapped.find((c: any) => c.proposalId === stateProposalId);
-          return foundById ? foundById.id : foundByProposal ? foundByProposal.id : mapped[0].id;
+          const foundById = selectableConvos.find((c: any) => c.id === stateConvId);
+          const foundByProposal = selectableConvos.find((c: any) => c.proposalId === stateProposalId);
+          return foundById ? foundById.id : foundByProposal ? foundByProposal.id : selectableConvos[0].id;
         });
       }
     } catch (err) {

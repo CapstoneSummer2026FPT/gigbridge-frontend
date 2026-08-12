@@ -287,7 +287,8 @@ export function useProjectWorkspace(initialContractId: string) {
             contractsResponse.data.filter(contract =>
               contract.status === ContractStatus.PendingEscrow ||
               contract.status === ContractStatus.Active ||
-              contract.status === ContractStatus.Disputed
+              contract.status === ContractStatus.Disputed ||
+              contract.status === ContractStatus.Completed
             )
           );
         }
@@ -614,9 +615,7 @@ export function useProjectWorkspace(initialContractId: string) {
 
   const handleOpenMilestoneEditor = (): void => {
     if (!activeProjectId) return;
-    navigate(isClient
-      ? `/contracts/${activeProjectId}/milestones?mode=contract-edit`
-      : `/contracts/${activeProjectId}/milestones`);
+    navigate(`/workspace/${activeProjectId}`);
   };
 
   const reloadActiveWorkspace = async (): Promise<void> => {

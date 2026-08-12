@@ -284,7 +284,7 @@ export default function CreatePostJobEsignScreen() {
 
   const handleNavigateToMilestones = () => {
     if (createdContractId) {
-      navigate(`/contracts/${createdContractId}/milestones?mode=jobpost-setup`);
+      navigate(`/workspace/${createdContractId}`);
     } else {
       toast.error('Contract not ready yet. Please try again from My Jobs.');
       navigate('/jobs/my-jobs');
