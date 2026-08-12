@@ -213,6 +213,8 @@ export default function ProjectWorkspaceScreen() {
         setWorkspaceStatusTab('completed');
       } else if (currentProj.status === ContractStatus.Disputed) {
         setWorkspaceStatusTab('disputed');
+      } else if (currentProj.status === ContractStatus.Cancelled) {
+        setWorkspaceStatusTab('all');
       } else {
         setWorkspaceStatusTab('active');
       }
@@ -220,7 +222,11 @@ export default function ProjectWorkspaceScreen() {
   }, [activeProjectId, workspaceProjects]);
 
   const activeProjectsCount = useMemo(
-    () => workspaceProjects.filter(p => p.status !== ContractStatus.Completed && p.status !== ContractStatus.Disputed).length,
+    () => workspaceProjects.filter(p =>
+      p.status !== ContractStatus.Completed &&
+      p.status !== ContractStatus.Disputed &&
+      p.status !== ContractStatus.Cancelled
+    ).length,
     [workspaceProjects]
   );
   const completedProjectsCount = useMemo(
@@ -246,7 +252,11 @@ export default function ProjectWorkspaceScreen() {
     if (workspaceStatusTab === 'all') {
       return workspaceProjects;
     }
-    return workspaceProjects.filter(p => p.status !== ContractStatus.Completed && p.status !== ContractStatus.Disputed);
+    return workspaceProjects.filter(p =>
+      p.status !== ContractStatus.Completed &&
+      p.status !== ContractStatus.Disputed &&
+      p.status !== ContractStatus.Cancelled
+    );
   }, [workspaceProjects, workspaceStatusTab]);
 
   const {
@@ -989,6 +999,10 @@ export default function ProjectWorkspaceScreen() {
                           {proj.status === ContractStatus.Disputed ? (
                             <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider">
                               <LockKeyhole size={11} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                            </span>
+                          ) : proj.status === ContractStatus.Cancelled ? (
+                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground text-[10px] font-black uppercase tracking-wider">
+                              <LockKeyhole size={11} /> {t('workspace.disputeClosedBadge', { defaultValue: 'Đã đóng tranh chấp' })}
                             </span>
                           ) : proj.status === ContractStatus.Completed ? (
                             <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[10px] font-black uppercase tracking-wider">
