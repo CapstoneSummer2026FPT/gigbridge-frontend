@@ -85,7 +85,6 @@ const ESignContractsScreen = lazy(() => import('../features/contracts/screens/ES
 const EsignDocumentSigningScreen = lazy(() => import('../features/contracts/screens/EsignDocumentSigningScreen'));
 const FreelancerContractScreen = lazy(() => import('../features/contracts/screens/FreelancerContractScreen'));
 const ManageContractScreen = lazy(() => import('../features/contracts/screens/ManageContractScreen'));
-const ManageMilestonesScreen = lazy(() => import('../features/contracts/screens/ManageMilestonesScreen'));
 const SignatureWorkflowScreen = lazy(() => import('../features/contracts/screens/SignatureWorkflowScreen'));
 const SubmitMilestoneDeliverableScreen = lazy(() => import('../features/contracts/screens/SubmitMilestoneDeliverableScreen'));
 const ViewContractDetailsScreen = lazy(() => import('../features/contracts/screens/ViewContractDetailsScreen'));
@@ -248,7 +247,6 @@ export const router = createBrowserRouter([
       { path: 'contracts/:contractId/disputes/:disputeId', element: <ProtectedRoute requireAuth requireSetup><DisputeDetailScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/documents/:documentId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
-      { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><ManageMilestonesScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones/:milestoneId/approve', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><ApproveMilestoneScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/deliverables/:milestoneId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={FREELANCER_ONLY_ROLES}><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
 

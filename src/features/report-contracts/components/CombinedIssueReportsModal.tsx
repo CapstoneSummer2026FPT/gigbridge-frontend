@@ -24,7 +24,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
+import { type SelectOption } from '../../../shared/components/CustomSelect';
 import { FileTypeBadge } from '../../../shared/components/FileTypeBadge';
 import { DisputeEscalationModal } from './DisputeEscalationModal';
 import { DisputeCreationModal } from './DisputeCreationModal';
@@ -288,14 +288,10 @@ export function CombinedIssueReportsModal({
             aria-modal="true"
             aria-labelledby="combined-reports-title"
             onClick={e => e.stopPropagation()}
-            className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[75vh] min-h-[520px] max-h-[680px] rounded-[2rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_70px_-15px_rgba(0,0,0,0.45)] border border-border/50 my-auto"
-            style={{
-              background: 'rgba(var(--background-rgb, 255,255,255), 0.85)',
-              backdropFilter: 'blur(20px)',
-            }}
+            className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[80vh] min-h-[540px] max-h-[720px] rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
           >
             {/* ═══ LEFT COLUMN: Reports List ═══════════════════════════════════ */}
-            <div className="w-full lg:w-5/12 h-full p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/30 bg-surface-muted/40 relative overflow-hidden shrink-0">
+            <div className="w-full lg:w-5/12 h-full p-6 sm:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
               <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
               <div className="relative z-10 flex flex-col h-full">
@@ -651,19 +647,32 @@ export function CombinedIssueReportsModal({
                     {/* Respondent Action Form */}
                     {respondentCanRespond && (
                       <form onSubmit={handleRespondSubmit} className="space-y-4">
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           <label className="block text-xs font-black uppercase tracking-wider text-text-muted">
                             {t('workspace.selectResponseAction', { defaultValue: 'Chọn hành động phản hồi' })}
                           </label>
-                          <CustomSelect
-                            value={respondMode !== null ? String(respondMode) : ''}
-                            onChange={val => setRespondMode(Number(val))}
-                            options={actionOptions}
-                            disabled={isResponding}
-                            searchable={false}
-                            placeholder={t('workspace.selectActionPlaceholder', { defaultValue: 'Chọn hành động...' })}
-                            ariaLabel="Hành động phản hồi"
-                          />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {actionOptions.map(opt => {
+                              const actionVal = Number(opt.value);
+                              const isSelected = respondMode === actionVal;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  disabled={isResponding}
+                                  onClick={() => setRespondMode(actionVal)}
+                                  className={`p-3.5 rounded-2xl border text-left text-xs font-black transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                                    isSelected
+                                      ? 'bg-brand/10 border-brand text-brand ring-2 ring-brand/20 shadow-xs'
+                                      : 'bg-surface-card border-border/80 text-text-primary hover:border-brand/40 hover:bg-surface-hover'
+                                  }`}
+                                >
+                                  <span>{opt.label}</span>
+                                  {isSelected && <CheckCircle size={16} className="text-brand shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
 
                         {respondMode === ContractReportResolutionAction.RejectIssue && (
@@ -780,23 +789,6 @@ export function CombinedIssueReportsModal({
                         </div>
                       </div>
                     )}
-
-                    {/* Dispute Escalation Trigger */}
-                    {report &&
-                      !report.isEscalatedToDispute &&
-                      (report.status === ContractReportStatus.Pending ||
-                        report.status === ContractReportStatus.WaitingReporterConfirmation) && (
-                        <div className="pt-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setShowEscalation(true)}
-                            className="text-xs font-bold text-destructive hover:underline cursor-pointer inline-flex items-center gap-1"
-                          >
-                            <AlertCircle size={13} />
-                            {t('workspace.escalateToDisputeAdmin', { defaultValue: 'Chuyển hồ sơ lên Tranh Chấp Admin' })}
-                          </button>
-                        </div>
-                      )}
                   </div>
                 </div>
               )}

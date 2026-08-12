@@ -34,11 +34,7 @@ export function DisputeEscalationModal({
         aria-modal="true"
         aria-labelledby="rc-escalation-title"
         onClick={event => event.stopPropagation()}
-        className="relative z-10 w-full max-w-lg rounded-[2rem] overflow-hidden p-6 sm:p-8 lg:p-10 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.45)] border border-border/50 my-auto text-center space-y-6"
-        style={{
-          background: 'rgba(var(--background-rgb, 255,255,255), 0.9)',
-          backdropFilter: 'blur(20px)',
-        }}
+        className="relative z-10 w-full max-w-lg rounded-3xl overflow-hidden p-6 sm:p-8 shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto text-center space-y-6"
       >
         {/* Top Close Button */}
         <button

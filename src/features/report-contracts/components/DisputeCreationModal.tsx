@@ -148,11 +148,7 @@ export function DisputeCreationModal({
         aria-modal="true"
         aria-labelledby="rc-dispute-creation-title"
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[78vh] min-h-[540px] max-h-[720px] rounded-[2rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_70px_-15px_rgba(0,0,0,0.45)] border border-border/50 my-auto"
-        style={{
-          background: 'rgba(var(--background-rgb, 255,255,255), 0.85)',
-          backdropFilter: 'blur(20px)',
-        }}
+        className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[80vh] min-h-[540px] max-h-[720px] rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
       >
         {/* ═══ LEFT COLUMN: Context Hero & Summary ════════════════════════ */}
         <div className="w-full lg:w-5/12 h-full p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/30 bg-surface-muted/40 relative overflow-hidden shrink-0">

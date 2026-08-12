@@ -185,11 +185,10 @@ export function RaiseIssueModal({
         aria-modal="true"
         aria-labelledby="rc-raise-issue-title"
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-full max-w-5xl h-[85vh] min-h-[600px] max-h-[820px] rounded-[2rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_70px_-15px_rgba(0,0,0,0.35)] border border-border/50 my-auto"
-        style={{ background: 'rgba(var(--background-rgb, 255,255,255), 0.85)', backdropFilter: 'blur(20px)' }}
+        className="relative z-10 w-full max-w-5xl h-[85vh] min-h-[600px] max-h-[820px] rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
       >
         {/* ═══ LEFT COLUMN: Context Hero ═══════════════════════════════════ */}
-        <div className="w-full lg:w-5/12 h-full p-8 lg:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/30 bg-surface-muted/40 relative overflow-hidden shrink-0">
+        <div className="w-full lg:w-5/12 h-full p-6 sm:p-8 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           <div className="relative z-10">
@@ -223,7 +222,7 @@ export function RaiseIssueModal({
           </div>
 
           {/* Project Details Card */}
-          <div className="relative z-10 rounded-2xl border border-border/60 bg-background/60 p-4 space-y-1">
+          <div className="relative z-10 rounded-2xl border border-border/70 bg-surface-card p-4 space-y-1">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand">
               <BriefcaseBusiness size={13} />
               <span>Contract ID</span>
@@ -304,7 +303,7 @@ export function RaiseIssueModal({
                 </label>
                 <span className="text-[11px] font-bold text-text-muted">{description.length}/5000</span>
               </div>
-              <div className="relative bg-background rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
+              <div className="relative bg-surface-card rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <textarea
                   id="rc-description"
                   value={description}
@@ -313,7 +312,7 @@ export function RaiseIssueModal({
                   rows={3}
                   placeholder={t('workspace.reportDescriptionPlaceholder', { defaultValue: 'Mô tả chi tiết nội dung sự cố xảy ra, các mốc thời gian và bối cảnh...' })}
                   disabled={isSubmitting}
-                  className="w-full bg-transparent border-none resize-none p-4 text-xs font-bold text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:ring-0"
+                  className="w-full bg-transparent border-none resize-none p-4 text-xs font-bold text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-0"
                 />
               </div>
             </div>
@@ -326,7 +325,7 @@ export function RaiseIssueModal({
                 </label>
                 <span className="text-[11px] font-bold text-text-muted">{desiredResolution.length}/5000</span>
               </div>
-              <div className="relative bg-background rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
+              <div className="relative bg-surface-card rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <textarea
                   id="rc-desired-resolution"
                   value={desiredResolution}
@@ -335,7 +334,7 @@ export function RaiseIssueModal({
                   rows={2}
                   placeholder={t('workspace.reportDesiredResolutionPlaceholder', { defaultValue: 'Đề xuất hướng giải quyết bạn mong muốn (ví dụ: Gia hạn thêm 3 ngày, hoàn tiền mốc 1...)' })}
                   disabled={isSubmitting}
-                  className="w-full bg-transparent border-none resize-none p-4 text-xs font-bold text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:ring-0"
+                  className="w-full bg-transparent border-none resize-none p-4 text-xs font-bold text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-0"
                 />
               </div>
             </div>

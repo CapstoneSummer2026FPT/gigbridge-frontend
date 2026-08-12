@@ -5,9 +5,10 @@ import {
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
-  ShieldAlert, Lock,
+  ShieldAlert, Lock, Award, LockKeyhole,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ContractStatus } from '../../../types/models/Contract';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -269,6 +270,8 @@ export default function MessagesScreen() {
     return MESSAGE_ROOMS[0].id;
   });
 
+  const [workspaceFilterTab, setWorkspaceFilterTab] = useState<'active' | 'completed' | 'disputed' | 'all'>('active');
+
   useEffect(() => {
     if (activeConv?.roomId && activeConv.roomId !== activeRoomId) {
       setActiveRoomId(activeConv.roomId);
@@ -314,7 +317,7 @@ export default function MessagesScreen() {
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 
           {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
-          <section className="messages-conversation-list w-80 shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
+          <section className="messages-conversation-list w-96 lg:w-[390px] shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
             {/* ── Document Folder Index Tabs ── */}
             <div className="pt-2.5 px-2 bg-muted/30 flex items-end gap-1 relative shrink-0">
               {/* Bottom 1px divider line for inactive tabs only */}
@@ -328,25 +331,19 @@ export default function MessagesScreen() {
                   ? Briefcase
                   : room.type === 'workspace'
                     ? CheckCircle
-                    : room.type === 'dispute'
-                      ? ShieldAlert
-                      : Layers;
+                    : Layers;
 
                 const shortLabel = room.type === 'invited'
                   ? t('messages.tabInvited', { defaultValue: 'Invited' })
                   : room.type === 'negotiation'
                     ? t('messages.tabNegotiation', { defaultValue: 'Negotiation' })
-                    : room.type === 'workspace'
-                      ? t('messages.tabWorkspace', { defaultValue: 'Workspace' })
-                      : t('messages.tabDispute', { defaultValue: 'Dispute' });
+                    : t('messages.tabWorkspace', { defaultValue: 'Workspace' });
 
                 const activeThemeClass = room.type === 'invited'
                   ? 'border-t-teal-500 text-teal-600 dark:text-teal-400'
-                  : room.type === 'dispute'
-                    ? 'border-t-amber-500 text-amber-600 dark:text-amber-400'
-                    : room.type === 'workspace'
-                      ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
-                      : 'border-t-brand text-brand';
+                  : room.type === 'workspace'
+                    ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
+                    : 'border-t-brand text-brand';
 
                 return (
                   <button
@@ -383,40 +380,136 @@ export default function MessagesScreen() {
                   ? Briefcase
                   : currentRoom.type === 'workspace'
                     ? CheckCircle
-                    : currentRoom.type === 'dispute'
-                      ? ShieldAlert
-                      : Layers;
-                const convos = conversationsState.filter(c => c.roomId === currentRoom.id);
+                    : Layers;
+
+                const allRoomConvos = conversationsState.filter(c => c.roomId === currentRoom.id);
+                const allWorkspaceConvos = conversationsState.filter(c => c.roomId === 'room_workspace');
+
+                const activeCount = allWorkspaceConvos.filter(
+                  c => c.contractStatus !== ContractStatus.Completed && c.contractStatus !== ContractStatus.Disputed
+                ).length;
+                const completedCount = allWorkspaceConvos.filter(
+                  c => c.contractStatus === ContractStatus.Completed
+                ).length;
+                const disputedCount = allWorkspaceConvos.filter(
+                  c => c.contractStatus === ContractStatus.Disputed
+                ).length;
+                const allCount = allWorkspaceConvos.length;
+
+                const convos = currentRoom.type === 'workspace'
+                  ? allWorkspaceConvos.filter(c => {
+                      if (workspaceFilterTab === 'completed') return c.contractStatus === ContractStatus.Completed;
+                      if (workspaceFilterTab === 'disputed') return c.contractStatus === ContractStatus.Disputed;
+                      if (workspaceFilterTab === 'all') return true;
+                      return c.contractStatus !== ContractStatus.Completed && c.contractStatus !== ContractStatus.Disputed;
+                    })
+                  : allRoomConvos;
 
                 return (
                   <div>
-                    {/* Active room description banner */}
-                    <div className="px-4 py-2.5 bg-muted/20 border-b border-border/40 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
-                          currentRoom.type === 'invited'
-                            ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
-                            : currentRoom.type === 'dispute'
-                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                              : currentRoom.type === 'workspace'
-                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-brand/15 text-brand'
-                        }`}>
-                          <CurrentRoomIcon size={13} />
-                        </div>
-                        <div>
-                          <span className="text-xs font-black text-foreground block leading-tight tracking-wide">
-                            {t(ROOM_COPY[currentRoom.type].label)}
-                          </span>
-                          <p className="text-[10px] text-muted-foreground leading-tight">
-                            {t(ROOM_COPY[currentRoom.type].description)}
-                          </p>
-                        </div>
+                    {/* Active room description or Workspace 4-button filter */}
+                    {currentRoom.type === 'workspace' ? (
+                      <div className="p-2 bg-muted/20 border-b border-border/40 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('active')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'active'
+                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabActive', { defaultValue: 'Đang làm' })}
+                        >
+                          <CheckCircle size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabActive', { defaultValue: 'Đang làm' })}</span>
+                          {activeCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-emerald-500 text-white rounded-full leading-none shrink-0">
+                              {activeCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('completed')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'completed'
+                              ? 'bg-brand/15 border border-brand/30 text-brand shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}
+                        >
+                          <Award size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}</span>
+                          {completedCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-brand text-white rounded-full leading-none shrink-0">
+                              {completedCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('disputed')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'disputed'
+                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}
+                        >
+                          <LockKeyhole size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}</span>
+                          {disputedCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-amber-500 text-white rounded-full leading-none shrink-0">
+                              {disputedCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('all')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'all'
+                              ? 'bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabAll', { defaultValue: 'Tất cả' })}
+                        >
+                          <Layers size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabAll', { defaultValue: 'Tất cả' })}</span>
+                          {allCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-blue-500 text-white rounded-full leading-none shrink-0">
+                              {allCount}
+                            </span>
+                          )}
+                        </button>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40">
-                        {convos.length}
-                      </span>
-                    </div>
+                    ) : (
+                      <div className="px-4 py-2.5 bg-muted/20 border-b border-border/40 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+                            currentRoom.type === 'invited'
+                              ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
+                              : 'bg-brand/15 text-brand'
+                          }`}>
+                            <CurrentRoomIcon size={13} />
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-foreground block leading-tight tracking-wide">
+                              {t(ROOM_COPY[currentRoom.type].label)}
+                            </span>
+                            <p className="text-[10px] text-muted-foreground leading-tight">
+                              {t(ROOM_COPY[currentRoom.type].description)}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40">
+                          {convos.length}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Conversations */}
                     <div className="p-2 space-y-1">
@@ -446,6 +539,22 @@ export default function MessagesScreen() {
                                 {formatTime(conv.lastMessageAt)}
                               </span>
                             </div>
+
+                            {/* Status Tag Badge */}
+                            {conv.contractStatus === ContractStatus.Disputed ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider">
+                                <LockKeyhole size={10} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                              </span>
+                            ) : conv.contractStatus === ContractStatus.Completed ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[9px] font-black uppercase tracking-wider">
+                                <Award size={10} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
+                              </span>
+                            ) : conv.roomId === 'room_workspace' ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                                <CheckCircle size={10} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
+                              </span>
+                            ) : null}
+
                             <p className="text-[10px] text-muted-foreground truncate mt-0.5">{conv.job.title}</p>
                             <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                               {conv.lastMessage}
