@@ -1,4 +1,4 @@
-import { AlertCircle, LoaderCircle, Upload } from 'lucide-react';
+import { AlertCircle, LoaderCircle, Upload, ShieldPlus } from 'lucide-react';
 import { useState } from 'react';
 import { disputePostAPI } from '../../../api/disputeAPI';
 import type { DisputeEvidence } from '../../../types/models/Dispute';
@@ -19,7 +19,7 @@ export function DisputeEvidenceUploader({
   disabled,
   onUploaded,
   requestEvidenceId,
-  title = 'Add evidence',
+  title = 'Bổ sung Bằng chứng mới',
 }: DisputeEvidenceUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -35,7 +35,7 @@ export function DisputeEvidenceUploader({
     setSubmitting(false);
 
     if (!response.success || !response.data) {
-      setError(response.message || 'Unable to upload dispute evidence.');
+      setError(response.message || 'Không thể tải lên bằng chứng tranh chấp.');
       return;
     }
 
@@ -45,27 +45,52 @@ export function DisputeEvidenceUploader({
 
   if (disabled) {
     return (
-      <div className="dispute-evidence-locked">
-        Evidence can only be added before the dispute is resolved or closed.
+      <div className="p-4 rounded-xl bg-surface-muted border border-border text-muted-foreground text-xs italic mb-4">
+        🔒 Tính năng tải lên bằng chứng chỉ khả dụng khi hồ sơ tranh chấp đang trong quá trình xử lý.
       </div>
     );
   }
 
   return (
-    <div className="dispute-evidence-uploader">
-      <h3>{title}</h3>
-      <p>Upload files, images, videos, archives, or documents that support your case.</p>
+    <div className="border border-border/80 bg-surface/50 rounded-2xl p-5 mb-5 space-y-4 backdrop-blur-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldPlus size={18} className="text-brand" />
+          <h3 className="font-extrabold text-sm text-foreground">{title}</h3>
+        </div>
+        {files.length > 0 && (
+          <span className="text-xs font-bold text-brand">
+            Đã chọn {files.length} tập tin
+          </span>
+        )}
+      </div>
+
       <DisputeEvidenceFilePicker
         files={files}
         disabled={submitting}
         onChange={setFiles}
         onError={setError}
       />
-      {error && <div className="dispute-download-error" role="alert"><AlertCircle size={17} /> {error}</div>}
-      <button type="button" disabled={submitting || files.length === 0} onClick={() => void upload()}>
-        {submitting ? <LoaderCircle className="dispute-detail-spinner" size={17} /> : <Upload size={17} />}
-        {submitting ? 'Uploading…' : 'Upload evidence'}
-      </button>
+
+      {error && (
+        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2" role="alert">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
+
+      {files.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="dispute-upload-submit-btn"
+            disabled={submitting || files.length === 0}
+            onClick={() => void upload()}
+          >
+            {submitting ? <LoaderCircle className="animate-spin" size={17} /> : <Upload size={17} />}
+            <span>{submitting ? 'Đang tải lên...' : `Tải lên ${files.length} bằng chứng`}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
