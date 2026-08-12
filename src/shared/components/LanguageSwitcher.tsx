@@ -109,6 +109,7 @@ export function LanguageSwitcher({
     <div ref={dropdownRef} className={`relative ${className}`}>
       {/* Dropdown Button */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface transition-colors text-secondary hover:text-primary"
         aria-label="Select language"
@@ -128,6 +129,7 @@ export function LanguageSwitcher({
           {availableLanguages.map((lng) => (
             <button
               key={lng}
+              type="button"
               onClick={() => handleLanguageChange(lng)}
               className={`
                 w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm
@@ -199,6 +201,7 @@ export function CombinedThemeLanguageSwitcher({
     >
       {/* Theme Toggle Button */}
       <button
+        type="button"
         onClick={toggleTheme}
         className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-300 cursor-pointer flex items-center justify-center group active:scale-95"
         title={`Switch to ${theme === 'black' ? 'Light' : 'Dark'} Mode`}
@@ -218,6 +221,7 @@ export function CombinedThemeLanguageSwitcher({
       {/* Language Selection Button */}
       <div className="relative">
         <button
+          type="button"
           onClick={() => setShowLangDropdown(!showLangDropdown)}
           className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-200 cursor-pointer flex items-center gap-1 active:scale-95"
           title="Select Language"
@@ -232,6 +236,7 @@ export function CombinedThemeLanguageSwitcher({
             {availableLanguages.map((lng) => (
               <button
                 key={lng}
+                type="button"
                 onClick={() => {
                   changeLanguage(lng);
                   setShowLangDropdown(false);

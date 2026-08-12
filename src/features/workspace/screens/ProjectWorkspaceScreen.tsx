@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Ban, Send, AlertTriangle, PanelLeftOpen, PanelLeftClose,
-  Paperclip, Smile, CheckCircle, Circle, Download,
-  FileText, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks,
-  FolderOpen, RefreshCw
+  PanelRightOpen, PanelRightClose,
+  Paperclip, Smile, CheckCircle, Download,
+  FileText, CreditCard, MessageSquare,
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star,
+  FolderOpen, RefreshCw, Award, ShieldAlert, Layers
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
@@ -36,7 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../../app/components/ui/alert-dialog';
-import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
+import { useReportContract, RaiseIssueModal, CombinedIssueReportsModal } from '../../../features/report-contracts';
 import { toast } from 'sonner';
 import {
   parseReportSystemMessageMetadata,
@@ -193,7 +194,6 @@ export default function ProjectWorkspaceScreen() {
     refreshWorkspace,
     handleSendMessage,
     handleSimulateAttachment,
-    handleOpenMilestoneEditor,
     handleRequestMilestoneUnlock,
     handleWithdrawMilestone,
     handleUpdateWorkItem,
@@ -203,6 +203,51 @@ export default function ProjectWorkspaceScreen() {
     handleSubmitProductHandoff,
     chatEndRef,
   } = useProjectWorkspace(contractId || '');
+
+  const [workspaceStatusTab, setWorkspaceStatusTab] = useState<'active' | 'completed' | 'disputed' | 'all'>('active');
+
+  useEffect(() => {
+    const currentProj = workspaceProjects.find(p => p.id === activeProjectId);
+    if (currentProj) {
+      if (currentProj.status === ContractStatus.Completed) {
+        setWorkspaceStatusTab('completed');
+      } else if (currentProj.status === ContractStatus.Disputed) {
+        setWorkspaceStatusTab('disputed');
+      } else {
+        setWorkspaceStatusTab('active');
+      }
+    }
+  }, [activeProjectId, workspaceProjects]);
+
+  const activeProjectsCount = useMemo(
+    () => workspaceProjects.filter(p => p.status !== ContractStatus.Completed && p.status !== ContractStatus.Disputed).length,
+    [workspaceProjects]
+  );
+  const completedProjectsCount = useMemo(
+    () => workspaceProjects.filter(p => p.status === ContractStatus.Completed).length,
+    [workspaceProjects]
+  );
+  const disputedProjectsCount = useMemo(
+    () => workspaceProjects.filter(p => p.status === ContractStatus.Disputed).length,
+    [workspaceProjects]
+  );
+  const allProjectsCount = useMemo(
+    () => workspaceProjects.length,
+    [workspaceProjects]
+  );
+
+  const filteredWorkspaceProjects = useMemo(() => {
+    if (workspaceStatusTab === 'completed') {
+      return workspaceProjects.filter(p => p.status === ContractStatus.Completed);
+    }
+    if (workspaceStatusTab === 'disputed') {
+      return workspaceProjects.filter(p => p.status === ContractStatus.Disputed);
+    }
+    if (workspaceStatusTab === 'all') {
+      return workspaceProjects;
+    }
+    return workspaceProjects.filter(p => p.status !== ContractStatus.Completed && p.status !== ContractStatus.Disputed);
+  }, [workspaceProjects, workspaceStatusTab]);
 
   const {
     reports: contractReports,
@@ -786,10 +831,11 @@ export default function ProjectWorkspaceScreen() {
           {/* Column 1: Conversations List (Left Pane - Collapsible) */}
           <section
             className={`border-r border-border flex flex-col bg-card flex-shrink-0 transition-all duration-300 ${
-              isLeftPanelCollapsed ? 'w-0 opacity-0 overflow-hidden border-none pointer-events-none' : 'w-80'
+              isLeftPanelCollapsed ? 'w-0 opacity-0 overflow-hidden border-none pointer-events-none' : 'w-96 lg:w-[390px]'
             } lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}
           >
-            <div className="px-4 py-3.5 border-b border-border flex items-center justify-between min-h-[53px] shrink-0">
+            {/* Sidebar Title Header */}
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between min-h-[48px] shrink-0">
               <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold truncate">
                 {t('workspace.recentWorkspace')}
               </span>
@@ -803,57 +849,177 @@ export default function ProjectWorkspaceScreen() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {workspaceProjects.map(proj => {
-                const isActive = proj.id === activeProjectId;
-                return (
-                  <div
-                    key={proj.id}
-                    onClick={() => {
-                      setActiveProjectId(proj.id);
-                      navigate(`/workspace/${proj.id}`);
-                    }}
-                    className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${
-                      isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
-                        <UserAvatar name={proj.partnerName} src={proj.partnerAvatar} userId={proj.partnerUserId} size="md" />
-                        {proj.online && (
-                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full" />
-                        )}
-                      </UserProfileLink>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline mb-0.5">
-                          <h3 className="font-headline-sm text-sm truncate font-semibold">
-                            <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>
-                              {proj.partnerName}
-                            </UserProfileLink>
-                          </h3>
-                          <span className="text-[10px] text-muted-foreground">{proj.time}</span>
+            {/* Document Folder Index Tabs (Styled exact match to MessagesScreen) */}
+            <div className="pt-2.5 px-2 bg-muted/30 flex items-end gap-1 relative shrink-0">
+              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-border pointer-events-none z-0" />
+
+              {/* Active Tab */}
+              <button
+                type="button"
+                onClick={() => setWorkspaceStatusTab('active')}
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
+                  workspaceStatusTab === 'active'
+                    ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-emerald-500 text-emerald-600 dark:text-emerald-400 -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
+                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
+                }`}
+                title={t('workspace.tabActive', { defaultValue: 'Đang làm' })}
+              >
+                <div className="flex items-center justify-center gap-1 w-full">
+                  <CheckCircle size={13} className={workspaceStatusTab === 'active' ? '' : 'opacity-65'} />
+                  {activeProjectsCount > 0 && (
+                    <span className="min-w-[15px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-emerald-500 text-white rounded-full leading-none shrink-0">
+                      {activeProjectsCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] tracking-tight leading-tight mt-1 truncate max-w-full font-extrabold uppercase">
+                  {t('workspace.tabActive', { defaultValue: 'Đang làm' })}
+                </span>
+              </button>
+
+              {/* Completed Tab */}
+              <button
+                type="button"
+                onClick={() => setWorkspaceStatusTab('completed')}
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
+                  workspaceStatusTab === 'completed'
+                    ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-brand text-brand -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
+                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
+                }`}
+                title={t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}
+              >
+                <div className="flex items-center justify-center gap-1 w-full">
+                  <Award size={13} className={workspaceStatusTab === 'completed' ? '' : 'opacity-65'} />
+                  {completedProjectsCount > 0 && (
+                    <span className="min-w-[15px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-brand text-white rounded-full leading-none shrink-0">
+                      {completedProjectsCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] tracking-tight leading-tight mt-1 truncate max-w-full font-extrabold uppercase">
+                  {t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}
+                </span>
+              </button>
+
+              {/* Disputed Tab */}
+              <button
+                type="button"
+                onClick={() => setWorkspaceStatusTab('disputed')}
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
+                  workspaceStatusTab === 'disputed'
+                    ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-amber-500 text-amber-600 dark:text-amber-400 -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
+                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
+                }`}
+                title={t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}
+              >
+                <div className="flex items-center justify-center gap-1 w-full">
+                  <ShieldAlert size={13} className={workspaceStatusTab === 'disputed' ? '' : 'opacity-65'} />
+                  {disputedProjectsCount > 0 && (
+                    <span className="min-w-[15px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-amber-500 text-white rounded-full leading-none shrink-0">
+                      {disputedProjectsCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] tracking-tight leading-tight mt-1 truncate max-w-full font-extrabold uppercase">
+                  {t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}
+                </span>
+              </button>
+
+              {/* All Tab */}
+              <button
+                type="button"
+                onClick={() => setWorkspaceStatusTab('all')}
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
+                  workspaceStatusTab === 'all'
+                    ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-blue-500 text-blue-600 dark:text-blue-400 -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
+                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
+                }`}
+                title={t('workspace.tabAll', { defaultValue: 'Tất cả' })}
+              >
+                <div className="flex items-center justify-center gap-1 w-full">
+                  <Layers size={13} className={workspaceStatusTab === 'all' ? '' : 'opacity-65'} />
+                  {allProjectsCount > 0 && (
+                    <span className="min-w-[15px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-blue-500 text-white rounded-full leading-none shrink-0">
+                      {allProjectsCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] tracking-tight leading-tight mt-1 truncate max-w-full font-extrabold uppercase">
+                  {t('workspace.tabAll', { defaultValue: 'Tất cả' })}
+                </span>
+              </button>
+            </div>
+
+            {/* List Body Container */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-card relative z-10">
+              {filteredWorkspaceProjects.length === 0 ? (
+                <div className="p-8 text-center text-xs font-semibold text-muted-foreground space-y-2">
+                  <p>{t('workspace.noProjectsInTab', { defaultValue: 'Không có dự án nào thuộc nhóm này.' })}</p>
+                </div>
+              ) : (
+                filteredWorkspaceProjects.map((proj: typeof workspaceProjects[number]) => {
+                  const isActive = proj.id === activeProjectId;
+                  return (
+                    <div
+                      key={proj.id}
+                      onClick={() => {
+                        setActiveProjectId(proj.id);
+                        navigate(`/workspace/${proj.id}`);
+                      }}
+                      className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${
+                        isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''
+                      }`}
+                    >
+                      <div className="flex gap-3">
+                        <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
+                          <UserAvatar name={proj.partnerName} src={proj.partnerAvatar} userId={proj.partnerUserId} size="md" />
+                          {proj.online && (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full" />
+                          )}
+                        </UserProfileLink>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline mb-0.5">
+                            <h3 className="font-headline-sm text-sm truncate font-semibold">
+                              <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>
+                                {proj.partnerName}
+                              </UserProfileLink>
+                            </h3>
+                            <span className="text-[10px] text-muted-foreground">{proj.time}</span>
+                          </div>
+                          {proj.status === ContractStatus.Disputed ? (
+                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider">
+                              <LockKeyhole size={11} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                            </span>
+                          ) : proj.status === ContractStatus.Completed ? (
+                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[10px] font-black uppercase tracking-wider">
+                              <Award size={11} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                              <CheckCircle size={11} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
+                            </span>
+                          )}
+                          <p className={`text-xs truncate ${proj.unread ? 'text-foreground font-semibold animate-pulse' : 'text-muted-foreground'}`}>
+                            {proj.latestMessage}
+                          </p>
                         </div>
-                        {proj.status === ContractStatus.Disputed && (
-                          <span className="workspace-disputed-badge">
-                            <LockKeyhole size={11} /> {t('workspace.disputedBadge')}
-                          </span>
+                        {proj.unread && (
+                          <span className="w-2 h-2 bg-[var(--gb-cyan)] rounded-full self-center" />
                         )}
-                        <p className={`text-xs truncate ${proj.unread ? 'text-foreground font-semibold animate-pulse' : 'text-muted-foreground'}`}>
-                          {proj.latestMessage}
-                        </p>
                       </div>
-                      {proj.unread && (
-                        <span className="w-2 h-2 bg-[var(--gb-cyan)] rounded-full self-center" />
-                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </section>
 
-          {/* Column 2: Milestone Management (Center Pane - 65% ratio) */}
-          <section className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm lg:flex ${mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'} ${showInfo ? 'lg:w-[65%] xl:w-[68%]' : 'lg:w-full'}`}>
+          {/* Column 2: Milestone Management (Center Pane - Flex-1 fill) */}
+          <section
+            className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm min-w-0 transition-all duration-300 ${
+              mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'
+            }`}
+          >
 
             {/* Professional Milestone Management Header */}
             <div className="glass-header px-6 py-3.5 border-b border-border flex flex-wrap items-center justify-between gap-4 shrink-0">
@@ -895,15 +1061,6 @@ export default function ProjectWorkspaceScreen() {
                   <GigCoinAmount amount={project.paidAmount || 0} />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleOpenMilestoneEditor}
-                  className="bg-surface-card hover:bg-surface-muted border border-border/80 text-text-primary font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                >
-                  <ListChecks size={14} className="text-brand" />
-                  <span>{t('workspace.milestoneDetails')}</span>
-                </button>
-
                 {showEndProjectButton && (
                   <button
                     onClick={openEndProjectDialog}
@@ -933,17 +1090,16 @@ export default function ProjectWorkspaceScreen() {
                   </span>
                 )}
 
-                <button
-                  onClick={() => setShowInfo(!showInfo)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-xl border transition cursor-pointer ${
-                    showInfo 
-                      ? 'bg-brand/10 border-brand/30 text-brand' 
-                      : 'border-border text-text-muted hover:text-text-primary hover:bg-surface-muted'
-                  }`}
-                  title={t('workspace.toggleChatInfo')}
-                >
-                  <Info size={16} />
-                </button>
+                {!showInfo && (
+                  <button
+                    type="button"
+                    onClick={() => setShowInfo(true)}
+                    className="p-2 rounded-xl border border-border/80 bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer hidden lg:flex items-center justify-center shrink-0 shadow-2xs"
+                    title={t('workspace.toggleChatInfo', { defaultValue: 'Mở bảng Trò chuyện & Thông tin' })}
+                  >
+                    <PanelRightOpen size={16} />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -968,307 +1124,379 @@ export default function ProjectWorkspaceScreen() {
             )}
 
             {/* Milestones timeline/list */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative">
               {project.milestones.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                  <p className="text-sm">{t('workspace.noMilestones')}</p>
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-16">
+                  <p className="text-sm font-bold">{t('workspace.noMilestones')}</p>
                 </div>
               ) : (
-                project.milestones.map((milestone, idx) => {
-                  const isCompleted = milestone.status === 'approved' || milestone.status === 'completed';
-                  const isInProgress = milestone.status === 'in_progress';
-                  const isSubmitted = milestone.status === 'submitted';
-                  const isPending = milestone.status === 'pending';
-                  const previousMilestone = idx > 0 ? project.milestones[idx - 1] : null;
-                  const isPreviousMilestoneStarted = idx === 0 || (previousMilestone && previousMilestone.status !== 'pending');
-                  const isConsecutiveEarlyStart = isPending && isPreviousMilestoneStarted;
-                  const canUnlockOrStartMilestone = isInProgress || isConsecutiveEarlyStart;
+                <div className="space-y-6">
+                  {project.milestones.map((milestone, idx) => {
+                    const isCompleted = milestone.status === 'approved' || milestone.status === 'completed';
+                    const isInProgress = milestone.status === 'in_progress';
+                    const isSubmitted = milestone.status === 'submitted';
+                    const isPending = milestone.status === 'pending';
+                    const isLast = idx === project.milestones.length - 1;
+                    const previousMilestone = idx > 0 ? project.milestones[idx - 1] : null;
+                    const isPreviousMilestoneStarted = idx === 0 || (previousMilestone && previousMilestone.status !== 'pending');
+                    const isConsecutiveEarlyStart = isPending && isPreviousMilestoneStarted;
+                    const canUnlockOrStartMilestone = isInProgress || isConsecutiveEarlyStart;
 
-                  const isReleasedInFull = milestone.amount > 0 && milestone.releasedAmount >= milestone.amount;
-                  const withdrawalEligibility = getEarlyWithdrawalEligibility(
-                    project.milestones,
-                    milestone,
-                    activeContract?.status,
-                    isFreelancer,
-                  );
-                  const showFreelancerWithdraw = isFreelancer &&
-                    withdrawalEligibility.isContractActive &&
-                    withdrawalEligibility.isApproved &&
-                    !withdrawalEligibility.isAtCap;
-                  const showEarlyWithdrawalCap = isFreelancer &&
-                    withdrawalEligibility.isApproved &&
-                    withdrawalEligibility.isAtCap &&
-                    !isReleasedInFull;
-                  const workItems = milestone.workItems || [];
-                  const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
-                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && allWorkItemsCompleted;
-                  const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
-                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending && isPreviousMilestoneStarted;
-                  const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
-                  const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
+                    const isLineFilled = isCompleted || isInProgress || isSubmitted;
 
-                  return (
-                    <div
-                      key={milestone.id || idx}
-                      className={`border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${
-                        isCompleted
-                          ? 'bg-card border-green-500/20'
-                          : isInProgress
-                          ? 'bg-card border-[var(--gb-cyan)]/50 ring-1 ring-[var(--gb-cyan)]/25'
-                          : isConsecutiveEarlyStart
-                          ? 'bg-card border-amber-500/30'
-                          : 'bg-muted/10 opacity-75 border-border'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div className="mt-1">
+                    const isReleasedInFull = milestone.amount > 0 && milestone.releasedAmount >= milestone.amount;
+                    const withdrawalEligibility = getEarlyWithdrawalEligibility(
+                      project.milestones,
+                      milestone,
+                      activeContract?.status,
+                      isFreelancer,
+                    );
+                    const showFreelancerWithdraw = isFreelancer &&
+                      withdrawalEligibility.isContractActive &&
+                      withdrawalEligibility.isApproved &&
+                      !withdrawalEligibility.isAtCap;
+                    const showEarlyWithdrawalCap = isFreelancer &&
+                      withdrawalEligibility.isApproved &&
+                      withdrawalEligibility.isAtCap &&
+                      !isReleasedInFull;
+                    const workItems = milestone.workItems || [];
+                    const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
+                    const canFreelancerSubmit = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && allWorkItemsCompleted;
+                    const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+                    const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending && isPreviousMilestoneStarted;
+                    const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
+                    const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
+
+                    return (
+                      <div key={milestone.id || idx} className="flex items-stretch gap-4 sm:gap-6 group">
+                        {/* Left Timeline Column (Circles + Centered Line Segment) */}
+                        <div className="flex flex-col items-center shrink-0 w-8 sm:w-10 relative">
+                          {/* Timeline Circle Node */}
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 z-10 shrink-0 ${
+                              isCompleted || isInProgress || isSubmitted
+                                ? 'bg-brand text-brand-foreground shadow-md ring-4 ring-brand/20'
+                                : isConsecutiveEarlyStart
+                                  ? 'bg-surface-card border-2 border-brand text-brand ring-4 ring-brand/10'
+                                  : 'bg-surface-card border-2 border-border text-text-muted ring-4 ring-background'
+                            }`}
+                          >
                             {isCompleted ? (
-                              <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
-                            ) : isInProgress ? (
-                              <div className="w-5 h-5 rounded-full border-2 border-[var(--gb-cyan)] flex items-center justify-center flex-shrink-0">
-                                <div className="w-2.5 h-2.5 bg-[var(--gb-cyan)] rounded-full animate-pulse"></div>
-                              </div>
-                            ) : isConsecutiveEarlyStart ? (
-                              <div className="w-5 h-5 rounded-full border-2 border-amber-500 flex items-center justify-center flex-shrink-0">
-                                <div className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></div>
-                              </div>
+                              <CheckCircle size={16} />
+                            ) : isInProgress || isSubmitted ? (
+                              <div className="w-2.5 h-2.5 rounded-full bg-brand-foreground animate-ping" />
                             ) : (
-                              <Circle size={20} className="text-muted-foreground flex-shrink-0" />
+                              <span>{idx + 1}</span>
                             )}
                           </div>
-                          <div>
-                            <h3 className="text-sm font-semibold text-foreground">{milestone.title}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">{milestone.description || t('workspace.noDescription')}</p>
-                            
-                            <div className="flex flex-wrap items-center gap-4 mt-3 text-[11px] text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">{t('workspace.amount')}:</span> <GigCoinAmount amount={milestone.amount} />
+
+                          {/* Vertical Connecting Line to Next Node */}
+                          {!isLast && (
+                            <div
+                              className={`w-0 flex-1 my-1 transition-colors duration-500 bg-transparent ${
+                                isLineFilled ? 'border-l-2 border-brand' : 'border-l-2 border-border'
+                              }`}
+                            />
+                          )}
+                        </div>
+
+                        {/* Right Milestone Card Body */}
+                        <div className="flex-1">
+                          <div
+                            className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 shadow-xs hover:shadow-md ${
+                              isCompleted
+                                ? 'bg-background/90 border-border/80'
+                                : isInProgress || isSubmitted
+                                  ? 'bg-background border-brand/40 ring-1 ring-brand/20 shadow-md'
+                                  : isConsecutiveEarlyStart
+                                    ? 'bg-background border-brand/30'
+                                    : 'bg-surface-muted/30 border-border/60 opacity-85'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-3">
+                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                                  isCompleted || isInProgress || isSubmitted
+                                    ? 'bg-brand/10 text-brand border border-brand/20'
+                                    : 'bg-surface-muted border border-border text-text-muted'
+                                }`}>
+                                  M{idx + 1}
+                                </span>
+
+                                <div className="space-y-1">
+                                  <h3 className="text-sm font-black text-text-primary tracking-tight leading-snug">{milestone.title}</h3>
+                                  <p className="text-xs font-medium text-text-muted leading-relaxed">{milestone.description || t('workspace.noDescription')}</p>
+
+                                  {/* Amounts & Timeline Bar */}
+                                  <div className="flex flex-wrap items-center gap-3 mt-3 text-xs font-semibold text-text-muted">
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">{t('workspace.amount')}:</span>
+                                      <GigCoinAmount amount={milestone.amount} />
+                                    </span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">{t('workspace.released')}:</span>
+                                      <GigCoinAmount amount={milestone.releasedAmount} />
+                                    </span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">{t('workspace.dueDate')}:</span>
+                                      <span className="font-bold text-text-primary">{milestone.dueDate}</span>
+                                    </span>
+                                    {milestone.completedAt && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="flex items-center gap-1">
+                                          <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">{t('workspace.completed')}:</span>
+                                          <span className="font-bold text-brand">{new Date(milestone.completedAt).toLocaleDateString()}</span>
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border shrink-0 ${
+                                isCompleted || isInProgress
+                                  ? 'bg-brand/10 border-brand/30 text-brand'
+                                  : isSubmitted
+                                    ? 'bg-brand/10 border-brand/30 text-brand animate-pulse'
+                                    : 'bg-surface-muted border-border text-text-muted'
+                              }`}>
+                                {milestone.status}
                               </span>
-                              <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">{t('workspace.released')}</span> <GigCoinAmount amount={milestone.releasedAmount} />
-                              </span>
-                              <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">{t('workspace.dueDate')}:</span> {milestone.dueDate}
-                              </span>
-                              {milestone.completedAt && (
-                                <>
-                                  <span>•</span>
-                                  <span className="flex items-center gap-1">
-                                    <span className="font-semibold text-foreground">{t('workspace.completed')}:</span> {new Date(milestone.completedAt).toLocaleDateString()}
-                                  </span>
-                                </>
-                              )}
                             </div>
-                          </div>
-                        </div>
 
-                        <div>
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                            isCompleted
-                              ? 'bg-green-500/10 text-green-500'
-                              : isInProgress
-                              ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] animate-pulse'
-                              : isConsecutiveEarlyStart
-                              ? 'bg-amber-500/10 text-amber-500'
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {milestone.status}
-                          </span>
-                        </div>
-                      </div>
+                            {/* Work Breakdown Structure */}
+                            <div className="mt-4 space-y-2 border-t border-border/60 pt-4">
+                              <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted">Work Breakdown Structure</h4>
+                              {workItems.map((workItem, workIndex) => {
+                                const status = Number(workItem.status);
+                                const canStartWork = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
+                                const canCompleteWork = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && status === ContractWorkItemStatus.InProgress;
+                                return (
+                                  <div key={workItem.workItemId} className="rounded-xl border border-border/70 bg-surface-card p-3 space-y-2">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                      <div>
+                                        <strong className="text-xs font-bold text-text-primary">{workIndex + 1}. {workItem.title}</strong>
+                                        {workItem.description && <p className="mt-0.5 text-[11px] font-medium text-text-muted">{workItem.description}</p>}
+                                      </div>
+                                      <span className="rounded-md bg-surface-muted border border-border px-2 py-0.5 text-[10px] font-extrabold text-text-muted">
+                                        {ContractWorkItemStatus[status] || status}
+                                      </span>
+                                    </div>
+                                    {workItem.progressNote && <p className="text-[11px] font-medium text-text-primary"><strong>Progress:</strong> {workItem.progressNote}</p>}
+                                    {(canStartWork || canCompleteWork) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleWorkItemTransition(milestone.id, workItem.workItemId, canCompleteWork ? ContractWorkItemStatus.Completed : ContractWorkItemStatus.InProgress)}
+                                        disabled={isMilestoneActionPending}
+                                        className="rounded-lg border border-border bg-background hover:bg-surface-hover px-3 py-1.5 text-[10px] font-black text-text-primary cursor-pointer transition disabled:opacity-50"
+                                      >
+                                        {canCompleteWork ? 'Mark completed' : status === ContractWorkItemStatus.RevisionRequired ? 'Start revision' : 'Start work item'}
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
 
-                      <div className="mt-4 space-y-2 border-t border-border pt-4">
-                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Work Breakdown Structure</h4>
-                        {workItems.map((workItem, workIndex) => {
-                          const status = Number(workItem.status);
-                          const canStartWork = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
-                          const canCompleteWork = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && status === ContractWorkItemStatus.InProgress;
-                          return <div key={workItem.workItemId} className="rounded-lg border border-border bg-background p-3">
-                            <div className="flex flex-wrap items-start justify-between gap-2"><div><strong className="text-xs">{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-[11px] text-muted-foreground">{workItem.description}</p>}</div><span className="rounded bg-muted px-2 py-1 text-[10px] font-bold">{ContractWorkItemStatus[status] || status}</span></div>
-                            {workItem.progressNote && <p className="mt-2 text-[11px]"><strong>Progress:</strong> {workItem.progressNote}</p>}
-                            {(canStartWork || canCompleteWork) && <button type="button" onClick={() => handleWorkItemTransition(milestone.id, workItem.workItemId, canCompleteWork ? ContractWorkItemStatus.Completed : ContractWorkItemStatus.InProgress)} disabled={isMilestoneActionPending} className="mt-2 rounded border border-border px-3 py-1.5 text-[10px] font-bold hover:bg-muted disabled:opacity-50">{canCompleteWork ? 'Mark completed' : status === ContractWorkItemStatus.RevisionRequired ? 'Start revision' : 'Start work item'}</button>}
-                          </div>;
-                        })}
-                      </div>
-
-                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || showFreelancerWithdraw || showEarlyWithdrawalCap || (!isClient && isCompleted && isReleasedInFull)) && (
-                        <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
-                          <div className="flex-1 max-w-xs">
-                            {showFreelancerWithdraw ? (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                {t('earlyWithdrawal.availableBeforeEnd')} <GigCoinAmount amount={withdrawalEligibility.availableAmount} />
-                              </span>
-                            ) : !isClient && isCompleted && isReleasedInFull ? (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                {t('workspace.releasedInFull')}
-                              </span>
-                            ) : showEarlyWithdrawalCap ? (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                {t('earlyWithdrawal.maximumReached')}
-                              </span>
-                            ) : (isInProgress || isSubmitted) ? (
-                              <>
-                                <div className="flex justify-between text-[10px] mb-1">
-                                  <span className="text-muted-foreground">{t('workspace.progress')}</span>
-                                  <span className="font-bold text-[var(--gb-cyan)]">{isSubmitted ? '90%' : '65%'}</span>
+                            {(isInProgress || isSubmitted || canFreelancerRequestUnlock || showFreelancerWithdraw || showEarlyWithdrawalCap || (!isClient && isCompleted && isReleasedInFull)) && (
+                              <div className="mt-4 pt-4 border-t border-border/60 flex items-center justify-between gap-4 flex-wrap">
+                                <div className="flex-1 max-w-xs">
+                                  {showFreelancerWithdraw ? (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                      {t('earlyWithdrawal.availableBeforeEnd')} <GigCoinAmount amount={withdrawalEligibility.availableAmount} />
+                                    </span>
+                                  ) : !isClient && isCompleted && isReleasedInFull ? (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-brand">
+                                      {t('workspace.releasedInFull')}
+                                    </span>
+                                  ) : showEarlyWithdrawalCap ? (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-brand">
+                                      {t('earlyWithdrawal.maximumReached')}
+                                    </span>
+                                  ) : (isInProgress || isSubmitted) ? (
+                                    <>
+                                      <div className="flex justify-between text-[10px] mb-1 font-bold">
+                                        <span className="text-text-muted">{t('workspace.progress')}</span>
+                                        <span className="text-brand">{isSubmitted ? '90%' : '65%'}</span>
+                                      </div>
+                                      <div className="w-full bg-surface-muted h-1.5 rounded-full overflow-hidden">
+                                        <div className={`bg-brand h-full rounded-full transition-all duration-500 ${isSubmitted ? 'w-[90%]' : 'w-[65%]'}`} />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                      {t('workspace.waitingClientUnlock')}
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
-                                  <div className={`bg-[var(--gb-cyan)] h-full rounded-full ${isSubmitted ? 'w-[90%]' : 'w-[65%]'}`}></div>
+
+                                <div>
+                                  {canClientReview ? (
+                                    <button
+                                      onClick={() => navigate(`/contracts/${workspaceContractId}/milestones/${milestone.id}/approve`)}
+                                      className="bg-brand hover:bg-brand-hover text-brand-foreground px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md cursor-pointer"
+                                    >
+                                      {t('workspace.reviewMilestone')}
+                                    </button>
+                                  ) : canFreelancerSubmit ? (
+                                    <button
+                                      onClick={() => openSubmitModal(milestone)}
+                                      className="bg-brand hover:bg-brand-hover text-brand-foreground px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md cursor-pointer"
+                                    >
+                                      {t('workspace.submitDeliverable')}
+                                    </button>
+                                  ) : canFreelancerRequestUnlock ? (
+                                    <button
+                                      onClick={() => handleRequestPendingMilestoneUnlock(milestone.id)}
+                                      disabled={isMilestoneActionPending}
+                                      className="bg-surface-card hover:bg-surface-hover disabled:opacity-60 text-text-primary border border-border px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer"
+                                    >
+                                      {isMilestoneActionPending ? t('workspace.requesting') : 'Request early start'}
+                                    </button>
+                                  ) : showFreelancerWithdraw ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openWithdrawDialog(milestone.id, milestone.title, withdrawalEligibility.availableAmount)}
+                                      disabled={isMilestoneActionPending || !withdrawalEligibility.meetsApprovalThreshold}
+                                      title={withdrawalEligibility.meetsApprovalThreshold
+                                        ? t('earlyWithdrawal.actionTooltip')
+                                        : t('earlyWithdrawal.thresholdTooltip', {
+                                            approved: withdrawalEligibility.approvedMilestones,
+                                            required: withdrawalEligibility.requiredApprovedMilestones,
+                                          })}
+                                      className="bg-brand hover:bg-brand-hover disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-not-allowed text-brand-foreground px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md cursor-pointer"
+                                    >
+                                      {isMilestoneActionPending ? t('earlyWithdrawal.submitting') : t('earlyWithdrawal.action')}
+                                    </button>
+                                  ) : !isClient && isCompleted && isReleasedInFull ? (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-brand">
+                                      {t('workspace.releasedInFull')}
+                                    </span>
+                                  ) : showEarlyWithdrawalCap ? (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-brand">
+                                      {t('earlyWithdrawal.maximumReached')}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                      {isSubmitted ? t('workspace.waitingClientReview') : t('workspace.waitingFreelancer')}
+                                    </span>
+                                  )}
                                 </div>
-                              </>
-                            ) : (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                {t('workspace.waitingClientUnlock')}
-                              </span>
+                              </div>
+                            )}
+
+                            {milestoneActionError?.milestoneId === milestone.id && (
+                              <div className="mt-3 text-[11px] font-bold text-destructive">
+                                {milestoneActionError.message}
+                              </div>
+                            )}
+
+                            {showFreelancerWithdraw && !withdrawalEligibility.meetsApprovalThreshold && (
+                              <div className="mt-3 text-[11px] font-bold text-text-muted">
+                                {t('earlyWithdrawal.thresholdWarning', {
+                                  approved: withdrawalEligibility.approvedMilestones,
+                                  required: withdrawalEligibility.requiredApprovedMilestones,
+                                })}
+                              </div>
+                            )}
+
+                            {!isClient && isInProgress && !allWorkItemsCompleted && (
+                              <p className="mt-3 text-[11px] font-bold text-text-muted">
+                                Complete every work item before submitting this milestone.
+                              </p>
+                            )}
+
+                            {!isWorkspaceLocked && isClient && earlyStartRequest && (
+                              <div className="mt-3 rounded-xl border border-brand/30 bg-brand/10 p-3 text-xs">
+                                <strong className="text-text-primary">{t('workspace.earlyStartRequested', 'Early start requested')}</strong>
+                                <p className="mt-1 text-text-muted">{earlyStartRequest.reason}</p>
+                                <div className="mt-2 flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={isMilestoneActionPending}
+                                    onClick={async () => {
+                                      setMilestoneActionPendingId(milestone.id);
+                                      const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true);
+                                      if (!result.success) {
+                                        setMilestoneActionError({ milestoneId: milestone.id, message: result.message || t('workspace.approveFailed', 'Could not approve request.') });
+                                        toast.error(result.message || t('workspace.approveFailed', 'Could not approve request.'));
+                                      } else {
+                                        toast.success(t('workspace.earlyStartApproved', 'Early start request approved.'));
+                                      }
+                                      setMilestoneActionPendingId(null);
+                                    }}
+                                    className="rounded-lg bg-brand hover:bg-brand-hover text-brand-foreground px-3 py-1.5 font-black text-xs cursor-pointer transition"
+                                  >
+                                    {t('common.approve', 'Approve')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isMilestoneActionPending}
+                                    onClick={() => {
+                                      openPromptModal({
+                                        title: t('workspace.rejectEarlyStartTitle', 'Reject Early Start Request'),
+                                        description: t('workspace.rejectEarlyStartDesc', 'Provide an optional rejection note for the freelancer.'),
+                                        placeholder: t('workspace.rejectEarlyStartPlaceholder', 'Enter rejection note (optional)...'),
+                                        required: false,
+                                        confirmText: t('workspace.rejectRequest', 'Reject Request'),
+                                        confirmVariant: 'danger',
+                                        onConfirm: async (note) => {
+                                          setMilestoneActionPendingId(milestone.id);
+                                          const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note || undefined);
+                                          if (!result.success) {
+                                            setMilestoneActionError({ milestoneId: milestone.id, message: result.message || t('workspace.rejectFailed', 'Could not reject request.') });
+                                            toast.error(result.message || t('workspace.rejectFailed', 'Could not reject request.'));
+                                          } else {
+                                            toast.success(t('workspace.earlyStartRejected', 'Early start request rejected.'));
+                                          }
+                                          setMilestoneActionPendingId(null);
+                                        },
+                                      });
+                                    }}
+                                    className="rounded-lg border border-destructive/40 px-3 py-1.5 font-black text-destructive cursor-pointer hover:bg-destructive/10 transition"
+                                  >
+                                    {t('common.reject', 'Reject')}
+                                  </button>
+                                </div>
+                              </div>
                             )}
                           </div>
-                          <div>
-                            {canClientReview ? (
-                              <button
-                                onClick={() => navigate(`/contracts/${workspaceContractId}/milestones/${milestone.id}/approve`)}
-                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                              >
-                                {t('workspace.reviewMilestone')}
-                              </button>
-                            ) : canFreelancerSubmit ? (
-                              <button
-                                onClick={() => openSubmitModal(milestone)}
-                                className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                              >
-                                {t('workspace.submitDeliverable')}
-                              </button>
-                            ) : canFreelancerRequestUnlock ? (
-                              <button
-                                onClick={() => handleRequestPendingMilestoneUnlock(milestone.id)}
-                                disabled={isMilestoneActionPending}
-                                className="bg-card hover:bg-muted disabled:opacity-60 text-foreground border border-border px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                              >
-                                {isMilestoneActionPending ? t('workspace.requesting') : 'Request early start'}
-                              </button>
-                            ) : showFreelancerWithdraw ? (
-                              <button
-                                type="button"
-                                onClick={() => openWithdrawDialog(milestone.id, milestone.title, withdrawalEligibility.availableAmount)}
-                                disabled={isMilestoneActionPending || !withdrawalEligibility.meetsApprovalThreshold}
-                                title={withdrawalEligibility.meetsApprovalThreshold
-                                  ? t('earlyWithdrawal.actionTooltip')
-                                  : t('earlyWithdrawal.thresholdTooltip', {
-                                      approved: withdrawalEligibility.approvedMilestones,
-                                      required: withdrawalEligibility.requiredApprovedMilestones,
-                                    })}
-                                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                              >
-                                {isMilestoneActionPending ? t('earlyWithdrawal.submitting') : t('earlyWithdrawal.action')}
-                              </button>
-                            ) : !isClient && isCompleted && isReleasedInFull ? (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                {t('workspace.releasedInFull')}
-                              </span>
-                            ) : showEarlyWithdrawalCap ? (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                {t('earlyWithdrawal.maximumReached')}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                {isSubmitted ? t('workspace.waitingClientReview') : t('workspace.waitingFreelancer')}
-                              </span>
-                            )}
-                          </div>
                         </div>
-                      )}
-                      {milestoneActionError?.milestoneId === milestone.id && (
-                        <div className="mt-3 text-[11px] font-semibold text-red-500">
-                          {milestoneActionError.message}
-                        </div>
-                      )}
-                      {showFreelancerWithdraw && !withdrawalEligibility.meetsApprovalThreshold && (
-                        <div className="mt-3 text-[11px] font-semibold text-amber-600">
-                          {t('earlyWithdrawal.thresholdWarning', {
-                            approved: withdrawalEligibility.approvedMilestones,
-                            required: withdrawalEligibility.requiredApprovedMilestones,
-                          })}
-                        </div>
-                      )}
-                      {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
-                      {!isWorkspaceLocked && isClient && earlyStartRequest && (
-                        <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
-                          <strong>{t('workspace.earlyStartRequested', 'Early start requested')}</strong>
-                          <p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p>
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              type="button"
-                              disabled={isMilestoneActionPending}
-                              onClick={async () => {
-                                setMilestoneActionPendingId(milestone.id);
-                                const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true);
-                                if (!result.success) {
-                                  setMilestoneActionError({ milestoneId: milestone.id, message: result.message || t('workspace.approveFailed', 'Could not approve request.') });
-                                  toast.error(result.message || t('workspace.approveFailed', 'Could not approve request.'));
-                                } else {
-                                  toast.success(t('workspace.earlyStartApproved', 'Early start request approved.'));
-                                }
-                                setMilestoneActionPendingId(null);
-                              }}
-                              className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white cursor-pointer hover:bg-emerald-700 transition-colors"
-                            >
-                              {t('common.approve', 'Approve')}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isMilestoneActionPending}
-                              onClick={() => {
-                                openPromptModal({
-                                  title: t('workspace.rejectEarlyStartTitle', 'Reject Early Start Request'),
-                                  description: t('workspace.rejectEarlyStartDesc', 'Provide an optional rejection note for the freelancer.'),
-                                  placeholder: t('workspace.rejectEarlyStartPlaceholder', 'Enter rejection note (optional)...'),
-                                  required: false,
-                                  confirmText: t('workspace.rejectRequest', 'Reject Request'),
-                                  confirmVariant: 'danger',
-                                  onConfirm: async (note) => {
-                                    setMilestoneActionPendingId(milestone.id);
-                                    const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note || undefined);
-                                    if (!result.success) {
-                                      setMilestoneActionError({ milestoneId: milestone.id, message: result.message || t('workspace.rejectFailed', 'Could not reject request.') });
-                                      toast.error(result.message || t('workspace.rejectFailed', 'Could not reject request.'));
-                                    } else {
-                                      toast.success(t('workspace.earlyStartRejected', 'Early start request rejected.'));
-                                    }
-                                    setMilestoneActionPendingId(null);
-                                  },
-                                });
-                              }}
-                              className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500 cursor-pointer hover:bg-red-500/10 transition-colors"
-                            >
-                              {t('common.reject', 'Reject')}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </section>
 
           {/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files - 25-30% ratio) */}
           <aside
-            className={`border-l border-border flex flex-col bg-card overflow-hidden transition-all duration-300 flex-shrink-0
-              lg:${ showInfo ? 'w-[35%] xl:w-[30%] 2xl:w-[25%] max-w-[420px] min-w-[300px] opacity-100' : 'w-0 opacity-0 pointer-events-none' }
-              ${mobileTab === 'chat' ? 'flex flex-1' : 'hidden lg:flex'}
-              ${!showInfo ? 'lg:w-0 lg:opacity-0 lg:pointer-events-none' : ''}
-            `}
+            className={`flex flex-col bg-card overflow-hidden transition-all duration-300 flex-shrink-0 ${
+              showInfo
+                ? 'w-80 lg:w-[32%] xl:w-[28%] 2xl:w-[24%] max-w-[420px] min-w-[300px] opacity-100 border-l border-border'
+                : 'w-0 min-w-0 max-w-0 opacity-0 pointer-events-none border-none p-0 m-0'
+            } ${mobileTab === 'chat' ? 'flex flex-1 w-full' : 'hidden lg:flex'}`}
           >
-            {/* 2 Tabs at the top */}
-            <div className="flex border-b border-border bg-card">
+            {/* 2 Tabs at the top with Collapse icon on top-left */}
+            <div className="flex items-center border-b border-border bg-card">
+              <button
+                type="button"
+                onClick={() => setShowInfo(false)}
+                className="p-3.5 border-r border-border hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer shrink-0 hidden lg:flex items-center justify-center"
+                title={t('workspace.toggleChatInfo', { defaultValue: 'Thu gọn bảng Trò chuyện & Thông tin' })}
+              >
+                <PanelRightClose size={16} />
+              </button>
+
               <button
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === 'chat'
-                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5'
+                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-black'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -1279,7 +1507,7 @@ export default function ProjectWorkspaceScreen() {
                 onClick={() => setActiveTab('files')}
                 className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === 'files'
-                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5'
+                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-black'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -1700,17 +1928,25 @@ export default function ProjectWorkspaceScreen() {
       />
 
       {submitModal && (
-        <div className="workspace-submit-modal-backdrop" role="presentation">
-          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title">
-            <div className="workspace-submit-modal-header">
-              <div>
-                <h3 id="workspace-submit-title">{t('workspace.submitDeliverableModalTitle')}</h3>
-                <p>{submitModal.title}</p>
+        <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" role="presentation">
+          <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title">
+            {/* Header */}
+            <div className="p-6 border-b border-border/60 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0">
+                  <Upload size={20} />
+                </div>
+                <div>
+                  <h3 id="workspace-submit-title" className="text-base font-black text-text-primary tracking-tight">
+                    {t('workspace.submitDeliverableModalTitle')}
+                  </h3>
+                  <p className="text-xs font-bold text-brand mt-0.5">{submitModal.title}</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={resetSubmitModal}
-                className="workspace-submit-icon-button"
+                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer"
                 title={t('common.close')}
                 disabled={isSubmittingDeliverable}
               >
@@ -1718,34 +1954,74 @@ export default function ProjectWorkspaceScreen() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitDeliverable} className="workspace-submit-form">
+            {/* Form */}
+            <form onSubmit={handleSubmitDeliverable} className="p-6 space-y-5">
               {submitError && (
-                <div className="workspace-submit-error">
-                  <AlertCircle size={16} />
+                <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0" />
                   <span>{submitError}</span>
                 </div>
               )}
 
-              <div className="workspace-submit-field">
-                  <label htmlFor="workspace-deliverable-file">{t('workspace.fileSourceOption')}</label>
-                  <input
-                    ref={submitFileInputRef}
-                    id="workspace-deliverable-file"
-                    type="file"
-                    onChange={handleSelectSubmitFile}
-                    disabled={isSubmittingDeliverable}
-                  />
-                  {submitFile && (
-                    <div className="workspace-submit-file">
-                      <FileText size={15} />
-                      <span>{submitFile.name}</span>
-                      <strong>{(submitFile.size / (1024 * 1024)).toFixed(2)} MB</strong>
-                    </div>
-                  )}
-                </div>
+              {/* Upload Dropzone / File Picker */}
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-text-muted block">
+                  {t('workspace.fileSourceOption')} <span className="text-destructive">*</span>
+                </label>
+                <input
+                  ref={submitFileInputRef}
+                  id="workspace-deliverable-file"
+                  type="file"
+                  onChange={handleSelectSubmitFile}
+                  disabled={isSubmittingDeliverable}
+                  className="hidden"
+                />
 
-              <div className="workspace-submit-field">
-                <label htmlFor="workspace-deliverable-description">{t('workspace.descriptionField')}</label>
+                {!submitFile ? (
+                  <div
+                    onClick={() => submitFileInputRef.current?.click()}
+                    className="border-2 border-dashed border-border/80 hover:border-brand/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer bg-surface-card/40 hover:bg-surface-card transition text-center group"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand group-hover:scale-110 transition-transform mb-3">
+                      <Upload size={22} />
+                    </div>
+                    <p className="text-xs font-black text-text-primary">Click hoặc kéo thả file sản phẩm vào đây</p>
+                    <p className="text-[10px] font-bold text-text-muted mt-1">Hỗ trợ các định dạng PDF, ZIP, RAR, PNG, MP4... (Tối đa 100MB)</p>
+                  </div>
+                ) : (
+                  <div className="border border-brand/40 bg-brand/5 rounded-2xl p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand shrink-0">
+                        <FileText size={20} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-text-primary truncate">{submitFile.name}</p>
+                        <p className="text-[10px] font-bold text-text-muted mt-0.5">{(submitFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubmitFile(null);
+                        if (submitFileInputRef.current) submitFileInputRef.current.value = '';
+                      }}
+                      className="p-2 rounded-xl text-text-muted hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                      title="Xóa file"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Description Field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="workspace-deliverable-description" className="text-xs font-black uppercase tracking-wider text-text-muted">
+                    {t('workspace.descriptionField')}
+                  </label>
+                  <span className="text-[10px] font-bold text-text-muted">{(submitDescription ?? '').length}/5000</span>
+                </div>
                 <textarea
                   id="workspace-deliverable-description"
                   value={submitDescription ?? ''}
@@ -1754,30 +2030,28 @@ export default function ProjectWorkspaceScreen() {
                   rows={4}
                   placeholder={t('workspace.addNotesPlaceholder')}
                   disabled={isSubmittingDeliverable}
+                  className="w-full bg-surface-card border border-border/80 focus:border-brand rounded-2xl p-3.5 text-xs font-medium text-text-primary focus:outline-none transition resize-none placeholder:text-text-muted/60"
                 />
-                <span className="workspace-submit-count">{(submitDescription ?? '').length}/5000</span>
               </div>
 
-              <div className="workspace-submit-actions">
+              {/* Footer Actions */}
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-border/60">
                 <button
                   type="button"
-                  className="workspace-submit-secondary"
                   onClick={resetSubmitModal}
                   disabled={isSubmittingDeliverable}
+                  className="px-5 py-2.5 rounded-xl border border-border bg-surface-card hover:bg-surface-muted text-text-primary text-xs font-black transition cursor-pointer disabled:opacity-50"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="workspace-submit-primary"
-                  disabled={
-                    isSubmittingDeliverable ||
-                    !submitFile
-                  }
+                  disabled={isSubmittingDeliverable || !submitFile}
+                  className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-brand-foreground text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer"
                 >
                   {isSubmittingDeliverable ? (
                     <>
-                      <Loader2 size={15} className="workspace-submit-spin" />
+                      <Loader2 size={15} className="animate-spin" />
                       {t('workspace.submitting')}
                     </>
                   ) : (
@@ -1794,17 +2068,25 @@ export default function ProjectWorkspaceScreen() {
       )}
 
       {productModalOpen && (
-        <div className="workspace-submit-modal-backdrop" role="presentation">
-          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-product-title">
-            <div className="workspace-submit-modal-header">
-              <div>
-                <h3 id="workspace-product-title">{t('workspace.sendMaterialsModalTitle')}</h3>
-                <p>{t('workspace.sendMaterialsModalDesc')}</p>
+        <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" role="presentation">
+          <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-product-title">
+            {/* Header */}
+            <div className="p-6 border-b border-border/60 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0">
+                  <FolderOpen size={20} />
+                </div>
+                <div>
+                  <h3 id="workspace-product-title" className="text-base font-black text-text-primary tracking-tight">
+                    {t('workspace.sendMaterialsModalTitle')}
+                  </h3>
+                  <p className="text-xs font-medium text-text-muted mt-0.5">{t('workspace.sendMaterialsModalDesc')}</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={resetProductModal}
-                className="workspace-submit-icon-button"
+                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer"
                 title={t('common.close')}
                 disabled={isSendingProduct}
               >
@@ -1812,30 +2094,40 @@ export default function ProjectWorkspaceScreen() {
               </button>
             </div>
 
-            <form onSubmit={handleSendProductMaterials} className="workspace-submit-form">
+            {/* Form */}
+            <form onSubmit={handleSendProductMaterials} className="p-6 space-y-5">
               {productError && (
-                <div className="workspace-submit-error">
-                  <AlertCircle size={16} />
+                <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0" />
                   <span>{productError}</span>
                 </div>
               )}
 
-              <div className="workspace-submit-mode" role="tablist" aria-label="Work material source">
+              {/* Source Mode Tabs */}
+              <div className="p-1 rounded-2xl bg-surface-muted border border-border/60 grid grid-cols-2 gap-1" role="tablist">
                 <button
                   type="button"
-                  className={productMode === 'file' ? 'active' : ''}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${
+                    productMode === 'file'
+                      ? 'bg-background text-brand shadow-sm border border-border/60'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
                   onClick={() => {
                     setProductMode('file');
                     setProductLink('');
                     setProductError(null);
                   }}
                 >
-                  <Upload size={15} />
+                  <Upload size={14} />
                   {t('workspace.fileSourceOption')}
                 </button>
                 <button
                   type="button"
-                  className={productMode === 'link' ? 'active' : ''}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${
+                    productMode === 'link'
+                      ? 'bg-background text-brand shadow-sm border border-border/60'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
                   onClick={() => {
                     setProductMode('link');
                     setProductFile(null);
@@ -1845,32 +2137,64 @@ export default function ProjectWorkspaceScreen() {
                     }
                   }}
                 >
-                  <Link2 size={15} />
+                  <Link2 size={14} />
                   {t('workspace.linkSourceOption')}
                 </button>
               </div>
 
               {productMode === 'file' ? (
-                <div className="workspace-submit-field">
-                  <label htmlFor="workspace-product-file">{t('workspace.workMaterialFileField')}</label>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-text-muted block">
+                    {t('workspace.workMaterialFileField')} <span className="text-destructive">*</span>
+                  </label>
                   <input
                     ref={productFileInputRef}
                     id="workspace-product-file"
                     type="file"
                     onChange={handleSelectProductFile}
                     disabled={isSendingProduct}
+                    className="hidden"
                   />
-                  {productFile && (
-                    <div className="workspace-submit-file">
-                      <FileText size={15} />
-                      <span>{productFile.name}</span>
-                      <strong>{(productFile.size / (1024 * 1024)).toFixed(2)} MB</strong>
+                  {!productFile ? (
+                    <div
+                      onClick={() => productFileInputRef.current?.click()}
+                      className="border-2 border-dashed border-border/80 hover:border-brand/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer bg-surface-card/40 hover:bg-surface-card transition text-center group"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand group-hover:scale-110 transition-transform mb-3">
+                        <Upload size={22} />
+                      </div>
+                      <p className="text-xs font-black text-text-primary">Click hoặc kéo thả file vật tư vào đây</p>
+                    </div>
+                  ) : (
+                    <div className="border border-brand/40 bg-brand/5 rounded-2xl p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand shrink-0">
+                          <FileText size={20} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-text-primary truncate">{productFile.name}</p>
+                          <p className="text-[10px] font-bold text-text-muted mt-0.5">{(productFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductFile(null);
+                          if (productFileInputRef.current) productFileInputRef.current.value = '';
+                        }}
+                        className="p-2 rounded-xl text-text-muted hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                        title="Xóa file"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="workspace-submit-field">
-                  <label htmlFor="workspace-product-link">{t('workspace.workMaterialLinkField')}</label>
+                <div className="space-y-2">
+                  <label htmlFor="workspace-product-link" className="text-xs font-black uppercase tracking-wider text-text-muted block">
+                    {t('workspace.workMaterialLinkField')} <span className="text-destructive">*</span>
+                  </label>
                   <input
                     id="workspace-product-link"
                     type="url"
@@ -1878,12 +2202,19 @@ export default function ProjectWorkspaceScreen() {
                     onChange={(event) => setProductLink(event.target.value)}
                     placeholder="https://..."
                     disabled={isSendingProduct}
+                    className="w-full bg-surface-card border border-border/80 focus:border-brand rounded-2xl p-3.5 text-xs font-medium text-text-primary focus:outline-none transition"
                   />
                 </div>
               )}
 
-              <div className="workspace-submit-field">
-                <label htmlFor="workspace-product-note">{t('workspace.noteField')}</label>
+              {/* Note Field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="workspace-product-note" className="text-xs font-black uppercase tracking-wider text-text-muted">
+                    {t('workspace.noteField')}
+                  </label>
+                  <span className="text-[10px] font-bold text-text-muted">{(productNote ?? '').length}/2000</span>
+                </div>
                 <textarea
                   id="workspace-product-note"
                   value={productNote ?? ''}
@@ -1892,31 +2223,32 @@ export default function ProjectWorkspaceScreen() {
                   rows={4}
                   placeholder={t('workspace.describeMaterialsPlaceholder')}
                   disabled={isSendingProduct}
+                  className="w-full bg-surface-card border border-border/80 focus:border-brand rounded-2xl p-3.5 text-xs font-medium text-text-primary focus:outline-none transition resize-none placeholder:text-text-muted/60"
                 />
-                <span className="workspace-submit-count">{(productNote ?? '').length}/2000</span>
               </div>
 
-              <div className="workspace-submit-actions">
+              {/* Footer Actions */}
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-border/60">
                 <button
                   type="button"
-                  className="workspace-submit-secondary"
                   onClick={resetProductModal}
                   disabled={isSendingProduct}
+                  className="px-5 py-2.5 rounded-xl border border-border bg-surface-card hover:bg-surface-muted text-text-primary text-xs font-black transition cursor-pointer disabled:opacity-50"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="workspace-submit-primary"
                   disabled={
                     isSendingProduct ||
                     (productMode === 'file' && !productFile) ||
                     (productMode === 'link' && !productLink.trim())
                   }
+                  className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-brand-foreground text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer"
                 >
                   {isSendingProduct ? (
                     <>
-                      <Loader2 size={15} className="workspace-submit-spin" />
+                      <Loader2 size={15} className="animate-spin" />
                       {t('workspace.sending')}
                     </>
                   ) : (
@@ -1942,73 +2274,30 @@ export default function ProjectWorkspaceScreen() {
         />
       )}
 
-      {reportListOpen && (
-        <div className="rc-modal-backdrop" role="presentation" onClick={handleCloseReportList}>
-          <div
-            className="rc-modal rc-modal-wide"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="rc-report-list-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="rc-modal-header">
-              <div>
-                <h3 id="rc-report-list-title">{t('workspace.issueReports')}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={handleCloseReportList}
-                className="rc-icon-button"
-                title={t('common.close')}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {reportError && (
-              <div className="rc-form">
-                <div className="rc-error">
-                  <AlertCircle size={16} />
-                  <span>{reportError}</span>
-                </div>
-              </div>
-            )}
-            <ReportList
-              reports={contractReports}
-              isLoading={isLoadingReports}
-              currentUserId={user?.id ?? ''}
-              onViewReport={handleViewContractReport}
-            />
-          </div>
-        </div>
-      )}
-
-      {viewReportId && isLoadingReportDetail && (
-        <div className="rc-modal-backdrop" role="presentation">
-          <div className="rc-modal" role="status" aria-live="polite">
-            <div className="rc-list-loading">
-              <Loader2 size={20} className="rc-spin" />
-              <span>{t('common.loading')}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
-        <ReportDetailModal
-          report={selectedReport}
-          contractTitle={activeContract?.title || project.title}
-          currentUserId={user?.id ?? ''}
-          isOpen
-          onClose={handleCloseReportDetail}
-          onRespond={handleRespondToContractReport}
-          onConfirm={handleConfirmContractReport}
-          onEscalate={handleEscalateContractReport}
-          onDisputeCreated={(disputeId) => navigate(`/contracts/${workspaceContractId}/disputes/${disputeId}`)}
-          isResponding={isRespondingReport}
-          isConfirming={isConfirmingReport}
-          isEscalating={isEscalatingReport}
-        />
-      )}
+      <CombinedIssueReportsModal
+        isOpen={reportListOpen || Boolean(viewReportId)}
+        onClose={() => {
+          handleCloseReportList();
+          handleCloseReportDetail();
+        }}
+        reports={contractReports}
+        isLoadingReports={isLoadingReports}
+        reportError={reportError}
+        currentUserId={user?.id ?? ''}
+        contractTitle={activeContract?.title || project.title}
+        workspaceContractId={workspaceContractId}
+        selectedReportId={viewReportId}
+        selectedReportDetail={selectedReport}
+        isLoadingDetail={isLoadingReportDetail}
+        onSelectReport={handleViewContractReport}
+        onRespond={handleRespondToContractReport}
+        onConfirm={handleConfirmContractReport}
+        onEscalate={handleEscalateContractReport}
+        onDisputeCreated={(disputeId) => navigate(`/contracts/${workspaceContractId}/disputes/${disputeId}`)}
+        isResponding={isRespondingReport}
+        isConfirming={isConfirmingReport}
+        isEscalating={isEscalatingReport}
+      />
 
       {promptModalConfig && (
         <WorkspacePromptModal

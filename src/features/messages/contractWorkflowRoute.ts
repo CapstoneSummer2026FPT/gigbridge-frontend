@@ -15,7 +15,7 @@ export function getContractWorkflowRoute(
   switch (contract.status) {
     case ContractStatus.PendingContractDetails:
       return isClient
-        ? { path: `${contractPath}/milestones?mode=contract-edit` }
+        ? { path: `${contractPath}` }
         : { waitMessage: 'The client is updating milestone terms. You can review them once submitted.' };
     case ContractStatus.PendingContractConfirmation:
       // Both parties must be able to inspect the draft. The contract screen itself
