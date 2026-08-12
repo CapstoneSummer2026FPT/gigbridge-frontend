@@ -9,7 +9,6 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
-import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
 import { ESignerRole, ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import {
@@ -84,6 +83,13 @@ export function ClientContractDetails({
     contract?.contractsId,
     contractStatusMayHaveESignDocument(contract.status)
   );
+
+  useEffect(() => {
+    if (contract.status === ContractStatus.PendingSignature &&
+        esignDocumentState.document?.status === ESignDocumentStatus.FullySigned) {
+      onRefresh();
+    }
+  }, [contract.status, esignDocumentState.document?.status, onRefresh]);
   const [formMilestones, setFormMilestones] = useState<any[]>(
     milestones.map(m => ({
       milestoneId: m.id,
@@ -120,9 +126,7 @@ export function ClientContractDetails({
   }, [contract, milestones]);
 
   useEffect(() => {
-    let isCancelled = false;
-
-    const loadESignStatus = async (): Promise<void> => {
+    const loadESignStatus = (): void => {
       if (!contract?.contractsId || contract.status !== ContractStatus.PendingSignature) {
         setIsFullySignedPendingEscrow(false);
         setHasClientSignedContract(false);
@@ -138,47 +142,18 @@ export function ClientContractDetails({
         contractDocument?.signatures.some(
           signature =>
             signature.signerRole === ESignerRole.Client &&
-            signature.status === SignatureStatus.Signed
+            (signature.status === SignatureStatus.Signed ||
+              (signature.status === SignatureStatus.Pending && signature.isDraftValid === true))
         )
       );
-      const hasFreelancerContractSignature = Boolean(
-        contractDocument?.signatures.some(
-          signature =>
-            signature.signerRole === ESignerRole.Freelancer &&
-            signature.status === SignatureStatus.Signed
-        )
-      );
-
-      let isClientJobPostSigned = false;
-      const jobPostId = String(contract.jobPostsId || contract.jobPostId || '');
-      if (!isContractFullySigned && !hasClientContractSignature && jobPostId) {
-        const jobPostDocumentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
-        if (isCancelled) {
-          return;
-        }
-
-        isClientJobPostSigned = Boolean(
-          jobPostDocumentResponse.success &&
-          jobPostDocumentResponse.data?.status === ESignDocumentStatus.FullySigned
-        );
-      }
-
-      const hasClientSignature = hasClientContractSignature || isClientJobPostSigned;
-      setHasClientSignedContract(hasClientSignature);
-      setIsFullySignedPendingEscrow(
-        isContractFullySigned || (hasFreelancerContractSignature && hasClientSignature)
-      );
+      setHasClientSignedContract(hasClientContractSignature);
+      setIsFullySignedPendingEscrow(isContractFullySigned);
     };
 
     void loadESignStatus();
 
-    return () => {
-      isCancelled = true;
-    };
   }, [
     contract?.contractsId,
-    contract?.jobPostId,
-    contract?.jobPostsId,
     contract.status,
     esignDocumentState.document,
     esignDocumentState.isLoading,

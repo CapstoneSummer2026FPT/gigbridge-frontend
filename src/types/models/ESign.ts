@@ -58,13 +58,17 @@ export interface ESignSignatureDto {
   signatureImageUrl?: string | null;
   signatureWidth?: number | null;
   signatureHeight?: number | null;
+  identityOrTaxCode?: string | null;
+  isDraftValid?: boolean;
   status: number;
   signedAt?: string | null;
+  draftSubmittedAt?: string | null;
   declinedAt?: string | null;
   declineReason?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
   createdAt: string;
+  updatedAt?: string | null;
 }
 
 export interface ESignSignature {

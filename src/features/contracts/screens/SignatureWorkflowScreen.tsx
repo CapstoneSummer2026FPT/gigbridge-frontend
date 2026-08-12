@@ -32,8 +32,10 @@ import { SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
+import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 
@@ -192,8 +194,11 @@ export default function SignatureWorkflowScreen() {
   const [preparedSignature, setPreparedSignature] = useState<PreparedSignatureImage | null>(null);
   const [signaturePreviewApplied, setSignaturePreviewApplied] = useState(false);
   const [signaturePreviewError, setSignaturePreviewError] = useState('');
+  const [identityOrTaxCode, setIdentityOrTaxCode] = useState('');
   const [isApplyingSignature, setIsApplyingSignature] = useState(false);
   const [signingInProgress, setSigningInProgress] = useState(false);
+  const [hasSubmittedDraftLocally, setHasSubmittedDraftLocally] = useState(false);
+  const [isEditingSubmittedDraft, setIsEditingSubmittedDraft] = useState(false);
   const submittingRef = useRef(false);
   const pdf = useESignPdf(document);
 
@@ -205,7 +210,44 @@ export default function SignatureWorkflowScreen() {
     [document?.signatures, user?.id]
   );
 
-  const hasSigned = Boolean(currentUserSignature) || contract?.status === ContractStatus.PendingEscrow || contract?.status === ContractStatus.Active;
+  const currentUserDraft = useMemo(
+    () =>
+      document?.signatures.find(
+        signature => signature.userId === user?.id && signature.status === SignatureStatus.Pending
+      ),
+    [document?.signatures, user?.id]
+  );
+  const counterpartDraft = useMemo(
+    () =>
+      document?.signatures.find(
+        signature =>
+          signature.userId !== user?.id &&
+          signature.status === SignatureStatus.Pending &&
+          signature.isDraftValid
+      ),
+    [document?.signatures, user?.id]
+  );
+  const hasStoredDraftSignature = Boolean(currentUserDraft?.signatureImageUrl);
+  const hasPersistedDraft = Boolean(currentUserDraft && hasStoredDraftSignature);
+  const hasSignatureForDraft = signatureDrawn || hasStoredDraftSignature;
+  const normalizedIdentityCode = identityOrTaxCode.replace(/\s/g, '');
+  const isIdentityCodeValid = /^(?:\d{9}|\d{12})$/.test(normalizedIdentityCode);
+
+  const hasSigned = Boolean(currentUserSignature) || (
+    contract?.status !== undefined && [
+      ContractStatus.PendingEscrow,
+      ContractStatus.Active,
+      ContractStatus.Completed,
+      ContractStatus.Cancelled,
+      ContractStatus.Disputed,
+    ].includes(contract.status)
+  );
+  const isCurrentDraftReady = hasSubmittedDraftLocally || Boolean(currentUserDraft?.isDraftValid) || hasSigned;
+  // A recovered image alone is not a completed draft. Keep the user in the
+  // signing flow until CCCD and consent have also been persisted successfully.
+  const canAccessCompletionStep = isCurrentDraftReady;
+  const isWaitingForCounterpart = isCurrentDraftReady && !hasSigned;
+  const doesDraftNeedCompletion = hasPersistedDraft && !isCurrentDraftReady && !hasSigned;
   const isClient = role === UserRole.Client;
   const milestonesTotal = useMemo(
     () => milestones.reduce((sum, milestone) => sum + Number(milestone.amount || 0), 0),
@@ -227,6 +269,36 @@ export default function SignatureWorkflowScreen() {
       setDocumentWarning('contracts.pdfWillGeneratedDesc');
     }
   }, []);
+
+  const refreshWorkflow = useCallback(async (): Promise<void> => {
+    if (!contractId) return;
+
+    try {
+      const response = await contractGetAPI.getContractById(contractId);
+      if (response.success && response.data) {
+        setContract(response.data);
+      }
+      await loadDocument(contractId);
+    } catch (refreshError) {
+      console.warn('Could not refresh the signature workflow state.', refreshError);
+    }
+  }, [contractId, loadDocument]);
+
+  useContractReadyForEscrowEvent(
+    contractId,
+    signatureStep === 'complete' && isWaitingForCounterpart,
+    refreshWorkflow,
+  );
+
+  useEffect(() => {
+    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
+
+    const intervalId = window.setInterval(() => {
+      void refreshWorkflow();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isWaitingForCounterpart, refreshWorkflow, signatureStep]);
 
   useEffect(() => {
     const fetchContractDetails = async () => {
@@ -289,9 +361,31 @@ export default function SignatureWorkflowScreen() {
 
   useEffect(() => {
     if (hasSigned && signatureStep !== 'complete') {
+      setIsEditingSubmittedDraft(false);
+      setSignatureStep('complete');
+      return;
+    }
+
+    if (canAccessCompletionStep && !isEditingSubmittedDraft && signatureStep !== 'complete') {
       setSignatureStep('complete');
     }
-  }, [hasSigned, signatureStep]);
+  }, [canAccessCompletionStep, hasSigned, isEditingSubmittedDraft, signatureStep]);
+
+  useEffect(() => {
+    setIdentityOrTaxCode(currentUserDraft?.identityOrTaxCode ?? '');
+  }, [document?.documentId, currentUserDraft?.identityOrTaxCode]);
+
+  useEffect(() => {
+    if (currentUserDraft?.isDraftValid) {
+      setHasSubmittedDraftLocally(true);
+    }
+  }, [currentUserDraft?.isDraftValid]);
+
+  useEffect(() => {
+    setHasSubmittedDraftLocally(false);
+    setIsEditingSubmittedDraft(false);
+    setSignatureStep('review');
+  }, [contractId]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -339,7 +433,12 @@ export default function SignatureWorkflowScreen() {
 
   const handleApplySignaturePreview = async (): Promise<boolean> => {
     const canvas = canvasRef.current;
-    if (!canvas || !signatureDrawn) return false;
+    if (!hasSignatureForDraft || (signatureDrawn && !canvas)) return false;
+
+    if (!isIdentityCodeValid) {
+      setSignaturePreviewError(t('contracts.identityCodeInvalid'));
+      return false;
+    }
 
     if (!document?.documentId) {
       setSignaturePreviewError(t('contracts.documentNotReadyPreview'));
@@ -350,14 +449,15 @@ export default function SignatureWorkflowScreen() {
     setSignaturePreviewError('');
 
     try {
-      const prepared = prepareSignatureImage(canvas);
+      const prepared = signatureDrawn && canvas ? prepareSignatureImage(canvas) : null;
       setPreparedSignature(prepared);
 
       const response = await esignPostAPI.previewDocumentPdf(
         document.documentId,
-        prepared.imageUrl,
-        prepared.width,
-        prepared.height,
+        prepared?.imageUrl,
+        prepared?.width,
+        prepared?.height,
+        normalizedIdentityCode,
       );
 
       if (!response.success || !response.data) {
@@ -380,7 +480,7 @@ export default function SignatureWorkflowScreen() {
   };
 
   const handleSubmitSignature = async () => {
-    if (!contract || !signatureDrawn) return;
+    if (!contract || !hasSignatureForDraft) return;
     if (submittingRef.current || signingInProgress) return;
 
     if (!policyAccepted) {
@@ -388,7 +488,12 @@ export default function SignatureWorkflowScreen() {
       return;
     }
 
-    if (!signaturePreviewApplied || !preparedSignature) {
+    if (!isIdentityCodeValid) {
+      setError(t('contracts.identityCodeInvalid'));
+      return;
+    }
+
+    if (!signaturePreviewApplied) {
       setError(t('contracts.previewSignatureBeforeCompleting'));
       return;
     }
@@ -400,15 +505,24 @@ export default function SignatureWorkflowScreen() {
       setSuccess('');
 
       const signResponse = await contractPostAPI.sign(contract.contractsId, {
-        signatureImageUrl: preparedSignature.imageUrl,
-        signatureWidth: preparedSignature.width,
-        signatureHeight: preparedSignature.height,
+        ...(preparedSignature
+          ? {
+              signatureImageUrl: preparedSignature.imageUrl,
+              signatureWidth: preparedSignature.width,
+              signatureHeight: preparedSignature.height,
+            }
+          : {}),
+        identityOrTaxCode: normalizedIdentityCode,
+        policyAccepted: true,
+        policyVersion: POLICY_VERSION,
       });
 
       if (!signResponse.success) {
         if (signResponse.statusCode === 409) {
+          setHasSubmittedDraftLocally(true);
           setSuccess(t('contracts.contractSignedSuccess'));
-          await loadDocument(contract.contractsId);
+          await refreshWorkflow();
+          setIsEditingSubmittedDraft(false);
           setSignatureStep('complete');
           return;
         }
@@ -416,9 +530,8 @@ export default function SignatureWorkflowScreen() {
         return;
       }
 
-      setSuccess(t('contracts.contractSignedSuccess'));
-
       const nextStatus = getStatusFromResponse(signResponse.data);
+      setHasSubmittedDraftLocally(true);
       if (nextStatus !== undefined) {
         setContract(prev => (prev ? { ...prev, status: nextStatus } : prev));
       }
@@ -428,7 +541,17 @@ export default function SignatureWorkflowScreen() {
         await loadDocument(contract.contractsId);
       }
 
+      if (nextStatus === ContractStatus.PendingEscrow || nextStatus === ContractStatus.Active) {
+        setSuccess(t('contracts.contractSignedSuccess'));
+      } else {
+        setSuccess(t('contracts.signatureDraftSaved'));
+      }
       setSignatureStep('complete');
+      setIsEditingSubmittedDraft(false);
+      setSignatureDrawn(false);
+      setPreparedSignature(null);
+      setSignaturePreviewApplied(false);
+      setSignaturePreviewPdf(null);
     } catch (err: unknown) {
       console.error('Error signing contract:', err);
       setError(t('contracts.errorSigning'));
@@ -572,7 +695,10 @@ export default function SignatureWorkflowScreen() {
               <button
                 type="button"
                 onClick={() => {
-                  if (signatureStep === 'review' || signatureStep === 'complete') setSignatureStep('capture');
+                  if (signatureStep === 'review' || (signatureStep === 'complete' && !hasSigned)) {
+                    setIsEditingSubmittedDraft(true);
+                    setSignatureStep('capture');
+                  }
                 }}
                 className={`flex items-center gap-3 p-3 rounded-xl transition cursor-pointer text-left ${
                   signatureStep === 'capture'
@@ -598,22 +724,40 @@ export default function SignatureWorkflowScreen() {
               {/* Step 3 Pill */}
               <button
                 type="button"
-                disabled={!hasSigned && signatureStep !== 'complete'}
+                disabled={!canAccessCompletionStep}
                 onClick={() => {
-                  if (hasSigned) setSignatureStep('complete');
+                  if (canAccessCompletionStep) setSignatureStep('complete');
                 }}
                 className={`flex items-center gap-3 p-3 rounded-xl transition text-left ${
                   signatureStep === 'complete'
-                    ? 'bg-emerald-600 text-white font-extrabold shadow-sm'
+                    ? isWaitingForCounterpart || doesDraftNeedCompletion
+                      ? 'bg-amber-500 text-white font-extrabold shadow-sm'
+                      : 'bg-emerald-600 text-white font-extrabold shadow-sm'
                     : 'bg-surface-muted/40 text-text-muted opacity-50 cursor-not-allowed'
                 }`}
               >
                 <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                  signatureStep === 'complete' ? 'bg-white text-emerald-600' : 'bg-border text-text-muted'
+                  signatureStep === 'complete'
+                    ? isWaitingForCounterpart || doesDraftNeedCompletion
+                      ? 'bg-white text-amber-600'
+                      : 'bg-white text-emerald-600'
+                    : 'bg-border text-text-muted'
                 }`}>3</span>
                 <div className="min-w-0 hidden sm:block">
-                  <p className="text-xs font-extrabold truncate">{t('contracts.completed')}</p>
-                  <p className={`text-[10px] truncate ${signatureStep === 'complete' ? 'text-white/80' : 'text-text-muted'}`}>Hoàn tất niêm phong</p>
+                  <p className="text-xs font-extrabold truncate">
+                    {doesDraftNeedCompletion
+                      ? t('contracts.signatureNeedsCompletionTitle')
+                      : isWaitingForCounterpart
+                        ? t('contracts.signatureWaitingTitle')
+                      : t('contracts.completed')}
+                  </p>
+                  <p className={`text-[10px] truncate ${signatureStep === 'complete' ? 'text-white/80' : 'text-text-muted'}`}>
+                    {doesDraftNeedCompletion
+                      ? t('contracts.completeRecoveredSignature')
+                      : isWaitingForCounterpart
+                        ? t('contracts.waitingForOtherSignature')
+                      : 'Hoàn tất niêm phong'}
+                  </p>
                 </div>
               </button>
             </div>
@@ -768,6 +912,7 @@ export default function SignatureWorkflowScreen() {
                         document={document}
                         title={t('contracts.generatedContractDoc')}
                         sourceBlob={signaturePreviewPdf ?? undefined}
+                        hideHeaderToolbar={Boolean(signaturePreviewPdf)}
                       />
                     </div>
                   ) : (
@@ -784,6 +929,51 @@ export default function SignatureWorkflowScreen() {
                       <h2 className="text-base font-black text-text-primary">{t('contracts.drawYourSignature')}</h2>
                       <p className="text-xs text-text-muted font-semibold mt-1">{t('contracts.signatureEmbeddedDesc')}</p>
                     </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="contract-identity-code" className="text-xs font-extrabold text-text-primary">
+                        {t('contracts.identityCodeLabel')}
+                      </label>
+                      <input
+                        id="contract-identity-code"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={identityOrTaxCode}
+                        onChange={event => {
+                          setIdentityOrTaxCode(event.target.value.replace(/\s/g, ''));
+                          setSignaturePreviewApplied(false);
+                          setSignaturePreviewPdf(null);
+                        }}
+                        placeholder={t('contracts.identityCodePlaceholder')}
+                        aria-invalid={identityOrTaxCode.length > 0 && !isIdentityCodeValid}
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-semibold text-text-primary outline-none focus:border-brand"
+                      />
+                      <p className={`text-[11px] font-semibold ${identityOrTaxCode.length > 0 && !isIdentityCodeValid ? 'text-rose-500' : 'text-text-muted'}`}>
+                        {identityOrTaxCode.length > 0 && !isIdentityCodeValid
+                          ? t('contracts.identityCodeInvalid')
+                          : t('contracts.identityCodeHelp')}
+                      </p>
+                    </div>
+
+                    {currentUserDraft?.signatureImageUrl && !signatureDrawn && (
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+                        <p className="text-xs font-extrabold text-amber-700 dark:text-amber-300">
+                          {t('contracts.existingDraftSignature')}
+                        </p>
+                        <img
+                          src={currentUserDraft.signatureImageUrl}
+                          alt={t('contracts.existingDraftSignature')}
+                          className="max-h-20 max-w-[220px] object-contain"
+                        />
+                      </div>
+                    )}
+
+                    {counterpartDraft && (
+                      <div className="rounded-xl border border-brand/30 bg-brand/5 p-3 text-xs font-bold text-text-primary">
+                        {t('contracts.counterpartDraftReady')}
+                      </div>
+                    )}
 
                     {/* Canvas Draw Box */}
                     <div className="space-y-2">
@@ -811,7 +1001,7 @@ export default function SignatureWorkflowScreen() {
                         <button
                           type="button"
                           onClick={() => void handleApplySignaturePreview()}
-                          disabled={!signatureDrawn || signaturePreviewApplied || isApplyingSignature}
+                          disabled={!hasSignatureForDraft || !isIdentityCodeValid || signaturePreviewApplied || isApplyingSignature}
                           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-xs font-extrabold shadow-sm hover:opacity-90 transition cursor-pointer disabled:opacity-40"
                         >
                           {isApplyingSignature ? (
@@ -863,7 +1053,7 @@ export default function SignatureWorkflowScreen() {
                     <button
                       type="button"
                       onClick={handleSubmitSignature}
-                      disabled={!signatureDrawn || !signaturePreviewApplied || !policyAccepted || signingInProgress}
+                      disabled={!hasSignatureForDraft || !isIdentityCodeValid || !signaturePreviewApplied || !policyAccepted || signingInProgress}
                       className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand text-white font-black text-xs hover:opacity-90 transition cursor-pointer disabled:opacity-40 shadow-sm"
                     >
                       {signingInProgress ? (
@@ -874,7 +1064,11 @@ export default function SignatureWorkflowScreen() {
                       ) : (
                         <>
                           <Lock size={16} />
-                          {t('contracts.completeSigning')}
+                          {counterpartDraft
+                            ? t('contracts.finalizeBothSignatures')
+                            : currentUserDraft
+                              ? t('contracts.updateSignatureDraft')
+                              : t('contracts.saveSignatureDraft')}
                         </>
                       )}
                     </button>
@@ -898,16 +1092,28 @@ export default function SignatureWorkflowScreen() {
           {/* STEP 3: COMPLETED */}
           {signatureStep === 'complete' && (
             <div className="p-8 rounded-2xl border border-border bg-background shadow-sm text-center space-y-6 max-w-2xl mx-auto">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
-                <CheckCircle2 size={40} />
+              <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
+                isWaitingForCounterpart || doesDraftNeedCompletion
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                {isWaitingForCounterpart || doesDraftNeedCompletion
+                  ? <Clock size={40} />
+                  : <CheckCircle2 size={40} />}
               </div>
 
               <div className="space-y-2">
                 <h2 className="text-2xl font-black text-text-primary">
-                  {hasSigned ? t('contracts.signatureRecorded') : t('contracts.status')}
+                  {doesDraftNeedCompletion
+                    ? t('contracts.signatureNeedsCompletionTitle')
+                    : isWaitingForCounterpart
+                      ? t('contracts.signatureWaitingTitle')
+                    : t('contracts.signatureRecorded')}
                 </h2>
                 <p className="text-xs font-semibold text-text-muted max-w-md mx-auto leading-relaxed">
-                  {contract.status === ContractStatus.PendingEscrow
+                  {doesDraftNeedCompletion
+                    ? t('contracts.completeRecoveredSignatureDesc')
+                    : contract.status === ContractStatus.PendingEscrow
                     ? isClient
                       ? t('contracts.bothSignedEscrow')
                       : t('contracts.bothSignedWaitEscrow')
@@ -925,12 +1131,26 @@ export default function SignatureWorkflowScreen() {
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-text-muted block">{t('contracts.status')}</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 block mt-0.5">{t('contracts.statusLabels.' + contract.status, { defaultValue: contract.status })}</span>
+                  <span className={`font-bold block mt-0.5 ${
+                    isWaitingForCounterpart || doesDraftNeedCompletion
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-emerald-600 dark:text-emerald-400'
+                  }`}>
+                    {doesDraftNeedCompletion
+                      ? t('contracts.signatureNeedsCompletionStatus')
+                      : isWaitingForCounterpart
+                        ? t('contracts.waitingForOtherSignature')
+                      : t(`contracts.statusLabels.${contract.status}`, {
+                          defaultValue: getContractStatusLabel(contract.status),
+                        })}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-text-muted block">{t('contracts.nextStep')}</span>
                   <span className="font-extrabold text-brand block truncate mt-0.5">
-                    {contract.status === ContractStatus.PendingEscrow && isClient
+                    {doesDraftNeedCompletion
+                      ? t('contracts.completeSignatureDraft')
+                      : contract.status === ContractStatus.PendingEscrow && isClient
                       ? t('contracts.fundEscrow')
                       : contract.status === ContractStatus.Active
                         ? t('contracts.openWorkspace')
@@ -940,7 +1160,7 @@ export default function SignatureWorkflowScreen() {
               </div>
 
               {/* PDF Preview Frame */}
-              {document && (
+              {document && hasSigned && (
                 <div className="rounded-xl border border-border overflow-hidden text-left p-2 bg-card">
                   <ContractPdfViewer
                     document={document}
@@ -951,14 +1171,27 @@ export default function SignatureWorkflowScreen() {
 
               {/* Final Action Buttons */}
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => void pdf.download()}
-                  disabled={signingInProgress || pdf.isPreparing}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-background text-text-primary font-extrabold text-xs hover:border-brand/40 transition cursor-pointer disabled:opacity-40"
-                >
-                  <Download size={16} /> {pdf.isPreparing ? 'Đang tạo PDF…' : 'Tải PDF đã ký kết'}
-                </button>
+                {hasSigned ? (
+                  <button
+                    type="button"
+                    onClick={() => void pdf.download()}
+                    disabled={signingInProgress || pdf.isPreparing}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-background text-text-primary font-extrabold text-xs hover:border-brand/40 transition cursor-pointer disabled:opacity-40"
+                  >
+                    <Download size={16} /> {pdf.isPreparing ? 'Đang tạo PDF…' : 'Tải PDF đã ký kết'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingSubmittedDraft(true);
+                      setSignatureStep('capture');
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-background text-text-primary font-extrabold text-xs hover:border-brand/40 transition cursor-pointer"
+                  >
+                    <PenTool size={16} /> {t('contracts.editSignatureDraft')}
+                  </button>
+                )}
 
                 <button
                   type="button"
