@@ -17,7 +17,7 @@ import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { useMessages } from '../hooks/useMessages';
-import { ConversationStatus } from '../../../types/models/Message';
+import { ConversationStatus, ConversationType } from '../../../types/models/Message';
 import { MESSAGE_ROOMS } from '../messageRooms';
 import { CombinedIssueReportsModal, useReportContract } from '../../report-contracts';
 import {
@@ -383,7 +383,11 @@ export default function MessagesScreen() {
                     : Layers;
 
                 const allRoomConvos = conversationsState.filter(c => c.roomId === currentRoom.id);
-                const allWorkspaceConvos = conversationsState.filter(c => c.roomId === 'room_workspace');
+                // Dispute conversations share the workspace room bucket but have their own
+                // dedicated dispute-detail screen — never surface them here.
+                const allWorkspaceConvos = conversationsState.filter(
+                  c => c.roomId === 'room_workspace' && c.conversationType !== ConversationType.Dispute
+                );
 
                 const activeCount = allWorkspaceConvos.filter(
                   c => c.contractStatus !== ContractStatus.Completed && c.contractStatus !== ContractStatus.Disputed
