@@ -5,6 +5,7 @@ import { contractPostAPI } from '../../../../api/contractAPI/POST';
 import { esignGetAPI } from '../../../../api/esignAPI/GET';
 import { esignPostAPI } from '../../../../api/esignAPI/POST';
 import { ContractStatus } from '../../../../types/models/Contract';
+import { ESignerRole, ESignDocumentStatus, SignatureStatus } from '../../../../types/models/ESign';
 import SignatureWorkflowScreen from '../SignatureWorkflowScreen';
 
 vi.mock('../../../../api/contractAPI/GET', () => ({
@@ -140,6 +141,8 @@ describe('SignatureWorkflowScreen policy acceptance', () => {
 
     const policyLink = screen.getByRole('link', { name: /Bộ chính sách GigBridge/i });
     const policyCheckbox = screen.getByRole('checkbox', { name: /Bộ chính sách GigBridge/i });
+    const signButton = screen.getByRole('button', { name: /Sign contract/i });
+    const identityInput = screen.getByRole('textbox', { name: /Identity number/i });
     const canvas = document.querySelector('canvas');
 
     expect(policyCheckbox).not.toBeChecked();
@@ -168,24 +171,22 @@ describe('SignatureWorkflowScreen policy acceptance', () => {
     fireEvent.click(signButton);
     expect(contractPostAPI.sign).not.toHaveBeenCalled();
 
+    fireEvent.change(identityInput, { target: { value: '001 234 567 890' } });
     fireEvent.click(policyCheckbox);
     expect(signButton).toBeEnabled();
     fireEvent.click(signButton);
 
     await waitFor(() => expect(contractPostAPI.sign).toHaveBeenCalledWith('contract-1', {
       signatureImageUrl: 'data:image/png;base64,c2ln',
-      signatureWidth: 220,
-      signatureHeight: 79,
-      identityOrTaxCode: '012345678901',
+      signatureWidth: 600,
+      signatureHeight: 200,
+      identityOrTaxCode: '001234567890',
       policyAccepted: true,
       policyVersion: 'Ver 1.0 Gigbridge',
     }));
-
-    expect(await screen.findByRole('heading', { name: /Signature submitted/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Edit temporary signature/i })).toBeInTheDocument();
   });
 
-  it('unlocks step three for a recovered draft and asks for missing identity data', async () => {
+  it('restores a valid temporary signature and lets its owner update only the identity number', async () => {
     vi.mocked(esignGetAPI.getDocumentByContract).mockResolvedValue({
       success: true,
       statusCode: 200,
@@ -195,33 +196,57 @@ describe('SignatureWorkflowScreen policy acceptance', () => {
         jobPostId: 'job-1',
         contractId: 'contract-1',
         templateId: 'template-1',
-        documentCode: 'GB-TEST',
+        documentCode: 'GB-001',
         renderedHtmlContent: '<p>Contract</p>',
-        status: 1,
-        currentUserSignerRole: 0,
+        status: ESignDocumentStatus.PendingSignatures,
+        currentUserSignerRole: ESignerRole.Freelancer,
         canCurrentUserSign: true,
         hasFinalArtifact: false,
-        createdAt: '2026-07-21T00:00:00Z',
-        signatures: [{
-          signatureId: 'signature-1',
-          documentId: 'document-1',
-          userId: 'client-user',
-          signerRole: 0,
-          signatureImageUrl: 'https://cdn.test/recovered.png',
-          identityOrTaxCode: null,
-          isDraftValid: false,
-          status: 0,
-          draftSubmittedAt: '2026-08-12T00:00:00Z',
-          createdAt: '2026-08-12T00:00:00Z',
-        }],
+        createdAt: '2026-08-12T00:00:00Z',
+        signatures: [
+          {
+            signatureId: 'signature-1',
+            documentId: 'document-1',
+            userId: 'client-user',
+            signerRole: ESignerRole.Freelancer,
+            signatureImageUrl: 'https://cdn.test/current-signature.png',
+            signatureWidth: 600,
+            signatureHeight: 200,
+            identityOrTaxCode: '123456789',
+            isDraftValid: true,
+            status: SignatureStatus.Pending,
+            draftSubmittedAt: '2026-08-12T01:00:00Z',
+            createdAt: '2026-08-12T01:00:00Z',
+            updatedAt: '2026-08-12T01:00:00Z',
+          },
+        ],
       },
     });
 
     render(<SignatureWorkflowScreen />);
 
-    expect(await screen.findByRole('heading', {
-      name: /Recovered signature needs completion/i,
-    })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Edit temporary signature/i })).toBeInTheDocument();
+    const editButton = await screen.findByRole('button', { name: /Edit temporary signature/i });
+    expect(screen.getByAltText('Saved temporary signature')).toHaveAttribute(
+      'src',
+      'https://cdn.test/current-signature.png'
+    );
+
+    fireEvent.click(editButton);
+
+    const identityInput = screen.getByRole('textbox', { name: /Identity number/i });
+    expect(identityInput).toHaveValue('123456789');
+    expect(screen.getByAltText('Current temporary signature')).toHaveAttribute(
+      'src',
+      'https://cdn.test/current-signature.png'
+    );
+
+    fireEvent.change(identityInput, { target: { value: '001 234 567 890' } });
+    fireEvent.click(screen.getByRole('button', { name: /Update temporary signature/i }));
+
+    await waitFor(() => expect(contractPostAPI.sign).toHaveBeenCalledWith('contract-1', {
+      identityOrTaxCode: '001234567890',
+      policyAccepted: true,
+      policyVersion: 'Ver 1.0 Gigbridge',
+    }));
   });
 });

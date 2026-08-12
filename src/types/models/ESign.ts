@@ -59,7 +59,7 @@ export interface ESignSignatureDto {
   signatureWidth?: number | null;
   signatureHeight?: number | null;
   identityOrTaxCode?: string | null;
-  isDraftValid?: boolean;
+  isDraftValid: boolean;
   status: number;
   signedAt?: string | null;
   draftSubmittedAt?: string | null;

@@ -28,19 +28,18 @@ import { esignPostAPI } from '../../../api/esignAPI/POST';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
-import { SignatureStatus } from '../../../types/models/ESign';
+import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
-import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
-import { ContractPdfViewer } from '../components/ContractPdfViewer';
-import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
 const POLICY_VERSION = 'Ver 1.0 Gigbridge';
+const normalizeIdentityCode = (value: string): string => value.replace(/\s+/g, '');
+const isValidIdentityCode = (value: string): boolean => /^(?:\d{9}|\d{12})$/.test(normalizeIdentityCode(value));
 
 interface SignContractResponse {
   status?: ContractStatus;
@@ -189,6 +188,8 @@ export default function SignatureWorkflowScreen() {
   const [signatureStep, setSignatureStep] = useState<SignatureStep>('review');
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDrawn, setSignatureDrawn] = useState(false);
+  const [identityOrTaxCode, setIdentityOrTaxCode] = useState('');
+  const [identityTouched, setIdentityTouched] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [signaturePreviewPdf, setSignaturePreviewPdf] = useState<Blob | null>(null);
   const [preparedSignature, setPreparedSignature] = useState<PreparedSignatureImage | null>(null);
@@ -205,49 +206,30 @@ export default function SignatureWorkflowScreen() {
   const currentUserSignature = useMemo(
     () =>
       document?.signatures.find(
-        signature => signature.userId === user?.id && signature.status === SignatureStatus.Signed
+        signature => signature.userId === user?.id
       ),
     [document?.signatures, user?.id]
   );
 
-  const currentUserDraft = useMemo(
-    () =>
-      document?.signatures.find(
-        signature => signature.userId === user?.id && signature.status === SignatureStatus.Pending
-      ),
-    [document?.signatures, user?.id]
+  const currentUserDraft = currentUserSignature?.status === SignatureStatus.Pending
+    ? currentUserSignature
+    : undefined;
+  const hasValidCurrentUserDraft = currentUserDraft?.isDraftValid === true;
+  const hasFinalSignature = currentUserSignature?.status === SignatureStatus.Signed;
+  const isContractFinalized =
+    document?.status === ESignDocumentStatus.FullySigned ||
+    contract?.status === ContractStatus.PendingEscrow ||
+    contract?.status === ContractStatus.Active;
+  const hasRecordedSignature = hasValidCurrentUserDraft || hasFinalSignature || isContractFinalized;
+  const existingDraftImageUrl = currentUserDraft?.signatureImageUrl ?? null;
+  const counterpartHasValidDraft = Boolean(
+    document?.signatures.some(
+      signature => signature.userId !== user?.id &&
+        signature.status === SignatureStatus.Pending &&
+        signature.isDraftValid
+    )
   );
-  const counterpartDraft = useMemo(
-    () =>
-      document?.signatures.find(
-        signature =>
-          signature.userId !== user?.id &&
-          signature.status === SignatureStatus.Pending &&
-          signature.isDraftValid
-      ),
-    [document?.signatures, user?.id]
-  );
-  const hasStoredDraftSignature = Boolean(currentUserDraft?.signatureImageUrl);
-  const hasPersistedDraft = Boolean(currentUserDraft && hasStoredDraftSignature);
-  const hasSignatureForDraft = signatureDrawn || hasStoredDraftSignature;
-  const normalizedIdentityCode = identityOrTaxCode.replace(/\s/g, '');
-  const isIdentityCodeValid = /^(?:\d{9}|\d{12})$/.test(normalizedIdentityCode);
-
-  const hasSigned = Boolean(currentUserSignature) || (
-    contract?.status !== undefined && [
-      ContractStatus.PendingEscrow,
-      ContractStatus.Active,
-      ContractStatus.Completed,
-      ContractStatus.Cancelled,
-      ContractStatus.Disputed,
-    ].includes(contract.status)
-  );
-  const isCurrentDraftReady = hasSubmittedDraftLocally || Boolean(currentUserDraft?.isDraftValid) || hasSigned;
-  // A recovered image alone is not a completed draft. Keep the user in the
-  // signing flow until CCCD and consent have also been persisted successfully.
-  const canAccessCompletionStep = isCurrentDraftReady;
-  const isWaitingForCounterpart = isCurrentDraftReady && !hasSigned;
-  const doesDraftNeedCompletion = hasPersistedDraft && !isCurrentDraftReady && !hasSigned;
+  const identityCodeIsValid = isValidIdentityCode(identityOrTaxCode);
   const isClient = role === UserRole.Client;
   const milestonesTotal = useMemo(
     () => milestones.reduce((sum, milestone) => sum + Number(milestone.amount || 0), 0),
@@ -344,306 +326,302 @@ export default function SignatureWorkflowScreen() {
       }
     };
 
-    void fetchContractDetails();
-  }, [contractId, loadDocument, user?.id]);
+    useEffect(() => {
+      void loadContract();
+    }, [loadContract]);
 
-  useEffect(() => {
-    if (!canvasRef.current || signatureStep !== 'capture') return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  }, [signatureStep]);
-
-  useEffect(() => {
-    if (hasSigned && signatureStep !== 'complete') {
-      setIsEditingSubmittedDraft(false);
-      setSignatureStep('complete');
-      return;
-    }
-
-    if (canAccessCompletionStep && !isEditingSubmittedDraft && signatureStep !== 'complete') {
-      setSignatureStep('complete');
-    }
-  }, [canAccessCompletionStep, hasSigned, isEditingSubmittedDraft, signatureStep]);
-
-  useEffect(() => {
-    setIdentityOrTaxCode(currentUserDraft?.identityOrTaxCode ?? '');
-  }, [document?.documentId, currentUserDraft?.identityOrTaxCode]);
-
-  useEffect(() => {
-    if (currentUserDraft?.isDraftValid) {
-      setHasSubmittedDraftLocally(true);
-    }
-  }, [currentUserDraft?.isDraftValid]);
-
-  useEffect(() => {
-    setHasSubmittedDraftLocally(false);
-    setIsEditingSubmittedDraft(false);
-    setSignatureStep('review');
-  }, [contractId]);
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const point = getCanvasPoint(canvas, e);
-    setIsDrawing(true);
-    ctx.beginPath();
-    ctx.moveTo(point.x, point.y);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const point = getCanvasPoint(canvas, e);
-    ctx.lineTo(point.x, point.y);
-    ctx.stroke();
-    setSignatureDrawn(true);
-    setSignaturePreviewApplied(false);
-  };
-
-  const handleMouseUp = () => {
-    setIsDrawing(false);
-  };
-
-  const handleClearSignature = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setSignatureDrawn(false);
-    setPreparedSignature(null);
-    setSignaturePreviewPdf(null);
-    setSignaturePreviewApplied(false);
-    setSignaturePreviewError('');
-  };
-
-  const handleApplySignaturePreview = async (): Promise<boolean> => {
-    const canvas = canvasRef.current;
-    if (!hasSignatureForDraft || (signatureDrawn && !canvas)) return false;
-
-    if (!isIdentityCodeValid) {
-      setSignaturePreviewError(t('contracts.identityCodeInvalid'));
-      return false;
-    }
-
-    if (!document?.documentId) {
-      setSignaturePreviewError(t('contracts.documentNotReadyPreview'));
-      return false;
-    }
-
-    setIsApplyingSignature(true);
-    setSignaturePreviewError('');
-
-    try {
-      const prepared = signatureDrawn && canvas ? prepareSignatureImage(canvas) : null;
-      setPreparedSignature(prepared);
-
-      const response = await esignPostAPI.previewDocumentPdf(
-        document.documentId,
-        prepared?.imageUrl,
-        prepared?.width,
-        prepared?.height,
-        normalizedIdentityCode,
-      );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.message || t('contracts.signaturePreviewFailed'));
+    useEffect(() => {
+      if (document) {
+        setIdentityOrTaxCode(currentUserSignature?.identityOrTaxCode ?? '');
       }
 
-      setSignaturePreviewPdf(response.data);
-      setSignaturePreviewApplied(true);
-      return true;
-    } catch (previewErr) {
-      console.error('Failed to preview signature on PDF:', previewErr);
-      setSignaturePreviewError(
-        previewErr instanceof Error ? previewErr.message : t('contracts.failedApplySignaturePreview')
-      );
-      setSignaturePreviewApplied(false);
-      return false;
-    } finally {
-      setIsApplyingSignature(false);
-    }
-  };
-
-  const handleSubmitSignature = async () => {
-    if (!contract || !hasSignatureForDraft) return;
-    if (submittingRef.current || signingInProgress) return;
-
-    if (!policyAccepted) {
-      setError(t('contracts.acceptPolicyToProceed'));
-      return;
-    }
-
-    if (!isIdentityCodeValid) {
-      setError(t('contracts.identityCodeInvalid'));
-      return;
-    }
-
-    if (!signaturePreviewApplied) {
-      setError(t('contracts.previewSignatureBeforeCompleting'));
-      return;
-    }
-
-    try {
-      submittingRef.current = true;
-      setSigningInProgress(true);
-      setError('');
-      setSuccess('');
-
-      const signResponse = await contractPostAPI.sign(contract.contractsId, {
-        ...(preparedSignature
-          ? {
-              signatureImageUrl: preparedSignature.imageUrl,
-              signatureWidth: preparedSignature.width,
-              signatureHeight: preparedSignature.height,
-            }
-          : {}),
-        identityOrTaxCode: normalizedIdentityCode,
-        policyAccepted: true,
-        policyVersion: POLICY_VERSION,
-      });
-
-      if (!signResponse.success) {
-        if (signResponse.statusCode === 409) {
-          setHasSubmittedDraftLocally(true);
-          setSuccess(t('contracts.contractSignedSuccess'));
-          await refreshWorkflow();
-          setIsEditingSubmittedDraft(false);
-          setSignatureStep('complete');
-          return;
-        }
-        setError(signResponse.message || t('contracts.failedToSign'));
+      if (currentUserDraft) {
+        setPolicyAccepted(currentUserDraft.isDraftValid);
+        setSignatureStep(currentUserDraft.isDraftValid ? 'complete' : 'capture');
         return;
       }
 
-      const nextStatus = getStatusFromResponse(signResponse.data);
-      setHasSubmittedDraftLocally(true);
-      if (nextStatus !== undefined) {
-        setContract(prev => (prev ? { ...prev, status: nextStatus } : prev));
+      if (hasFinalSignature || isContractFinalized) {
+        setSignatureStep('complete');
+        return;
       }
 
-      const returnedDocId = getDocumentIdFromResponse(signResponse.data) || document?.documentId;
-      if (returnedDocId) {
-        await loadDocument(contract.contractsId);
+      if (document && !currentUserSignature) {
+        setPolicyAccepted(false);
+        setSignatureStep('review');
       }
+    }, [currentUserDraft, currentUserSignature, document, hasFinalSignature, isContractFinalized]);
 
-      if (nextStatus === ContractStatus.PendingEscrow || nextStatus === ContractStatus.Active) {
-        setSuccess(t('contracts.contractSignedSuccess'));
-      } else {
-        setSuccess(t('contracts.signatureDraftSaved'));
+    useEffect(() => {
+      if (!canvasRef.current || signatureStep !== 'capture') return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      context.fillStyle = 'white';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.strokeStyle = '#111827';
+      context.lineWidth = 3;
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      setSignatureDrawn(false);
+    }, []);
+
+    useEffect(() => {
+      if (signatureStep === 'capture') {
+        resetCanvas();
       }
-      setSignatureStep('complete');
+    }, [currentUserDraft?.isDraftValid]);
+
+    useEffect(() => {
+      setHasSubmittedDraftLocally(false);
       setIsEditingSubmittedDraft(false);
+      setSignatureStep('review');
+    }, [contractId]);
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const point = getCanvasPoint(canvas, e);
+      setIsDrawing(true);
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isDrawing) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const point = getCanvasPoint(canvas, e);
+      ctx.lineTo(point.x, point.y);
+      ctx.stroke();
+      setSignatureDrawn(true);
+      setSignaturePreviewApplied(false);
+    };
+
+    const handleMouseUp = () => {
+      setIsDrawing(false);
+    };
+
+    const handleClearSignature = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       setSignatureDrawn(false);
       setPreparedSignature(null);
-      setSignaturePreviewApplied(false);
       setSignaturePreviewPdf(null);
-    } catch (err: unknown) {
-      console.error('Error signing contract:', err);
-      setError(t('contracts.errorSigning'));
-    } finally {
-      submittingRef.current = false;
-      setSigningInProgress(false);
-    }
-  };
+      setSignaturePreviewApplied(false);
+      setSignaturePreviewError('');
+    };
 
-  const handleCompleteNavigation = () => {
-    if (!contract) {
-      navigate('/contracts');
-      return;
-    }
+    const handleEditDraft = (): void => {
+      if (!currentUserDraft || isContractFinalized) return;
+      setError('');
+      setSuccess('');
+      setIdentityTouched(false);
+      setSignatureStep('capture');
+    };
 
-    if (contract.status === ContractStatus.PendingEscrow && isClient) {
+    const refreshAfterSigning = useCallback(async (nextStatus?: ContractStatus): Promise<ContractStatus | undefined> => {
+      if (!contractId) return nextStatus;
+
+      const refreshedContract = await contractGetAPI.getContractById(contractId);
+      if (refreshedContract.success && refreshedContract.data) {
+        setContract(refreshedContract.data);
+        await loadDocument(contractId);
+        if (
+          nextStatus === ContractStatus.PendingEscrow &&
+          refreshedContract.data.status === ContractStatus.PendingSignature
+        ) {
+          return nextStatus;
+        }
+        if (
+          nextStatus === ContractStatus.Active &&
+          refreshedContract.data.status !== ContractStatus.Active
+        ) {
+          return nextStatus;
+        }
+        return refreshedContract.data.status;
+      }
+
+      return nextStatus;
+    }, [contractId, loadDocument]);
+
+    useEffect(() => {
+      if (
+        signatureStep !== 'complete' ||
+        !hasValidCurrentUserDraft ||
+        contract?.status !== ContractStatus.PendingSignature
+      ) {
+        return undefined;
+      }
+
+      const intervalId = window.setInterval(() => {
+        void refreshAfterSigning();
+      }, 5_000);
+
+      return () => window.clearInterval(intervalId);
+    }, [contract?.status, hasValidCurrentUserDraft, refreshAfterSigning, signatureStep]);
+
+    const handleSubmitSignature = async () => {
+      if (!contract || !hasSignatureForDraft) return;
+      if (submittingRef.current || signingInProgress) return;
+
+      if (!policyAccepted) {
+        setError(t('contracts.acceptPolicyToProceed'));
+        return;
+      }
+
+      if (!signatureDrawn && !existingDraftImageUrl) {
+        setError('Please draw your signature before submitting.');
+        return;
+      }
+
+      if (!identityCodeIsValid) {
+        setIdentityTouched(true);
+        setError('Identity number must contain exactly 9 or 12 digits.');
+        return;
+      }
+
+      if (!policyAccepted) {
+        setError('Please accept the GigBridge policy before signing.');
+        return;
+      }
+
+      try {
+        submittingRef.current = true;
+        setSigningInProgress(true);
+        setError('');
+        setSuccess('');
+
+        const normalizedIdentityCode = normalizeIdentityCode(identityOrTaxCode);
+        const response = await contractPostAPI.sign(contract.contractsId, {
+          ...(signatureDrawn
+            ? {
+              signatureImageUrl: canvas.toDataURL('image/png'),
+              signatureWidth: canvas.width,
+              signatureHeight: canvas.height,
+            }
+            : {}),
+          identityOrTaxCode: normalizedIdentityCode,
+          policyAccepted: true,
+          policyVersion: POLICY_VERSION,
+        });
+
+        if (!response.success) {
+          if (response.statusCode === 409) {
+            setSignatureStep('complete');
+            setSuccess('This contract has already been finalized. Its signatures can no longer be changed.');
+            await refreshAfterSigning();
+            return;
+          }
+          setError(signResponse.message || t('contracts.failedToSign'));
+          return;
+        }
+
+        const documentId = getDocumentIdFromResponse(response.data);
+        setSignatureStep('complete');
+        setSuccess('Your temporary signature has been saved.');
+        if (documentId) {
+          await loadDocument(contract.contractsId);
+        }
+
+        const finalStatus = await refreshAfterSigning(getStatusFromResponse(response.data));
+        if (finalStatus === ContractStatus.PendingEscrow) {
+          setSuccess(isClient ? 'Contract fully signed. You can now fund escrow.' : 'Contract fully signed. Waiting for the client to fund escrow.');
+          return;
+        }
+
+        if (finalStatus === ContractStatus.Active) {
+          setSuccess('Contract is active. Opening workspace...');
+          window.setTimeout(() => navigate(`/workspace/${contract.contractsId}`), 1200);
+          return;
+        }
+
+        setSuccess('Your temporary signature has been saved. You can update it until the other party submits a valid signature.');
+      } catch (err) {
+        console.error('Failed to submit signature:', err);
+        setError('Failed to submit signature. Please try again.');
+      } finally {
+        submittingRef.current = false;
+        setSigningInProgress(false);
+      }
+    };
+
+    const handleCompleteNavigation = () => {
+      if (!contract) {
+        navigate('/contracts');
+        return;
+      }
+
+      if (contract.status === ContractStatus.PendingEscrow && isClient) {
+        navigate(`/contracts/${contract.contractsId}`);
+        return;
+      }
+
+      if (contract.status === ContractStatus.Active) {
+        navigate(`/workspace/${contract.contractsId}`);
+        return;
+      }
+
       navigate(`/contracts/${contract.contractsId}`);
-      return;
+    };
+
+    if (loading) {
+      return (
+        <AppLayout fullWidth>
+          <div className="flex min-h-[70vh] items-center justify-center p-12 my-auto bg-background">
+            <LemniscateBloomLoader label={t('contracts.loadingContract')} size={56} />
+          </div>
+        </AppLayout>
+      );
     }
 
-    if (contract.status === ContractStatus.Active) {
-      navigate(`/workspace/${contract.contractsId}`);
-      return;
+    if (!contract) {
+      return (
+        <AppLayout fullWidth>
+          <div className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center bg-background space-y-4">
+            <ShieldAlert className="text-rose-500" size={44} />
+            <h2 className="text-xl font-extrabold text-text-primary">{error || t('contracts.contractNotFound')}</h2>
+            <button
+              type="button"
+              onClick={() => navigate('/contracts')}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer"
+            >
+              {t('contracts.backToContracts')}
+            </button>
+          </div>
+        </AppLayout>
+      );
     }
 
-    navigate(`/contracts/${contract.contractsId}`);
-  };
-
-  if (loading) {
     return (
-      <AppLayout fullWidth>
-        <div className="flex min-h-[70vh] items-center justify-center p-12 my-auto bg-background">
-          <LemniscateBloomLoader label={t('contracts.loadingContract')} size={56} />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!contract) {
-    return (
-      <AppLayout fullWidth>
-        <div className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center bg-background space-y-4">
-          <ShieldAlert className="text-rose-500" size={44} />
-          <h2 className="text-xl font-extrabold text-text-primary">{error || t('contracts.contractNotFound')}</h2>
-          <button
-            type="button"
-            onClick={() => navigate('/contracts')}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer"
-          >
-            {t('contracts.backToContracts')}
-          </button>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  return (
-    <AppLayout fullWidth>
-      <div className="min-h-screen bg-background text-text-primary py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-[1400px] mx-auto space-y-6">
-          
-          {/* Professional Header Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
-            <div>
-              <button
-                type="button"
-                onClick={() => navigate(`/contracts/${contract.contractsId}`)}
-                className="inline-flex items-center gap-2 text-xs font-extrabold text-text-muted hover:text-brand transition mb-2 cursor-pointer"
-              >
-                <ArrowLeft size={16} /> {t('contracts.back')}
-              </button>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
-                {t('contracts.esignContract')}
-              </h1>
-              <p className="text-xs font-semibold text-text-muted mt-1">{t('contracts.esignSubtitle')}</p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="rounded-xl border border-border bg-surface-muted/50 px-3.5 py-1.5 text-xs font-mono font-bold text-text-primary">
-                ID: {contract.contractsId}
-              </span>
-            </div>
+      <AppLayout>
+        <div className="signature-workflow-page">
+          <div className="signature-header">
+            <button className="back-btn" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
+              {t('contracts.back')}
+            </button>
+            <h1>{t('contracts.esignContract')}</h1>
+            <p>{t('contracts.esignSubtitle')}</p>
           </div>
 
-          {/* Alert Notifications */}
           {error && (
-            <div className="flex items-center justify-between p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-extrabold shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <AlertCircle size={18} className="shrink-0" />
-                <span>{t(error, { defaultValue: error })}</span>
-              </div>
-              <button type="button" onClick={() => setError('')} className="hover:opacity-75 cursor-pointer">
+            <div className="signature-alert alert-error">
+              <AlertCircle size={18} />
+              {error}
+              <button onClick={() => setError('')}>
                 <X size={16} />
               </button>
             </div>
@@ -668,165 +646,78 @@ export default function SignatureWorkflowScreen() {
             </div>
           )}
 
-          {/* Corporate Stepper Progress Bar */}
-          <nav aria-label="Signature Progress" className="rounded-2xl border border-border bg-background p-2 shadow-sm">
-            <div className="grid grid-cols-3 gap-2">
-              
-              {/* Step 1 Pill */}
-              <button
-                type="button"
-                onClick={() => setSignatureStep('review')}
-                className={`flex items-center gap-3 p-3 rounded-xl transition cursor-pointer text-left ${
-                  signatureStep === 'review'
-                    ? 'bg-brand text-white font-extrabold shadow-sm'
-                    : 'bg-surface-muted/40 text-text-muted hover:text-text-primary'
-                }`}
-              >
-                <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                  signatureStep === 'review' ? 'bg-white text-brand' : 'bg-border text-text-muted'
-                }`}>1</span>
-                <div className="min-w-0 hidden sm:block">
-                  <p className="text-xs font-extrabold truncate">{t('contracts.reviewProposal')}</p>
-                  <p className={`text-[10px] truncate ${signatureStep === 'review' ? 'text-white/80' : 'text-text-muted'}`}>Kiểm tra điều khoản</p>
-                </div>
-              </button>
-
-              {/* Step 2 Pill */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (signatureStep === 'review' || (signatureStep === 'complete' && !hasSigned)) {
-                    setIsEditingSubmittedDraft(true);
-                    setSignatureStep('capture');
-                  }
-                }}
-                className={`flex items-center gap-3 p-3 rounded-xl transition cursor-pointer text-left ${
-                  signatureStep === 'capture'
-                    ? 'bg-brand text-white font-extrabold shadow-sm'
-                    : signatureStep === 'complete'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30'
-                      : 'bg-surface-muted/40 text-text-muted hover:text-text-primary'
-                }`}
-              >
-                <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                  signatureStep === 'capture'
-                    ? 'bg-white text-brand'
-                    : signatureStep === 'complete'
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-border text-text-muted'
-                }`}>2</span>
-                <div className="min-w-0 hidden sm:block">
-                  <p className="text-xs font-extrabold truncate">{t('contracts.proceedToSign')}</p>
-                  <p className={`text-[10px] truncate ${signatureStep === 'capture' ? 'text-white/80' : 'text-text-muted'}`}>Ký chữ ký số</p>
-                </div>
-              </button>
-
-              {/* Step 3 Pill */}
-              <button
-                type="button"
-                disabled={!canAccessCompletionStep}
-                onClick={() => {
-                  if (canAccessCompletionStep) setSignatureStep('complete');
-                }}
-                className={`flex items-center gap-3 p-3 rounded-xl transition text-left ${
-                  signatureStep === 'complete'
-                    ? isWaitingForCounterpart || doesDraftNeedCompletion
-                      ? 'bg-amber-500 text-white font-extrabold shadow-sm'
-                      : 'bg-emerald-600 text-white font-extrabold shadow-sm'
-                    : 'bg-surface-muted/40 text-text-muted opacity-50 cursor-not-allowed'
-                }`}
-              >
-                <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                  signatureStep === 'complete'
-                    ? isWaitingForCounterpart || doesDraftNeedCompletion
-                      ? 'bg-white text-amber-600'
-                      : 'bg-white text-emerald-600'
-                    : 'bg-border text-text-muted'
-                }`}>3</span>
-                <div className="min-w-0 hidden sm:block">
-                  <p className="text-xs font-extrabold truncate">
-                    {doesDraftNeedCompletion
-                      ? t('contracts.signatureNeedsCompletionTitle')
-                      : isWaitingForCounterpart
-                        ? t('contracts.signatureWaitingTitle')
-                      : t('contracts.completed')}
-                  </p>
-                  <p className={`text-[10px] truncate ${signatureStep === 'complete' ? 'text-white/80' : 'text-text-muted'}`}>
-                    {doesDraftNeedCompletion
-                      ? t('contracts.completeRecoveredSignature')
-                      : isWaitingForCounterpart
-                        ? t('contracts.waitingForOtherSignature')
-                      : 'Hoàn tất niêm phong'}
-                  </p>
-                </div>
-              </button>
+          <div className="signature-steps">
+            <div className={`step ${signatureStep === 'review' ? 'active' : 'completed'}`}>
+              <span className="step-number">1</span>
+              <span className="step-label">{t('contracts.reviewProposal')}</span>
             </div>
-          </nav>
+            <div className="step-divider" />
+            <div className={`step ${signatureStep === 'capture' ? 'active' : signatureStep === 'complete' ? 'completed' : ''}`}>
+              <span className="step-number">2</span>
+              <span className="step-label">{t('contracts.proceedToSign')}</span>
+            </div>
+            <div className="step-divider" />
+            <div className={`step ${signatureStep === 'complete' ? 'active' : ''}`}>
+              <span className="step-number">3</span>
+              <span className="step-label">
+                {hasValidCurrentUserDraft && !isContractFinalized
+                  ? 'Waiting for other party'
+                  : t('contracts.completed')}
+              </span>
+            </div>
+          </div>
 
-          {/* STEP 1: REVIEW TERMS */}
           {signatureStep === 'review' && (
-            <div className="space-y-6">
-              
-              {/* Summary Card */}
-              <div className="rounded-2xl border border-border bg-background p-6 shadow-sm space-y-6">
-                
-                {/* Contract Title & Budget Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
+            <div className="signature-step-content">
+              <div className="signature-section">
+                <h2>{t('contracts.contractSummary')}</h2>
+
+                <div className="signature-info-box">
+                  <Clock size={20} />
                   <div>
-                    <h2 className="text-xl font-black text-text-primary">{contract.jobTitle || contract.title}</h2>
-                    <p className="text-xs font-semibold text-text-muted mt-1">{t('contracts.reviewBeforeSigningDesc')}</p>
-                  </div>
-                  <div className="text-left sm:text-right shrink-0">
-                    <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">{t('contracts.budget')}</span>
-                    <span className="text-2xl font-black text-brand">{formatMoney(contract.totalBudget)}</span>
+                    <h3>{t('contracts.reviewBeforeSigning')}</h3>
+                    <p>{t('contracts.reviewBeforeSigningDesc')}</p>
                   </div>
                 </div>
 
-                {/* Parties Involved */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl border border-border bg-surface-muted/30 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm shrink-0">
-                      <User size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-black uppercase text-text-muted block">Bên thuê (Client)</span>
-                      <UserProfileLink userId={contract.clientUserId} role="client" className="text-xs font-extrabold text-text-primary hover:text-brand truncate block">
-                        {contract.clientName || contract.clientEmail || t('contracts.client')}
-                      </UserProfileLink>
-                    </div>
+                <div className="contract-details">
+                  <div className="detail-row">
+                    <span>{t('contracts.document')}</span>
+                    <strong>{contract.jobTitle || contract.title}</strong>
                   </div>
-
-                  <div className="p-4 rounded-xl border border-border bg-surface-muted/30 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
-                      <UserCheck size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-black uppercase text-text-muted block">Bên nhận (Freelancer)</span>
-                      <UserProfileLink userId={contract.freelancerUserId} role="freelancer" className="text-xs font-extrabold text-text-primary hover:text-brand truncate block">
-                        {contract.freelancerName || contract.freelancerEmail || t('contracts.freelancer')}
-                      </UserProfileLink>
-                    </div>
+                  <div className="detail-row">
+                    <span>{t('contracts.budget')}</span>
+                    <strong>{formatMoney(contract.totalBudget)}</strong>
+                  </div>
+                  <div className="detail-row">
+                    <span>{t('contracts.milestoneTotal')}</span>
+                    <strong>{formatMoney(milestonesTotal)}</strong>
+                  </div>
+                  <div className="detail-row">
+                    <span>{t('contracts.startDate')}</span>
+                    <strong>{formatDate(contract.startDate)}</strong>
+                  </div>
+                  <div className="detail-row">
+                    <span>{t('contracts.endDate')}</span>
+                    <strong>{formatDate(contract.endDate)}</strong>
+                  </div>
+                  <div className="detail-row">
+                    <span>{t('contracts.client')}</span>
+                    <strong>
+                      <UserProfileLink userId={contract.clientUserId} role="client">{contract.clientName || contract.clientEmail || t('contracts.client')}</UserProfileLink>
+                    </strong>
+                  </div>
+                  <div className="detail-row">
+                    <span>{t('contracts.freelancer')}</span>
+                    <strong>
+                      <UserProfileLink userId={contract.freelancerUserId} role="freelancer">{contract.freelancerName || contract.freelancerEmail || t('contracts.freelancer')}</UserProfileLink>
+                    </strong>
                   </div>
                 </div>
 
-                {/* Dates & Metrics */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3.5 rounded-xl border border-border bg-surface-muted/20">
-                    <span className="text-[10px] font-bold uppercase text-text-muted block">{t('contracts.startDate')}</span>
-                    <span className="text-xs font-extrabold text-text-primary mt-0.5 block">{formatDate(contract.startDate)}</span>
-                  </div>
-                  <div className="p-3.5 rounded-xl border border-border bg-surface-muted/20">
-                    <span className="text-[10px] font-bold uppercase text-text-muted block">{t('contracts.endDate')}</span>
-                    <span className="text-xs font-extrabold text-text-primary mt-0.5 block">{formatDate(contract.endDate)}</span>
-                  </div>
-                  <div className="p-3.5 rounded-xl border border-border bg-surface-muted/20">
-                    <span className="text-[10px] font-bold uppercase text-text-muted block">Số mốc (Milestones)</span>
-                    <span className="text-xs font-extrabold text-text-primary mt-0.5 block">{milestones.length} cột mốc</span>
-                  </div>
-                  <div className="p-3.5 rounded-xl border border-border bg-surface-muted/20">
-                    <span className="text-[10px] font-bold uppercase text-text-muted block">Tổng tiền cột mốc</span>
-                    <span className="text-xs font-black text-brand mt-0.5 block">{formatMoney(milestonesTotal)}</span>
-                  </div>
+                <div className="contract-description">
+                  <h3>{t('contracts.scope')}</h3>
+                  <p>{contract.jobDescription || contract.description || t('contracts.noDescription')}</p>
                 </div>
 
                 {/* Scope of Work */}
@@ -890,9 +781,9 @@ export default function SignatureWorkflowScreen() {
           {/* STEP 2: CAPTURE & PREVIEW SIGNATURE */}
           {signatureStep === 'capture' && (
             <div className="space-y-6">
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
+
                 {/* Left Col: PDF Document Viewer */}
                 <div className="lg:col-span-7 space-y-3">
                   <div className="flex items-center justify-between">
@@ -922,290 +813,218 @@ export default function SignatureWorkflowScreen() {
                   )}
                 </div>
 
-                {/* Right Col: Signature Canvas & Policy */}
-                <div className="lg:col-span-5 space-y-4">
-                  <div className="rounded-2xl border border-border bg-background p-6 shadow-sm space-y-5">
-                    <div>
-                      <h2 className="text-base font-black text-text-primary">{t('contracts.drawYourSignature')}</h2>
-                      <p className="text-xs text-text-muted font-semibold mt-1">{t('contracts.signatureEmbeddedDesc')}</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="contract-identity-code" className="text-xs font-extrabold text-text-primary">
-                        {t('contracts.identityCodeLabel')}
-                      </label>
-                      <input
-                        id="contract-identity-code"
-                        type="text"
-                        inputMode="numeric"
-                        autoComplete="off"
-                        value={identityOrTaxCode}
-                        onChange={event => {
-                          setIdentityOrTaxCode(event.target.value.replace(/\s/g, ''));
-                          setSignaturePreviewApplied(false);
-                          setSignaturePreviewPdf(null);
-                        }}
-                        placeholder={t('contracts.identityCodePlaceholder')}
-                        aria-invalid={identityOrTaxCode.length > 0 && !isIdentityCodeValid}
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-semibold text-text-primary outline-none focus:border-brand"
-                      />
-                      <p className={`text-[11px] font-semibold ${identityOrTaxCode.length > 0 && !isIdentityCodeValid ? 'text-rose-500' : 'text-text-muted'}`}>
-                        {identityOrTaxCode.length > 0 && !isIdentityCodeValid
-                          ? t('contracts.identityCodeInvalid')
-                          : t('contracts.identityCodeHelp')}
-                      </p>
-                    </div>
-
-                    {currentUserDraft?.signatureImageUrl && !signatureDrawn && (
-                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
-                        <p className="text-xs font-extrabold text-amber-700 dark:text-amber-300">
-                          {t('contracts.existingDraftSignature')}
-                        </p>
-                        <img
-                          src={currentUserDraft.signatureImageUrl}
-                          alt={t('contracts.existingDraftSignature')}
-                          className="max-h-20 max-w-[220px] object-contain"
-                        />
-                      </div>
-                    )}
-
-                    {counterpartDraft && (
-                      <div className="rounded-xl border border-brand/30 bg-brand/5 p-3 text-xs font-bold text-text-primary">
-                        {t('contracts.counterpartDraftReady')}
-                      </div>
-                    )}
-
-                    {/* Canvas Draw Box */}
-                    <div className="space-y-2">
-                      <div className="relative rounded-xl border border-border bg-card p-2">
-                        <canvas
-                          ref={canvasRef}
-                          width={500}
-                          height={180}
-                          className="w-full h-44 touch-none cursor-crosshair rounded-lg bg-background"
-                          onMouseDown={handleMouseDown}
-                          onMouseMove={handleMouseMove}
-                          onMouseUp={handleMouseUp}
-                          onMouseLeave={handleMouseUp}
-                        />
-                        {!signatureDrawn && (
-                          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-text-muted/40">
-                            <PenTool size={26} className="mb-1 opacity-40" />
-                            <span className="text-xs font-bold">{t('contracts.signatureInstructions')}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Canvas Action Buttons */}
-                      <div className="flex items-center justify-between gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => void handleApplySignaturePreview()}
-                          disabled={!hasSignatureForDraft || !isIdentityCodeValid || signaturePreviewApplied || isApplyingSignature}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-xs font-extrabold shadow-sm hover:opacity-90 transition cursor-pointer disabled:opacity-40"
-                        >
-                          {isApplyingSignature ? (
-                            <Loader size={14} className="animate-spin" />
-                          ) : (
-                            <Sparkles size={14} />
-                          )}
-                          {isApplyingSignature
-                            ? t('contracts.applyingSignature')
-                            : signaturePreviewApplied
-                              ? t('contracts.signatureApplied')
-                              : t('contracts.applySignatureToPdf')}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleClearSignature}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-background text-text-muted hover:text-text-primary text-xs font-bold transition cursor-pointer"
-                        >
-                          <RotateCcw size={14} /> {t('contracts.clearSignature')}
-                        </button>
-                      </div>
-
-                      {signaturePreviewError && (
-                        <p className="text-xs font-bold text-rose-500 mt-2">{signaturePreviewError}</p>
-                      )}
-                    </div>
-
-                    {/* Policy Agreement */}
-                    <div className="p-4 rounded-xl border border-border bg-surface-muted/40 space-y-3">
-                      <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                        <input
-                          id="signature-policy-consent"
-                          type="checkbox"
-                          checked={policyAccepted}
-                          onChange={event => setPolicyAccepted(event.target.checked)}
-                          className="mt-0.5 rounded border-border text-brand focus:ring-brand"
-                        />
-                        <span className="text-xs font-bold text-text-primary leading-snug">
-                          Tôi đã đọc, hiểu và đồng ý với{' '}
-                          <a href="/policies" target="_blank" rel="noopener noreferrer" className="text-brand underline hover:opacity-80">
-                            Bộ chính sách GigBridge — {POLICY_VERSION}
-                          </a>
-                        </span>
-                      </label>
-                    </div>
-
-                    {/* Submit Contract Button */}
-                    <button
-                      type="button"
-                      onClick={handleSubmitSignature}
-                      disabled={!hasSignatureForDraft || !isIdentityCodeValid || !signaturePreviewApplied || !policyAccepted || signingInProgress}
-                      className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand text-white font-black text-xs hover:opacity-90 transition cursor-pointer disabled:opacity-40 shadow-sm"
-                    >
-                      {signingInProgress ? (
-                        <>
-                          <Loader size={16} className="animate-spin" />
-                          {t('contracts.signing')}
-                        </>
-                      ) : (
-                        <>
-                          <Lock size={16} />
-                          {counterpartDraft
-                            ? t('contracts.finalizeBothSignatures')
-                            : currentUserDraft
-                              ? t('contracts.updateSignatureDraft')
-                              : t('contracts.saveSignatureDraft')}
-                        </>
-                      )}
-                    </button>
+                <div className="signature-info-box">
+                  <Clock size={20} />
+                  <div>
+                    <p>{t('contracts.signatureSavedDesc')}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Back Button */}
-              <div className="flex items-center justify-between gap-4">
+              <div className="signature-actions">
+                <button className="btn-secondary" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
+                  {t('contracts.back')}
+                </button>
                 <button
-                  type="button"
-                  onClick={() => setSignatureStep('review')}
-                  className="px-5 py-2.5 rounded-xl border border-border bg-background text-text-primary font-extrabold text-xs hover:border-brand/40 transition cursor-pointer"
+                  className="btn-primary"
+                  onClick={() => setSignatureStep(hasRecordedSignature ? 'complete' : 'capture')}
+                  disabled={Boolean(error) && !hasRecordedSignature}
                 >
-                  {t('contracts.backToReview')}
+                  {hasRecordedSignature ? t('contracts.viewStatus') : t('contracts.proceedToSign')} <PenTool size={16} />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 3: COMPLETED */}
-          {signatureStep === 'complete' && (
-            <div className="p-8 rounded-2xl border border-border bg-background shadow-sm text-center space-y-6 max-w-2xl mx-auto">
-              <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
-                isWaitingForCounterpart || doesDraftNeedCompletion
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-              }`}>
-                {isWaitingForCounterpart || doesDraftNeedCompletion
-                  ? <Clock size={40} />
-                  : <CheckCircle2 size={40} />}
-              </div>
+          {signatureStep === 'capture' && (
+            <div className="signature-step-content">
+              <div className="signature-section">
+                <h2>{t('contracts.drawYourSignature')}</h2>
 
-              <div className="space-y-2">
-                <h2 className="text-2xl font-black text-text-primary">
-                  {doesDraftNeedCompletion
-                    ? t('contracts.signatureNeedsCompletionTitle')
-                    : isWaitingForCounterpart
-                      ? t('contracts.signatureWaitingTitle')
-                    : t('contracts.signatureRecorded')}
-                </h2>
-                <p className="text-xs font-semibold text-text-muted max-w-md mx-auto leading-relaxed">
-                  {doesDraftNeedCompletion
-                    ? t('contracts.completeRecoveredSignatureDesc')
-                    : contract.status === ContractStatus.PendingEscrow
-                    ? isClient
-                      ? t('contracts.bothSignedEscrow')
-                      : t('contracts.bothSignedWaitEscrow')
-                    : contract.status === ContractStatus.Active
-                      ? t('contracts.contractActiveWorkspace')
-                      : t('contracts.signatureSavedWaitOther')}
-                </p>
-              </div>
-
-              {/* Status Metadata */}
-              <div className="p-4 rounded-xl border border-border bg-surface-muted/30 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-left">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-text-muted block">{t('contracts.document')}</span>
-                  <span className="font-extrabold text-text-primary block truncate mt-0.5">{contract.jobTitle || contract.title}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-text-muted block">{t('contracts.status')}</span>
-                  <span className={`font-bold block mt-0.5 ${
-                    isWaitingForCounterpart || doesDraftNeedCompletion
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-emerald-600 dark:text-emerald-400'
-                  }`}>
-                    {doesDraftNeedCompletion
-                      ? t('contracts.signatureNeedsCompletionStatus')
-                      : isWaitingForCounterpart
-                        ? t('contracts.waitingForOtherSignature')
-                      : t(`contracts.statusLabels.${contract.status}`, {
-                          defaultValue: getContractStatusLabel(contract.status),
-                        })}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-text-muted block">{t('contracts.nextStep')}</span>
-                  <span className="font-extrabold text-brand block truncate mt-0.5">
-                    {doesDraftNeedCompletion
-                      ? t('contracts.completeSignatureDraft')
-                      : contract.status === ContractStatus.PendingEscrow && isClient
-                      ? t('contracts.fundEscrow')
-                      : contract.status === ContractStatus.Active
-                        ? t('contracts.openWorkspace')
-                        : t('contracts.waitForCounterpart')}
-                  </span>
-                </div>
-              </div>
-
-              {/* PDF Preview Frame */}
-              {document && hasSigned && (
-                <div className="rounded-xl border border-border overflow-hidden text-left p-2 bg-card">
-                  <ContractPdfViewer
-                    document={document}
-                    title={t('contracts.signedPdfPreview')}
+                <div className="signature-identity-field">
+                  <label htmlFor="signature-identity-code">Identity number (ID card/Citizen ID)</label>
+                  <input
+                    id="signature-identity-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={16}
+                    value={identityOrTaxCode}
+                    onBlur={() => setIdentityTouched(true)}
+                    onChange={event => setIdentityOrTaxCode(event.target.value)}
+                    aria-invalid={identityTouched && !identityCodeIsValid}
+                    aria-describedby="signature-identity-help"
+                    placeholder="Enter 9 or 12 digits"
                   />
+                  <p id="signature-identity-help" className={identityTouched && !identityCodeIsValid ? 'field-error' : ''}>
+                    {identityTouched && !identityCodeIsValid
+                      ? 'Identity number must contain exactly 9 or 12 digits.'
+                      : 'This information applies only to this contract and does not update your profile.'}
+                  </p>
                 </div>
-              )}
 
-              {/* Final Action Buttons */}
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                {hasSigned ? (
-                  <button
-                    type="button"
-                    onClick={() => void pdf.download()}
-                    disabled={signingInProgress || pdf.isPreparing}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-background text-text-primary font-extrabold text-xs hover:border-brand/40 transition cursor-pointer disabled:opacity-40"
-                  >
-                    <Download size={16} /> {pdf.isPreparing ? 'Đang tạo PDF…' : 'Tải PDF đã ký kết'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingSubmittedDraft(true);
-                      setSignatureStep('capture');
-                    }}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-background text-text-primary font-extrabold text-xs hover:border-brand/40 transition cursor-pointer"
-                  >
-                    <PenTool size={16} /> {t('contracts.editSignatureDraft')}
-                  </button>
+                {existingDraftImageUrl && (
+                  <div className="current-draft-signature">
+                    <strong>Your current temporary signature</strong>
+                    <img src={existingDraftImageUrl} alt="Current temporary signature" />
+                    <p>Draw below only if you want to replace this signature. Otherwise, the saved image will be retained.</p>
+                  </div>
                 )}
 
+                <div className="signature-pad-wrapper">
+                  <canvas
+                    ref={canvasRef}
+                    width={600}
+                    height={200}
+                    className="signature-pad"
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  />
+                  <div className="signature-instructions">
+                    {t('contracts.signatureInstructions')}
+                  </div>
+                </div>
+
+                <div className="signature-buttons">
+                  <button className="btn-outline" onClick={handleClearSignature}>
+                    {existingDraftImageUrl ? 'Clear new drawing' : t('contracts.clearSignature')}
+                  </button>
+                </div>
+
+                {counterpartHasValidDraft && (
+                  <div className="signature-inline-warning">
+                    The other party already has a valid temporary signature. Submitting this form will finalize and lock the contract.
+                  </div>
+                )}
+
+                {signaturePreviewError && (
+                  <p className="text-xs font-bold text-rose-500 mt-2">{signaturePreviewError}</p>
+                )}
+              </div>
+
+              {/* Policy Agreement */}
+              <div className="p-4 rounded-xl border border-border bg-surface-muted/40 space-y-3">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    id="signature-policy-consent"
+                    type="checkbox"
+                    checked={policyAccepted}
+                    onChange={event => setPolicyAccepted(event.target.checked)}
+                    className="mt-0.5 rounded border-border text-brand focus:ring-brand"
+                  />
+                  <span className="text-xs font-bold text-text-primary leading-snug">
+                    Tôi đã đọc, hiểu và đồng ý với{' '}
+                    <a href="/policies" target="_blank" rel="noopener noreferrer" className="text-brand underline hover:opacity-80">
+                      Bộ chính sách GigBridge — {POLICY_VERSION}
+                    </a>
+                  </span>
+                </label>
+              </div>
+
+              <div className="signature-actions">
+                <button className="btn-secondary" onClick={() => setSignatureStep('review')}>
+                  {t('contracts.backToReview')}
+                </button>
                 <button
-                  type="button"
-                  onClick={handleCompleteNavigation}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-white font-black text-xs hover:opacity-90 transition cursor-pointer shadow-sm"
+                  className="btn-primary"
+                  onClick={handleSubmitSignature}
+                  disabled={
+                    (!signatureDrawn && !existingDraftImageUrl) ||
+                    !identityCodeIsValid ||
+                    !policyAccepted ||
+                    signingInProgress
+                  }
                 >
+                  {signingInProgress ? (
+                    <>
+                      <Loader size={16} className="spinner-small" />
+                      {t('contracts.signing')}
+                    </>
+                  ) : (
+                    <>
+                      <PenTool size={16} />
+                      {counterpartHasValidDraft
+                        ? 'Submit and finalize contract'
+                        : currentUserDraft
+                          ? 'Update temporary signature'
+                          : t('contracts.signContract')}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {signatureStep === 'complete' && (
+            <div className="signature-step-content">
+              <div className="signature-section">
+                <div className="signature-success">
+                  <CheckCircle size={48} className="success-icon" />
+                  <h2>{hasRecordedSignature ? t('contracts.signatureRecorded') : t('contracts.status')}</h2>
+                  <p>
+                    {contract.status === ContractStatus.PendingEscrow
+                      ? isClient
+                        ? t('contracts.bothSignedEscrow')
+                        : t('contracts.bothSignedWaitEscrow')
+                      : contract.status === ContractStatus.Active
+                        ? t('contracts.contractActiveWorkspace')
+                        : t('contracts.signatureSavedWaitOther')}
+                  </p>
+
+                  {hasValidCurrentUserDraft && !isContractFinalized && (
+                    <div className="current-draft-signature compact">
+                      <strong>Your temporary signature is saved</strong>
+                      {existingDraftImageUrl && (
+                        <img src={existingDraftImageUrl} alt="Saved temporary signature" />
+                      )}
+                      <p>Identity number: {identityOrTaxCode}</p>
+                      <p>You may update these details until the other party submits a valid temporary signature.</p>
+                    </div>
+                  )}
+
+                  <div className="signed-info">
+                    <div className="info-item">
+                      <span>{t('contracts.document')}</span>
+                      <strong>{contract.jobTitle || contract.title}</strong>
+                    </div>
+                    <div className="info-item">
+                      <span>{t('contracts.status')}</span>
+                      <strong>{t('contracts.statusLabels.' + contract.status, { defaultValue: contract.status })}</strong>
+                    </div>
+                    <div className="info-item">
+                      <span>{t('contracts.nextStep')}</span>
+                      <strong>
+                        {contract.status === ContractStatus.PendingEscrow && isClient
+                          ? t('contracts.fundEscrow')
+                          : contract.status === ContractStatus.Active
+                            ? t('contracts.openWorkspace')
+                            : t('contracts.waitForCounterpart')}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="signature-actions">
+                {hasValidCurrentUserDraft && !isContractFinalized && (
+                  <button className="btn-secondary" onClick={handleEditDraft} disabled={signingInProgress}>
+                    <PenTool size={16} /> Edit temporary signature
+                  </button>
+                )}
+                {isContractFinalized && (
+                  <button className="btn-secondary" onClick={() => void pdf.download()} disabled={signingInProgress || pdf.isPreparing}>
+                    <Download size={16} /> {pdf.isPreparing ? 'Preparing PDF…' : 'Download signed PDF'}
+                  </button>
+                )}
+                <button className="btn-primary btn-large" onClick={handleCompleteNavigation}>
                   {contract.status === ContractStatus.Active ? t('contracts.openWorkspace') : t('contracts.viewContractDetails')} <FileText size={16} />
                 </button>
               </div>
             </div>
           )}
-
         </div>
-      </div>
-    </AppLayout>
-  );
-}
+      </AppLayout>
+    );
+  }

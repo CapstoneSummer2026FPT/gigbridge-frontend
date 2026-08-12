@@ -173,7 +173,7 @@ export const normalizeESignSignature = (
     signatureWidth: getValue<number | null>(source, 'signatureWidth', 'SignatureWidth') ?? null,
     signatureHeight: getValue<number | null>(source, 'signatureHeight', 'SignatureHeight') ?? null,
     identityOrTaxCode: getValue<string | null>(source, 'identityOrTaxCode', 'IdentityOrTaxCode') ?? null,
-    isDraftValid: Boolean(getValue(source, 'isDraftValid', 'IsDraftValid')),
+    isDraftValid: Boolean(getValue<boolean>(source, 'isDraftValid', 'IsDraftValid') ?? false),
     status: Number(getValue(source, 'status', 'Status') ?? 0),
     signedAt: getValue<string | null>(source, 'signedAt', 'SignedAt') ?? null,
     draftSubmittedAt: getValue<string | null>(source, 'draftSubmittedAt', 'DraftSubmittedAt') ?? null,
@@ -291,13 +291,13 @@ const normalizeDocumentListResponse = (
   data: response.data
     ? normalizeESignDocumentListPage(response.data)
     : {
-        items: [],
-        pageNumber: 1,
-        totalPages: 1,
-        totalCount: 0,
-        hasPreviousPage: false,
-        hasNextPage: false,
-      },
+      items: [],
+      pageNumber: 1,
+      totalPages: 1,
+      totalCount: 0,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    },
 });
 
 export const esignGetAPI = {

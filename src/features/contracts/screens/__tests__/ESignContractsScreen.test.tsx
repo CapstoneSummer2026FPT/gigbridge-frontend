@@ -68,6 +68,7 @@ const signedDocumentDetail = {
       signatureImageUrl: 'https://example.com/signature.png',
       signatureWidth: 300,
       signatureHeight: 100,
+      isDraftValid: false,
       status: SignatureStatus.Signed,
       signedAt: '2026-06-28T02:00:00.000Z',
       declinedAt: null,
