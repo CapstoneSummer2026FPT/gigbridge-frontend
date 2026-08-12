@@ -1,13 +1,23 @@
 {
   "disputes": {
-    "chatTitle": "Dispute conversation",
-    "chatLoading": "Loading conversation...",
-    "chatEmpty": "No messages yet. Start the dispute conversation below.",
-    "chatPlaceholder": "Write a message about this dispute...",
-    "chatSend": "Send",
+    "chatTitle": "Direct Moderation & Dispute Conversation with Administrator",
+    "chatLoading": "Loading dispute conversation...",
+    "chatEmpty": "No messages yet. Send your first message to clarify details with the Administrator.",
+    "chatPlaceholder": "Type your message, evidence details, or explanation for the Administrator...",
+    "chatSend": "Send Message",
     "chatUnavailable": "The dispute conversation is not available yet.",
     "chatLoadFailed": "Unable to load the dispute conversation.",
     "chatSendFailed": "Unable to send the message.",
-    "chatClosed": "This conversation was locked after the dispute was closed."
+    "chatClosed": "This conversation was locked after the Administrator closed the dispute.",
+    "chatGuideTitle": "Direct Communication & Moderation Channel with GigBridge Admin",
+    "chatGuideDesc": "All messages sent here are monitored directly by the GigBridge Moderation Team. Administrators will evaluate statements, evidence, and responses from both parties to issue an official dispute verdict.",
+    "stepFiled": "1. Dispute Filed",
+    "stepInProgress": "2. Admin Reviewing",
+    "stepResolved": "3. Resolution Verdict",
+    "stepClosed": "4. Case Closed",
+    "statusWaitingAdmin": "Waiting Admin",
+    "statusInProgress": "Admin In Progress",
+    "statusResolved": "Resolved",
+    "statusClosed": "Closed"
   }
 }
