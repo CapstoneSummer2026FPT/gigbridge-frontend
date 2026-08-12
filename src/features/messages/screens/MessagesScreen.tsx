@@ -36,6 +36,13 @@ const ROOM_COPY = {
   dispute: { label: 'messages.roomDisputeLabel', description: 'messages.roomDisputeDesc' },
 } as const;
 
+// Dispute conversations share the workspace room bucket (roomId) but have their own
+// dedicated dispute-detail screen — every roomId membership check on this screen must
+// exclude them, or they leak into room counts/badges and can get auto-selected on tab switch.
+function isRoomConvo(c: { roomId: string; conversationType?: number }, roomId: string): boolean {
+  return c.roomId === roomId && c.conversationType !== ConversationType.Dispute;
+}
+
 function countdown(start: string, now: number) {
   const delta = new Date(start).getTime() - now;
   if (delta <= 0) return 'Meeting time reached';
@@ -280,7 +287,7 @@ export default function MessagesScreen() {
 
   const handleSelectRoomTab = (roomId: string) => {
     setActiveRoomId(roomId);
-    const roomConvos = conversationsState.filter(c => c.roomId === roomId);
+    const roomConvos = conversationsState.filter(c => isRoomConvo(c, roomId));
     if (roomConvos.length > 0 && activeConv?.roomId !== roomId) {
       handleSelectConv(roomConvos[0].id);
     }
@@ -324,7 +331,7 @@ export default function MessagesScreen() {
               <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-border pointer-events-none z-0" />
 
               {MESSAGE_ROOMS.map(room => {
-                const convos = conversationsState.filter(c => c.roomId === room.id);
+                const convos = conversationsState.filter(c => isRoomConvo(c, room.id));
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isSelected = activeRoomId === room.id;
                 const RoomIcon = room.type === 'invited'
@@ -382,15 +389,13 @@ export default function MessagesScreen() {
                     ? CheckCircle
                     : Layers;
 
-                const allRoomConvos = conversationsState.filter(c => c.roomId === currentRoom.id);
-                // Dispute conversations share the workspace room bucket but have their own
-                // dedicated dispute-detail screen — never surface them here.
-                const allWorkspaceConvos = conversationsState.filter(
-                  c => c.roomId === 'room_workspace' && c.conversationType !== ConversationType.Dispute
-                );
+                const allRoomConvos = conversationsState.filter(c => isRoomConvo(c, currentRoom.id));
+                const allWorkspaceConvos = conversationsState.filter(c => isRoomConvo(c, 'room_workspace'));
 
                 const activeCount = allWorkspaceConvos.filter(
-                  c => c.contractStatus !== ContractStatus.Completed && c.contractStatus !== ContractStatus.Disputed
+                  c => c.contractStatus !== ContractStatus.Completed &&
+                    c.contractStatus !== ContractStatus.Disputed &&
+                    c.contractStatus !== ContractStatus.Cancelled
                 ).length;
                 const completedCount = allWorkspaceConvos.filter(
                   c => c.contractStatus === ContractStatus.Completed
@@ -405,7 +410,9 @@ export default function MessagesScreen() {
                       if (workspaceFilterTab === 'completed') return c.contractStatus === ContractStatus.Completed;
                       if (workspaceFilterTab === 'disputed') return c.contractStatus === ContractStatus.Disputed;
                       if (workspaceFilterTab === 'all') return true;
-                      return c.contractStatus !== ContractStatus.Completed && c.contractStatus !== ContractStatus.Disputed;
+                      return c.contractStatus !== ContractStatus.Completed &&
+                        c.contractStatus !== ContractStatus.Disputed &&
+                        c.contractStatus !== ContractStatus.Cancelled;
                     })
                   : allRoomConvos;
 
@@ -548,6 +555,10 @@ export default function MessagesScreen() {
                             {conv.contractStatus === ContractStatus.Disputed ? (
                               <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider">
                                 <LockKeyhole size={10} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                              </span>
+                            ) : conv.contractStatus === ContractStatus.Cancelled ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground text-[9px] font-black uppercase tracking-wider">
+                                <Lock size={10} /> {t('workspace.disputeClosedBadge', { defaultValue: 'Đã đóng tranh chấp' })}
                               </span>
                             ) : conv.contractStatus === ContractStatus.Completed ? (
                               <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[9px] font-black uppercase tracking-wider">
