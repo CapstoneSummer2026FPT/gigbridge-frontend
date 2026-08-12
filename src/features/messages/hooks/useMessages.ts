@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { Message as MsgMessage, MsgConversation } from '../../../types/models/Message';
-import { ConversationStatus } from '../../../types/models/Message';
+import { ConversationStatus, ConversationType } from '../../../types/models/Message';
 
 import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
@@ -587,18 +587,24 @@ export function useMessages() {
         setConversationsState(mapped);
 
         // Auto select once, but keep the current room stable on later refreshes.
+        // Dispute conversations are never shown in this screen's room list (they have
+        // their own dedicated dispute-detail screen), so they must never be picked as
+        // the default either — otherwise landing here can silently open an admin/dispute
+        // chat just because it happened to have the most recent message.
+        const selectableConvos = mapped.filter((c: any) => c.conversationType !== ConversationType.Dispute);
+
         setActiveConvId(currentActiveConvId => {
-          if (mapped.length === 0) return '';
-          if (currentActiveConvId && mapped.some((c: any) => c.id === currentActiveConvId)) {
+          if (selectableConvos.length === 0) return '';
+          if (currentActiveConvId && selectableConvos.some((c: any) => c.id === currentActiveConvId)) {
             return currentActiveConvId;
           }
 
           const queryConvId = new URLSearchParams(location.search).get('conversationId');
           const stateConvId = queryConvId || location.state?.activeConvId;
           const stateProposalId = location.state?.proposalId;
-          const foundById = mapped.find((c: any) => c.id === stateConvId);
-          const foundByProposal = mapped.find((c: any) => c.proposalId === stateProposalId);
-          return foundById ? foundById.id : foundByProposal ? foundByProposal.id : mapped[0].id;
+          const foundById = selectableConvos.find((c: any) => c.id === stateConvId);
+          const foundByProposal = selectableConvos.find((c: any) => c.proposalId === stateProposalId);
+          return foundById ? foundById.id : foundByProposal ? foundByProposal.id : selectableConvos[0].id;
         });
       }
     } catch (err) {

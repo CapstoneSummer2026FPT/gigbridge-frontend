@@ -15,6 +15,7 @@
     "activeBadge": "Active",
     "completedBadge": "Completed",
     "disputedBadge": "Disputed",
+    "disputeClosedBadge": "Dispute closed",
     "noProjectsInTab": "No projects in this tab.",
     "milestoneManagement": "Milestone Management",
     "trackDeliverables": "Track deliverables and payments for {{title}}",
