@@ -18,7 +18,7 @@ import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { useMessages } from '../hooks/useMessages';
 import { ConversationStatus } from '../../../types/models/Message';
 import { MESSAGE_ROOMS } from '../messageRooms';
-import { ReportDetailModal, useReportContract } from '../../report-contracts';
+import { CombinedIssueReportsModal, useReportContract } from '../../report-contracts';
 import {
   ContractReportResolutionAction,
   ContractReportStatus,
@@ -233,6 +233,9 @@ export default function MessagesScreen() {
   const [viewReportId, setViewReportId] = useState<string | null>(null);
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
   const {
+    reports: contractReports,
+    isLoading: isLoadingReports,
+    loadReports,
     selectedReport,
     loadReportDetail,
     isLoadingDetail: isLoadingReportDetail,
@@ -248,6 +251,7 @@ export default function MessagesScreen() {
   const openReportDetail = async (contractId: string, reportId: string) => {
     setViewReportId(reportId);
     setUnavailableReportId(null);
+    void loadReports(contractId);
     const response = await loadReportDetail(contractId, reportId);
     if (!response.success || !response.data) {
       setUnavailableReportId(reportId);
@@ -1242,31 +1246,45 @@ export default function MessagesScreen() {
         </div>
       )}
 
-      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
-        <ReportDetailModal
-          report={selectedReport}
-          contractTitle={activeConv?.job.title || t('workspace.disputeTitlePrefix')}
-          currentUserId={user?.id ?? ''}
-          isOpen
-          onClose={closeReportDetail}
-          onRespond={async (input) => {
-            const response = await respondToReport(selectedReport.contractId, selectedReport.id, input);
-            return { success: response.success, message: response.message };
-          }}
-          onConfirm={async (isAccepted) => {
-            const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
-            return { success: response.success, message: response.message };
-          }}
-          onEscalate={async (input) => {
-            const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, input);
-            return { success: response.success, message: response.message, disputeId: response.data?.id };
-          }}
-          onDisputeCreated={(disputeId) => navigate(`/contracts/${selectedReport.contractId}/disputes/${disputeId}`)}
-          isResponding={isRespondingReport}
-          isConfirming={isConfirmingReport}
-          isEscalating={isEscalatingReport}
-        />
-      )}
+      <CombinedIssueReportsModal
+        isOpen={Boolean(viewReportId)}
+        onClose={closeReportDetail}
+        reports={contractReports}
+        isLoadingReports={isLoadingReports}
+        currentUserId={user?.id ?? ''}
+        contractTitle={activeConv?.job.title || t('workspace.disputeTitlePrefix')}
+        workspaceContractId={selectedReport?.contractId || ''}
+        selectedReportId={viewReportId}
+        selectedReportDetail={selectedReport}
+        isLoadingDetail={isLoadingReportDetail}
+        onSelectReport={(repId) => {
+          if (selectedReport?.contractId) {
+            void loadReportDetail(selectedReport.contractId, repId);
+            setViewReportId(repId);
+          }
+        }}
+        onRespond={async (input) => {
+          if (!selectedReport) return { success: false };
+          const response = await respondToReport(selectedReport.contractId, selectedReport.id, input);
+          return { success: response.success, message: response.message };
+        }}
+        onConfirm={async (isAccepted) => {
+          if (!selectedReport) return { success: false };
+          const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
+          return { success: response.success, message: response.message };
+        }}
+        onEscalate={async (input) => {
+          if (!selectedReport) return { success: false };
+          const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, input);
+          return { success: response.success, message: response.message, disputeId: response.data?.id };
+        }}
+        onDisputeCreated={(disputeId) => {
+          if (selectedReport) navigate(`/contracts/${selectedReport.contractId}/disputes/${disputeId}`);
+        }}
+        isResponding={isRespondingReport}
+        isConfirming={isConfirmingReport}
+        isEscalating={isEscalatingReport}
+      />
     </AppLayout>
   );
 }

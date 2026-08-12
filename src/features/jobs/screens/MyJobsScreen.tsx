@@ -12,6 +12,7 @@ import {
   Crown,
   Eye,
   FileText,
+  Filter,
   Globe,
   HelpCircle,
   LayoutGrid,
@@ -42,16 +43,9 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
 import '../../premium/styles/premium.css';
+import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
-
-const STATUS_FILTERS: { key: StatusFilter; labelKey: string }[] = [
-  { key: 'open', labelKey: 'myJobs.filter.open' },
-  { key: 'draft', labelKey: 'myJobs.filter.draft' },
-  { key: 'closed', labelKey: 'myJobs.filter.closed' },
-  { key: 'cancelled', labelKey: 'myJobs.filter.cancelled' },
-  { key: 'all', labelKey: 'myJobs.filter.all' },
-];
 
 const statusToFilter = (status?: number | null): StatusFilter => {
   if (status === JobPostStatus.Draft) return 'draft';
@@ -207,6 +201,58 @@ export default function MyJobsScreen() {
     return base;
   }, [jobs]);
 
+  const statusSelectOptions: SelectOption[] = useMemo(
+    () => [
+      {
+        value: 'open',
+        label: t('myJobs.filter.open', { defaultValue: 'Đang tuyển' }),
+        badge: String(counts.open),
+      },
+      {
+        value: 'draft',
+        label: t('myJobs.filter.draft', { defaultValue: 'Bản nháp' }),
+        badge: String(counts.draft),
+      },
+      {
+        value: 'closed',
+        label: t('myJobs.filter.closed', { defaultValue: 'Đã đóng' }),
+        badge: String(counts.closed),
+      },
+      {
+        value: 'cancelled',
+        label: t('myJobs.filter.cancelled', { defaultValue: 'Đã hủy' }),
+        badge: String(counts.cancelled),
+      },
+      {
+        value: 'all',
+        label: t('myJobs.filter.all', { defaultValue: 'Tất cả trạng thái' }),
+        badge: String(counts.all),
+      },
+    ],
+    [counts, t]
+  );
+
+  const visibilitySelectOptions: SelectOption[] = useMemo(
+    () => [
+      {
+        value: String(JobPostVisibility.Public),
+        label: t('myJobs.visibility.public', { defaultValue: 'Công khai' }),
+        icon: <Globe size={14} />,
+      },
+      {
+        value: String(JobPostVisibility.Private),
+        label: t('myJobs.visibility.private', { defaultValue: 'Riêng tư' }),
+        icon: <Lock size={14} />,
+      },
+      {
+        value: String(JobPostVisibility.InviteOnly),
+        label: t('myJobs.visibility.inviteOnly', { defaultValue: 'Chỉ mời' }),
+        icon: <UserRoundCheck size={14} />,
+      },
+    ],
+    [t]
+  );
+
   const filteredJobs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -353,32 +399,17 @@ export default function MyJobsScreen() {
               />
             </div>
 
-            {/* Status Tabs */}
-            <div className="flex items-center gap-1 p-1 rounded-2xl bg-surface-muted/60 border border-border/60 flex-wrap">
-              {STATUS_FILTERS.map(tab => {
-                const isSelected = statusFilter === tab.key;
-                const tabCount = counts[tab.key];
-
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setStatusFilter(tab.key)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-surface-card text-brand shadow-xs border border-border/60'
-                        : 'text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    <span>{t(tab.labelKey, { defaultValue: tab.key.toUpperCase() })}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      isSelected ? 'bg-brand/15 text-brand' : 'bg-border/60 text-text-muted'
-                    }`}>
-                      {tabCount}
-                    </span>
-                  </button>
-                );
-              })}
+            {/* Status CustomSelect Dropdown */}
+            <div className="w-full sm:w-64 shrink-0">
+              <CustomSelect
+                value={statusFilter}
+                onChange={val => setStatusFilter(val as StatusFilter)}
+                options={statusSelectOptions}
+                placeholder={t('myJobs.filterByStatus', { defaultValue: 'Lọc theo trạng thái' })}
+                leftIcon={<Filter size={14} />}
+                searchable={false}
+                ariaLabel={t('myJobs.filterByStatus', { defaultValue: 'Lọc theo trạng thái' })}
+              />
             </div>
 
             {/* Compact vs Grid View Switcher */}
@@ -746,39 +777,16 @@ export default function MyJobsScreen() {
                         </button>
 
                         {canChangeVisibility(job) && (
-                          <details className="relative inline-block">
-                            <summary className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-muted hover:bg-border/60 text-text-primary transition-all text-xs font-bold cursor-pointer list-none shadow-2xs">
-                              {visInfo.icon}
-                              <span>{visInfo.label}</span>
-                              <ChevronDown size={13} />
-                            </summary>
-                            <div className="mj-ai-dropdown-panel space-y-1">
-                              {[
-                                { value: JobPostVisibility.Public, label: t('myJobs.visibility.public', { defaultValue: 'Công khai' }), icon: <Globe size={14} /> },
-                                { value: JobPostVisibility.Private, label: t('myJobs.visibility.private', { defaultValue: 'Riêng tư' }), icon: <Lock size={14} /> },
-                                { value: JobPostVisibility.InviteOnly, label: t('myJobs.visibility.inviteOnly', { defaultValue: 'Chỉ mời' }), icon: <UserRoundCheck size={14} /> },
-                              ].map(opt => (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  disabled={isPending || job.visibility === 3}
-                                  onClick={event => {
-                                    event.currentTarget.closest('details')?.removeAttribute('open');
-                                    void patchVisibility(job, opt.value);
-                                  }}
-                                  className={`mj-ai-dropdown-item justify-between ${
-                                    job.visibility === opt.value ? 'font-black text-brand bg-brand/10' : ''
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {opt.icon}
-                                    <span>{opt.label}</span>
-                                  </div>
-                                  {job.visibility === opt.value && <CheckCircle2 size={13} className="text-brand" />}
-                                </button>
-                              ))}
-                            </div>
-                          </details>
+                          <div className="w-36 shrink-0">
+                            <CustomSelect
+                              value={String(job.visibility)}
+                              onChange={val => void patchVisibility(job, Number(val) as JobPostVisibility)}
+                              options={visibilitySelectOptions}
+                              disabled={isPending || job.visibility === 3}
+                              searchable={false}
+                              ariaLabel="Quyền riêng tư"
+                            />
+                          </div>
                         )}
 
                         {canClose(job) && (

@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../../app/components/ui/alert-dialog';
-import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
+import { useReportContract, RaiseIssueModal, CombinedIssueReportsModal } from '../../../features/report-contracts';
 import { toast } from 'sonner';
 import {
   parseReportSystemMessageMetadata,
@@ -1942,73 +1942,30 @@ export default function ProjectWorkspaceScreen() {
         />
       )}
 
-      {reportListOpen && (
-        <div className="rc-modal-backdrop" role="presentation" onClick={handleCloseReportList}>
-          <div
-            className="rc-modal rc-modal-wide"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="rc-report-list-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="rc-modal-header">
-              <div>
-                <h3 id="rc-report-list-title">{t('workspace.issueReports')}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={handleCloseReportList}
-                className="rc-icon-button"
-                title={t('common.close')}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {reportError && (
-              <div className="rc-form">
-                <div className="rc-error">
-                  <AlertCircle size={16} />
-                  <span>{reportError}</span>
-                </div>
-              </div>
-            )}
-            <ReportList
-              reports={contractReports}
-              isLoading={isLoadingReports}
-              currentUserId={user?.id ?? ''}
-              onViewReport={handleViewContractReport}
-            />
-          </div>
-        </div>
-      )}
-
-      {viewReportId && isLoadingReportDetail && (
-        <div className="rc-modal-backdrop" role="presentation">
-          <div className="rc-modal" role="status" aria-live="polite">
-            <div className="rc-list-loading">
-              <Loader2 size={20} className="rc-spin" />
-              <span>{t('common.loading')}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
-        <ReportDetailModal
-          report={selectedReport}
-          contractTitle={activeContract?.title || project.title}
-          currentUserId={user?.id ?? ''}
-          isOpen
-          onClose={handleCloseReportDetail}
-          onRespond={handleRespondToContractReport}
-          onConfirm={handleConfirmContractReport}
-          onEscalate={handleEscalateContractReport}
-          onDisputeCreated={(disputeId) => navigate(`/contracts/${workspaceContractId}/disputes/${disputeId}`)}
-          isResponding={isRespondingReport}
-          isConfirming={isConfirmingReport}
-          isEscalating={isEscalatingReport}
-        />
-      )}
+      <CombinedIssueReportsModal
+        isOpen={reportListOpen || Boolean(viewReportId)}
+        onClose={() => {
+          handleCloseReportList();
+          handleCloseReportDetail();
+        }}
+        reports={contractReports}
+        isLoadingReports={isLoadingReports}
+        reportError={reportError}
+        currentUserId={user?.id ?? ''}
+        contractTitle={activeContract?.title || project.title}
+        workspaceContractId={workspaceContractId}
+        selectedReportId={viewReportId}
+        selectedReportDetail={selectedReport}
+        isLoadingDetail={isLoadingReportDetail}
+        onSelectReport={handleViewContractReport}
+        onRespond={handleRespondToContractReport}
+        onConfirm={handleConfirmContractReport}
+        onEscalate={handleEscalateContractReport}
+        onDisputeCreated={(disputeId) => navigate(`/contracts/${workspaceContractId}/disputes/${disputeId}`)}
+        isResponding={isRespondingReport}
+        isConfirming={isConfirmingReport}
+        isEscalating={isEscalatingReport}
+      />
 
       {promptModalConfig && (
         <WorkspacePromptModal
