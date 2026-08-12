@@ -38,7 +38,22 @@ export function ContractLegalCard({
   const signedCount = document?.signatures.filter(
     signature => signature.status === SignatureStatus.Signed
   ).length ?? 0;
-  const signerCount = document?.signatures.length ?? 0;
+  const validDraftCount = document?.signatures.filter(
+    signature =>
+      signature.status === SignatureStatus.Pending &&
+      signature.isDraftValid === true
+  ).length ?? 0;
+  const signerCount = document ? Math.max(document.signatures.length, 2) : 0;
+  const isFinalized = document?.status === ESignDocumentStatus.FullySigned;
+  const currentUserSignature = document?.signatures.find(
+    signature => signature.signerRole === document.currentUserSignerRole
+  );
+  const hasValidCurrentUserDraft =
+    currentUserSignature?.status === SignatureStatus.Pending &&
+    currentUserSignature.isDraftValid === true;
+  const hasIncompleteCurrentUserDraft =
+    currentUserSignature?.status === SignatureStatus.Pending &&
+    currentUserSignature.isDraftValid !== true;
   const archivePath = document
     ? `/contracts/esign?document=${encodeURIComponent(document.documentId)}`
     : '/contracts/esign';
@@ -99,8 +114,10 @@ export function ContractLegalCard({
               </div>
               {signerCount > 0 ? (
                 <span className="text-xs font-bold text-muted-foreground">
-                  {t('contracts.legal.signatureProgress', {
-                    signed: signedCount,
+                  {t(isFinalized
+                    ? 'contracts.legal.signatureProgress'
+                    : 'contracts.legal.draftProgress', {
+                    signed: isFinalized ? signedCount : validDraftCount,
                     total: signerCount,
                   })}
                 </span>
@@ -113,7 +130,11 @@ export function ContractLegalCard({
                 : document.status === ESignDocumentStatus.Expired ||
                     document.status === ESignDocumentStatus.Voided
                   ? t('contracts.legal.readOnlyDocumentDescription')
-                  : t('contracts.legal.documentDescription')}
+                  : hasValidCurrentUserDraft
+                    ? t('contracts.legal.waitingForCounterpartDescription')
+                    : hasIncompleteCurrentUserDraft
+                      ? t('contracts.legal.incompleteDraftDescription')
+                      : t('contracts.legal.documentDescription')}
             </p>
           </div>
         ) : documentState.error ? (
