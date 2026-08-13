@@ -1,6 +1,8 @@
 import { useRef, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { useTranslation } from '../../../hooks/useTranslation';
 import {
+  Activity,
   AlertCircle,
   Briefcase,
   CheckCircle,
@@ -44,15 +46,39 @@ import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { UserRole } from '../../../types/models/User';
 import '../styles/admin-dispute-management-screen.css';
 
-const formatAuditAction = (action: string): string => {
-  if (action === 'Dispute.RequestEvidence') return 'Evidence Requested';
-  if (action === 'Dispute.UpdateStatus') return 'Status Updated';
-  if (action === 'Dispute.Resolve') return 'Dispute Resolved';
-  if (action === 'Dispute.ReviewEvidence') return 'Evidence Reviewed';
+const formatAuditAction = (t: TFunction, action: string): string => {
+  if (action === 'Dispute.RequestEvidence') return t('admin.disputes.auditLog.actions.requestEvidence', 'Evidence Requested');
+  if (action === 'Dispute.UpdateStatus') return t('admin.disputes.auditLog.actions.updateStatus', 'Status Updated');
+  if (action === 'Dispute.Resolve') return t('admin.disputes.auditLog.actions.resolve', 'Dispute Resolved');
+  if (action === 'Dispute.ReviewEvidence') return t('admin.disputes.auditLog.actions.reviewEvidence', 'Evidence Reviewed');
   return action.replace('.', ' • ');
 };
 
-const renderAuditContent = (rawJson: string | null) => {
+const USER_AUDIT_ACTION_KEYS: Record<number, string> = {
+  0: 'admin.disputes.userTimeline.actions.confirmedParticipation',
+  1: 'admin.disputes.userTimeline.actions.signedContract',
+  2: 'admin.disputes.userTimeline.actions.requestedEarlyStart',
+  3: 'admin.disputes.userTimeline.actions.submittedMilestone',
+  4: 'admin.disputes.userTimeline.actions.fundedEscrow',
+  5: 'admin.disputes.userTimeline.actions.approvedMilestone',
+  6: 'admin.disputes.userTimeline.actions.reportedIssue',
+  7: 'admin.disputes.userTimeline.actions.createdDispute',
+  8: 'admin.disputes.userTimeline.actions.escalatedDispute',
+};
+
+const formatUserAuditAction = (t: TFunction, actionType: number): string => {
+  const key = USER_AUDIT_ACTION_KEYS[actionType];
+  return key ? t(key) : `Action ${actionType}`;
+};
+
+const formatUserAuditRole = (t: TFunction, role: number): string => {
+  if (role === 0) return t('admin.disputes.userTimeline.roles.client', 'Client');
+  if (role === 1) return t('admin.disputes.userTimeline.roles.freelancer', 'Freelancer');
+  if (role === 2) return t('admin.disputes.userTimeline.roles.admin', 'Admin');
+  return t('admin.disputes.userTimeline.roles.unknown', 'Unknown');
+};
+
+const renderAuditContent = (t: TFunction, rawJson: string | null) => {
   if (!rawJson) return <span className="text-text-muted italic">—</span>;
   try {
     const parsed = JSON.parse(rawJson);
@@ -64,22 +90,22 @@ const renderAuditContent = (rawJson: string | null) => {
     if (entries.length === 0) return <span className="text-text-muted italic">—</span>;
 
     const formatKey = (key: string): string => {
-      if (key === 'reason') return 'Reason';
-      if (key === 'target') return 'Target Participant';
-      if (key === 'Deadline' || key === 'deadline') return 'Deadline';
-      if (key === 'groupId') return 'Request Group ID';
-      if (key === 'evidenceIds') return 'Evidence Items';
-      if (key === 'status') return 'New Status';
-      if (key === 'oldStatus') return 'Previous Status';
-      if (key === 'resolution') return 'Resolution';
-      if (key === 'resolutionNote') return 'Resolution Note';
+      if (key === 'reason') return t('admin.disputes.auditLog.fields.reason', 'Reason');
+      if (key === 'target') return t('admin.disputes.auditLog.fields.target', 'Target Participant');
+      if (key === 'Deadline' || key === 'deadline') return t('admin.disputes.auditLog.fields.deadline', 'Deadline');
+      if (key === 'groupId') return t('admin.disputes.auditLog.fields.groupId', 'Request Group ID');
+      if (key === 'evidenceIds') return t('admin.disputes.auditLog.fields.evidenceIds', 'Evidence Items');
+      if (key === 'status') return t('admin.disputes.auditLog.fields.status', 'New Status');
+      if (key === 'oldStatus') return t('admin.disputes.auditLog.fields.oldStatus', 'Previous Status');
+      if (key === 'resolution') return t('admin.disputes.auditLog.fields.resolution', 'Resolution');
+      if (key === 'resolutionNote') return t('admin.disputes.auditLog.fields.resolutionNote', 'Resolution Note');
       return key.replace(/([A-Z])/g, ' $1').trim();
     };
 
     const formatValue = (key: string, val: unknown): string => {
       if (val === null || val === undefined) return '—';
-      if (Array.isArray(val)) return `${val.length} item(s)`;
-      if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+      if (Array.isArray(val)) return t('admin.disputes.auditLog.itemsCount', '{{count}} item(s)', { count: val.length });
+      if (typeof val === 'boolean') return val ? t('common.yes', 'Yes') : t('common.no', 'No');
       if (typeof val === 'string' && (key.toLowerCase().includes('date') || key === 'Deadline' || key === 'deadline')) {
         return formatDate(val);
       }
@@ -188,6 +214,23 @@ export default function AdminDisputeManagementScreen() {
     }
     return list;
   }, [selectedDispute?.auditTrail, auditSortOrder, auditPageSize]);
+
+  const [userTimelineSortOrder, setUserTimelineSortOrder] = useState<'newest' | 'oldest'>('oldest');
+  const [userTimelinePageSize, setUserTimelinePageSize] = useState<number>(0);
+
+  const displayedUserTimeline = useMemo(() => {
+    if (!selectedDispute?.userActionTimeline) return [];
+    const list = [...selectedDispute.userActionTimeline];
+    list.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return userTimelineSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+    if (userTimelinePageSize > 0) {
+      return list.slice(0, userTimelinePageSize);
+    }
+    return list;
+  }, [selectedDispute?.userActionTimeline, userTimelineSortOrder, userTimelinePageSize]);
 
   // GSAP Entrance Animation
   usePageGSAP({
@@ -420,6 +463,12 @@ export default function AdminDisputeManagementScreen() {
                         </button>
                       </>
                     )}
+
+                    {selectedDispute.status === DisputeStatus.Resolved && (
+                      <button onClick={() => void updateStatus(DisputeStatus.Closed)} className="btn-secondary">
+                        <CheckCircle size={16} /> {t('admin.disputes.actions.closeCase', 'Close Case')}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -466,6 +515,13 @@ export default function AdminDisputeManagementScreen() {
                     onClick={() => setActiveTab('audit')}
                   >
                     <History size={15} /> {t('admin.disputes.tabs.auditLog', 'Audit Log')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'userTimeline' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('userTimeline')}
+                  >
+                    <Activity size={15} /> {t('admin.disputes.tabs.userTimeline', 'User Activity')}
                   </button>
                 </nav>
 
@@ -564,11 +620,12 @@ export default function AdminDisputeManagementScreen() {
                           value={adminMessage}
                           onChange={(e) => setAdminMessage(e.target.value)}
                           placeholder={t('admin.disputes.chat.placeholder', 'Type official administrative directive or inquiry...')}
+                          disabled={selectedDispute.status === DisputeStatus.Closed}
                         />
                         <button
                           type="button"
                           onClick={() => void sendAdminDirective()}
-                          disabled={sendingMessage || !adminMessage.trim()}
+                          disabled={sendingMessage || !adminMessage.trim() || selectedDispute.status === DisputeStatus.Closed}
                           className="send-directive-btn"
                         >
                           <Send size={16} /> {t('common.send', 'Send')}
@@ -646,25 +703,25 @@ export default function AdminDisputeManagementScreen() {
                           <div key={evidence.id} className="rounded-2xl border border-border bg-background p-4 space-y-2 shadow-sm">
                             <div className="flex items-center gap-2 text-xs font-black text-text-primary">
                               <Paperclip size={16} className="text-brand shrink-0" />
-                              <strong className="truncate" title={evidence.fileName || 'Attachment'}>{evidence.fileName || 'Attachment'}</strong>
+                              <strong className="truncate" title={evidence.fileName || t('admin.disputes.evidence.attachment', 'Attachment')}>{evidence.fileName || t('admin.disputes.evidence.attachment', 'Attachment')}</strong>
                             </div>
                             <div className="flex items-center justify-between gap-2 text-xs font-semibold text-text-muted">
                               <span className="flex items-center gap-1.5">
                                 <User size={13} className="text-brand shrink-0" />
-                                <span>Sender:</span>
+                                <span>{t('admin.disputes.evidence.sender', 'Sender:')}</span>
                                 <strong className="text-text-primary">
                                   {evidence.uploadedByName
-                                    ? `${evidence.uploadedByName} (${evidence.uploadedById === selectedDispute.client?.userId ? 'Client' : evidence.uploadedById === selectedDispute.freelancer?.userId ? 'Freelancer' : 'Participant'})`
+                                    ? `${evidence.uploadedByName} (${evidence.uploadedById === selectedDispute.client?.userId ? t('admin.disputes.userTimeline.roles.client', 'Client') : evidence.uploadedById === selectedDispute.freelancer?.userId ? t('admin.disputes.userTimeline.roles.freelancer', 'Freelancer') : t('admin.disputes.evidence.roleParticipant', 'Participant')})`
                                     : evidence.uploadedById === selectedDispute.client?.userId
-                                    ? `${selectedDispute.client.fullName} (Client)`
+                                    ? `${selectedDispute.client.fullName} (${t('admin.disputes.userTimeline.roles.client', 'Client')})`
                                     : evidence.uploadedById === selectedDispute.freelancer?.userId
-                                    ? `${selectedDispute.freelancer.fullName} (Freelancer)`
-                                    : 'Participant'}
+                                    ? `${selectedDispute.freelancer.fullName} (${t('admin.disputes.userTimeline.roles.freelancer', 'Freelancer')})`
+                                    : t('admin.disputes.evidence.roleParticipant', 'Participant')}
                                 </strong>
                               </span>
                               <span className="text-[11px] font-medium">{formatDate(evidence.createdAt)}</span>
                             </div>
-                            <p className="text-xs font-medium text-text-secondary leading-relaxed">{evidence.description || 'No description provided.'}</p>
+                            <p className="text-xs font-medium text-text-secondary leading-relaxed">{evidence.description || t('admin.disputes.evidence.noDescription', 'No description provided.')}</p>
                             <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
                               <button
                                 type="button"
@@ -699,7 +756,7 @@ export default function AdminDisputeManagementScreen() {
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-text-muted flex items-center gap-1">
                           <Layers size={14} className="text-brand" />
-                          Showing:
+                          {t('admin.disputes.auditLog.showing', 'Showing:')}
                         </span>
                         <strong className="text-text-primary font-bold">
                           {displayedAuditTrail.length} of {(selectedDispute.auditTrail || []).length} events
@@ -710,30 +767,30 @@ export default function AdminDisputeManagementScreen() {
                         {/* Sort selector */}
                         <label className="flex items-center gap-1.5 font-bold text-text-muted">
                           <ArrowUpDown size={13} />
-                          <span>Sort:</span>
+                          <span>{t('admin.disputes.auditLog.sort', 'Sort:')}</span>
                           <select
                             value={auditSortOrder}
                             onChange={(e) => setAuditSortOrder(e.target.value as 'newest' | 'oldest')}
                             className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
                           >
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
+                            <option value="newest">{t('admin.disputes.auditLog.sortNewest', 'Newest First')}</option>
+                            <option value="oldest">{t('admin.disputes.auditLog.sortOldest', 'Oldest First')}</option>
                           </select>
                         </label>
 
                         {/* Page Size / Limit selector */}
                         <label className="flex items-center gap-1.5 font-bold text-text-muted">
                           <Filter size={13} />
-                          <span>Show:</span>
+                          <span>{t('admin.disputes.auditLog.show', 'Show:')}</span>
                           <select
                             value={auditPageSize}
                             onChange={(e) => setAuditPageSize(Number(e.target.value))}
                             className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
                           >
-                            <option value={5}>5 items</option>
-                            <option value={10}>10 items</option>
-                            <option value={25}>25 items</option>
-                            <option value={0}>All events</option>
+                            <option value={5}>{t('admin.disputes.auditLog.pageSize5', '5 items')}</option>
+                            <option value={10}>{t('admin.disputes.auditLog.pageSize10', '10 items')}</option>
+                            <option value={25}>{t('admin.disputes.auditLog.pageSize25', '25 items')}</option>
+                            <option value={0}>{t('admin.disputes.auditLog.pageSizeAll', 'All events')}</option>
                           </select>
                         </label>
                       </div>
@@ -741,7 +798,7 @@ export default function AdminDisputeManagementScreen() {
 
                     {(selectedDispute.auditTrail || []).length === 0 ? (
                       <div className="admin-dispute-empty p-8 text-center text-xs font-extrabold text-text-muted">
-                        No audit events recorded for this case.
+                        {t('admin.disputes.auditLog.empty', 'No audit events recorded for this case.')}
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -751,30 +808,128 @@ export default function AdminDisputeManagementScreen() {
                             <div className="flex items-center justify-between font-black text-xs text-text-primary">
                               <span className="inline-flex items-center gap-1.5 rounded-xl bg-brand/10 border border-brand/20 px-3 py-1 text-xs font-black text-brand">
                                 <Sparkles size={13} />
-                                {formatAuditAction(log.action)}
+                                {formatAuditAction(t, log.action)}
                               </span>
                               <span className="text-[11px] font-bold text-text-muted">{formatDate(log.createdAt)}</span>
                             </div>
 
                             {/* Main Content: Parsed Key-Value Cards */}
-                            {renderAuditContent(log.newValues || log.oldValues)}
+                            {renderAuditContent(t, log.newValues || log.oldValues)}
 
                             {/* Footer: Styled Admin ID & Log ID Badges */}
                             <div className="pt-2 text-xs font-semibold text-text-muted flex flex-wrap items-center justify-between gap-2 border-t border-border/40">
                               <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40">
                                 <UserCheck size={13} className="text-brand shrink-0" />
-                                <span>Admin ID:</span>
+                                <span>{t('admin.disputes.auditLog.adminId', 'Admin ID:')}</span>
                                 <strong className="font-mono text-text-primary">{log.adminId}</strong>
                               </span>
 
                               <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40" title={log.auditId}>
                                 <Hash size={13} className="text-text-muted shrink-0" />
-                                <span>Log ID:</span>
+                                <span>{t('admin.disputes.auditLog.logId', 'Log ID:')}</span>
                                 <strong className="font-mono text-text-primary truncate max-w-[200px]">{log.auditId}</strong>
                               </span>
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 7: User Activity Timeline */}
+                {activeTab === 'userTimeline' && (
+                  <div className="tab-pane space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-surface-muted/40 border border-border/60 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-text-muted flex items-center gap-1">
+                          <Layers size={14} className="text-brand" />
+                          {t('admin.disputes.auditLog.showing', 'Showing:')}
+                        </span>
+                        <strong className="text-text-primary font-bold">
+                          {displayedUserTimeline.length} of {(selectedDispute.userActionTimeline || []).length} events
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-1.5 font-bold text-text-muted">
+                          <ArrowUpDown size={13} />
+                          <span>{t('admin.disputes.auditLog.sort', 'Sort:')}</span>
+                          <select
+                            value={userTimelineSortOrder}
+                            onChange={(e) => setUserTimelineSortOrder(e.target.value as 'newest' | 'oldest')}
+                            className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
+                          >
+                            <option value="oldest">{t('admin.disputes.auditLog.sortOldest', 'Oldest First')}</option>
+                            <option value="newest">{t('admin.disputes.auditLog.sortNewest', 'Newest First')}</option>
+                          </select>
+                        </label>
+
+                        <label className="flex items-center gap-1.5 font-bold text-text-muted">
+                          <Filter size={13} />
+                          <span>{t('admin.disputes.auditLog.show', 'Show:')}</span>
+                          <select
+                            value={userTimelinePageSize}
+                            onChange={(e) => setUserTimelinePageSize(Number(e.target.value))}
+                            className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
+                          >
+                            <option value={0}>{t('admin.disputes.auditLog.pageSizeAll', 'All events')}</option>
+                            <option value={10}>{t('admin.disputes.auditLog.pageSize10', '10 items')}</option>
+                            <option value={25}>{t('admin.disputes.auditLog.pageSize25', '25 items')}</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+
+                    {(selectedDispute.userActionTimeline || []).length === 0 ? (
+                      <div className="admin-dispute-empty p-8 text-center text-xs font-extrabold text-text-muted">
+                        {t('admin.disputes.userTimeline.empty', 'No client/freelancer activity recorded for this contract.')}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {displayedUserTimeline.map((log) => {
+                          const roleLabel = formatUserAuditRole(t, log.role);
+                          const roleColorClass = log.role === 0
+                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-600'
+                            : log.role === 1
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'
+                              : 'bg-surface-muted/60 border-border/40 text-text-secondary';
+                          return (
+                            <div key={log.auditLogUserId} className="rounded-2xl border border-border bg-background p-4 space-y-3 shadow-sm hover:shadow-md transition">
+                              <div className="flex items-center justify-between font-black text-xs text-text-primary">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-black border ${roleColorClass}`}
+                                  >
+                                    <User size={13} />
+                                    {roleLabel}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-brand/10 border border-brand/20 px-3 py-1 text-xs font-black text-brand">
+                                    <Activity size={13} />
+                                    {formatUserAuditAction(t, log.actionType)}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-bold text-text-muted">{formatDate(log.createdAt)}</span>
+                              </div>
+
+                              <p className="text-xs font-semibold text-text-secondary">{log.description}</p>
+
+                              <div className="pt-2 text-xs font-semibold text-text-muted flex flex-wrap items-center justify-between gap-2 border-t border-border/40">
+                                <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40">
+                                  <UserCheck size={13} className="text-brand shrink-0" />
+                                  <span>{log.userName ?? t('admin.disputes.userTimeline.unknownUser', 'Unknown user')}</span>
+                                </span>
+
+                                {log.milestoneTitle && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40">
+                                    <Landmark size={13} className="text-text-muted shrink-0" />
+                                    <span>{log.milestoneTitle}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

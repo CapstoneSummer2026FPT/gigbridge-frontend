@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Sparkles,
   TrendingUp,
+  Wallet,
   Zap,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -75,12 +76,13 @@ export default function ManageContractScreen() {
   });
 
   const statusPills: Array<{ value: ContractStatus | 'All'; label: string; icon: React.ReactNode; colorClass: string }> = [
-    { value: 'All', label: t('contracts.allContracts'), icon: <Layers size={14} />, colorClass: 'bg-brand text-white shadow-sm' },
-    { value: ContractStatus.Active, label: t('contracts.active'), icon: <Zap size={14} />, colorClass: 'bg-emerald-600 text-white shadow-sm' },
     { value: ContractStatus.PendingSignature, label: t('contracts.pendingSignature'), icon: <Clock size={14} />, colorClass: 'bg-amber-500 text-white shadow-sm' },
+    { value: ContractStatus.PendingEscrow, label: t('contracts.pendingEscrow'), icon: <ShieldAlert size={14} />, colorClass: 'bg-purple-600 text-white shadow-sm' },
+    { value: ContractStatus.Active, label: t('contracts.active'), icon: <Zap size={14} />, colorClass: 'bg-emerald-600 text-white shadow-sm' },
     { value: ContractStatus.Completed, label: t('contracts.completed'), icon: <CheckCircle2 size={14} />, colorClass: 'bg-blue-600 text-white shadow-sm' },
     { value: ContractStatus.Draft, label: t('contracts.legal.status.draft'), icon: <PenTool size={14} />, colorClass: 'bg-slate-600 text-white shadow-sm' },
     { value: ContractStatus.Disputed, label: t('contracts.disputeTerms'), icon: <ShieldAlert size={14} />, colorClass: 'bg-rose-600 text-white shadow-sm' },
+    { value: 'All', label: t('contracts.allContracts'), icon: <Layers size={14} />, colorClass: 'bg-brand text-white shadow-sm' },
   ];
 
   return (
@@ -335,6 +337,51 @@ function ClientContractCardItem({
   const totalMilestones = contract.milestones?.length || 0;
   const progressPercent = totalMilestones ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
+  // Determine dynamic primary action button based on contract status
+  let primaryAction: { label: string; icon: React.ReactNode; path: string; styleClass?: string } = {
+    label: t('contracts.viewDetails'),
+    icon: <Eye size={14} />,
+    path: `/contracts/${contract.contractsId}`,
+    styleClass: 'bg-brand text-white shadow-sm',
+  };
+
+  if (status === ContractStatus.Active) {
+    primaryAction = {
+      label: t('contracts.manageMilestones'),
+      icon: <ListChecks size={14} />,
+      path: `/contracts/${contract.contractsId}`,
+      styleClass: 'bg-brand text-white shadow-sm',
+    };
+  } else if (status === ContractStatus.Draft || status === ContractStatus.PendingSignature) {
+    primaryAction = {
+      label: t('contracts.signContract'),
+      icon: <PenTool size={14} />,
+      path: `/contracts/${contract.contractsId}/sign`,
+      styleClass: 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm',
+    };
+  } else if (status === ContractStatus.PendingEscrow) {
+    primaryAction = {
+      label: t('contracts.fundEscrow'),
+      icon: <Wallet size={14} />,
+      path: `/contracts/${contract.contractsId}`,
+      styleClass: 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm',
+    };
+  } else if (status === ContractStatus.Completed) {
+    primaryAction = {
+      label: t('contracts.viewCompleted'),
+      icon: <CheckCircle2 size={14} />,
+      path: `/contracts/${contract.contractsId}`,
+      styleClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm',
+    };
+  } else if (status === ContractStatus.Disputed || status === ContractStatus.Cancelled) {
+    primaryAction = {
+      label: t('contracts.viewDispute'),
+      icon: <ShieldAlert size={14} />,
+      path: `/contracts/${contract.contractsId}`,
+      styleClass: 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm',
+    };
+  }
+
   return (
     <article className="rounded-2xl border border-border bg-background p-5 shadow-sm transition hover:border-brand/40 space-y-4">
       {/* Card Top Row */}
@@ -387,24 +434,25 @@ function ClientContractCardItem({
       {/* Action Buttons Footer */}
       <div className="flex flex-wrap items-center justify-between border-t border-border/60 pt-4 gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Manage Milestones Button */}
+          {/* Primary Action Button */}
           <button
             type="button"
-            onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition cursor-pointer shadow-sm"
-            style={{ background: 'var(--brand)' }}
+            onClick={() => onNavigate(primaryAction.path)}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition cursor-pointer ${primaryAction.styleClass}`}
           >
-            <ListChecks size={14} /> {t('contracts.manageMilestones')}
+            {primaryAction.icon} {primaryAction.label}
           </button>
 
-          {/* View Details Button */}
-          <button
-            type="button"
-            onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
-          >
-            <Eye size={14} /> {t('contracts.viewDetails')}
-          </button>
+          {/* Secondary View Details Button if primary isn't already View Details */}
+          {primaryAction.label !== t('contracts.viewDetails') && (
+            <button
+              type="button"
+              onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
+            >
+              <Eye size={14} /> {t('contracts.viewDetails')}
+            </button>
+          )}
         </div>
 
         <button

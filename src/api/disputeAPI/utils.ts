@@ -2,9 +2,13 @@ import type {
   Dispute,
   DisputeEvidence,
   DisputeEvidenceDownload,
+  DisputeRemainingJobPostPlan,
+  DisputeRemainingMilestonePlan,
   DisputeResolution,
   DisputeStatus,
   DisputeUrgency,
+  MyDisputeSummary,
+  MyDisputesResponse,
 } from '../../types/models/Dispute';
 
 type UnknownRecord = Record<string, unknown>;
@@ -88,6 +92,71 @@ export const normalizeDispute = (raw: unknown): Dispute => {
     updatedAt: valueOf<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
     resolvedAt: valueOf<string | null>(source, 'resolvedAt', 'ResolvedAt') ?? null,
     openedAt: valueOf<string | null>(source, 'openedAt', 'OpenedAt') ?? null,
+  };
+};
+
+export const normalizeMyDisputeSummary = (raw: unknown): MyDisputeSummary => {
+  const source = (raw ?? {}) as UnknownRecord;
+  return {
+    disputeId: String(valueOf(source, 'disputeId', 'DisputeId') ?? ''),
+    contractId: String(valueOf(source, 'contractId', 'ContractId') ?? ''),
+    jobPostId: String(valueOf(source, 'jobPostId', 'JobPostId') ?? ''),
+    projectName: String(valueOf(source, 'projectName', 'ProjectName') ?? ''),
+    createdAt: String(valueOf(source, 'createdAt', 'CreatedAt') ?? ''),
+    status: Number(valueOf(source, 'status', 'Status') ?? 0) as DisputeStatus,
+    milestoneId: valueOf<string | null>(source, 'milestoneId', 'MilestoneId') ?? null,
+    milestoneTitle: valueOf<string | null>(source, 'milestoneTitle', 'MilestoneTitle') ?? null,
+    canCreateJobPostFromRemainingMilestones: Boolean(
+      valueOf(source, 'canCreateJobPostFromRemainingMilestones', 'CanCreateJobPostFromRemainingMilestones') ?? false
+    ),
+  };
+};
+
+export const normalizeMyDisputesResponse = (raw: unknown): MyDisputesResponse => {
+  const source = (raw ?? {}) as UnknownRecord;
+  const items = valueOf<unknown[]>(source, 'items', 'Items') ?? [];
+  return {
+    items: items.map(normalizeMyDisputeSummary),
+    page: Number(valueOf(source, 'page', 'Page') ?? 1),
+    pageSize: Number(valueOf(source, 'pageSize', 'PageSize') ?? 20),
+    totalItems: Number(valueOf(source, 'totalItems', 'TotalItems') ?? 0),
+  };
+};
+
+export const normalizeDisputeRemainingMilestonePlan = (raw: unknown): DisputeRemainingMilestonePlan => {
+  const source = (raw ?? {}) as UnknownRecord;
+  return {
+    title: String(valueOf(source, 'title', 'Title') ?? ''),
+    description: valueOf<string | null>(source, 'description', 'Description') ?? null,
+    amount: Number(valueOf(source, 'amount', 'Amount') ?? 0),
+    estimatedDuration: valueOf<string | null>(source, 'estimatedDuration', 'EstimatedDuration') ?? null,
+    dueDate: valueOf<string | null>(source, 'dueDate', 'DueDate') ?? null,
+    deliverables: valueOf<string | null>(source, 'deliverables', 'Deliverables') ?? null,
+    acceptanceCriteria: valueOf<string | null>(source, 'acceptanceCriteria', 'AcceptanceCriteria') ?? null,
+    orderIndex: Number(valueOf(source, 'orderIndex', 'OrderIndex') ?? 0),
+  };
+};
+
+export const normalizeDisputeRemainingJobPostPlan = (raw: unknown): DisputeRemainingJobPostPlan => {
+  const source = (raw ?? {}) as UnknownRecord;
+  const milestones = valueOf<unknown[]>(source, 'remainingMilestones', 'RemainingMilestones') ?? [];
+  const customSkillNames = valueOf<string[]>(source, 'customSkillNames', 'CustomSkillNames') ?? [];
+  const skillIds = valueOf<string[]>(source, 'skillIds', 'SkillIds') ?? [];
+  return {
+    contractId: String(valueOf(source, 'contractId', 'ContractId') ?? ''),
+    originalJobPostId: String(valueOf(source, 'originalJobPostId', 'OriginalJobPostId') ?? ''),
+    title: String(valueOf(source, 'title', 'Title') ?? ''),
+    description: String(valueOf(source, 'description', 'Description') ?? ''),
+    majorCategoryId: valueOf<string | null>(source, 'majorCategoryId', 'MajorCategoryId') ?? null,
+    currency: valueOf<string | null>(source, 'currency', 'Currency') ?? null,
+    visibility: valueOf<number | null>(source, 'visibility', 'Visibility') ?? null,
+    customSkillNames,
+    skillIds,
+    totalRemainingBudget: Number(valueOf(source, 'totalRemainingBudget', 'TotalRemainingBudget') ?? 0),
+    estimatedDuration: String(valueOf(source, 'estimatedDuration', 'EstimatedDuration') ?? ''),
+    endDate: String(valueOf(source, 'endDate', 'EndDate') ?? ''),
+    disputeResolvedAt: String(valueOf(source, 'disputeResolvedAt', 'DisputeResolvedAt') ?? ''),
+    remainingMilestones: milestones.map(normalizeDisputeRemainingMilestonePlan),
   };
 };
 

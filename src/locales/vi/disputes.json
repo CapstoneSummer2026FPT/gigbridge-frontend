@@ -1,12 +1,23 @@
 {
   "disputes": {
-    "chatTitle": "Cuộc trò chuyện tranh chấp",
+    "chatTitle": "Kênh trao đổi Tranh chấp trực tiếp với Quản trị viên",
     "chatLoading": "Đang tải cuộc trò chuyện...",
-    "chatEmpty": "Chưa có tin nhắn. Hãy bắt đầu trao đổi về tranh chấp bên dưới.",
-    "chatPlaceholder": "Nhập tin nhắn về tranh chấp này...",
-    "chatSend": "Gửi",
+    "chatEmpty": "Chưa có tin nhắn nào. Hãy gửi tin nhắn đầu tiên để làm rõ thông tin với Quản trị viên và bên liên quan.",
+    "chatPlaceholder": "Nhập nội dung trao đổi, bổ sung thông tin hoặc giải trình với Quản trị viên...",
+    "chatSend": "Gửi tin nhắn",
     "chatUnavailable": "Cuộc trò chuyện tranh chấp chưa khả dụng.",
     "chatLoadFailed": "Không thể tải cuộc trò chuyện tranh chấp.",
-    "chatSendFailed": "Không thể gửi tin nhắn."
+    "chatSendFailed": "Không thể gửi tin nhắn.",
+    "chatClosed": "Hội thoại đã bị khóa sau khi Quản trị viên đóng phiếu tranh chấp.",
+    "chatGuideTitle": "Kênh trao đổi & làm việc trực tiếp với Quản trị viên GigBridge",
+    "chatGuideDesc": "Tất cả thông điệp tại đây đều có sự giám sát trực tiếp từ Ban quản trị GigBridge. Quản trị viên sẽ đánh giá lập luận, chứng cứ và phản hồi của hai bên để đưa ra phán quyết xử lý tranh chấp chính thức.",
+    "stepFiled": "1. Đã nộp tranh chấp",
+    "stepInProgress": "2. Admin đang xử lý",
+    "stepResolved": "3. Đã có phán quyết",
+    "stepClosed": "4. Đóng hồ sơ",
+    "statusWaitingAdmin": "Chờ Admin tiếp nhận",
+    "statusInProgress": "Admin đang xử lý",
+    "statusResolved": "Đã có phán quyết",
+    "statusClosed": "Đã đóng hồ sơ"
   }
 }

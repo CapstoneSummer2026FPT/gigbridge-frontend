@@ -27,6 +27,7 @@ export enum MilestoneStatus {
   PaymentConfirmed = 5,
   Disputed = 6,
   Cancelled = 7,
+  Completed = 8,
 }
 
 export enum ContractWorkItemStatus {
@@ -304,6 +305,24 @@ export interface MilestoneAttachment {
   mime_type?: string | null;
   uploaded_by_user_id?: string | null;
   created_at?: string;
+}
+
+/** Normalized shape of a file shared inside a workspace — one canonical field name each. */
+export interface WorkspaceFileDto {
+  id: string;
+  fileName: string | null;
+  fileUrl: string | null;
+  isExternalLink: boolean;
+  fileSize: number | null;
+  contentType: string | null;
+  uploadedAt: string | null;
+  uploaderName: string | null;
+  uploaderUserId: string | null;
+  note: string | null;
+  version: number | null;
+  context: string | null;
+  milestoneId: string | null;
+  milestoneTitle: string | null;
 }
 
 export interface ContractQueryParams {

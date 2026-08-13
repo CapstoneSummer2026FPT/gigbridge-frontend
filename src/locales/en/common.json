@@ -21,7 +21,13 @@
     "finish": "Finish",
     "confirm": "Confirm",
     "viewAll": "View All",
-    "learnMore": "Learn More"
+    "learnMore": "Learn More",
+    "download": "Download",
+    "send": "Send",
+    "dismissError": "Dismiss error",
+    "dismissMessage": "Dismiss message",
+    "yes": "Yes",
+    "no": "No"
   },
   "app": {
     "name": "GigBridge",
@@ -69,6 +75,7 @@
     "myProposals": "My Proposals",
     "projects": "Projects",
     "reviews": "My Reviews",
+    "myDisputes": "My Disputes",
     "reviewManagement": "Review Management",
     "aiAssistant": "AI Assistant",
     "aiInterview": "AI Interview",
@@ -595,5 +602,166 @@
     "toggleHelpDesc": "Turn ON to keep the sidebar pinned across page navigation. Turn OFF to auto-close the sidebar when navigating or clicking outside.",
     "pinnedTitle": "Persistent Sidebar (Active)",
     "unpinnedTitle": "Auto-close Sidebar (Inactive)"
+  },
+  "admin": {
+    "disputes": {
+      "kicker": "Dispute Arbitration Workspace",
+      "titlePrefix": "Dispute",
+      "titleSuffix": "Escrow Resolution",
+      "subtitle": "Arbitrate client-freelancer disputes, audit escrow milestones, request evidence, and issue binding resolutions.",
+      "totalCases": "Total Cases",
+      "waitingAdmin": "Waiting Admin",
+      "inProgress": "In Progress",
+      "resolved": "Resolved",
+      "closed": "Closed",
+      "searchPlaceholder": "Search case ID, contract title, participant name, or reason...",
+      "refresh": "Refresh",
+      "loadingList": "Loading disputes list…",
+      "noDisputes": "No dispute cases match the selected filter.",
+      "loadingWorkspace": "Loading dispute workspace…",
+      "selectDispute": "Select a dispute case from the list to view its complete workspace.",
+      "currentStatus": "Current Status",
+      "initiator": "Initiator",
+      "contractId": "Contract ID",
+      "claimedAmount": "Total Claimed Amount",
+      "reasonTitle": "Dispute Reason",
+      "descriptionTitle": "Detailed Description",
+      "contractScope": "Contract Scope & Description",
+      "totalBudget": "Total Budget",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "initiatorName": "Dispute Initiator",
+      "respondentName": "Respondent",
+      "files": "files",
+      "noEvidence": "No evidence documents have been uploaded for this case.",
+      "markReviewed": "Mark Reviewed",
+      "tabs": {
+        "overview": "Overview",
+        "chat": "Arbitration Chat",
+        "contractInfo": "Contract Info",
+        "milestones": "Milestones",
+        "evidence": "Evidence",
+        "auditLog": "Audit Log",
+        "userTimeline": "User Activity"
+      },
+      "actions": {
+        "markInProgress": "Mark In Progress",
+        "requestEvidence": "Request Evidence",
+        "closeCase": "Close Case",
+        "resolve": "Issue Binding Resolution"
+      },
+      "chat": {
+        "recipient": "Recipient",
+        "recipientBoth": "Both Parties (Official Directive)",
+        "recipientClient": "Client Only (Private)",
+        "recipientFreelancer": "Freelancer Only (Private)",
+        "placeholder": "Type official administrative directive or inquiry...",
+        "administrator": "Administrator",
+        "participant": "Participant",
+        "clientPrivate": "Client (Private Column)",
+        "freelancerPrivate": "Freelancer (Private Column)",
+        "noClientMsgs": "No messages in Client column.",
+        "noFreelancerMsgs": "No messages in Freelancer column."
+      },
+      "milestones": {
+        "title": "Milestone Title",
+        "status": "Status",
+        "lockedAmount": "Locked Amount"
+      },
+      "evidence": {
+        "sender": "Sender:",
+        "attachment": "Attachment",
+        "roleParticipant": "Participant",
+        "noDescription": "No description provided."
+      },
+      "auditLog": {
+        "showing": "Showing:",
+        "sort": "Sort:",
+        "show": "Show:",
+        "sortNewest": "Newest First",
+        "sortOldest": "Oldest First",
+        "pageSize5": "5 items",
+        "pageSize10": "10 items",
+        "pageSize25": "25 items",
+        "pageSizeAll": "All events",
+        "empty": "No audit events recorded for this case.",
+        "adminId": "Admin ID:",
+        "logId": "Log ID:",
+        "itemsCount": "{{count}} item(s)",
+        "actions": {
+          "requestEvidence": "Evidence Requested",
+          "updateStatus": "Status Updated",
+          "resolve": "Dispute Resolved",
+          "reviewEvidence": "Evidence Reviewed"
+        },
+        "fields": {
+          "reason": "Reason",
+          "target": "Target Participant",
+          "deadline": "Deadline",
+          "groupId": "Request Group ID",
+          "evidenceIds": "Evidence Items",
+          "status": "New Status",
+          "oldStatus": "Previous Status",
+          "resolution": "Resolution",
+          "resolutionNote": "Resolution Note"
+        }
+      },
+      "userTimeline": {
+        "empty": "No client/freelancer activity recorded for this contract.",
+        "unknownUser": "Unknown user",
+        "roles": {
+          "client": "Client",
+          "freelancer": "Freelancer",
+          "admin": "Admin",
+          "unknown": "Unknown"
+        },
+        "actions": {
+          "confirmedParticipation": "Confirmed Participation",
+          "signedContract": "Signed E-Sign Contract",
+          "requestedEarlyStart": "Requested Early Start",
+          "submittedMilestone": "Submitted Milestone",
+          "fundedEscrow": "Funded Escrow",
+          "approvedMilestone": "Approved Milestone",
+          "reportedIssue": "Reported an Issue",
+          "createdDispute": "Created a Dispute",
+          "escalatedDispute": "Escalated a Dispute"
+        }
+      },
+      "dialog": {
+        "evidenceTitle": "Request Evidence From Participants",
+        "targetParticipant": "Target Participant",
+        "bothParties": "Both Parties",
+        "reporterOnly": "Reporter Only",
+        "respondentOnly": "Respondent Only",
+        "evidenceReason": "Evidence Request Reason",
+        "evidenceReasonPlaceholder": "Specify evidence required, e.g. deliverables, logs, receipts...",
+        "deadline": "Submission Deadline (Optional)",
+        "sendRequest": "Send Evidence Request"
+      }
+    }
+  },
+  "myDisputes": {
+    "kicker": "My Disputes",
+    "title": "My Disputes",
+    "subtitle": "View all disputes related to your contracts.",
+    "loading": "Loading your disputes...",
+    "errorFallback": "Failed to load your disputes.",
+    "errorGeneric": "Something went wrong while loading your disputes.",
+    "retry": "Retry",
+    "emptyTitle": "No disputes yet",
+    "emptySubtitle": "Disputes you're involved in will show up here.",
+    "columnStt": "STT",
+    "columnProject": "Project Name",
+    "columnDate": "Date",
+    "columnStatus": "Status",
+    "columnAction": "View Detail",
+    "viewDetail": "View Detail",
+    "showing": "Showing {{from}}-{{to}} of {{total}}",
+    "prev": "Prev",
+    "next": "Next",
+    "statusWaitingAdmin": "Waiting Admin",
+    "statusInProgress": "In Progress",
+    "statusResolved": "Resolved",
+    "statusClosed": "Closed"
   }
 }

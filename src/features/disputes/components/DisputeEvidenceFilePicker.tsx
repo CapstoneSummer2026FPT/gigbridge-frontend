@@ -1,6 +1,6 @@
-import { FileText, Upload, X } from 'lucide-react';
-import { useRef, type ChangeEvent } from 'react';
-import './dispute-evidence-file-picker.css';
+import { FileText, X, UploadCloud, FileCheck } from 'lucide-react';
+import { useRef, type ChangeEvent, type DragEvent, useState } from 'react';
+import '../styles/dispute-evidence-file-picker.css';
 
 const MAX_DISPUTE_EVIDENCE_FILES = 5;
 const MAX_DISPUTE_EVIDENCE_SIZE = 100 * 1024 * 1024;
@@ -25,14 +25,13 @@ export function DisputeEvidenceFilePicker({
   onError,
 }: DisputeEvidenceFilePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const selectFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.currentTarget.files ?? []);
-    event.currentTarget.value = '';
+  const processFiles = (selected: File[]) => {
     if (selected.length === 0) return;
 
     if (files.length + selected.length > MAX_DISPUTE_EVIDENCE_FILES) {
-      onError(`You can upload up to ${MAX_DISPUTE_EVIDENCE_FILES} evidence files at a time.`);
+      onError(`Bạn chỉ có thể tải lên tối đa ${MAX_DISPUTE_EVIDENCE_FILES} tập tin cùng lúc.`);
       return;
     }
 
@@ -40,8 +39,8 @@ export function DisputeEvidenceFilePicker({
     if (invalid) {
       onError(
         invalid.size <= 0
-          ? `${invalid.name} is empty.`
-          : `${invalid.name} exceeds the 100 MB file limit.`,
+          ? `${invalid.name} là tập tin rỗng.`
+          : `${invalid.name} vượt quá giới hạn 100 MB.`,
       );
       return;
     }
@@ -50,8 +49,32 @@ export function DisputeEvidenceFilePicker({
     onChange([...files, ...selected]);
   };
 
+  const selectFiles = (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = '';
+    processFiles(selected);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (!disabled) setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    if (disabled) return;
+    const droppedFiles = Array.from(event.dataTransfer.files ?? []);
+    processFiles(droppedFiles);
+  };
+
   return (
-    <div className="dispute-file-picker">
+    <div className="dispute-file-picker-wrapper">
       <input
         ref={inputRef}
         type="file"
@@ -60,28 +83,58 @@ export function DisputeEvidenceFilePicker({
         onChange={selectFiles}
         className="dispute-file-picker-input"
       />
-      <button
-        type="button"
-        className="dispute-file-picker-button"
-        disabled={disabled || files.length >= MAX_DISPUTE_EVIDENCE_FILES}
-        onClick={() => inputRef.current?.click()}
+
+      <div
+        className={`dispute-file-dropzone ${disabled ? 'disabled' : ''} ${isDragging ? 'border-brand bg-brand/5' : ''}`}
+        onClick={() => !disabled && files.length < MAX_DISPUTE_EVIDENCE_FILES && inputRef.current?.click()}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
-        <Upload size={17} /> Select evidence
-      </button>
-      <span className="dispute-file-picker-hint">Up to 5 files, 100 MB each.</span>
+        <div className="dispute-dropzone-icon">
+          <UploadCloud size={26} />
+        </div>
+        <div className="dispute-dropzone-title">
+          {disabled
+            ? 'Kho bằng chứng đã khóa (Vụ việc đã đóng hoặc phân xử xong)'
+            : 'Kéo & thả tập tin bằng chứng vào đây hoặc nhấp để chọn'}
+        </div>
+        <div className="dispute-dropzone-sub">
+          Hỗ trợ định dạng hình ảnh, video, tài liệu, file nén (.zip, .rar, .pdf, .mp4, .png...)
+        </div>
+        <div className="dispute-dropzone-badge text-[10px] py-0.5 px-2 font-medium">
+          <FileCheck size={11} />
+          <span>Tối đa {MAX_DISPUTE_EVIDENCE_FILES} file • 100 MB/file</span>
+        </div>
+      </div>
 
       {files.length > 0 && (
-        <div className="dispute-file-picker-list">
+        <div className="dispute-selected-files-list">
+          <div className="text-xs font-extrabold uppercase text-muted-foreground tracking-wider mb-1">
+            Tập tin chuẩn bị tải lên ({files.length}/{MAX_DISPUTE_EVIDENCE_FILES}):
+          </div>
           {files.map((file, index) => (
-            <div className="dispute-file-picker-item" key={`${file.name}-${file.lastModified}-${index}`}>
-              <FileText size={17} />
-              <span title={file.name}>{file.name}</span>
-              <small>{formatSize(file.size)}</small>
+            <div className="dispute-selected-file-chip" key={`${file.name}-${file.lastModified}-${index}`}>
+              <div className="dispute-selected-file-main">
+                <div className="dispute-selected-file-icon">
+                  <FileText size={18} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="dispute-selected-file-name" title={file.name}>
+                    {file.name}
+                  </span>
+                  <span className="dispute-selected-file-size">{formatSize(file.size)}</span>
+                </div>
+              </div>
               <button
                 type="button"
+                className="dispute-selected-file-remove"
                 disabled={disabled}
-                aria-label={`Remove ${file.name}`}
-                onClick={() => onChange(files.filter((_, itemIndex) => itemIndex !== index))}
+                aria-label={`Gỡ bỏ ${file.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange(files.filter((_, itemIndex) => itemIndex !== index));
+                }}
               >
                 <X size={15} />
               </button>

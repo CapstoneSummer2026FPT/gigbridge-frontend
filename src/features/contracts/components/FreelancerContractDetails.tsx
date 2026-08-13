@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
+import { ESignDocumentStatus } from '../../../types/models/ESign';
 import {
   getContractStatusLabel,
   getContractStatusClass,
@@ -83,8 +84,17 @@ export function FreelancerContractDetails({
     contractStatusMayHaveESignDocument(contract.status)
   );
 
+  useEffect(() => {
+    if (contract.status === ContractStatus.PendingSignature &&
+        esignDocumentState.document?.status === ESignDocumentStatus.FullySigned) {
+      onRefresh();
+    }
+  }, [contract.status, esignDocumentState.document?.status, onRefresh]);
+
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
-  const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
+  const milestonesApproved = milestones.filter(
+    m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.Completed,
+  ).length;
   const milestonesPaid = milestones.filter(m => (m.releasedAmount ?? 0) >= m.amount).length;
 
   const clientProfile = contract.clientProfile;

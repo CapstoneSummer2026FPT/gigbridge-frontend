@@ -104,3 +104,50 @@ export interface DisputeEvidenceDownload {
   fileName: string;
   downloadUrl: string;
 }
+
+export interface DisputeRemainingMilestonePlan {
+  title: string;
+  description: string | null;
+  amount: number;
+  estimatedDuration: string | null;
+  dueDate: string | null;
+  deliverables: string | null;
+  acceptanceCriteria: string | null;
+  orderIndex: number;
+}
+
+export interface DisputeRemainingJobPostPlan {
+  contractId: string;
+  originalJobPostId: string;
+  title: string;
+  description: string;
+  majorCategoryId: string | null;
+  currency: string | null;
+  visibility: number | null;
+  customSkillNames: string[];
+  skillIds: string[];
+  totalRemainingBudget: number;
+  estimatedDuration: string;
+  endDate: string;
+  disputeResolvedAt: string;
+  remainingMilestones: DisputeRemainingMilestonePlan[];
+}
+
+export interface MyDisputeSummary {
+  disputeId: string;
+  contractId: string;
+  jobPostId: string;
+  projectName: string;
+  createdAt: string;
+  status: DisputeStatus;
+  milestoneId: string | null;
+  milestoneTitle: string | null;
+  canCreateJobPostFromRemainingMilestones: boolean;
+}
+
+export interface MyDisputesResponse {
+  items: MyDisputeSummary[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+}

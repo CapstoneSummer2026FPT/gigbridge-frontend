@@ -30,6 +30,39 @@ export const emptyViolation = (): ViolationState => ({
   description: '',
 });
 
+type MilestoneDecision = { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string };
+
+// Every locked milestone the admin can be asked to adjudicate for a given Contract
+// Execution Action choice. Must stay in sync with AdminResolveDisputeModal's
+// `relevantMilestones` — both read the exact same rule so the rendered rows and the
+// decisions actually submitted never diverge.
+const getRelevantMilestoneIds = (dispute: AdminDisputeDetail, contractAction: number): Set<string> =>
+  new Set(
+    dispute.milestones
+      .filter(
+        (milestone) =>
+          milestone.lockedAmount > 0 &&
+          (contractAction === 1 ||
+            milestone.status === MilestoneStatus.Disputed ||
+            milestone.milestoneId === dispute.milestoneId)
+      )
+      .map((milestone) => milestone.milestoneId)
+  );
+
+const buildDefaultMilestoneDecision = (milestone: AdminDisputeDetail['milestones'][number]): MilestoneDecision => {
+  const defaults =
+    milestone.status === MilestoneStatus.Submitted || milestone.status === MilestoneStatus.Approved
+      ? { outcome: DisputeMilestoneOutcome.Accepted, release: milestone.lockedAmount.toFixed(2), refund: '0.00' }
+      : milestone.status === MilestoneStatus.Pending || milestone.status === MilestoneStatus.InProgress
+      ? { outcome: DisputeMilestoneOutcome.Rejected, release: '0.00', refund: milestone.lockedAmount.toFixed(2) }
+      : {
+          outcome: DisputeMilestoneOutcome.PartiallyAccepted,
+          release: (milestone.lockedAmount / 2).toFixed(2),
+          refund: (milestone.lockedAmount - milestone.lockedAmount / 2).toFixed(2),
+        };
+  return { ...defaults, penalty: '0.00', reason: '' };
+};
+
 export type DisputeStatusGroup = 'all' | 'waiting_admin' | 'in_progress' | 'resolved' | 'closed';
 
 export const getDisputeGroup = (status: DisputeStatus): DisputeStatusGroup => {
@@ -96,7 +129,7 @@ export const formatSize = (bytes: number | null): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milestones' | 'evidence' | 'audit' | 'workspace';
+export type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milestones' | 'evidence' | 'audit' | 'userTimeline' | 'workspace';
 
 export function useAdminDisputeManagement() {
   const [disputes, setDisputes] = useState<AdminDisputeListItem[]>([]);
@@ -440,33 +473,37 @@ export function useAdminDisputeManagement() {
 
   const openResolveDialog = () => {
     if (!selectedDispute) return;
-    setMilestoneDecisions(
-      Object.fromEntries(
-        selectedDispute.milestones
-          .filter(
-            (milestone) =>
-              milestone.lockedAmount > 0 &&
-              (milestone.status === MilestoneStatus.Disputed || milestone.milestoneId === selectedDispute.milestoneId)
-          )
-          .map((milestone) => {
-            const defaults =
-              milestone.status === MilestoneStatus.Submitted || milestone.status === MilestoneStatus.Approved
-                ? { outcome: DisputeMilestoneOutcome.Accepted, release: milestone.lockedAmount.toFixed(2), refund: '0.00' }
-                : milestone.status === MilestoneStatus.Pending || milestone.status === MilestoneStatus.InProgress
-                ? { outcome: DisputeMilestoneOutcome.Rejected, release: '0.00', refund: milestone.lockedAmount.toFixed(2) }
-                : {
-                    outcome: DisputeMilestoneOutcome.PartiallyAccepted,
-                    release: (milestone.lockedAmount / 2).toFixed(2),
-                    refund: (milestone.lockedAmount - milestone.lockedAmount / 2).toFixed(2),
-                  };
-            return [milestone.milestoneId, { ...defaults, penalty: '0.00', reason: '' }];
-          })
-      )
-    );
+    // Seeding itself is handled by the effect below, keyed on contractAction/selectedDispute
+    // — starting from an empty dict guarantees it seeds fresh defaults for whatever is
+    // relevant at contractAction's default value (0).
+    setMilestoneDecisions({});
     setClientViolation(emptyViolation());
     setFreelancerViolation(emptyViolation());
     setShowResolveDialog(true);
   };
+
+  // Keeps milestoneDecisions in lockstep with which milestones the modal actually renders
+  // as editable rows (AdminResolveDisputeModal's relevantMilestones), for every value of
+  // contractAction — not just whatever was relevant when the dialog first opened. This is
+  // what guarantees every locked milestone the admin is shown always has a real, submitted
+  // decision instead of a display-only fallback that silently never reaches the request.
+  useEffect(() => {
+    if (!showResolveDialog || !selectedDispute) return;
+    const relevantIds = getRelevantMilestoneIds(selectedDispute, contractAction);
+    setMilestoneDecisions((prev) => {
+      const prevIds = Object.keys(prev);
+      const unchanged =
+        prevIds.length === relevantIds.size && prevIds.every((id) => relevantIds.has(id));
+      if (unchanged) return prev;
+
+      const next: Record<string, MilestoneDecision> = {};
+      for (const milestone of selectedDispute.milestones) {
+        if (!relevantIds.has(milestone.milestoneId)) continue;
+        next[milestone.milestoneId] = prev[milestone.milestoneId] ?? buildDefaultMilestoneDecision(milestone);
+      }
+      return next;
+    });
+  }, [contractAction, selectedDispute, showResolveDialog]);
 
   const sendAdminDirective = async () => {
     if (!selectedDispute || (!adminMessage.trim() && adminMessageFiles.length === 0) || sendingMessage) return;

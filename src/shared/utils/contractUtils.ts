@@ -67,6 +67,8 @@ export const getMilestoneStatusLabel = (status: MilestoneStatus | number): strin
     4: 'Payment Proof Uploaded',
     5: 'Payment Confirmed',
     6: 'Disputed',
+    7: 'Cancelled',
+    8: 'Completed',
   };
   return statusMap[status] || 'Unknown';
 };
@@ -83,6 +85,8 @@ export const getMilestoneStatusClass = (status: MilestoneStatus | number): strin
     4: 'milestone-status-proof-uploaded',
     5: 'milestone-status-confirmed',
     6: 'milestone-status-disputed',
+    7: 'milestone-status-cancelled',
+    8: 'milestone-status-completed',
   };
   return `milestone-status ${statusMap[status] || 'milestone-status-unknown'}`;
 };
@@ -99,6 +103,7 @@ export const calculateMilestoneCompletion = (status: MilestoneStatus | number): 
     4: 100,  // Deprecated legacy payment state, normalized to Approved
     5: 100,  // Deprecated legacy payment state, normalized to Approved
     6: 80,   // Disputed
+    8: 100,  // Completed
   };
   return completionMap[status] || 0;
 };

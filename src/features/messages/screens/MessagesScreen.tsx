@@ -1,13 +1,14 @@
 import {
-  Send, Paperclip, Smile, Info, X, Ban, Download,
-  FileText, Image as ImageIcon, ChevronDown,
+  Send, Paperclip, Smile, Info, X, Ban, Download as DownloadIcon,
+  ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
-  ShieldAlert,
+  ShieldAlert, Lock, Award, LockKeyhole,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ContractStatus } from '../../../types/models/Contract';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -16,8 +17,9 @@ import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { useMessages } from '../hooks/useMessages';
+import { ConversationStatus, ConversationType } from '../../../types/models/Message';
 import { MESSAGE_ROOMS } from '../messageRooms';
-import { ReportDetailModal, useReportContract } from '../../report-contracts';
+import { CombinedIssueReportsModal, useReportContract } from '../../report-contracts';
 import {
   ContractReportResolutionAction,
   ContractReportStatus,
@@ -25,6 +27,7 @@ import {
 import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
+import { FileTypeBadge, getFileCategory, toForceDownloadUrl } from '../../../shared/components/FileTypeBadge';
 import '../styles/messages-screen.css';
 
 const ROOM_COPY = {
@@ -33,6 +36,13 @@ const ROOM_COPY = {
   workspace: { label: 'messages.roomWorkspaceLabel', description: 'messages.roomWorkspaceDesc' },
   dispute: { label: 'messages.roomDisputeLabel', description: 'messages.roomDisputeDesc' },
 } as const;
+
+// Dispute conversations share the workspace room bucket (roomId) but have their own
+// dedicated dispute-detail screen — every roomId membership check on this screen must
+// exclude them, or they leak into room counts/badges and can get auto-selected on tab switch.
+function isRoomConvo(c: { roomId: string; conversationType?: number }, roomId: string): boolean {
+  return c.roomId === roomId && c.conversationType !== ConversationType.Dispute;
+}
 
 function countdown(start: string, now: number) {
   const delta = new Date(start).getTime() - now;
@@ -191,6 +201,9 @@ export default function MessagesScreen() {
     handleSaveDealMilestones,
     messageInput,
     setMessageInput,
+    chatAttachments,
+    handleSelectChatFiles,
+    handleRemoveChatFile,
     isFavorited,
     setIsFavorited,
     isBlocked,
@@ -229,9 +242,13 @@ export default function MessagesScreen() {
     highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
   const [viewReportId, setViewReportId] = useState<string | null>(null);
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
   const {
+    reports: contractReports,
+    isLoading: isLoadingReports,
+    loadReports,
     selectedReport,
     loadReportDetail,
     isLoadingDetail: isLoadingReportDetail,
@@ -247,6 +264,7 @@ export default function MessagesScreen() {
   const openReportDetail = async (contractId: string, reportId: string) => {
     setViewReportId(reportId);
     setUnavailableReportId(null);
+    void loadReports(contractId);
     const response = await loadReportDetail(contractId, reportId);
     if (!response.success || !response.data) {
       setUnavailableReportId(reportId);
@@ -264,6 +282,8 @@ export default function MessagesScreen() {
     return MESSAGE_ROOMS[0].id;
   });
 
+  const [workspaceFilterTab, setWorkspaceFilterTab] = useState<'active' | 'completed' | 'disputed' | 'all'>('active');
+
   useEffect(() => {
     if (activeConv?.roomId && activeConv.roomId !== activeRoomId) {
       setActiveRoomId(activeConv.roomId);
@@ -272,7 +292,7 @@ export default function MessagesScreen() {
 
   const handleSelectRoomTab = (roomId: string) => {
     setActiveRoomId(roomId);
-    const roomConvos = conversationsState.filter(c => c.roomId === roomId);
+    const roomConvos = conversationsState.filter(c => isRoomConvo(c, roomId));
     if (roomConvos.length > 0 && activeConv?.roomId !== roomId) {
       handleSelectConv(roomConvos[0].id);
     }
@@ -289,7 +309,9 @@ export default function MessagesScreen() {
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed' && canNegotiateActiveJob;
   const isNegotiationConversation = activeConv?.roomType === 'invited' || activeConv?.roomType === 'negotiation';
   const sharedAttachments = Array.from(new Map(
-    activeMessages.flatMap(message => message.attachments || []).map(attachment => [attachment.messageAttachmentId, attachment])
+    activeMessages
+      .flatMap(message => (message.attachments || []).map(attachment => ({ ...attachment, senderName: message.senderName })))
+      .map(attachment => [attachment.messageAttachmentId, attachment])
   ).values());
 
   if (loading) {
@@ -309,39 +331,33 @@ export default function MessagesScreen() {
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 
           {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
-          <section className="messages-conversation-list w-80 shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
+          <section className="messages-conversation-list w-96 lg:w-[390px] shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
             {/* ── Document Folder Index Tabs ── */}
             <div className="pt-2.5 px-2 bg-muted/30 flex items-end gap-1 relative shrink-0">
               {/* Bottom 1px divider line for inactive tabs only */}
               <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-border pointer-events-none z-0" />
 
               {MESSAGE_ROOMS.map(room => {
-                const convos = conversationsState.filter(c => c.roomId === room.id);
+                const convos = conversationsState.filter(c => isRoomConvo(c, room.id));
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isSelected = activeRoomId === room.id;
                 const RoomIcon = room.type === 'invited'
                   ? Briefcase
                   : room.type === 'workspace'
                     ? CheckCircle
-                    : room.type === 'dispute'
-                      ? ShieldAlert
-                      : Layers;
+                    : Layers;
 
                 const shortLabel = room.type === 'invited'
                   ? t('messages.tabInvited', { defaultValue: 'Invited' })
                   : room.type === 'negotiation'
                     ? t('messages.tabNegotiation', { defaultValue: 'Negotiation' })
-                    : room.type === 'workspace'
-                      ? t('messages.tabWorkspace', { defaultValue: 'Workspace' })
-                      : t('messages.tabDispute', { defaultValue: 'Dispute' });
+                    : t('messages.tabWorkspace', { defaultValue: 'Workspace' });
 
                 const activeThemeClass = room.type === 'invited'
                   ? 'border-t-teal-500 text-teal-600 dark:text-teal-400'
-                  : room.type === 'dispute'
-                    ? 'border-t-amber-500 text-amber-600 dark:text-amber-400'
-                    : room.type === 'workspace'
-                      ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
-                      : 'border-t-brand text-brand';
+                  : room.type === 'workspace'
+                    ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
+                    : 'border-t-brand text-brand';
 
                 return (
                   <button
@@ -378,40 +394,140 @@ export default function MessagesScreen() {
                   ? Briefcase
                   : currentRoom.type === 'workspace'
                     ? CheckCircle
-                    : currentRoom.type === 'dispute'
-                      ? ShieldAlert
-                      : Layers;
-                const convos = conversationsState.filter(c => c.roomId === currentRoom.id);
+                    : Layers;
+
+                const allRoomConvos = conversationsState.filter(c => isRoomConvo(c, currentRoom.id));
+                const allWorkspaceConvos = conversationsState.filter(c => isRoomConvo(c, 'room_workspace'));
+
+                const activeCount = allWorkspaceConvos.filter(
+                  c => c.contractStatus !== ContractStatus.Completed &&
+                    c.contractStatus !== ContractStatus.Disputed &&
+                    c.contractStatus !== ContractStatus.Cancelled
+                ).length;
+                const completedCount = allWorkspaceConvos.filter(
+                  c => c.contractStatus === ContractStatus.Completed
+                ).length;
+                const disputedCount = allWorkspaceConvos.filter(
+                  c => c.contractStatus === ContractStatus.Disputed
+                ).length;
+                const allCount = allWorkspaceConvos.length;
+
+                const convos = currentRoom.type === 'workspace'
+                  ? allWorkspaceConvos.filter(c => {
+                      if (workspaceFilterTab === 'completed') return c.contractStatus === ContractStatus.Completed;
+                      if (workspaceFilterTab === 'disputed') return c.contractStatus === ContractStatus.Disputed;
+                      if (workspaceFilterTab === 'all') return true;
+                      return c.contractStatus !== ContractStatus.Completed &&
+                        c.contractStatus !== ContractStatus.Disputed &&
+                        c.contractStatus !== ContractStatus.Cancelled;
+                    })
+                  : allRoomConvos;
 
                 return (
                   <div>
-                    {/* Active room description banner */}
-                    <div className="px-4 py-2.5 bg-muted/20 border-b border-border/40 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
-                          currentRoom.type === 'invited'
-                            ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
-                            : currentRoom.type === 'dispute'
-                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                              : currentRoom.type === 'workspace'
-                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-brand/15 text-brand'
-                        }`}>
-                          <CurrentRoomIcon size={13} />
-                        </div>
-                        <div>
-                          <span className="text-xs font-black text-foreground block leading-tight tracking-wide">
-                            {t(ROOM_COPY[currentRoom.type].label)}
-                          </span>
-                          <p className="text-[10px] text-muted-foreground leading-tight">
-                            {t(ROOM_COPY[currentRoom.type].description)}
-                          </p>
-                        </div>
+                    {/* Active room description or Workspace 4-button filter */}
+                    {currentRoom.type === 'workspace' ? (
+                      <div className="p-2 bg-muted/20 border-b border-border/40 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('active')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'active'
+                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabActive', { defaultValue: 'Đang làm' })}
+                        >
+                          <CheckCircle size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabActive', { defaultValue: 'Đang làm' })}</span>
+                          {activeCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-emerald-500 text-white rounded-full leading-none shrink-0">
+                              {activeCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('completed')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'completed'
+                              ? 'bg-brand/15 border border-brand/30 text-brand shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}
+                        >
+                          <Award size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}</span>
+                          {completedCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-brand text-white rounded-full leading-none shrink-0">
+                              {completedCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('disputed')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'disputed'
+                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}
+                        >
+                          <LockKeyhole size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}</span>
+                          {disputedCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-amber-500 text-white rounded-full leading-none shrink-0">
+                              {disputedCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceFilterTab('all')}
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                            workspaceFilterTab === 'all'
+                              ? 'bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-2xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                          }`}
+                          title={t('workspace.tabAll', { defaultValue: 'Tất cả' })}
+                        >
+                          <Layers size={11} className="shrink-0" />
+                          <span className="truncate">{t('workspace.tabAll', { defaultValue: 'Tất cả' })}</span>
+                          {allCount > 0 && (
+                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-blue-500 text-white rounded-full leading-none shrink-0">
+                              {allCount}
+                            </span>
+                          )}
+                        </button>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40">
-                        {convos.length}
-                      </span>
-                    </div>
+                    ) : (
+                      <div className="px-4 py-2.5 bg-muted/20 border-b border-border/40 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+                            currentRoom.type === 'invited'
+                              ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
+                              : 'bg-brand/15 text-brand'
+                          }`}>
+                            <CurrentRoomIcon size={13} />
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-foreground block leading-tight tracking-wide">
+                              {t(ROOM_COPY[currentRoom.type].label)}
+                            </span>
+                            <p className="text-[10px] text-muted-foreground leading-tight">
+                              {t(ROOM_COPY[currentRoom.type].description)}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40">
+                          {convos.length}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Conversations */}
                     <div className="p-2 space-y-1">
@@ -441,6 +557,26 @@ export default function MessagesScreen() {
                                 {formatTime(conv.lastMessageAt)}
                               </span>
                             </div>
+
+                            {/* Status Tag Badge */}
+                            {conv.contractStatus === ContractStatus.Disputed ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider">
+                                <LockKeyhole size={10} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                              </span>
+                            ) : conv.contractStatus === ContractStatus.Cancelled ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground text-[9px] font-black uppercase tracking-wider">
+                                <Lock size={10} /> {t('workspace.disputeClosedBadge', { defaultValue: 'Đã đóng tranh chấp' })}
+                              </span>
+                            ) : conv.contractStatus === ContractStatus.Completed ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[9px] font-black uppercase tracking-wider">
+                                <Award size={10} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
+                              </span>
+                            ) : conv.roomId === 'room_workspace' ? (
+                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                                <CheckCircle size={10} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
+                              </span>
+                            ) : null}
+
                             <p className="text-[10px] text-muted-foreground truncate mt-0.5">{conv.job.title}</p>
                             <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                               {conv.lastMessage}
@@ -741,21 +877,50 @@ export default function MessagesScreen() {
                           actionBusy={scheduleActionId === msg.schedule.scheduleId}
                           onLatest={() => document.getElementById(`message-${latestScheduleMessage?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
                       ) : msg.type === 'file' ? (
-                        <div className="bg-card p-4 rounded-2xl shadow-sm border border-border max-w-sm">
-                          <p className="text-sm mb-3">{msg.content}</p>
-                          <div className="rounded-xl overflow-hidden border border-border">
-                            {msg.fileUrl ? (
-                              <img src={msg.fileUrl} alt="Attachment" className="w-full h-40 object-cover" />
-                            ) : (
-                              <div className="w-full h-28 bg-muted flex items-center justify-center">
-                                <FileText size={28} className="text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="bg-muted p-2 flex justify-between items-center text-[10px] text-muted-foreground">
-                              <span className="truncate">{msg.fileName}</span>
-                              <Download size={13} className="cursor-pointer hover:text-[var(--gb-cyan)]" />
-                            </div>
-                          </div>
+                        <div className="flex flex-col gap-1.5 max-w-sm">
+                          {msg.content && (
+                            <p className="text-sm">{msg.content}</p>
+                          )}
+                          {(msg.attachments && msg.attachments.length > 0
+                            ? msg.attachments
+                            : msg.fileUrl || msg.fileName
+                              ? [{ messageAttachmentId: msg.id, fileName: msg.fileName ?? '', fileUrl: msg.fileUrl ?? '', mimeType: '', fileSizeBytes: 0, createdAt: msg.createdAt ?? '' }]
+                              : []
+                          ).map(attachment => {
+                            const isImage = attachment.mimeType.startsWith('image/') ||
+                              getFileCategory(attachment.fileName) === 'image';
+
+                            if (isImage && attachment.fileUrl) {
+                              return (
+                                <div key={attachment.messageAttachmentId} className="relative group max-w-[240px]">
+                                  <a href={attachment.fileUrl} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                      src={attachment.fileUrl}
+                                      alt={attachment.fileName}
+                                      className="max-w-[240px] max-h-[240px] w-auto h-auto rounded-xl border border-border object-cover cursor-pointer"
+                                    />
+                                  </a>
+                                  <a
+                                    href={toForceDownloadUrl(attachment.fileUrl)}
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Download"
+                                  >
+                                    <DownloadIcon size={13} />
+                                  </a>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <FileTypeBadge
+                                key={attachment.messageAttachmentId}
+                                fileName={attachment.fileName}
+                                fileUrl={attachment.fileUrl || null}
+                                fileSize={attachment.fileSizeBytes}
+                              />
+                            );
+                          })}
                         </div>
 
                       ) : msg.type === 'deal' ? (
@@ -838,6 +1003,16 @@ export default function MessagesScreen() {
                   )}
                 </div>
               </div>
+            ) : activeConv?.status === ConversationStatus.Closed ? (
+              <div className="shrink-0 border-t border-border bg-muted p-4">
+                <div className="mx-auto flex max-w-3xl items-center justify-center gap-3 text-muted-foreground">
+                  <Lock size={20} className="shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <strong className="text-sm">{t('workspace.conversationClosedTitle')}</strong>
+                    <p className="text-xs">{t('workspace.conversationClosedDescription')}</p>
+                  </div>
+                </div>
+              </div>
             ) : (
             <div className="shrink-0 p-4 bg-card border-t border-border">
               <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
@@ -860,6 +1035,40 @@ export default function MessagesScreen() {
                   />
                 )}
 
+                <input
+                  ref={chatFileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={e => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleSelectChatFiles(e.target.files);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+
+                {chatAttachments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+                    {chatAttachments.map((file, index) => (
+                      <span
+                        key={`${file.name}-${index}`}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted border border-border text-[10px] font-semibold text-foreground max-w-[180px]"
+                      >
+                        <span className="truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveChatFile(index)}
+                          className="text-muted-foreground hover:text-rose-500 cursor-pointer flex-shrink-0 border-none bg-transparent"
+                          title={t('common.remove', { defaultValue: 'Remove' })}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <textarea
                   id="msg-input"
                   className="w-full bg-transparent border-none focus:outline-none p-4 resize-none min-h-[52px] text-sm focus:ring-0"
@@ -879,6 +1088,7 @@ export default function MessagesScreen() {
                   <div className="flex items-center gap-2">
                     {/* Attach File */}
                     <button
+                      onClick={() => chatFileInputRef.current?.click()}
                       className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
                       title={t('messages.attachFile')}
                     >
@@ -1122,14 +1332,14 @@ export default function MessagesScreen() {
                 {sharedAttachments.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No files have been shared in this conversation.</p>
                 ) : sharedAttachments.map(attachment => (
-                  <div key={attachment.messageAttachmentId} className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg transition-all border border-transparent hover:border-border">
-                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">{attachment.mimeType.startsWith('image/') ? <ImageIcon className="text-[var(--gb-cyan)]" size={14} /> : <FileText className="text-red-500" size={14} />}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold truncate">{attachment.fileName}</p>
-                      <p className="text-[9px] text-muted-foreground">{Math.max(1, Math.ceil(attachment.fileSizeBytes / 1024))} KB</p>
-                    </div>
-                    <a href={attachment.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`Download ${attachment.fileName}`}><Download size={13} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" /></a>
-                  </div>
+                  <FileTypeBadge
+                    key={attachment.messageAttachmentId}
+                    fileName={attachment.fileName}
+                    fileUrl={attachment.fileUrl || null}
+                    fileSize={attachment.fileSizeBytes}
+                    uploadedAt={attachment.createdAt}
+                    uploaderName={attachment.senderName}
+                  />
                 ))}
               </div>
             </div>
@@ -1231,31 +1441,45 @@ export default function MessagesScreen() {
         </div>
       )}
 
-      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
-        <ReportDetailModal
-          report={selectedReport}
-          contractTitle={activeConv?.job.title || t('workspace.disputeTitlePrefix')}
-          currentUserId={user?.id ?? ''}
-          isOpen
-          onClose={closeReportDetail}
-          onRespond={async (input) => {
-            const response = await respondToReport(selectedReport.contractId, selectedReport.id, input);
-            return { success: response.success, message: response.message };
-          }}
-          onConfirm={async (isAccepted) => {
-            const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
-            return { success: response.success, message: response.message };
-          }}
-          onEscalate={async (input) => {
-            const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, input);
-            return { success: response.success, message: response.message, disputeId: response.data?.id };
-          }}
-          onDisputeCreated={(disputeId) => navigate(`/contracts/${selectedReport.contractId}/disputes/${disputeId}`)}
-          isResponding={isRespondingReport}
-          isConfirming={isConfirmingReport}
-          isEscalating={isEscalatingReport}
-        />
-      )}
+      <CombinedIssueReportsModal
+        isOpen={Boolean(viewReportId)}
+        onClose={closeReportDetail}
+        reports={contractReports}
+        isLoadingReports={isLoadingReports}
+        currentUserId={user?.id ?? ''}
+        contractTitle={activeConv?.job.title || t('workspace.disputeTitlePrefix')}
+        workspaceContractId={selectedReport?.contractId || ''}
+        selectedReportId={viewReportId}
+        selectedReportDetail={selectedReport}
+        isLoadingDetail={isLoadingReportDetail}
+        onSelectReport={(repId) => {
+          if (selectedReport?.contractId) {
+            void loadReportDetail(selectedReport.contractId, repId);
+            setViewReportId(repId);
+          }
+        }}
+        onRespond={async (input) => {
+          if (!selectedReport) return { success: false };
+          const response = await respondToReport(selectedReport.contractId, selectedReport.id, input);
+          return { success: response.success, message: response.message };
+        }}
+        onConfirm={async (isAccepted) => {
+          if (!selectedReport) return { success: false };
+          const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
+          return { success: response.success, message: response.message };
+        }}
+        onEscalate={async (input) => {
+          if (!selectedReport) return { success: false };
+          const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, input);
+          return { success: response.success, message: response.message, disputeId: response.data?.id };
+        }}
+        onDisputeCreated={(disputeId) => {
+          if (selectedReport) navigate(`/contracts/${selectedReport.contractId}/disputes/${disputeId}`);
+        }}
+        isResponding={isRespondingReport}
+        isConfirming={isConfirmingReport}
+        isEscalating={isEscalatingReport}
+      />
     </AppLayout>
   );
 }

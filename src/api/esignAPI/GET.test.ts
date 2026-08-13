@@ -31,13 +31,17 @@ describe('e-sign GET response normalization', () => {
           SignatureImageUrl: 'https://example.com/signature.png',
           SignatureWidth: 300,
           SignatureHeight: 100,
+          IdentityOrTaxCode: '001234567890',
+          IsDraftValid: false,
           Status: SignatureStatus.Signed,
           SignedAt: '2026-06-28T01:00:00.000Z',
+          DraftSubmittedAt: '2026-06-27T02:00:00.000Z',
           DeclinedAt: null,
           DeclineReason: null,
           IpAddress: '127.0.0.1',
           UserAgent: 'Vitest',
           CreatedAt: '2026-06-27T01:00:00.000Z',
+          UpdatedAt: '2026-06-28T01:00:00.000Z',
         },
       ],
     });
@@ -53,7 +57,11 @@ describe('e-sign GET response normalization', () => {
     expect(document.signatures[0]).toMatchObject({
       signatureId: 'sig-1',
       signerRole: ESignerRole.Freelancer,
+      identityOrTaxCode: '001234567890',
+      isDraftValid: false,
       status: SignatureStatus.Signed,
+      draftSubmittedAt: '2026-06-27T02:00:00.000Z',
+      updatedAt: '2026-06-28T01:00:00.000Z',
     });
   });
 

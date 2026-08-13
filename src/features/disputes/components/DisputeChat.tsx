@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { AlertCircle, LoaderCircle, MessageSquare, Paperclip, Send, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, Info, LoaderCircle, Lock, MessageSquare, Paperclip, Send, ShieldCheck } from 'lucide-react';
 import { messageGetAPI, type ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { MessageType } from '../../../types/models/Message';
+import { ConversationStatus, MessageType } from '../../../types/models/Message';
 import { UserRole } from '../../../types/models/User';
 import * as signalR from '@microsoft/signalr';
 import { getChatHubUrl } from '../../../service/apiService';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
+import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 
 interface DisputeChatProps {
   disputeId: string;
@@ -23,6 +24,8 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [closed, setClosed] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -35,15 +38,16 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
       if (cancelled) return;
       const conversation = conversations.data?.find(item => item.disputeId === disputeId);
       if (!conversations.success || !conversation) {
-        setError(t('disputes.chatUnavailable'));
+        setError(t('disputes.chatUnavailable', { defaultValue: 'Kênh trao đổi hiện chưa sẵn sàng.' }));
         setLoading(false);
         return;
       }
       setConversationId(conversation.conversationId);
+      setClosed(conversation.status === ConversationStatus.Closed);
       const response = await messageGetAPI.getConversationMessages(conversation.conversationId, undefined, 100);
       if (cancelled) return;
       if (response.success) setMessages(response.data ?? []);
-      else setError(response.message || t('disputes.chatLoadFailed'));
+      else setError(response.message || t('disputes.chatLoadFailed', { defaultValue: 'Không thể tải lịch sử tin nhắn.' }));
       setLoading(false);
     };
     void load();
@@ -69,6 +73,11 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
       void messageGetAPI.getConversationMessages(conversationId, undefined, 100).then(response => {
         if (!disposed && response.success) setMessages(response.data ?? []);
       });
+      void messageGetAPI.getConversations().then(response => {
+        if (disposed || !response.success) return;
+        const updated = response.data?.find(item => item.conversationId === conversationId);
+        if (updated) setClosed(updated.status === ConversationStatus.Closed);
+      });
     };
     connection.on('ReceiveMessage', refreshMessages);
     connection.onreconnected(() => void connection.invoke('JoinConversation', conversationId));
@@ -84,7 +93,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
 
   const sendMessage = async () => {
     const content = input.trim();
-    if (!content || !conversationId || sending) return;
+    if (!content || !conversationId || sending || closed) return;
     setSending(true);
     setError(null);
     const response = await messagePostAPI.sendMessage({
@@ -96,7 +105,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
       setMessages(previous => [...previous, response.data!]);
       setInput('');
     } else {
-      setError(response.message || t('disputes.chatSendFailed'));
+      setError(response.message || t('disputes.chatSendFailed', { defaultValue: 'Không thể gửi tin nhắn.' }));
     }
     setSending(false);
   };
@@ -122,24 +131,73 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
   };
 
   return (
-    <section className="dispute-detail-card dispute-chat-section">
-      <div className="dispute-detail-section-title">
-        <MessageSquare size={20} className="text-cyan-500" />
-        <h2>{t('disputes.chatTitle')}</h2>
+    <section className="bento-card h-full flex flex-col justify-between">
+      {/* Sleek Chat Card Header */}
+      <div className="bento-section-title pb-3 mb-3 border-b border-border">
+        <div className="bento-section-title-left">
+          <div className="bento-section-icon icon-cyan">
+            <MessageSquare size={20} />
+          </div>
+          <div>
+            <h2>{t('disputes.chatTitle', { defaultValue: 'Kênh Hòa giải & Tranh chấp' })}</h2>
+            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1 text-emerald-500 font-extrabold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Moderation Active
+              </span>
+              <span>•</span>
+              <span>{messages.length} tin nhắn</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Collapsible Rules Toggle */}
+        <button
+          type="button"
+          onClick={() => setShowGuide(prev => !prev)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-muted hover:bg-surface border border-border text-xs font-extrabold text-foreground transition-all cursor-pointer"
+        >
+          <Info size={14} className="text-brand" />
+          <span>{showGuide ? 'Ẩn quy tắc' : 'Quy tắc hòa giải'}</span>
+          {showGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
       </div>
 
+      {/* Collapsible Moderation Guidance Accordion */}
+      {showGuide && (
+        <div className="p-4 mb-4 rounded-2xl bg-brand/5 border border-brand/20 text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2 font-extrabold text-brand">
+            <ShieldCheck size={16} />
+            <span>Hướng dẫn đối soát & làm việc với Admin</span>
+          </div>
+          <p className="text-muted-foreground leading-relaxed text-[11px]">
+            Tất cả thông điệp tại đây đều có sự giám sát trực tiếp từ Ban quản trị GigBridge. Quản trị viên sẽ đánh giá lập luận, chứng cứ và phản hồi của hai bên để đưa ra phán quyết chính thức.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-brand/15 text-[11px] font-bold text-foreground">
+            <div>• Nêu rõ nội dung bất đồng & yêu cầu xử lý</div>
+            <div>• Cung cấp bằng chứng minh bạch</div>
+            <div>• Duy trì thái độ lịch sự & hợp tác với Admin</div>
+            <div>• Nhận thông báo chỉ đạo trực tiếp từ Admin</div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Chat Stream */}
       {loading ? (
-        <div className="dispute-chat-state">
-          <LoaderCircle className="dispute-detail-spinner" size={24} /> {t('disputes.chatLoading')}
+        <div className="flex justify-center items-center py-16 flex-1">
+          <LemniscateBloomLoader
+            size={110}
+            label={t('disputes.chatLoading', { defaultValue: 'Đang kết nối kênh trao đổi...' })}
+          />
         </div>
       ) : (
-        <>
+        <div className="flex-1 flex flex-col justify-between">
           <div className="dispute-chat-messages" ref={chatContainerRef} aria-live="polite">
             {messages.length === 0 && (
               <div className="dispute-chat-empty">
-                <MessageSquare size={32} />
-                <p>{t('disputes.chatEmpty')}</p>
-                <small>Communicate directly with all dispute participants and administrators.</small>
+                <MessageSquare size={32} className="text-muted-foreground/50" />
+                <p>{t('disputes.chatEmpty', { defaultValue: 'Chưa có tin nhắn nào trong kênh trao đổi vụ việc.' })}</p>
+                <small>Gửi tin nhắn hoặc trình bày lập luận đầu tiên đến Quản trị viên & đối tác tại đây.</small>
               </div>
             )}
 
@@ -199,9 +257,9 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
                       <div className="dispute-chat-text">{message.content}</div>
 
                       {message.attachments.length > 0 && (
-                        <div className="dispute-chat-attachments">
+                        <div className="dispute-chat-attachments mt-2 pt-2 border-t border-border/40 flex flex-wrap gap-2">
                           {message.attachments.map(attachment => (
-                            <a key={attachment.messageAttachmentId} href={attachment.fileUrl} target="_blank" rel="noreferrer" className="dispute-attachment-chip">
+                            <a key={attachment.messageAttachmentId} href={attachment.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-card border border-border text-xs font-bold text-foreground hover:text-brand">
                               <Paperclip size={13} /> {attachment.fileName}
                             </a>
                           ))}
@@ -220,31 +278,39 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
           </div>
 
           {error && (
-            <div className="dispute-download-error" role="alert">
+            <div className="p-3 my-2 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2" role="alert">
               <AlertCircle size={16} /> {error}
             </div>
           )}
 
-          <div className="dispute-chat-input-bar">
-            <textarea
-              value={input}
-              onChange={event => setInput(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('disputes.chatPlaceholder') || 'Write a message to dispute participants...'}
-              rows={2}
-              disabled={!conversationId || sending}
-            />
-            <button
-              type="button"
-              className="dispute-chat-send-btn"
-              onClick={() => void sendMessage()}
-              disabled={!input.trim() || !conversationId || sending}
-            >
-              {sending ? <LoaderCircle className="dispute-detail-spinner" size={17} /> : <Send size={17} />}
-              <span>{t('disputes.chatSend') || 'Send'}</span>
-            </button>
-          </div>
-        </>
+          {/* Floating Input Area */}
+          {closed ? (
+            <div className="dispute-chat-locked" role="status">
+              <Lock size={18} className="shrink-0" />
+              <span>{t('disputes.chatClosed', { defaultValue: 'Kênh trao đổi đã được khóa (Hồ sơ tranh chấp đã hoàn tất hoặc đóng).' })}</span>
+            </div>
+          ) : (
+            <div className="dispute-chat-input-bar">
+              <textarea
+                value={input}
+                onChange={event => setInput(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t('disputes.chatPlaceholder', { defaultValue: 'Nhập tin nhắn, giải trình hoặc phản hồi gửi đến Admin & đối tác... (Nhấn Enter để gửi)' })}
+                rows={2}
+                disabled={!conversationId || sending}
+              />
+              <button
+                type="button"
+                className="dispute-chat-send-btn"
+                onClick={() => void sendMessage()}
+                disabled={!input.trim() || !conversationId || sending}
+              >
+                {sending ? <LoaderCircle className="animate-spin" size={17} /> : <Send size={17} />}
+                <span>{t('disputes.chatSend', { defaultValue: 'Gửi' })}</span>
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </section>
   );

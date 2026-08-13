@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { ContractStatus } from '../../../types/models/Contract';
-import type { ESignDocumentDto } from '../../../types/models/ESign';
+import { ESignDocumentStatus, type ESignDocumentDto } from '../../../types/models/ESign';
 
 export interface ContractESignDocumentState {
   document: ESignDocumentDto | null;
@@ -78,6 +78,20 @@ export function useContractESignDocument(
       isCancelled = true;
     };
   }, [contractId, enabled, requestVersion]);
+
+  useEffect(() => {
+    if (!enabled || !contractId ||
+        (document?.status !== ESignDocumentStatus.PendingSignatures &&
+         document?.status !== ESignDocumentStatus.PartiallySigned)) {
+      return;
+    }
+
+    const pollTimer = window.setInterval(() => {
+      setRequestVersion(version => version + 1);
+    }, 5000);
+
+    return () => window.clearInterval(pollTimer);
+  }, [contractId, document?.status, enabled]);
 
   return { document, isLoading, isNotFound, error, retry };
 }

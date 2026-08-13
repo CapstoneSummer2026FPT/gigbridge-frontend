@@ -1,0 +1,194 @@
+/* =========================================================
+   DisputeEvidenceFilePicker — Luxury Bento Grid File Uploader
+   ========================================================= */
+
+.dispute-file-picker-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dispute-file-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.1rem 1rem;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(73, 75, 231, 0.02) 100%);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.dispute-file-dropzone:hover {
+  border-color: var(--brand);
+  background: linear-gradient(135deg, var(--surface-hover) 0%, rgba(73, 75, 231, 0.06) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -4px rgba(73, 75, 231, 0.12);
+}
+
+.dispute-file-dropzone.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dispute-dropzone-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.75rem;
+  background: rgba(73, 75, 231, 0.1);
+  border: 1px solid var(--brand-border);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  transition: transform 0.25s ease;
+}
+
+.dispute-file-dropzone:hover .dispute-dropzone-icon {
+  transform: scale(1.06);
+}
+
+.dispute-dropzone-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.dispute-dropzone-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.dispute-dropzone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.dispute-file-picker-input {
+  display: none;
+}
+
+/* Selected Files Grid */
+.dispute-selected-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.dispute-selected-file-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.dispute-selected-file-chip:hover {
+  border-color: var(--brand-border);
+}
+
+.dispute-selected-file-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.dispute-selected-file-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 0.5rem;
+  background: var(--surface-muted);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dispute-selected-file-name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dispute-selected-file-size {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.dispute-selected-file-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dispute-selected-file-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Upload Submit Button */
+.dispute-upload-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 2.5rem;
+  padding: 0 1.25rem;
+  border-radius: 0.75rem;
+  border: none;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%);
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(73, 75, 231, 0.25);
+  margin-top: 0.25rem;
+}
+
+.dispute-upload-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(73, 75, 231, 0.35);
+}
+
+.dispute-upload-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}

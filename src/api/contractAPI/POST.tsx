@@ -190,9 +190,10 @@ export const contractPostAPI = {
   sign: async (
     contractId: string,
     payload: {
-      signatureImageUrl: string;
+      signatureImageUrl?: string | null;
       signatureWidth?: number;
       signatureHeight?: number;
+      identityOrTaxCode: string;
       policyAccepted: boolean;
       policyVersion: string;
     }

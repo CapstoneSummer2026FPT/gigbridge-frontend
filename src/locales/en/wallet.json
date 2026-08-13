@@ -253,12 +253,7 @@
       "confirmationDescription": "Accepting this job requires a service fee.",
       "insufficientDescription": "You do not have enough GigCoin to pay the service fee. Please top up your wallet before accepting this job."
     },
-    "endProject": {
-      "confirmationDescription": "Ending this project requires a service fee.",
-      "insufficientDescription": "You do not have enough GigCoin to pay the service fee. Please top up your wallet before ending this project."
-    },
     "jobAmount": "Job Amount",
-    "completedJobAmount": "Completed Job Amount",
     "feeLabel": "Service Fee (1%)",
     "currentBalance": "Current GigCoin Balance",
     "unavailable": "Unavailable",

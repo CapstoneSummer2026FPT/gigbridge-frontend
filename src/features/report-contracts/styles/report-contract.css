@@ -801,7 +801,7 @@
 .rc-escalation-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: 10000;
   display: grid;
   place-items: center;
   padding: 1rem;
@@ -860,3 +860,119 @@
 @media (max-width: 640px) {
   .rc-dispute-summary-grid, .rc-dispute-form-grid { grid-template-columns: 1fr; }
 }
+
+/* =============================================
+   Planetary Orbit Hero Graphic Keyframes & Styles
+   ============================================= */
+
+@keyframes rcOrbitRotate1 {
+  0% {
+    transform: rotateX(65deg) rotateY(20deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(65deg) rotateY(20deg) rotateZ(360deg);
+  }
+}
+
+@keyframes rcOrbitRotate2 {
+  0% {
+    transform: rotateX(65deg) rotateY(-40deg) rotateZ(360deg);
+  }
+  100% {
+    transform: rotateX(65deg) rotateY(-40deg) rotateZ(0deg);
+  }
+}
+
+@keyframes rcOrbitRotate3 {
+  0% {
+    transform: rotateX(30deg) rotateY(75deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(30deg) rotateY(75deg) rotateZ(360deg);
+  }
+}
+
+.rc-planet-hero-container {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 800px;
+}
+
+.rc-planet-outer-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px dashed rgba(var(--brand-rgb, 73, 75, 231), 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rc-planet-shield-badge {
+  position: absolute;
+  top: -4px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--brand, #494be7);
+  color: var(--brand-foreground, #ffffff);
+  border: 2px solid var(--background, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(var(--brand-rgb, 73, 75, 231), 0.45);
+  z-index: 25;
+}
+
+.rc-orbit-ring {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(var(--brand-rgb, 73, 75, 231), 0.45);
+  box-shadow: 0 0 10px rgba(var(--brand-rgb, 73, 75, 231), 0.2);
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.rc-orbit-ring-1 {
+  animation: rcOrbitRotate1 12s linear infinite;
+  border-top-color: transparent;
+}
+
+.rc-orbit-ring-2 {
+  animation: rcOrbitRotate2 16s linear infinite;
+  border-bottom-color: transparent;
+}
+
+.rc-orbit-ring-3 {
+  animation: rcOrbitRotate3 20s linear infinite;
+  border-left-color: transparent;
+}
+
+.rc-planet-logo-core {
+  position: relative;
+  z-index: 20;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--background, #ffffff);
+  border: 2px solid rgba(var(--brand-rgb, 73, 75, 231), 0.4);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 0 15px rgba(var(--brand-rgb, 73, 75, 231), 0.15);
+}
+
+.rc-planet-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+

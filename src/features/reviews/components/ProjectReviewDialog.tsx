@@ -75,7 +75,7 @@ function SliderRow({ label, icon, value, ariaLabel, onChange }: SliderRowProps) 
     : { background: 'var(--surface-muted)' };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3.5 pb-2">
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm font-bold text-text-primary">
           <span className="text-brand">{icon}</span>
@@ -187,11 +187,10 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
         aria-modal="true"
         aria-labelledby="project-review-title"
         onClick={e => e.stopPropagation()}
-        className="review-dialog relative z-10 w-full max-w-4xl rounded-[2rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_20px_60px_-15px_rgba(0,0,0,0.25)] border border-border/50"
-        style={{ background: 'rgba(var(--background-rgb, 255,255,255), 0.85)', backdropFilter: 'blur(20px)' }}
+        className="review-dialog relative z-10 w-full max-w-4xl rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
       >
         {/* ═══ LEFT COLUMN: Context ═══════════════════════════════════════ */}
-        <div className="review-dialog-left w-full lg:w-5/12 p-8 lg:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/30 bg-surface-muted/40 relative overflow-hidden">
+        <div className="review-dialog-left w-full lg:w-5/12 p-6 sm:p-8 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           <div className="relative z-10">
@@ -229,7 +228,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
           </div>
 
           {/* Project card */}
-          <div className="relative z-10 rounded-2xl border border-border/60 bg-background/60 p-5">
+          <div className="relative z-10 rounded-2xl border border-border/70 bg-surface-card p-5">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand mb-2">
               <BriefcaseBusiness size={13} />
               Project Details
@@ -276,7 +275,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
             </div>
 
             {/* Sliders */}
-            <div className="space-y-8 sm:space-y-9" role="group" aria-label="Rating criteria">
+            <div className="space-y-10 sm:space-y-12" role="group" aria-label="Rating criteria">
               <fieldset className="border-none p-0 m-0">
                 <legend className="sr-only">{t('reviews.communication')}</legend>
                 <SliderRow
@@ -313,8 +312,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
 
             {/* Feedback textarea */}
             <div className="relative group">
-              <div className="absolute inset-0 bg-surface-muted rounded-2xl translate-y-1.5 transition-transform group-focus-within:translate-y-0.5" />
-              <div className="relative bg-background rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
+              <div className="relative bg-surface-card rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <label htmlFor="review-feedback" className="sr-only">{t('reviews.comment')}</label>
                 <textarea
                   id="review-feedback"
@@ -323,7 +321,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
                   rows={4}
                   onChange={e => setComment(e.target.value)}
                   placeholder={t(isClient ? 'reviews.clientCommentPlaceholder' : 'reviews.freelancerCommentPlaceholder')}
-                  className="w-full bg-transparent border-none resize-none p-5 text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:ring-0 font-sans"
+                  className="w-full bg-transparent border-none resize-none p-5 text-sm font-bold text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-0 font-sans"
                 />
                 <div className="flex items-center justify-between px-5 pb-3">
                   <div className="flex items-center gap-1.5 text-[11px] text-text-muted font-semibold">
