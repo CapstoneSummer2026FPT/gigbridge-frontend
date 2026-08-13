@@ -14,7 +14,7 @@ import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
-import { ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { ContractStatus, ContractWorkItemStatus, type WorkspaceFileDto } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
@@ -46,7 +46,7 @@ import {
 import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import '../../reviews/styles/reviews-screen.css';
 import { FileTypeBadge } from '../../../shared/components/FileTypeBadge';
-import { contractGetAPI, type WorkspaceFileDto } from '../../../api/contractAPI/GET';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
@@ -2388,30 +2388,15 @@ function WorkspaceFilesPanel({ files, isLoading, error, onLoad }: WorkspaceFiles
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const normalizeFile = (f: WorkspaceFileDto) => ({
-    id:           f.id ?? f.fileId ?? Math.random().toString(36),
-    fileName:     f.fileName ?? f.FileName ?? null,
-    fileUrl:      f.fileUrl ?? f.FileUrl ?? f.externalUrl ?? f.ExternalUrl ?? null,
-    isExternalLink: (f.sourceType ?? f.SourceType) === 1,
-    fileSize:     f.fileSize ?? f.FileSize ?? f.fileSizeBytes ?? f.FileSizeBytes ?? null,
-    uploadedAt:   f.uploadedAt ?? f.UploadedAt ?? f.createdAt ?? f.CreatedAt ?? null,
-    uploaderName: f.uploaderName ?? f.UploaderName ?? null,
-    note:         f.note ?? f.Note ?? null,
-    version:      f.version ?? f.Version ?? null,
-    context:      f.context ?? f.Context ?? null,
-    milestoneTitle: f.milestoneTitle ?? f.MilestoneTitle ?? null,
-  });
-
-  // Group by context / milestone
-  const grouped = files.reduce<Record<string, ReturnType<typeof normalizeFile>[]>>((acc, f) => {
-    const norm  = normalizeFile(f);
-    const group = norm.milestoneTitle
-      ? `Milestone: ${norm.milestoneTitle}`
-      : norm.context
-        ? norm.context.charAt(0).toUpperCase() + norm.context.slice(1)
+  // Group by context / milestone — `files` is already normalized (contractAPI/GET.tsx).
+  const grouped = files.reduce<Record<string, WorkspaceFileDto[]>>((acc, f) => {
+    const group = f.milestoneTitle
+      ? `Milestone: ${f.milestoneTitle}`
+      : f.context
+        ? f.context.charAt(0).toUpperCase() + f.context.slice(1)
         : 'Chung';
     if (!acc[group]) acc[group] = [];
-    acc[group].push(norm);
+    acc[group].push(f);
     return acc;
   }, {});
 

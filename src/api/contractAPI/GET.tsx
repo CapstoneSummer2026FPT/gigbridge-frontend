@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractDto, ContractEscrowDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest } from '../../types/models/Contract';
+import type { ContractDto, ContractEscrowDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest, WorkspaceFileDto } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 
@@ -503,9 +503,17 @@ export const contractGetAPI = {
   /**
    * GET /api/Contracts/{contractId}/workspace/files
    * All files shared inside a workspace (from messages, deliverables, handoffs).
+   * The backend response mixes casing/naming across its source entities (message
+   * attachments, milestone deliverables, product handoffs), so we normalize it here
+   * into one canonical shape — callers never deal with raw field-name variants.
    */
-  getWorkspaceFiles: async (contractId: string): Promise<ApiResponse<WorkspaceFileDto[]>> =>
-    apiService.get<WorkspaceFileDto[]>(`${contractsUrl}/${contractId}/workspace/files`),
+  getWorkspaceFiles: async (contractId: string): Promise<ApiResponse<WorkspaceFileDto[]>> => {
+    const response = await apiService.get<RawWorkspaceFileDto[]>(`${contractsUrl}/${contractId}/workspace/files`);
+    return {
+      ...response,
+      data: response.data ? response.data.map(normalizeWorkspaceFile) : undefined,
+    };
+  },
 };
 
 export interface FreelancerCompletedProjectDto {
@@ -529,53 +537,67 @@ export interface FreelancerCompletedProjectDto {
   } | null;
 }
 
-export interface WorkspaceFileDto {
-  /** Unique identifier */
+/**
+ * Raw workspace-files payload as the backend actually sends it — casing and even the
+ * field name itself vary depending on which source entity a file came from. Never used
+ * outside `normalizeWorkspaceFile`; everywhere else in the app should use `WorkspaceFileDto`.
+ */
+interface RawWorkspaceFileDto {
   id?: string | null;
+  Id?: string | null;
   fileId?: string | null;
-  /** Original file name with extension */
+  FileId?: string | null;
   fileName?: string | null;
   FileName?: string | null;
-  /** Download / preview URL */
   fileUrl?: string | null;
   FileUrl?: string | null;
-  /** External link URL (if this is a link rather than a file) */
   externalUrl?: string | null;
   ExternalUrl?: string | null;
-  /** Source type: 0 = File, 1 = Link */
   sourceType?: number | null;
   SourceType?: number | null;
-  /** File size in bytes */
   fileSize?: number | null;
   FileSize?: number | null;
   fileSizeBytes?: number | null;
   FileSizeBytes?: number | null;
-  /** MIME type */
   contentType?: string | null;
   ContentType?: string | null;
-  /** ISO datetime of upload */
   uploadedAt?: string | null;
   UploadedAt?: string | null;
   createdAt?: string | null;
   CreatedAt?: string | null;
-  /** Uploader name */
   uploaderName?: string | null;
   UploaderName?: string | null;
   uploaderUserId?: string | null;
   UploaderUserId?: string | null;
-  /** Optional note / description */
   note?: string | null;
   Note?: string | null;
-  /** Version number (for product handoffs) */
   version?: number | null;
   Version?: number | null;
-  /** Context: "message", "deliverable", "handoff" etc. */
   context?: string | null;
   Context?: string | null;
-  /** Milestone this file belongs to (if any) */
   milestoneId?: string | null;
   MilestoneId?: string | null;
   milestoneTitle?: string | null;
   MilestoneTitle?: string | null;
 }
+
+const normalizeWorkspaceFile = (raw: RawWorkspaceFileDto): WorkspaceFileDto => {
+  const source = raw as unknown as Record<string, unknown>;
+  return {
+    id: getValue<string>(source, 'id', 'Id', 'fileId', 'FileId') ?? Math.random().toString(36),
+    fileName: getValue<string>(source, 'fileName', 'FileName') ?? null,
+    fileUrl: getValue<string>(source, 'fileUrl', 'FileUrl', 'externalUrl', 'ExternalUrl') ?? null,
+    isExternalLink: getValue<number>(source, 'sourceType', 'SourceType') === 1,
+    fileSize: getValue<number>(source, 'fileSize', 'FileSize', 'fileSizeBytes', 'FileSizeBytes') ?? null,
+    contentType: getValue<string>(source, 'contentType', 'ContentType') ?? null,
+    uploadedAt: getValue<string>(source, 'uploadedAt', 'UploadedAt', 'createdAt', 'CreatedAt') ?? null,
+    uploaderName: getValue<string>(source, 'uploaderName', 'UploaderName') ?? null,
+    uploaderUserId: getValue<string>(source, 'uploaderUserId', 'UploaderUserId') ?? null,
+    note: getValue<string>(source, 'note', 'Note') ?? null,
+    version: getValue<number>(source, 'version', 'Version') ?? null,
+    context: getValue<string>(source, 'context', 'Context') ?? null,
+    milestoneId: getValue<string>(source, 'milestoneId', 'MilestoneId') ?? null,
+    milestoneTitle: getValue<string>(source, 'milestoneTitle', 'MilestoneTitle') ?? null,
+  };
+};
 
