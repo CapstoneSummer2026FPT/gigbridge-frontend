@@ -548,6 +548,8 @@ export interface WorkspaceFileDto {
   /** File size in bytes */
   fileSize?: number | null;
   FileSize?: number | null;
+  fileSizeBytes?: number | null;
+  FileSizeBytes?: number | null;
   /** MIME type */
   contentType?: string | null;
   ContentType?: string | null;

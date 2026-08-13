@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Ban, Send, AlertTriangle, PanelLeftOpen, PanelLeftClose,
   PanelRightOpen, PanelRightClose,
-  Paperclip, Smile, CheckCircle, Download,
+  Paperclip, Smile, CheckCircle,
   FileText, CreditCard, MessageSquare,
   Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star,
   FolderOpen, RefreshCw, Award, ShieldAlert, Layers
@@ -163,6 +163,7 @@ export default function ProjectWorkspaceScreen() {
   const withdrawalRequestInFlightRef = useRef(false);
   const submitFileInputRef = useRef<HTMLInputElement>(null);
   const productFileInputRef = useRef<HTMLInputElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     user,
@@ -189,11 +190,13 @@ export default function ProjectWorkspaceScreen() {
     partnerUserId,
     isPartnerOnline,
     projectMessages,
+    chatAttachments,
+    handleSelectChatFiles,
+    handleRemoveChatFile,
     reviewPromptContractId,
     clearReviewPrompt,
     refreshWorkspace,
     handleSendMessage,
-    handleSimulateAttachment,
     handleRequestMilestoneUnlock,
     handleWithdrawMilestone,
     handleUpdateWorkItem,
@@ -1754,21 +1757,23 @@ export default function ProjectWorkspaceScreen() {
                           )}
                           <div className="flex flex-col gap-1">
                             {msg.type === 'file' ? (
-                              <div className="bg-card p-3 rounded-xl shadow-sm border border-border max-w-[280px]">
-                                <p className="text-xs text-foreground mb-2">{msg.content}</p>
-                                <div className="rounded-lg overflow-hidden border border-border">
-                                  {msg.fileUrl ? (
-                                    <img alt="Attachment" className="w-full h-32 object-cover" src={msg.fileUrl} />
-                                  ) : (
-                                    <div className="w-full h-24 bg-muted flex items-center justify-center">
-                                      <FileText size={24} className="text-muted-foreground" />
-                                    </div>
-                                  )}
-                                  <div className="bg-muted p-1.5 flex justify-between items-center text-[9px] text-muted-foreground">
-                                    <span className="truncate max-w-[150px]">{msg.fileName}</span>
-                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => toast.info(t('workspace.downloadSim', { name: msg.fileName }))} />
-                                  </div>
-                                </div>
+                              <div className="flex flex-col gap-1.5 max-w-[280px]">
+                                {msg.content && (
+                                  <p className="text-xs text-foreground">{msg.content}</p>
+                                )}
+                                {(msg.attachments && msg.attachments.length > 0
+                                  ? msg.attachments
+                                  : msg.fileUrl || msg.fileName
+                                    ? [{ messageAttachmentId: msg.id, fileName: msg.fileName ?? '', fileUrl: msg.fileUrl ?? '', mimeType: '', fileSizeBytes: 0, createdAt: msg.createdAt ?? '' }]
+                                    : []
+                                ).map(attachment => (
+                                  <FileTypeBadge
+                                    key={attachment.messageAttachmentId}
+                                    fileName={attachment.fileName}
+                                    fileUrl={attachment.fileUrl || null}
+                                    fileSize={attachment.fileSizeBytes}
+                                  />
+                                ))}
                               </div>
                             ) : (
                               <div className={`p-3 rounded-xl shadow-sm border text-xs leading-relaxed ${isMe ? 'bg-[var(--gb-cyan)] text-white border-transparent rounded-br-none' : 'bg-card text-foreground border-border rounded-bl-none'}`}>
@@ -1810,6 +1815,38 @@ export default function ProjectWorkspaceScreen() {
                     </div>
                   ) : (
                   <div className="p-3 bg-card border-t border-border flex-shrink-0">
+                    <input
+                      ref={chatFileInputRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={e => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleSelectChatFiles(e.target.files);
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                    {chatAttachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {chatAttachments.map((file, index) => (
+                          <span
+                            key={`${file.name}-${index}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted border border-border text-[10px] font-semibold text-foreground max-w-[180px]"
+                          >
+                            <span className="truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveChatFile(index)}
+                              className="text-muted-foreground hover:text-rose-500 cursor-pointer flex-shrink-0"
+                              title={t('common.remove', { defaultValue: 'Remove' })}
+                            >
+                              <X size={11} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
                       <textarea
                         className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
@@ -1828,7 +1865,7 @@ export default function ProjectWorkspaceScreen() {
                       <div className="flex justify-between items-center px-3 pb-2">
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={handleSimulateAttachment}
+                            onClick={() => chatFileInputRef.current?.click()}
                             className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
                             title={t('workspace.attachFile')}
                           >
@@ -2356,7 +2393,7 @@ function WorkspaceFilesPanel({ files, isLoading, error, onLoad }: WorkspaceFiles
     fileName:     f.fileName ?? f.FileName ?? null,
     fileUrl:      f.fileUrl ?? f.FileUrl ?? f.externalUrl ?? f.ExternalUrl ?? null,
     isExternalLink: (f.sourceType ?? f.SourceType) === 1,
-    fileSize:     f.fileSize ?? f.FileSize ?? null,
+    fileSize:     f.fileSize ?? f.FileSize ?? f.fileSizeBytes ?? f.FileSizeBytes ?? null,
     uploadedAt:   f.uploadedAt ?? f.UploadedAt ?? f.createdAt ?? f.CreatedAt ?? null,
     uploaderName: f.uploaderName ?? f.UploaderName ?? null,
     note:         f.note ?? f.Note ?? null,

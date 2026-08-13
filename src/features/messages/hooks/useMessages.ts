@@ -323,6 +323,7 @@ export function useMessages() {
   const [dealMilestonesLoading, setDealMilestonesLoading] = useState(false);
   const [dealMilestonesSaving, setDealMilestonesSaving] = useState(false);
   const [messageInput, setMessageInput] = useState('');
+  const [chatAttachments, setChatAttachments] = useState<File[]>([]);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -1183,10 +1184,44 @@ export function useMessages() {
     }));
   };
 
+  const MAX_CHAT_FILES = 5;
+  const MAX_CHAT_FILE_SIZE = 100 * 1024 * 1024;
+
+  const handleSelectChatFiles = (files: FileList | File[]): void => {
+    const incoming = Array.from(files);
+    if (incoming.length === 0) return;
+
+    const oversized = incoming.find(file => file.size <= 0 || file.size > MAX_CHAT_FILE_SIZE);
+    if (oversized) {
+      console.error(`"${oversized.name}" exceeds the 100MB attachment limit.`);
+      return;
+    }
+
+    setChatAttachments(prev => {
+      const combined = [...prev, ...incoming];
+      if (combined.length > MAX_CHAT_FILES) {
+        console.error(`You can attach up to ${MAX_CHAT_FILES} files per message.`);
+        return prev;
+      }
+      return combined;
+    });
+  };
+
+  const handleRemoveChatFile = (index: number): void => {
+    setChatAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !activeConvId || isActiveWorkspaceDisputed ||
-        activeConv?.status === ConversationStatus.Closed) return;
     const content = messageInput.trim();
+    const filesToSend = chatAttachments;
+    if (
+      (!content && filesToSend.length === 0) ||
+      !activeConvId ||
+      isActiveWorkspaceDisputed ||
+      activeConv?.status === ConversationStatus.Closed
+    ) {
+      return;
+    }
 
     const clientMessageId = typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -1201,10 +1236,18 @@ export function useMessages() {
       conversationId: activeConvId,
       senderId: user?.id ?? 'current_user',
       content,
-      type: 'text',
+      type: filesToSend.length > 0 ? 'file' : 'text',
       createdAt: new Date().toISOString(),
       isRead: true,
       sendStatus: 'pending',
+      attachments: filesToSend.map(file => ({
+        messageAttachmentId: crypto.randomUUID(),
+        fileName: file.name,
+        fileUrl: '',
+        mimeType: file.type,
+        fileSizeBytes: file.size,
+        createdAt: new Date().toISOString(),
+      })),
     };
 
     // Optimistically update UI messages
@@ -1213,6 +1256,7 @@ export function useMessages() {
       [activeConvId]: [...(prev[activeConvId] ?? []), pendingMsg],
     }));
     setMessageInput('');
+    setChatAttachments([]);
 
     // Optimistically update conversation preview in sidebar
     setConversationsState(prev =>
@@ -1230,11 +1274,18 @@ export function useMessages() {
     );
 
     try {
-      const res = await messagePostAPI.sendMessage({
-        conversationId: activeConvId,
-        clientMessageId,
-        content,
-      });
+      const res = filesToSend.length > 0
+        ? await messagePostAPI.sendMessageWithAttachments(
+            activeConvId,
+            clientMessageId,
+            content || undefined,
+            filesToSend
+          )
+        : await messagePostAPI.sendMessage({
+            conversationId: activeConvId,
+            clientMessageId,
+            content,
+          });
 
       if (!res.success || !res.data) {
         console.error('[Messages] send failed response:', {
@@ -1862,6 +1913,9 @@ export function useMessages() {
     handleSaveDealMilestones,
     messageInput,
     setMessageInput,
+    chatAttachments,
+    handleSelectChatFiles,
+    handleRemoveChatFile,
     isFavorited,
     setIsFavorited,
     isBlocked,
