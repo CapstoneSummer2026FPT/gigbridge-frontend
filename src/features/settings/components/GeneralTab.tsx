@@ -28,6 +28,7 @@ interface ProfileForm {
   fullName: string;
   email: string;
   phoneNumber: string;
+  identityOrTaxCode: string;
   avatarUrl: string;
   preferredLanguage: string;
 
@@ -52,6 +53,7 @@ const initialProfileForm = (user: any): ProfileForm => ({
   fullName: user?.full_name ?? '',
   email: user?.email ?? '',
   phoneNumber: user?.phone_number ?? '',
+  identityOrTaxCode: '',
   avatarUrl: user?.avatar ?? '',
   preferredLanguage: user?.preferred_language ?? 'vi',
 
@@ -430,6 +432,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         fullName: user.full_name ?? '',
         email: user.email ?? '',
         phoneNumber: user.phone_number ?? '',
+        identityOrTaxCode: '',
         avatarUrl: user.avatar ?? '',
         preferredLanguage: i18n.language?.startsWith('en') ? 'en' : 'vi',
       };
@@ -440,6 +443,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           fullName: userProfileRes.data.fullName || (user.full_name ?? ''),
           email: userProfileRes.data.email || (user.email ?? ''),
           phoneNumber: userProfileRes.data.phoneNumber || (user.phone_number ?? ''),
+          identityOrTaxCode: userProfileRes.data.identityOrTaxCode ?? '',
           avatarUrl: userProfileRes.data.avatar || (user.avatar ?? ''),
           preferredLanguage: prefLang === 'en' || prefLang === 'vi' ? prefLang : (i18n.language?.startsWith('en') ? 'en' : 'vi'),
         };
@@ -469,6 +473,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
             fullName: userBasic.fullName,
             email: userBasic.email,
             phoneNumber: userBasic.phoneNumber,
+            identityOrTaxCode: userBasic.identityOrTaxCode,
             avatarUrl: userBasic.avatarUrl,
             preferredLanguage: userBasic.preferredLanguage,
 
@@ -514,6 +519,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
             fullName: userBasic.fullName,
             email: userBasic.email,
             phoneNumber: userBasic.phoneNumber,
+            identityOrTaxCode: userBasic.identityOrTaxCode,
             avatarUrl: userBasic.avatarUrl,
             preferredLanguage: userBasic.preferredLanguage,
 
@@ -595,6 +601,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         fullName: formData.fullName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
+        identityOrTaxCode: formData.identityOrTaxCode,
         avatar: formData.avatarUrl,
         preferredLanguage: formData.preferredLanguage,
       });
@@ -898,6 +905,25 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                     className="settings-form-input"
                   />
                 </div>
+              </div>
+
+              <div className="settings-form-group">
+                <label className="settings-form-label">{t('settings.identityCode')}</label>
+                <div className="settings-input-wrapper">
+                  <FileText size={16} className="settings-input-icon" />
+                  <input
+                    value={formData.identityOrTaxCode}
+                    onChange={e => setFormData(prev => ({ ...prev, identityOrTaxCode: e.target.value }))}
+                    placeholder={t('settings.identityCodePlaceholder')}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={16}
+                    className="settings-form-input"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-secondary">
+                  {t('settings.identityCodeHelp')}
+                </p>
               </div>
 
               <div className="settings-form-group">

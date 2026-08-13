@@ -18,6 +18,7 @@ import settings from './settings.json';
 import notifications from './notifications.json';
 import talentMatching from './talentMatching.json';
 import onboarding from './onboarding.json';
+import receipts from './receipts.json';
 
 const en = {
   common,
@@ -40,6 +41,7 @@ const en = {
   notifications,
   talentMatching,
   onboarding,
+  receipts,
 };
 
 export default en;

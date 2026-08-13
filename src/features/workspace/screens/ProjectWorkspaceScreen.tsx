@@ -47,6 +47,7 @@ import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialo
 import '../../reviews/styles/reviews-screen.css';
 import { FileTypeBadge } from '../../../shared/components/FileTypeBadge';
 import { contractGetAPI, type WorkspaceFileDto } from '../../../api/contractAPI/GET';
+import { ProjectReceiptCard } from '../../receipts/components/ProjectReceiptCard';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
@@ -727,6 +728,11 @@ export default function ProjectWorkspaceScreen() {
     setIsEndingProject(false);
     setEndProjectModalOpen(false);
     window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    if (result.receiptQueued) {
+      toast.success(t('receipts.queuedAfterCompletion'));
+    } else {
+      toast.warning(t('receipts.prepareWarning'));
+    }
   };
 
   return (
@@ -1135,6 +1141,10 @@ export default function ProjectWorkspaceScreen() {
                   {t('workspace.viewWalletHistory')}
                 </button>
               </div>
+            )}
+
+            {activeContract?.status === ContractStatus.Completed && activeProjectId && (
+              <ProjectReceiptCard contractId={activeProjectId} />
             )}
 
             {/* Milestones timeline/list */}

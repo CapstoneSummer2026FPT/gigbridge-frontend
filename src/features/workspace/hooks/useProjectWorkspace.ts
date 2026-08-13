@@ -8,6 +8,7 @@ import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { receiptAPI } from '../../../api/receiptAPI';
 import type { Message } from '../../../types';
 import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Milestone, MilestoneEarlyStartRequest } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
@@ -71,6 +72,7 @@ interface WorkspaceActionResult {
   success: boolean;
   message?: string;
   statusCode?: number;
+  receiptQueued?: boolean;
 }
 
 interface SubmitProductHandoffPayload {
@@ -749,9 +751,14 @@ export function useProjectWorkspace(initialContractId: string) {
       return { success: false, message: response.message || 'Failed to end project.' };
     }
 
+    const receiptResponse = await receiptAPI.prepare(activeProjectId);
     await reloadActiveWorkspace();
     setReviewPromptContractId(activeProjectId);
-    return { success: true, message: response.message };
+    return {
+      success: true,
+      message: response.message,
+      receiptQueued: receiptResponse.success,
+    };
   };
 
   const handleSubmitProductHandoff = async (
