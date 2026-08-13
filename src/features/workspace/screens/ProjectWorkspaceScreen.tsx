@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Ban, Send, AlertTriangle, PanelLeftOpen, PanelLeftClose,
   PanelRightOpen, PanelRightClose,
-  Paperclip, Smile, CheckCircle, Download,
+  Paperclip, Smile, CheckCircle,
   FileText, CreditCard, MessageSquare,
   Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star,
   FolderOpen, RefreshCw, Award, ShieldAlert, Layers
@@ -14,7 +14,7 @@ import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
-import { ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { ContractStatus, ContractWorkItemStatus, type WorkspaceFileDto } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
@@ -164,6 +164,7 @@ export default function ProjectWorkspaceScreen() {
   const withdrawalRequestInFlightRef = useRef(false);
   const submitFileInputRef = useRef<HTMLInputElement>(null);
   const productFileInputRef = useRef<HTMLInputElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     user,
@@ -190,11 +191,13 @@ export default function ProjectWorkspaceScreen() {
     partnerUserId,
     isPartnerOnline,
     projectMessages,
+    chatAttachments,
+    handleSelectChatFiles,
+    handleRemoveChatFile,
     reviewPromptContractId,
     clearReviewPrompt,
     refreshWorkspace,
     handleSendMessage,
-    handleSimulateAttachment,
     handleRequestMilestoneUnlock,
     handleWithdrawMilestone,
     handleUpdateWorkItem,
@@ -781,11 +784,10 @@ export default function ProjectWorkspaceScreen() {
                 </button>
                 <button
                   onClick={handleToggleReportList}
-                  className={`font-bold text-[10px] px-4 py-2 rounded-full transition-all uppercase tracking-widest cursor-pointer border ${
-                    reportListOpen
+                  className={`font-bold text-[10px] px-4 py-2 rounded-full transition-all uppercase tracking-widest cursor-pointer border ${reportListOpen
                       ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
                       : 'bg-muted border-border text-muted-foreground hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   <FileText size={14} className="inline mr-1" />
                   {t('workspace.issueReports')}
@@ -812,31 +814,28 @@ export default function ProjectWorkspaceScreen() {
         <div className="flex lg:hidden border-b border-border bg-card flex-shrink-0">
           <button
             onClick={() => setMobileTab('list')}
-            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
-              mobileTab === 'list'
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${mobileTab === 'list'
                 ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
                 : 'border-transparent text-muted-foreground'
-            }`}
+              }`}
           >
             {t('workspace.conversations')}
           </button>
           <button
             onClick={() => setMobileTab('milestones')}
-            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
-              mobileTab === 'milestones'
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${mobileTab === 'milestones'
                 ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
                 : 'border-transparent text-muted-foreground'
-            }`}
+              }`}
           >
             {t('workspace.milestones')}
           </button>
           <button
             onClick={() => setMobileTab('chat')}
-            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
-              mobileTab === 'chat'
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${mobileTab === 'chat'
                 ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
                 : 'border-transparent text-muted-foreground'
-            }`}
+              }`}
           >
             {t('workspace.chatFiles')}
           </button>
@@ -846,9 +845,8 @@ export default function ProjectWorkspaceScreen() {
         <div className="flex flex-1 overflow-hidden">
           {/* Column 1: Conversations List (Left Pane - Collapsible) */}
           <section
-            className={`border-r border-border flex flex-col bg-card flex-shrink-0 transition-all duration-300 ${
-              isLeftPanelCollapsed ? 'w-0 opacity-0 overflow-hidden border-none pointer-events-none' : 'w-96 lg:w-[390px]'
-            } lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}
+            className={`border-r border-border flex flex-col bg-card flex-shrink-0 transition-all duration-300 ${isLeftPanelCollapsed ? 'w-0 opacity-0 overflow-hidden border-none pointer-events-none' : 'w-96 lg:w-[390px]'
+              } lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}
           >
             {/* Sidebar Title Header */}
             <div className="px-4 py-3 border-b border-border flex items-center justify-between min-h-[48px] shrink-0">
@@ -873,11 +871,10 @@ export default function ProjectWorkspaceScreen() {
               <button
                 type="button"
                 onClick={() => setWorkspaceStatusTab('active')}
-                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
-                  workspaceStatusTab === 'active'
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${workspaceStatusTab === 'active'
                     ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-emerald-500 text-emerald-600 dark:text-emerald-400 -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
                     : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
-                }`}
+                  }`}
                 title={t('workspace.tabActive', { defaultValue: 'Đang làm' })}
               >
                 <div className="flex items-center justify-center gap-1 w-full">
@@ -897,11 +894,10 @@ export default function ProjectWorkspaceScreen() {
               <button
                 type="button"
                 onClick={() => setWorkspaceStatusTab('completed')}
-                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
-                  workspaceStatusTab === 'completed'
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${workspaceStatusTab === 'completed'
                     ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-brand text-brand -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
                     : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
-                }`}
+                  }`}
                 title={t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}
               >
                 <div className="flex items-center justify-center gap-1 w-full">
@@ -921,11 +917,10 @@ export default function ProjectWorkspaceScreen() {
               <button
                 type="button"
                 onClick={() => setWorkspaceStatusTab('disputed')}
-                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
-                  workspaceStatusTab === 'disputed'
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${workspaceStatusTab === 'disputed'
                     ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-amber-500 text-amber-600 dark:text-amber-400 -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
                     : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
-                }`}
+                  }`}
                 title={t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}
               >
                 <div className="flex items-center justify-center gap-1 w-full">
@@ -945,11 +940,10 @@ export default function ProjectWorkspaceScreen() {
               <button
                 type="button"
                 onClick={() => setWorkspaceStatusTab('all')}
-                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${
-                  workspaceStatusTab === 'all'
+                className={`flex-1 relative flex flex-col items-center justify-center rounded-t-xl transition-all duration-150 cursor-pointer text-center select-none ${workspaceStatusTab === 'all'
                     ? 'bg-card font-black border-t-2 border-x border-b-0 border-border border-t-blue-500 text-blue-600 dark:text-blue-400 -mb-[1px] z-20 pt-2 pb-2 px-1 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]'
                     : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-t border-x border-transparent rounded-t-lg pt-1.5 pb-1.5 px-1 mb-0 z-10 font-bold'
-                }`}
+                  }`}
                 title={t('workspace.tabAll', { defaultValue: 'Tất cả' })}
               >
                 <div className="flex items-center justify-center gap-1 w-full">
@@ -982,9 +976,8 @@ export default function ProjectWorkspaceScreen() {
                         setActiveProjectId(proj.id);
                         navigate(`/workspace/${proj.id}`);
                       }}
-                      className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${
-                        isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''
-                      }`}
+                      className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''
+                        }`}
                     >
                       <div className="flex gap-3">
                         <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
@@ -1036,9 +1029,8 @@ export default function ProjectWorkspaceScreen() {
 
           {/* Column 2: Milestone Management (Center Pane - Flex-1 fill) */}
           <section
-            className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm min-w-0 transition-all duration-300 ${
-              mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'
-            }`}
+            className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm min-w-0 transition-all duration-300 ${mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'
+              }`}
           >
 
             {/* Professional Milestone Management Header */}
@@ -1197,13 +1189,12 @@ export default function ProjectWorkspaceScreen() {
                         <div className="flex flex-col items-center shrink-0 w-8 sm:w-10 relative">
                           {/* Timeline Circle Node */}
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 z-10 shrink-0 ${
-                              isCompleted || isInProgress || isSubmitted
+                            className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 z-10 shrink-0 ${isCompleted || isInProgress || isSubmitted
                                 ? 'bg-brand text-brand-foreground shadow-md ring-4 ring-brand/20'
                                 : isConsecutiveEarlyStart
                                   ? 'bg-surface-card border-2 border-brand text-brand ring-4 ring-brand/10'
                                   : 'bg-surface-card border-2 border-border text-text-muted ring-4 ring-background'
-                            }`}
+                              }`}
                           >
                             {isCompleted ? (
                               <CheckCircle size={16} />
@@ -1217,9 +1208,8 @@ export default function ProjectWorkspaceScreen() {
                           {/* Vertical Connecting Line to Next Node */}
                           {!isLast && (
                             <div
-                              className={`w-0 flex-1 my-1 transition-colors duration-500 bg-transparent ${
-                                isLineFilled ? 'border-l-2 border-brand' : 'border-l-2 border-border'
-                              }`}
+                              className={`w-0 flex-1 my-1 transition-colors duration-500 bg-transparent ${isLineFilled ? 'border-l-2 border-brand' : 'border-l-2 border-border'
+                                }`}
                             />
                           )}
                         </div>
@@ -1227,23 +1217,21 @@ export default function ProjectWorkspaceScreen() {
                         {/* Right Milestone Card Body */}
                         <div className="flex-1">
                           <div
-                            className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 shadow-xs hover:shadow-md ${
-                              isCompleted
+                            className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 shadow-xs hover:shadow-md ${isCompleted
                                 ? 'bg-background/90 border-border/80'
                                 : isInProgress || isSubmitted
                                   ? 'bg-background border-brand/40 ring-1 ring-brand/20 shadow-md'
                                   : isConsecutiveEarlyStart
                                     ? 'bg-background border-brand/30'
                                     : 'bg-surface-muted/30 border-border/60 opacity-85'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex items-start gap-3">
-                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ${
-                                  isCompleted || isInProgress || isSubmitted
+                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ${isCompleted || isInProgress || isSubmitted
                                     ? 'bg-brand/10 text-brand border border-brand/20'
                                     : 'bg-surface-muted border border-border text-text-muted'
-                                }`}>
+                                  }`}>
                                   M{idx + 1}
                                 </span>
 
@@ -1280,13 +1268,12 @@ export default function ProjectWorkspaceScreen() {
                                 </div>
                               </div>
 
-                              <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border shrink-0 ${
-                                isCompleted || isInProgress
+                              <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border shrink-0 ${isCompleted || isInProgress
                                   ? 'bg-brand/10 border-brand/30 text-brand'
                                   : isSubmitted
                                     ? 'bg-brand/10 border-brand/30 text-brand animate-pulse'
                                     : 'bg-surface-muted border-border text-text-muted'
-                              }`}>
+                                }`}>
                                 {milestone.status}
                               </span>
                             </div>
@@ -1388,9 +1375,9 @@ export default function ProjectWorkspaceScreen() {
                                       title={withdrawalEligibility.meetsApprovalThreshold
                                         ? t('earlyWithdrawal.actionTooltip')
                                         : t('earlyWithdrawal.thresholdTooltip', {
-                                            approved: withdrawalEligibility.approvedMilestones,
-                                            required: withdrawalEligibility.requiredApprovedMilestones,
-                                          })}
+                                          approved: withdrawalEligibility.approvedMilestones,
+                                          required: withdrawalEligibility.requiredApprovedMilestones,
+                                        })}
                                       className="bg-brand hover:bg-brand-hover disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-not-allowed text-brand-foreground px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md cursor-pointer"
                                     >
                                       {isMilestoneActionPending ? t('earlyWithdrawal.submitting') : t('earlyWithdrawal.action')}
@@ -1499,11 +1486,10 @@ export default function ProjectWorkspaceScreen() {
 
           {/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files - 25-30% ratio) */}
           <aside
-            className={`flex flex-col bg-card overflow-hidden transition-all duration-300 flex-shrink-0 ${
-              showInfo
+            className={`flex flex-col bg-card overflow-hidden transition-all duration-300 flex-shrink-0 ${showInfo
                 ? 'w-80 lg:w-[32%] xl:w-[28%] 2xl:w-[24%] max-w-[420px] min-w-[300px] opacity-100 border-l border-border'
                 : 'w-0 min-w-0 max-w-0 opacity-0 pointer-events-none border-none p-0 m-0'
-            } ${mobileTab === 'chat' ? 'flex flex-1 w-full' : 'hidden lg:flex'}`}
+              } ${mobileTab === 'chat' ? 'flex flex-1 w-full' : 'hidden lg:flex'}`}
           >
             {/* 2 Tabs at the top with Collapse icon on top-left */}
             <div className="flex items-center border-b border-border bg-card">
@@ -1518,22 +1504,20 @@ export default function ProjectWorkspaceScreen() {
 
               <button
                 onClick={() => setActiveTab('chat')}
-                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === 'chat'
+                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${activeTab === 'chat'
                     ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-black'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 <MessageSquare size={14} />
                 <span>{t('nav.messages')}</span>
               </button>
               <button
                 onClick={() => setActiveTab('files')}
-                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === 'files'
+                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${activeTab === 'files'
                     ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-black'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 <FileText size={14} />
                 <span>{t('workspace.sharedFiles')}</span>
@@ -1605,9 +1589,8 @@ export default function ProjectWorkspaceScreen() {
                                   e.stopPropagation();
                                   setIsFavorited(!isFavorited);
                                 }}
-                                className={`text-[8px] font-bold px-3 py-1 rounded-full uppercase tracking-wider transition-all cursor-pointer ${
-                                  isFavorited ? 'bg-[var(--gb-cyan)] text-white' : 'bg-secondary text-foreground hover:bg-muted'
-                                }`}
+                                className={`text-[8px] font-bold px-3 py-1 rounded-full uppercase tracking-wider transition-all cursor-pointer ${isFavorited ? 'bg-[var(--gb-cyan)] text-white' : 'bg-secondary text-foreground hover:bg-muted'
+                                  }`}
                               >
                                 {isFavorited ? t('workspace.favorited') : t('workspace.favorite')}
                               </button>
@@ -1620,9 +1603,8 @@ export default function ProjectWorkspaceScreen() {
                                   setIsBlocked(nextBlocked);
                                   toast.success(nextBlocked ? t('workspace.contactBlocked') : t('workspace.contactUnblocked'));
                                 }}
-                                className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border font-bold text-[9px] uppercase tracking-widest transition-all cursor-pointer ${
-                                  isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
-                                }`}
+                                className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border font-bold text-[9px] uppercase tracking-widest transition-all cursor-pointer ${isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
+                                  }`}
                               >
                                 <Ban size={10} />
                                 {isBlocked ? t('workspace.unblockContact') : t('workspace.blockContact')}
@@ -1661,11 +1643,10 @@ export default function ProjectWorkspaceScreen() {
                           <div key={msg.id || index} className="flex justify-center self-stretch">
                             <div
                               id={`report-system-${reportEvent.reportId}`}
-                              className={`w-full max-w-md rounded-xl border bg-card p-4 shadow-sm transition-all ${
-                                isSelected
+                              className={`w-full max-w-md rounded-xl border bg-card p-4 shadow-sm transition-all ${isSelected
                                   ? 'border-amber-500 ring-2 ring-amber-500/20'
                                   : 'border-amber-500/30'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2">
@@ -1764,21 +1745,23 @@ export default function ProjectWorkspaceScreen() {
                           )}
                           <div className="flex flex-col gap-1">
                             {msg.type === 'file' ? (
-                              <div className="bg-card p-3 rounded-xl shadow-sm border border-border max-w-[280px]">
-                                <p className="text-xs text-foreground mb-2">{msg.content}</p>
-                                <div className="rounded-lg overflow-hidden border border-border">
-                                  {msg.fileUrl ? (
-                                    <img alt="Attachment" className="w-full h-32 object-cover" src={msg.fileUrl} />
-                                  ) : (
-                                    <div className="w-full h-24 bg-muted flex items-center justify-center">
-                                      <FileText size={24} className="text-muted-foreground" />
-                                    </div>
-                                  )}
-                                  <div className="bg-muted p-1.5 flex justify-between items-center text-[9px] text-muted-foreground">
-                                    <span className="truncate max-w-[150px]">{msg.fileName}</span>
-                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => toast.info(t('workspace.downloadSim', { name: msg.fileName }))} />
-                                  </div>
-                                </div>
+                              <div className="flex flex-col gap-1.5 max-w-[280px]">
+                                {msg.content && (
+                                  <p className="text-xs text-foreground">{msg.content}</p>
+                                )}
+                                {(msg.attachments && msg.attachments.length > 0
+                                  ? msg.attachments
+                                  : msg.fileUrl || msg.fileName
+                                    ? [{ messageAttachmentId: msg.id, fileName: msg.fileName ?? '', fileUrl: msg.fileUrl ?? '', mimeType: '', fileSizeBytes: 0, createdAt: msg.createdAt ?? '' }]
+                                    : []
+                                ).map(attachment => (
+                                  <FileTypeBadge
+                                    key={attachment.messageAttachmentId}
+                                    fileName={attachment.fileName}
+                                    fileUrl={attachment.fileUrl || null}
+                                    fileSize={attachment.fileSizeBytes}
+                                  />
+                                ))}
                               </div>
                             ) : (
                               <div className={`p-3 rounded-xl shadow-sm border text-xs leading-relaxed ${isMe ? 'bg-[var(--gb-cyan)] text-white border-transparent rounded-br-none' : 'bg-card text-foreground border-border rounded-bl-none'}`}>
@@ -1819,49 +1802,81 @@ export default function ProjectWorkspaceScreen() {
                       ) : t('workspace.viewOnlyNotice')}
                     </div>
                   ) : (
-                  <div className="p-3 bg-card border-t border-border flex-shrink-0">
-                    <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
-                      <textarea
-                        className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
-                        placeholder={t('workspace.typeMessagePlaceholder')}
-                        rows={1}
-                        value={messageInput ?? ''}
-                        onChange={e => setMessageInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
+                    <div className="p-3 bg-card border-t border-border flex-shrink-0">
+                      <input
+                        ref={chatFileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={e => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            handleSelectChatFiles(e.target.files);
                           }
+                          e.target.value = '';
                         }}
                       />
+                      {chatAttachments.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {chatAttachments.map((file, index) => (
+                            <span
+                              key={`${file.name}-${index}`}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted border border-border text-[10px] font-semibold text-foreground max-w-[180px]"
+                            >
+                              <span className="truncate">{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveChatFile(index)}
+                                className="text-muted-foreground hover:text-rose-500 cursor-pointer flex-shrink-0"
+                                title={t('common.remove', { defaultValue: 'Remove' })}
+                              >
+                                <X size={11} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
+                        <textarea
+                          className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
+                          placeholder={t('workspace.typeMessagePlaceholder')}
+                          rows={1}
+                          value={messageInput ?? ''}
+                          onChange={e => setMessageInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                        />
 
-                      <div className="flex justify-between items-center px-3 pb-2">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex justify-between items-center px-3 pb-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => chatFileInputRef.current?.click()}
+                              className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
+                              title={t('workspace.attachFile')}
+                            >
+                              <Paperclip size={14} />
+                            </button>
+                            <button
+                              onClick={() => setMessageInput(prev => `${prev ?? ''}😊`)}
+                              className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
+                              title={t('workspace.addEmoji')}
+                            >
+                              <Smile size={14} />
+                            </button>
+                          </div>
                           <button
-                            onClick={handleSimulateAttachment}
-                            className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                            title={t('workspace.attachFile')}
+                            onClick={handleSendMessage}
+                            className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-8 px-4 rounded-full flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 shadow-md shadow-blue-500/20 cursor-pointer"
                           >
-                            <Paperclip size={14} />
-                          </button>
-                          <button
-                            onClick={() => setMessageInput(prev => `${prev ?? ''}😊`)}
-                            className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                            title={t('workspace.addEmoji')}
-                          >
-                            <Smile size={14} />
+                            <span>{t('workspace.send')}</span>
+                            <Send size={12} />
                           </button>
                         </div>
-                        <button
-                          onClick={handleSendMessage}
-                          className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-8 px-4 rounded-full flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 shadow-md shadow-blue-500/20 cursor-pointer"
-                        >
-                          <span>{t('workspace.send')}</span>
-                          <Send size={12} />
-                        </button>
                       </div>
                     </div>
-                  </div>
                   )}
                 </div>
               )}
@@ -2131,11 +2146,10 @@ export default function ProjectWorkspaceScreen() {
               <div className="p-1 rounded-2xl bg-surface-muted border border-border/60 grid grid-cols-2 gap-1" role="tablist">
                 <button
                   type="button"
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${
-                    productMode === 'file'
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${productMode === 'file'
                       ? 'bg-background text-brand shadow-sm border border-border/60'
                       : 'text-text-muted hover:text-text-primary'
-                  }`}
+                    }`}
                   onClick={() => {
                     setProductMode('file');
                     setProductLink('');
@@ -2147,11 +2161,10 @@ export default function ProjectWorkspaceScreen() {
                 </button>
                 <button
                   type="button"
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${
-                    productMode === 'link'
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${productMode === 'link'
                       ? 'bg-background text-brand shadow-sm border border-border/60'
                       : 'text-text-muted hover:text-text-primary'
-                  }`}
+                    }`}
                   onClick={() => {
                     setProductMode('link');
                     setProductFile(null);
@@ -2358,33 +2371,18 @@ function WorkspaceFilesPanel({ files, isLoading, error, onLoad }: WorkspaceFiles
       hasLoaded.current = true;
       void onLoad();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const normalizeFile = (f: WorkspaceFileDto) => ({
-    id:           f.id ?? f.fileId ?? Math.random().toString(36),
-    fileName:     f.fileName ?? f.FileName ?? null,
-    fileUrl:      f.fileUrl ?? f.FileUrl ?? f.externalUrl ?? f.ExternalUrl ?? null,
-    isExternalLink: (f.sourceType ?? f.SourceType) === 1,
-    fileSize:     f.fileSize ?? f.FileSize ?? null,
-    uploadedAt:   f.uploadedAt ?? f.UploadedAt ?? f.createdAt ?? f.CreatedAt ?? null,
-    uploaderName: f.uploaderName ?? f.UploaderName ?? null,
-    note:         f.note ?? f.Note ?? null,
-    version:      f.version ?? f.Version ?? null,
-    context:      f.context ?? f.Context ?? null,
-    milestoneTitle: f.milestoneTitle ?? f.MilestoneTitle ?? null,
-  });
-
-  // Group by context / milestone
-  const grouped = files.reduce<Record<string, ReturnType<typeof normalizeFile>[]>>((acc, f) => {
-    const norm  = normalizeFile(f);
-    const group = norm.milestoneTitle
-      ? `Milestone: ${norm.milestoneTitle}`
-      : norm.context
-        ? norm.context.charAt(0).toUpperCase() + norm.context.slice(1)
+  // Group by context / milestone — `files` is already normalized (contractAPI/GET.tsx).
+  const grouped = files.reduce<Record<string, WorkspaceFileDto[]>>((acc, f) => {
+    const group = f.milestoneTitle
+      ? `Milestone: ${f.milestoneTitle}`
+      : f.context
+        ? f.context.charAt(0).toUpperCase() + f.context.slice(1)
         : 'Chung';
     if (!acc[group]) acc[group] = [];
-    acc[group].push(norm);
+    acc[group].push(f);
     return acc;
   }, {});
 
