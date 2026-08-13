@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { AlertTriangle, Eye, RotateCcw, Scale } from 'lucide-react';
+import { AlertTriangle, Eye, RotateCcw, Scale, Sparkles } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { DisputeStatus, type MyDisputeSummary } from '../../../types/models/Dispute';
+import type { PostJobRouteJobData } from '../../jobs/hooks/usePostJob';
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/dispute-detail-screen.css';
 
@@ -32,6 +33,8 @@ export default function MyDisputesScreen() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [recreatingDisputeId, setRecreatingDisputeId] = useState<string | null>(null);
+  const [recreateErrorText, setRecreateErrorText] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
 
@@ -57,6 +60,51 @@ export default function MyDisputesScreen() {
   useEffect(() => {
     void loadDisputes(page);
   }, [loadDisputes, page]);
+
+  const handleCreateJobPostFromRemainingMilestones = useCallback(async (disputeId: string) => {
+    if (recreatingDisputeId) return;
+    setRecreatingDisputeId(disputeId);
+    setRecreateErrorText(null);
+    try {
+      const response = await disputeGetAPI.getRemainingJobPostPlan(disputeId);
+      if (!response.success || !response.data) {
+        setRecreateErrorText(response.message || t('myDisputes.recreateError', 'Unable to prepare the new job post.'));
+        return;
+      }
+
+      const plan = response.data;
+      const jobData: PostJobRouteJobData = {
+        title: plan.title,
+        description: plan.description,
+        majorCategoryId: plan.majorCategoryId,
+        budgetMin: plan.totalRemainingBudget,
+        budgetMax: plan.totalRemainingBudget,
+        currency: plan.currency,
+        estimatedDuration: plan.estimatedDuration,
+        visibility: plan.visibility,
+        endDate: plan.endDate,
+        skillIds: plan.skillIds,
+        customSkillNames: plan.customSkillNames,
+        milestonePlans: plan.remainingMilestones.map((milestone, index) => ({
+          title: milestone.title,
+          description: milestone.description ?? undefined,
+          amount: milestone.amount,
+          estimatedDuration: milestone.estimatedDuration ?? undefined,
+          dueDate: milestone.dueDate ?? undefined,
+          deliverables: milestone.deliverables ?? undefined,
+          acceptanceCriteria: milestone.acceptanceCriteria ?? undefined,
+          orderIndex: index,
+          workItems: [],
+        })),
+      };
+
+      navigate('/jobs/post', { state: { jobData } });
+    } catch (err) {
+      setRecreateErrorText(err instanceof Error ? err.message : t('myDisputes.recreateError', 'Unable to prepare the new job post.'));
+    } finally {
+      setRecreatingDisputeId(null);
+    }
+  }, [navigate, recreatingDisputeId, t]);
 
   return (
     <AppLayout fullWidth>
@@ -102,15 +150,21 @@ export default function MyDisputesScreen() {
             </div>
           ) : (
             <>
+              {recreateErrorText && (
+                <div className="flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-500">
+                  <AlertTriangle size={16} />
+                  {recreateErrorText}
+                </div>
+              )}
               <div className="overflow-x-auto rounded-2xl border border-border">
                 <table className="w-full min-w-[720px] table-fixed text-left text-xs">
                   <thead className="bg-surface-muted/60 text-[11px] font-extrabold uppercase tracking-wider text-text-muted">
                     <tr>
                       <th className="w-[8%] px-4 py-3">{t('myDisputes.columnStt', 'STT')}</th>
-                      <th className="w-[34%] px-4 py-3">{t('myDisputes.columnProject', 'Project Name')}</th>
+                      <th className="w-[24%] px-4 py-3">{t('myDisputes.columnProject', 'Project Name')}</th>
                       <th className="w-[18%] px-4 py-3">{t('myDisputes.columnDate', 'Date')}</th>
                       <th className="w-[20%] px-4 py-3">{t('myDisputes.columnStatus', 'Status')}</th>
-                      <th className="w-[20%] px-4 py-3 text-right">{t('myDisputes.columnAction', 'View Detail')}</th>
+                      <th className="w-[30%] px-4 py-3 text-right">{t('myDisputes.columnAction', 'View Detail')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -126,15 +180,30 @@ export default function MyDisputesScreen() {
                             {statusLabels[item.status] ?? `Status ${item.status}`}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/contracts/${item.contractId}/disputes/${item.disputeId}`)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-text-primary transition hover:border-brand hover:text-brand"
-                          >
-                            <Eye size={13} />
-                            {t('myDisputes.viewDetail', 'View Detail')}
-                          </button>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {item.status === DisputeStatus.Resolved && item.canCreateJobPostFromRemainingMilestones && (
+                              <button
+                                type="button"
+                                disabled={recreatingDisputeId === item.disputeId}
+                                onClick={() => void handleCreateJobPostFromRemainingMilestones(item.disputeId)}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-brand bg-brand/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-brand transition hover:bg-brand hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                <Sparkles size={13} />
+                                {recreatingDisputeId === item.disputeId
+                                  ? t('myDisputes.recreating', 'Preparing...')
+                                  : t('myDisputes.recreateJobPost', 'Create Job Post from Remaining Milestones')}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/contracts/${item.contractId}/disputes/${item.disputeId}`)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-text-primary transition hover:border-brand hover:text-brand"
+                            >
+                              <Eye size={13} />
+                              {t('myDisputes.viewDetail', 'View Detail')}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

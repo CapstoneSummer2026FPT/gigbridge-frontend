@@ -307,6 +307,24 @@ export interface MilestoneAttachment {
   created_at?: string;
 }
 
+/** Normalized shape of a file shared inside a workspace — one canonical field name each. */
+export interface WorkspaceFileDto {
+  id: string;
+  fileName: string | null;
+  fileUrl: string | null;
+  isExternalLink: boolean;
+  fileSize: number | null;
+  contentType: string | null;
+  uploadedAt: string | null;
+  uploaderName: string | null;
+  uploaderUserId: string | null;
+  note: string | null;
+  version: number | null;
+  context: string | null;
+  milestoneId: string | null;
+  milestoneTitle: string | null;
+}
+
 export interface ContractQueryParams {
   pageIndex?: number;
   pageSize?: number;

@@ -46,6 +46,25 @@ export const messagePostAPI = {
   },
 
   /**
+   * POST /api/messages/attachments
+   * Send a chat message with one or more file attachments (multipart/form-data).
+   */
+  sendMessageWithAttachments: async (
+    conversationId: string,
+    clientMessageId: string,
+    content: string | undefined,
+    files: File[]
+  ): Promise<ApiResponse<MessageResponse>> => {
+    const formData = new FormData();
+    formData.append('conversationId', conversationId);
+    formData.append('clientMessageId', clientMessageId);
+    if (content) formData.append('content', content);
+    files.forEach(file => formData.append('attachments', file));
+
+    return apiService.post<MessageResponse>('messages/attachments', formData);
+  },
+
+  /**
    * POST /api/conversations/{conversationId}/read/{messageId}
    */
   markAsRead: async (conversationId: string, messageId: string): Promise<ApiResponse<boolean>> => {

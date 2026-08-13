@@ -1,13 +1,13 @@
 import {
-  Send, Paperclip, Smile, Info, X, Ban, Download,
-  FileText, Image as ImageIcon, ChevronDown,
+  Send, Paperclip, Smile, Info, X, Ban, Download as DownloadIcon,
+  ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
   ShieldAlert, Lock, Award, LockKeyhole,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ContractStatus } from '../../../types/models/Contract';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -27,6 +27,7 @@ import {
 import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
+import { FileTypeBadge, getFileCategory, toForceDownloadUrl } from '../../../shared/components/FileTypeBadge';
 import '../styles/messages-screen.css';
 
 const ROOM_COPY = {
@@ -200,6 +201,9 @@ export default function MessagesScreen() {
     handleSaveDealMilestones,
     messageInput,
     setMessageInput,
+    chatAttachments,
+    handleSelectChatFiles,
+    handleRemoveChatFile,
     isFavorited,
     setIsFavorited,
     isBlocked,
@@ -238,6 +242,7 @@ export default function MessagesScreen() {
     highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
   const [viewReportId, setViewReportId] = useState<string | null>(null);
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
   const {
@@ -304,7 +309,9 @@ export default function MessagesScreen() {
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed' && canNegotiateActiveJob;
   const isNegotiationConversation = activeConv?.roomType === 'invited' || activeConv?.roomType === 'negotiation';
   const sharedAttachments = Array.from(new Map(
-    activeMessages.flatMap(message => message.attachments || []).map(attachment => [attachment.messageAttachmentId, attachment])
+    activeMessages
+      .flatMap(message => (message.attachments || []).map(attachment => ({ ...attachment, senderName: message.senderName })))
+      .map(attachment => [attachment.messageAttachmentId, attachment])
   ).values());
 
   if (loading) {
@@ -870,21 +877,50 @@ export default function MessagesScreen() {
                           actionBusy={scheduleActionId === msg.schedule.scheduleId}
                           onLatest={() => document.getElementById(`message-${latestScheduleMessage?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
                       ) : msg.type === 'file' ? (
-                        <div className="bg-card p-4 rounded-2xl shadow-sm border border-border max-w-sm">
-                          <p className="text-sm mb-3">{msg.content}</p>
-                          <div className="rounded-xl overflow-hidden border border-border">
-                            {msg.fileUrl ? (
-                              <img src={msg.fileUrl} alt="Attachment" className="w-full h-40 object-cover" />
-                            ) : (
-                              <div className="w-full h-28 bg-muted flex items-center justify-center">
-                                <FileText size={28} className="text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="bg-muted p-2 flex justify-between items-center text-[10px] text-muted-foreground">
-                              <span className="truncate">{msg.fileName}</span>
-                              <Download size={13} className="cursor-pointer hover:text-[var(--gb-cyan)]" />
-                            </div>
-                          </div>
+                        <div className="flex flex-col gap-1.5 max-w-sm">
+                          {msg.content && (
+                            <p className="text-sm">{msg.content}</p>
+                          )}
+                          {(msg.attachments && msg.attachments.length > 0
+                            ? msg.attachments
+                            : msg.fileUrl || msg.fileName
+                              ? [{ messageAttachmentId: msg.id, fileName: msg.fileName ?? '', fileUrl: msg.fileUrl ?? '', mimeType: '', fileSizeBytes: 0, createdAt: msg.createdAt ?? '' }]
+                              : []
+                          ).map(attachment => {
+                            const isImage = attachment.mimeType.startsWith('image/') ||
+                              getFileCategory(attachment.fileName) === 'image';
+
+                            if (isImage && attachment.fileUrl) {
+                              return (
+                                <div key={attachment.messageAttachmentId} className="relative group max-w-[240px]">
+                                  <a href={attachment.fileUrl} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                      src={attachment.fileUrl}
+                                      alt={attachment.fileName}
+                                      className="max-w-[240px] max-h-[240px] w-auto h-auto rounded-xl border border-border object-cover cursor-pointer"
+                                    />
+                                  </a>
+                                  <a
+                                    href={toForceDownloadUrl(attachment.fileUrl)}
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Download"
+                                  >
+                                    <DownloadIcon size={13} />
+                                  </a>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <FileTypeBadge
+                                key={attachment.messageAttachmentId}
+                                fileName={attachment.fileName}
+                                fileUrl={attachment.fileUrl || null}
+                                fileSize={attachment.fileSizeBytes}
+                              />
+                            );
+                          })}
                         </div>
 
                       ) : msg.type === 'deal' ? (
@@ -999,6 +1035,40 @@ export default function MessagesScreen() {
                   />
                 )}
 
+                <input
+                  ref={chatFileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={e => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleSelectChatFiles(e.target.files);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+
+                {chatAttachments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+                    {chatAttachments.map((file, index) => (
+                      <span
+                        key={`${file.name}-${index}`}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted border border-border text-[10px] font-semibold text-foreground max-w-[180px]"
+                      >
+                        <span className="truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveChatFile(index)}
+                          className="text-muted-foreground hover:text-rose-500 cursor-pointer flex-shrink-0 border-none bg-transparent"
+                          title={t('common.remove', { defaultValue: 'Remove' })}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <textarea
                   id="msg-input"
                   className="w-full bg-transparent border-none focus:outline-none p-4 resize-none min-h-[52px] text-sm focus:ring-0"
@@ -1018,6 +1088,7 @@ export default function MessagesScreen() {
                   <div className="flex items-center gap-2">
                     {/* Attach File */}
                     <button
+                      onClick={() => chatFileInputRef.current?.click()}
                       className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
                       title={t('messages.attachFile')}
                     >
@@ -1261,14 +1332,14 @@ export default function MessagesScreen() {
                 {sharedAttachments.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No files have been shared in this conversation.</p>
                 ) : sharedAttachments.map(attachment => (
-                  <div key={attachment.messageAttachmentId} className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg transition-all border border-transparent hover:border-border">
-                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">{attachment.mimeType.startsWith('image/') ? <ImageIcon className="text-[var(--gb-cyan)]" size={14} /> : <FileText className="text-red-500" size={14} />}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold truncate">{attachment.fileName}</p>
-                      <p className="text-[9px] text-muted-foreground">{Math.max(1, Math.ceil(attachment.fileSizeBytes / 1024))} KB</p>
-                    </div>
-                    <a href={attachment.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`Download ${attachment.fileName}`}><Download size={13} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" /></a>
-                  </div>
+                  <FileTypeBadge
+                    key={attachment.messageAttachmentId}
+                    fileName={attachment.fileName}
+                    fileUrl={attachment.fileUrl || null}
+                    fileSize={attachment.fileSizeBytes}
+                    uploadedAt={attachment.createdAt}
+                    uploaderName={attachment.senderName}
+                  />
                 ))}
               </div>
             </div>

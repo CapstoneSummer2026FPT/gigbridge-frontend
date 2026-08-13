@@ -66,6 +66,24 @@ export function getFileCategory(fileName?: string | null, isExternalLink?: boole
   return EXT_MAP[ext] ?? 'other';
 }
 
+// Cloudinary ignores the HTML `download` attribute on its cross-origin URLs (browsers
+// only honor `download` for same-origin links), so PDFs/images just open inline instead
+// of saving. `fl_attachment` makes Cloudinary respond with Content-Disposition: attachment,
+// forcing a real download for any resource type.
+export function toForceDownloadUrl(url: string): string {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    const isCloudinary = parsed.hostname === 'res.cloudinary.com' || parsed.hostname.endsWith('.cloudinary.com');
+    if (isCloudinary && parsed.pathname.includes('/upload/')) {
+      return url.replace('/upload/', '/upload/fl_attachment/');
+    }
+  } catch {
+    // Not an absolute URL — return as-is.
+  }
+  return url;
+}
+
 export function getFileExtension(fileName?: string | null): string {
   if (!fileName) return 'file';
   const ext = fileName.split('.').pop()?.toUpperCase() ?? 'FILE';
@@ -133,6 +151,13 @@ function formatDate(value?: string | null): string {
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function formatTime(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export interface FileTypeBadgeProps {
@@ -175,6 +200,7 @@ export function FileTypeBadge({
   const ext      = isExternalLink ? 'URL' : getFileExtension(fileName);
   const sizeStr  = formatFileSize(fileSize);
   const dateStr  = formatDate(uploadedAt);
+  const timeStr  = formatTime(uploadedAt);
   const hasUrl   = Boolean(fileUrl);
 
   const handleOpen = useCallback(() => {
@@ -215,13 +241,19 @@ export function FileTypeBadge({
             {isExternalLink ? (fileUrl ?? 'External Link') : (fileName ?? 'Untitled File')}
           </p>
           <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-            {sizeStr && (
-              <span className="text-[10px] text-text-muted font-semibold">{sizeStr}</span>
+            {timeStr && (
+              <span className="text-[10px] text-text-muted font-semibold">{timeStr}</span>
             )}
             {dateStr && (
               <>
-                <span className="text-[10px] text-text-muted opacity-50">·</span>
+                {timeStr && <span className="text-[10px] text-text-muted opacity-50">·</span>}
                 <span className="text-[10px] text-text-muted font-semibold">{dateStr}</span>
+              </>
+            )}
+            {sizeStr && (
+              <>
+                <span className="text-[10px] text-text-muted opacity-50">·</span>
+                <span className="text-[10px] text-text-muted font-semibold">{sizeStr}</span>
               </>
             )}
             {uploaderName && (
@@ -258,7 +290,7 @@ export function FileTypeBadge({
               </button>
               {!isExternalLink && (
                 <a
-                  href={fileUrl ?? '#'}
+                  href={toForceDownloadUrl(fileUrl ?? '') || '#'}
                   download={fileName ?? true}
                   onClick={e => e.stopPropagation()}
                   className={`w-7 h-7 rounded-lg flex items-center justify-center ${theme.bg} ${theme.text} opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer`}
