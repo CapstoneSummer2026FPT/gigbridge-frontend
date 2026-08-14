@@ -79,3 +79,23 @@ export const durationToWeeks = (
 
   return durationValue * WEEKS_PER_UNIT[unit];
 };
+
+// Exact day conversions used for milestone deadline arithmetic, matching the
+// backend's MilestonePlanDeadlineCalculator so both sides compute the same dates.
+const DAYS_PER_UNIT: Record<JobDurationUnit, number> = {
+  weeks: 7,
+  months: 30,
+  years: 365,
+};
+
+export const durationToDays = (
+  value: string,
+  unit: JobDurationUnit = DEFAULT_JOB_DURATION_UNIT
+): number => {
+  const durationValue = Number(value);
+  if (!Number.isInteger(durationValue) || durationValue <= 0) {
+    return 0;
+  }
+
+  return durationValue * DAYS_PER_UNIT[unit];
+};
