@@ -99,6 +99,7 @@ i18n
       'settings',
       'notifications',
       'talentMatching',
+      'receipts',
     ],
 
     // Fallback language when detected language is not supported

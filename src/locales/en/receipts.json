@@ -1,0 +1,52 @@
+{
+  "receipts": {
+    "title": "Project receipts",
+    "subtitle": "View, download, and track email delivery for receipts from your completed projects.",
+    "total": "{{count}} receipt",
+    "total_other": "{{count}} receipts",
+    "loading": "Loading receipts...",
+    "loadError": "Receipts could not be loaded.",
+    "emptyTitle": "No receipts yet",
+    "emptyDescription": "A receipt will appear here when one of your projects is completed.",
+    "projectReceipt": "Project receipt",
+    "viewDetails": "View details",
+    "download": "Download PDF",
+    "downloadError": "The receipt PDF could not be downloaded.",
+    "prepareError": "The receipt could not be prepared.",
+    "retryError": "The receipt could not be retried.",
+    "retry": "Retry",
+    "retryGeneration": "Retry PDF",
+    "retryEmail": "Retry email",
+    "generationRetryQueued": "Receipt generation has been queued again.",
+    "emailRetryQueued": "Receipt email delivery has been queued again.",
+    "queuedAfterCompletion": "Project completed. Your receipt is being prepared and will be emailed to you.",
+    "prepareWarning": "Project completed, but the receipt could not be queued yet. Open the completed project to retry.",
+    "automaticEmailDescription": "A PDF copy will be emailed automatically when it is ready.",
+    "emailedDescription": "A PDF copy was sent to the email address on your GigBridge account.",
+    "preparingTitle": "Preparing your receipt",
+    "preparingDescription": "The PDF is being generated. This view updates automatically, and the receipt will be emailed when ready.",
+    "loadingDocument": "Loading receipt document...",
+    "documentTitle": "Receipt {{number}}",
+    "issued": "Issued",
+    "issuedOn": "Issued {{date}}",
+    "document": "Document",
+    "emailDelivery": "Email delivery",
+    "pagination": "Receipt pages",
+    "pageOf": "Page {{page}} of {{total}}",
+    "generationStatus": {
+      "pending": "PDF queued",
+      "processing": "Generating PDF",
+      "ready": "PDF ready",
+      "failed": "PDF failed"
+    },
+    "emailStatus": {
+      "pending": "Email queued",
+      "delivered": "Email delivered",
+      "failed": "Email failed"
+    },
+    "type": {
+      "client": "Client receipt",
+      "freelancer": "Freelancer receipt"
+    }
+  }
+}

@@ -21,7 +21,8 @@ export type UiNotificationType =
   | 'subscription'
   | 'promotion'
   | 'rank_protection'
-  | 'report';
+  | 'report'
+  | 'receipt';
 
 export interface UiNotification {
   id: string;
@@ -87,6 +88,8 @@ const normalizeType = (type: unknown): UiNotificationType => {
       19: 'rank_protection',
       20: 'report',
       21: 'review',
+      24: 'receipt',
+      25: 'receipt',
     };
 
     return numericTypes[type] ?? 'system';
@@ -110,6 +113,7 @@ const normalizeType = (type: unknown): UiNotificationType => {
     return 'rank_protection';
   }
   if (normalized.includes('report')) return 'report';
+  if (normalized.includes('receipt')) return 'receipt';
 
   return normalized === 'custom' || normalized === 'system' ? 'system' : 'system';
 };
@@ -165,6 +169,8 @@ const getActionUrl = (
         : referenceId
           ? `/contracts/${referenceId}`
           : '/contracts';
+    case 'receipt':
+      return referenceId ? `/receipts?receiptId=${encodeURIComponent(referenceId)}` : '/receipts';
     default:
       return '/notifications';
   }
