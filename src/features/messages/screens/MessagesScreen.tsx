@@ -1,11 +1,12 @@
 import {
-  Send, Paperclip, Smile, Info, X, Ban, Download as DownloadIcon,
+  Send, Paperclip, Smile, X, Ban, Download as DownloadIcon,
   ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
   ShieldAlert, Lock, Award, LockKeyhole,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ContractStatus } from '../../../types/models/Contract';
@@ -243,8 +244,11 @@ export default function MessagesScreen() {
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
   const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const conversationPanelRef = useRef<HTMLElement>(null);
+  const contextPanelRef = useRef<HTMLElement>(null);
   const [viewReportId, setViewReportId] = useState<string | null>(null);
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
+  const [showConversationList, setShowConversationList] = useState(true);
   const {
     reports: contractReports,
     isLoading: isLoadingReports,
@@ -260,6 +264,20 @@ export default function MessagesScreen() {
     isEscalatingReport,
     clearSelectedReport,
   } = useReportContract();
+
+  useEffect(() => {
+    const updatePanelInteractivity = (panel: HTMLElement | null, isVisible: boolean): void => {
+      if (!panel) return;
+      if (isVisible) {
+        panel.removeAttribute('inert');
+        return;
+      }
+      panel.setAttribute('inert', '');
+    };
+
+    updatePanelInteractivity(conversationPanelRef.current, showConversationList);
+    updatePanelInteractivity(contextPanelRef.current, showInfo);
+  }, [showConversationList, showInfo]);
 
   const openReportDetail = async (contractId: string, reportId: string) => {
     setViewReportId(reportId);
@@ -313,6 +331,20 @@ export default function MessagesScreen() {
       .flatMap(message => (message.attachments || []).map(attachment => ({ ...attachment, senderName: message.senderName })))
       .map(attachment => [attachment.messageAttachmentId, attachment])
   ).values());
+  const conversationPanelToggleLabel = t(
+    showConversationList ? 'messages.collapseConversations' : 'messages.expandConversations'
+  );
+  const projectInfoPanelToggleLabel = t(
+    showInfo ? 'messages.collapseProjectInfo' : 'messages.expandProjectInfo'
+  );
+
+  const handleToggleConversationList = (): void => {
+    setShowConversationList(current => !current);
+  };
+
+  const handleToggleProjectInfo = (): void => {
+    setShowInfo(current => !current);
+  };
 
   if (loading) {
     return (
@@ -331,7 +363,12 @@ export default function MessagesScreen() {
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 
           {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
-          <section className="messages-conversation-list w-96 lg:w-[390px] shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
+          <section
+            ref={conversationPanelRef}
+            id="messages-conversation-panel"
+            className={`messages-conversation-list w-96 lg:w-[390px] shrink-0 border-r border-border flex flex-col bg-card overflow-hidden ${showConversationList ? 'is-expanded' : 'is-collapsed'}`}
+            aria-hidden={!showConversationList}
+          >
             {/* ── Document Folder Index Tabs ── */}
             <div className="pt-2.5 px-2 bg-muted/30 flex items-end gap-1 relative shrink-0">
               {/* Bottom 1px divider line for inactive tabs only */}
@@ -619,7 +656,18 @@ export default function MessagesScreen() {
               <>
                 {/* Header info / Context of Job */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-card shadow-sm z-10 animate-in fade-in duration-200">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleToggleConversationList}
+                  className="messages-pane-toggle shrink-0"
+                  title={conversationPanelToggleLabel}
+                  aria-label={conversationPanelToggleLabel}
+                  aria-controls="messages-conversation-panel"
+                  aria-expanded={showConversationList}
+                >
+                  {showConversationList ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+                </button>
                 <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative">
                   <img
                     src={activeConv.participantAvatar}
@@ -660,15 +708,19 @@ export default function MessagesScreen() {
                   {creatingGoogleMeet ? <Loader2 size={18} className="animate-spin" /> : <Video size={18} />}
                 </button>
                 <button
-                  onClick={() => setShowInfo(!showInfo)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                  type="button"
+                  onClick={handleToggleProjectInfo}
+                  className={`messages-pane-toggle ${
                     showInfo
-                      ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'is-active'
+                      : ''
                   }`}
-                  title={t('messages.toggleProjectInfo')}
+                  title={projectInfoPanelToggleLabel}
+                  aria-label={projectInfoPanelToggleLabel}
+                  aria-controls="messages-context-panel"
+                  aria-expanded={showInfo}
                 >
-                  <Info size={18} />
+                  {showInfo ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
                 </button>
               </div>
             </div>
@@ -1229,7 +1281,18 @@ export default function MessagesScreen() {
             )}
             </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-card">
+              <div className="relative flex-1 flex flex-col items-center justify-center p-8 text-center bg-card">
+                <button
+                  type="button"
+                  onClick={handleToggleConversationList}
+                  className="messages-pane-toggle absolute left-4 top-4"
+                  title={conversationPanelToggleLabel}
+                  aria-label={conversationPanelToggleLabel}
+                  aria-controls="messages-conversation-panel"
+                  aria-expanded={showConversationList}
+                >
+                  {showConversationList ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+                </button>
                 <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground mb-4">
                   <MessageSquare size={32} />
                 </div>
@@ -1244,7 +1307,10 @@ export default function MessagesScreen() {
           {/* ── Column 3: Contextual Info (Right Pane – Collapsible) ─────── */}
           {activeConv && (
             <aside
-              className={`flex flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
+              ref={contextPanelRef}
+              id="messages-context-panel"
+              className={`flex shrink-0 flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
+              aria-hidden={!showInfo}
             >
             {/* Profile */}
             <div className="p-6 text-center border-b border-border">

@@ -155,6 +155,54 @@
   max-width: min(360px, calc(100vw - 8rem));
 }
 
+.messages-conversation-list {
+  transition: width 0.3s ease, flex-basis 0.3s ease, opacity 0.2s ease;
+}
+
+.messages-conversation-list.is-collapsed {
+  width: 0 !important;
+  flex-basis: 0 !important;
+  border-right-width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.messages-pane-toggle {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.messages-pane-toggle:hover {
+  border-color: var(--messages-accent-border);
+  background: color-mix(in srgb, var(--messages-accent) 10%, transparent);
+  color: var(--messages-accent);
+}
+
+.messages-pane-toggle.is-active {
+  border-color: var(--messages-accent-border);
+  background: color-mix(in srgb, var(--messages-accent) 10%, transparent);
+  color: var(--messages-accent);
+}
+
+.messages-pane-toggle:active {
+  transform: scale(0.94);
+}
+
+.messages-pane-toggle:focus-visible {
+  outline: 2px solid var(--messages-accent);
+  outline-offset: 2px;
+}
+
 /* custom-scrollbar (same as workspace) */
 .messages-custom-scroll::-webkit-scrollbar {
   width: 5px;
@@ -191,7 +239,7 @@
     min-height: 0;
   }
 
-  .messages-page > .flex.flex-1 > section:first-child {
+  .messages-page > .flex.flex-1 > section:first-child:not(.is-collapsed) {
     width: 18rem !important;
     max-height: none;
     flex: 0 0 18rem;
@@ -232,7 +280,7 @@
     padding: 0.75rem 1rem;
   }
 
-  .messages-page > .flex.flex-1 > section:first-child {
+  .messages-page > .flex.flex-1 > section:first-child:not(.is-collapsed) {
     width: 12rem !important;
     flex-basis: 12rem;
   }
