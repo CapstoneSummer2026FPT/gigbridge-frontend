@@ -73,9 +73,7 @@
         "milestoneRequired": "Add at least one milestone before sending the final offer.",
         "titleRequired": "Enter a milestone title.",
         "amountInvalid": "Enter a milestone amount greater than zero.",
-        "deadlineRequired": "Select a milestone deadline.",
-        "deadlinePast": "The milestone deadline cannot be in the past.",
-        "deadlineSequence": "Each milestone deadline must be later than the previous milestone.",
+        "durationInvalid": "Duration must be a positive whole number in week(s), month(s), or year(s).",
         "deliverablesRequired": "Describe the milestone deliverables.",
         "workItemTitleRequired": "Enter a title for each custom work item.",
         "workItemDescriptionRequired": "Enter a description for each custom work item."

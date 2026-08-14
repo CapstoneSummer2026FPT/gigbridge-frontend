@@ -5,6 +5,7 @@ import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { ConversationStatus, MessageType } from '../../../types/models/Message';
+import { DisputeStatus } from '../../../types/models/Dispute';
 import { UserRole } from '../../../types/models/User';
 import * as signalR from '@microsoft/signalr';
 import { getChatHubUrl } from '../../../service/apiService';
@@ -13,9 +14,10 @@ import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloo
 
 interface DisputeChatProps {
   disputeId: string;
+  disputeStatus: DisputeStatus;
 }
 
-export function DisputeChat({ disputeId }: DisputeChatProps) {
+export function DisputeChat({ disputeId, disputeStatus }: DisputeChatProps) {
   const { t } = useTranslation();
   const { user } = useApp();
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -24,7 +26,11 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [closed, setClosed] = useState(false);
+  const [conversationClosed, setConversationClosed] = useState(false);
+  // A dispute is read-only once either signal says so — the conversation's own status
+  // (set server-side when the dispute closes) or the dispute's status directly, so the
+  // UI locks immediately even if the conversation fetch hasn't caught up yet.
+  const closed = conversationClosed || disputeStatus === DisputeStatus.Closed;
   const [showGuide, setShowGuide] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -43,7 +49,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
         return;
       }
       setConversationId(conversation.conversationId);
-      setClosed(conversation.status === ConversationStatus.Closed);
+      setConversationClosed(conversation.status === ConversationStatus.Closed);
       const response = await messageGetAPI.getConversationMessages(conversation.conversationId, undefined, 100);
       if (cancelled) return;
       if (response.success) setMessages(response.data ?? []);
@@ -76,7 +82,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
       void messageGetAPI.getConversations().then(response => {
         if (disposed || !response.success) return;
         const updated = response.data?.find(item => item.conversationId === conversationId);
-        if (updated) setClosed(updated.status === ConversationStatus.Closed);
+        if (updated) setConversationClosed(updated.status === ConversationStatus.Closed);
       });
     };
     connection.on('ReceiveMessage', refreshMessages);

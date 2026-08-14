@@ -73,9 +73,7 @@
         "milestoneRequired": "Hãy thêm ít nhất một milestone trước khi gửi đề xuất cuối cùng.",
         "titleRequired": "Hãy nhập tên milestone.",
         "amountInvalid": "Hãy nhập số tiền milestone lớn hơn 0.",
-        "deadlineRequired": "Hãy chọn hạn hoàn thành milestone.",
-        "deadlinePast": "Hạn hoàn thành milestone không được ở trong quá khứ.",
-        "deadlineSequence": "Hạn của mỗi milestone phải sau milestone liền trước.",
+        "durationInvalid": "Thời lượng phải là số nguyên dương theo tuần, tháng hoặc năm.",
         "deliverablesRequired": "Hãy mô tả kết quả bàn giao của milestone.",
         "workItemTitleRequired": "Hãy nhập tên cho từng work item tùy chỉnh.",
         "workItemDescriptionRequired": "Hãy nhập mô tả cho từng work item tùy chỉnh."

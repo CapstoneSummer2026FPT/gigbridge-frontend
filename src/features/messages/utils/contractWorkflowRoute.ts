@@ -1,5 +1,5 @@
-import type { ContractDto } from '../../types/models/Contract';
-import { ContractStatus } from '../../types/models/Contract';
+import type { ContractDto } from '../../../types/models/Contract';
+import { ContractStatus } from '../../../types/models/Contract';
 
 export interface ContractWorkflowRoute {
   path?: string;

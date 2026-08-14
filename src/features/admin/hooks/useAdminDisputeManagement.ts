@@ -32,22 +32,23 @@ export const emptyViolation = (): ViolationState => ({
 
 type MilestoneDecision = { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string };
 
-// Every locked milestone the admin can be asked to adjudicate for a given Contract
-// Execution Action choice. Must stay in sync with AdminResolveDisputeModal's
-// `relevantMilestones` — both read the exact same rule so the rendered rows and the
-// decisions actually submitted never diverge.
-const getRelevantMilestoneIds = (dispute: AdminDisputeDetail, contractAction: number): Set<string> =>
-  new Set(
-    dispute.milestones
-      .filter(
-        (milestone) =>
-          milestone.lockedAmount > 0 &&
-          (contractAction === 1 ||
-            milestone.status === MilestoneStatus.Disputed ||
-            milestone.milestoneId === dispute.milestoneId)
-      )
-      .map((milestone) => milestone.milestoneId)
-  );
+// Every milestone the admin needs a Release/Refund/Penalty allocation for — must stay in
+// sync with AdminResolveDisputeModal's `relevantMilestones` (both read the exact same rule)
+// so the rendered rows and the decisions actually submitted never diverge. Terminate:
+// every locked milestone. Keep Active: whatever is currently ticked in the sequential
+// top-to-bottom checklist (`selectedMilestoneIds`).
+const getRelevantMilestoneIds = (
+  dispute: AdminDisputeDetail,
+  contractAction: number,
+  selectedMilestoneIds: string[]
+): Set<string> =>
+  contractAction === 0
+    ? new Set(selectedMilestoneIds)
+    : new Set(
+        dispute.milestones
+          .filter((milestone) => milestone.lockedAmount > 0)
+          .map((milestone) => milestone.milestoneId)
+      );
 
 const buildDefaultMilestoneDecision = (milestone: AdminDisputeDetail['milestones'][number]): MilestoneDecision => {
   const defaults =
@@ -164,6 +165,8 @@ export function useAdminDisputeManagement() {
   const [milestoneDecisions, setMilestoneDecisions] = useState<
     Record<string, { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string }>
   >({});
+  // Keep Active only: ordered ids of the sequential top-to-bottom "mark Complete" selection.
+  const [selectedMilestoneIds, setSelectedMilestoneIds] = useState<string[]>([]);
   const [clientViolation, setClientViolation] = useState<ViolationState>(emptyViolation);
   const [freelancerViolation, setFreelancerViolation] = useState<ViolationState>(emptyViolation);
 
@@ -437,6 +440,7 @@ export function useAdminDisputeManagement() {
         penaltyAmount: Number(decision.penalty || 0),
         reason: decision.reason.trim() || null,
       })),
+      selectedMilestoneIds,
       contractAction,
       clientViolation: {
         isViolation: clientViolation.isViolation,
@@ -465,6 +469,7 @@ export function useAdminDisputeManagement() {
     setResolutionNote('');
     setInternalNotes('');
     setMilestoneDecisions({});
+    setSelectedMilestoneIds([]);
     setClientViolation(emptyViolation());
     setFreelancerViolation(emptyViolation());
     setContractAction(0);
@@ -477,6 +482,7 @@ export function useAdminDisputeManagement() {
     // — starting from an empty dict guarantees it seeds fresh defaults for whatever is
     // relevant at contractAction's default value (0).
     setMilestoneDecisions({});
+    setSelectedMilestoneIds([]);
     setClientViolation(emptyViolation());
     setFreelancerViolation(emptyViolation());
     setShowResolveDialog(true);
@@ -489,7 +495,7 @@ export function useAdminDisputeManagement() {
   // decision instead of a display-only fallback that silently never reaches the request.
   useEffect(() => {
     if (!showResolveDialog || !selectedDispute) return;
-    const relevantIds = getRelevantMilestoneIds(selectedDispute, contractAction);
+    const relevantIds = getRelevantMilestoneIds(selectedDispute, contractAction, selectedMilestoneIds);
     setMilestoneDecisions((prev) => {
       const prevIds = Object.keys(prev);
       const unchanged =
@@ -503,7 +509,7 @@ export function useAdminDisputeManagement() {
       }
       return next;
     });
-  }, [contractAction, selectedDispute, showResolveDialog]);
+  }, [contractAction, selectedDispute, showResolveDialog, selectedMilestoneIds]);
 
   const sendAdminDirective = async () => {
     if (!selectedDispute || (!adminMessage.trim() && adminMessageFiles.length === 0) || sendingMessage) return;
@@ -604,6 +610,7 @@ export function useAdminDisputeManagement() {
     setResolutionNote('');
     setInternalNotes('');
     setMilestoneDecisions({});
+    setSelectedMilestoneIds([]);
     setClientViolation(emptyViolation());
     setFreelancerViolation(emptyViolation());
     setContractAction(0);
@@ -703,6 +710,8 @@ export function useAdminDisputeManagement() {
     sendingMessage,
     milestoneDecisions,
     setMilestoneDecisions,
+    selectedMilestoneIds,
+    setSelectedMilestoneIds,
     clientViolation,
     setClientViolation,
     freelancerViolation,

@@ -151,8 +151,8 @@
 
 /* Compact final-offer card. Full contract scope is rendered in a modal. */
 .msg-deal-card {
-  width: 360px;
-  max-width: min(360px, calc(100vw - 8rem));
+  width: 480px;
+  max-width: min(480px, calc(100vw - 4rem));
 }
 
 .messages-conversation-list {
@@ -297,7 +297,7 @@
   }
 
   .msg-deal-card {
-    width: min(360px, calc(100vw - 5.5rem));
+    width: min(480px, calc(100vw - 3rem));
     max-width: 100%;
   }
 

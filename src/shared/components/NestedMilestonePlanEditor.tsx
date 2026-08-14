@@ -446,7 +446,7 @@ export function NestedMilestonePlanEditor({
                 {/* Core Parameters Box: Amount, Duration, Deadline */}
                 <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 sm:p-4.5 space-y-3">
                   <div className={`grid gap-4 items-start ${
-                    simplifiedMilestoneFields && showDueDate
+                    simplifiedMilestoneFields && showDueDate && !dueDateReadOnly
                       ? 'grid-cols-1 sm:grid-cols-2'
                       : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
                   }`}>
@@ -486,7 +486,7 @@ export function NestedMilestonePlanEditor({
                     </div>
 
                     {/* 2. DURATION */}
-                    {!simplifiedMilestoneFields && (
+                    {(!simplifiedMilestoneFields || dueDateReadOnly) && (
                       <div className="space-y-1.5 relative focus-within:z-20">
                         <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                           <Clock3 size={14} className="text-[var(--brand)] flex-shrink-0" />

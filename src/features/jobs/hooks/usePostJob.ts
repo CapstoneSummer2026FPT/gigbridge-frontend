@@ -19,26 +19,18 @@ import {
   type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
-  durationToDays,
+  computeChainedDueDates,
   durationToWeeks,
   formatJobDuration,
   isValidJobDurationValue,
   parseJobDuration,
   type JobDurationUnit,
 } from '../utils/jobDuration';
+import { clampMilestonesToExpectedTargets } from '../utils/milestoneClamping';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
 const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
-
-// Pure calendar-date math done entirely in UTC so it's unaffected by the browser's
-// local timezone offset — parsing "YYYY-MM-DD" at local midnight and round-tripping
-// through toISOString() would silently lose a day for any timezone ahead of UTC
-// (e.g. Vietnam, UTC+7), since local midnight is still the previous evening in UTC.
-const addDaysToDateString = (dateString: string, days: number): string => {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().split('T')[0];
-};
 
 export interface QuestionInput {
   questionText: string;
@@ -436,23 +428,8 @@ export function usePostJob() {
   // edits, add/remove/reorder, or form.deadline changing) since it's a plain memo over
   // the current milestonePlans/form.deadline, not a stateful effect.
   const milestonePlansWithDeadlines = useMemo<JobPostMilestonePlanDto[]>(() => {
-    let nextStart = form.deadline ? addDaysToDateString(form.deadline, 1) : null;
-
-    return milestonePlans.map(milestone => {
-      const duration = parseJobDuration(milestone.estimatedDuration);
-      const days = duration.value ? durationToDays(duration.value, duration.unit) : 0;
-
-      if (!nextStart || days <= 0) {
-        nextStart = null;
-        return { ...milestone, dueDate: null };
-      }
-
-      // The start day itself counts as day 1 of the duration, so the deadline is
-      // `days - 1` after the start (e.g. a 7-day span starting Aug 2 ends Aug 8).
-      const newDueDate = addDaysToDateString(nextStart, days - 1);
-      nextStart = addDaysToDateString(newDueDate, 1);
-      return { ...milestone, dueDate: newDueDate };
-    });
+    const dueDates = computeChainedDueDates(form.deadline, milestonePlans.map(milestone => milestone.estimatedDuration));
+    return milestonePlans.map((milestone, index) => ({ ...milestone, dueDate: dueDates[index] }));
   }, [form.deadline, milestonePlans]);
 
   useEffect(() => {
@@ -520,7 +497,10 @@ export function usePostJob() {
           majorName: job.majorName || '',
           categoryName: job.categoryName || '',
         });
-        setMilestonePlans(withoutWorkBreakdownItems(job.milestonePlans || []));
+        const activeBudget = Number(hasBudgetFromWizardNavigation ? form.budget : loadedForm.budget) || null;
+        const activeWeeks = loadedForm.estimatedDurationValue ? durationToWeeks(loadedForm.estimatedDurationValue, loadedForm.estimatedDurationUnit) : 0;
+        const hydratedPlans = withoutWorkBreakdownItems(job.milestonePlans || []);
+        setMilestonePlans(clampMilestonesToExpectedTargets(hydratedPlans, activeBudget, activeWeeks));
         setAttachments(job.attachments || []);
         setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
         setSkillNameById(prev => {
@@ -933,7 +913,10 @@ export function usePostJob() {
       let nextQuestions: QuestionInput[] = [];
 
       if (rawMilestones && rawMilestones.length > 0) {
-        nextMilestones = withoutWorkBreakdownItems(rawMilestones);
+        const strippedMilestones = withoutWorkBreakdownItems(rawMilestones);
+        const targetBudgetValue = generatedData.budgetMin ?? generatedData.budgetMax ?? (form.budget ? Number(form.budget) : null);
+        const targetWeeksValue = duration.value ? durationToWeeks(duration.value, duration.unit) : expectedDurationWeeks;
+        nextMilestones = clampMilestonesToExpectedTargets(strippedMilestones, targetBudgetValue, targetWeeksValue);
       }
       if (rawQuestions && rawQuestions.length > 0) {
         nextQuestions = rawQuestions.map((qText: string) => ({
@@ -1353,6 +1336,11 @@ export function usePostJob() {
   const navigateWizard = async (path: '/jobs/post' | '/jobs/post/plan' | '/jobs/post/review'): Promise<void> => {
     setErrorMessage(null);
     try {
+      if (path === '/jobs/post/plan' && milestonePlans.length > 0) {
+        const expectedBudgetVal = form.budget ? Number(form.budget) : null;
+        const clamped = clampMilestonesToExpectedTargets(milestonePlans, expectedBudgetVal, expectedDurationWeeks);
+        setMilestonePlans(clamped);
+      }
       const currentJobPostId = await flushAutosave();
       allowNextNavigation();
       navigate(path, { state: buildNavigationState(currentJobPostId) });
