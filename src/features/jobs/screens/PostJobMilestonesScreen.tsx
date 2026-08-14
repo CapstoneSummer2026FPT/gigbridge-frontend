@@ -224,7 +224,9 @@ export default function PostJobMilestonesScreen() {
       </section>
 
       {/* SECTION: INTERVIEW QUESTIONS */}
-      <section className="job-post-section">
+      <section className={`job-post-section transition-all duration-300 ${
+        aiInterviewEnabled ? 'job-post-ai-twilight' : ''
+      }`}>
         <button type="button" className="job-post-section__header job-post-accordion__trigger" onClick={() => setQuestionsOpen(current => !current)} aria-expanded={questionsOpen}>
           <span className="job-post-section__heading">
             <span className="job-post-section__icon bg-gradient-to-br from-[var(--brand)]/15 to-purple-500/15 text-[var(--brand)]">

@@ -57,11 +57,12 @@
 .cp-toggle input:checked + .cp-slider {
   background-color: #10b981;
   box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
+  animation: cp-toggle-on-glow 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cp-toggle input:checked + .cp-slider::before {
   transform: translateX(22px);
-  animation: none;
+  animation: cp-toggle-thumb-on 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cp-toggle input:not(:checked) + .cp-slider {
@@ -91,7 +92,44 @@
   }
 }
 
+@keyframes cp-toggle-thumb-on {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  62% {
+    transform: translateX(24px) scale(1.08);
+  }
+  100% {
+    transform: translateX(22px) scale(1);
+  }
+}
+
+@keyframes cp-toggle-on-glow {
+  0% {
+    background-color: rgba(148, 163, 184, 0.3);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
+  }
+  62% {
+    background-color: #34d399;
+    box-shadow:
+      0 0 22px rgba(16, 185, 129, 0.7),
+      0 0 34px rgba(139, 92, 246, 0.28);
+  }
+  100% {
+    background-color: #10b981;
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
+  }
+}
+
 .cp-toggle input:disabled + .cp-slider {
   opacity: 0.5;
   cursor: wait;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-toggle input:checked + .cp-slider,
+  .cp-toggle input:checked + .cp-slider::before,
+  .cp-toggle input:not(:checked) + .cp-slider::before {
+    animation: none;
+  }
 }

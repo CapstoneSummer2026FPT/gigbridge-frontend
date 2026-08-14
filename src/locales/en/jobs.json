@@ -294,6 +294,7 @@
       "aiEnableOnPublish": "Enabled on publish",
       "aiDisabled": "Enable AI interview on publish",
       "aiUpgrade": "Upgrade to enable",
+      "aiInterviewShort": "AI Interview",
       "presetTitle": "Popular question suggestions (Click to add):",
       "presetSimilar": "Have you worked on a project of similar scope before?",
       "presetPortfolio": "Please share a link to your most relevant work or portfolio.",

@@ -12,6 +12,9 @@ import {
   PostJobTermsReviewEditor,
 } from '../components/PostJobReviewEditors';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
+import '../../premium/styles/auto-renew.css';
 import {
   usePostJob,
   type PostJobReviewSection,
@@ -23,13 +26,15 @@ export default function PostJobReviewScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation('common');
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
   const routeState = location.state as PostJobRouteState | null;
   const controller = usePostJob();
   const {
     form, selectedOfficialSkills, selectedMajorName, selectedCategoryName,
     previewTitle, errorMessage, isActionDisabled, isDraftInitializing,
     draftError, questions, milestonePlans, milestonePlanTotal,
-    aiInterviewEnabled,
+    aiInterviewEnabled, setAiInterviewEnabled,
     milestoneTotalWeeks, isBudgetExceeded, isDurationExceeded,
     attachments,
     isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
@@ -95,6 +100,15 @@ export default function PostJobReviewScreen() {
       setEditingSection(result.section);
       focusValidationField(result.fieldSelector);
     }
+  };
+
+  const handleAiInterviewToggle = (): void => {
+    if (premiumStatus.loading) return;
+    if (!premiumStatus.isPremium) {
+      navigate('/premium/client/pricing');
+      return;
+    }
+    setAiInterviewEnabled(current => !current);
   };
 
   const editButton = (section: PostJobReviewSection, label: string) => {
@@ -401,42 +415,42 @@ export default function PostJobReviewScreen() {
               <p className="text-xs text-muted-foreground">{t('postJobWizard.review.hiringPlanHint')}</p>
             </div>
           </div>
-          {editButton('hiringPlan', t('postJobWizard.edit'))}
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all ${
+              aiInterviewEnabled
+                ? 'border-transparent bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-[0_0_14px_rgba(168,85,247,0.18)]'
+                : 'border-border/70 bg-muted/30 text-muted-foreground'
+            }`}>
+              <Bot size={14} />
+              <span className="text-[10px] font-black uppercase tracking-wider">
+                {t('postJobWizard.plan.aiInterviewShort', { defaultValue: 'AI Interview' })}
+              </span>
+              <label
+                className={`cp-toggle ${aiInterviewEnabled ? '' : 'off'}`}
+                title={t(aiInterviewEnabled
+                  ? 'postJobWizard.plan.aiEnableOnPublish'
+                  : 'postJobWizard.plan.aiDisabled')}
+              >
+                <input
+                  type="checkbox"
+                  checked={aiInterviewEnabled}
+                  disabled={premiumStatus.loading || isActionDisabled}
+                  onChange={handleAiInterviewToggle}
+                  aria-label={t(aiInterviewEnabled
+                    ? 'postJobWizard.plan.aiEnableOnPublish'
+                    : 'postJobWizard.plan.aiDisabled')}
+                />
+                <span className="cp-slider" />
+              </label>
+            </div>
+            {editButton('hiringPlan', t('postJobWizard.edit'))}
+          </div>
         </div>
         <div className="job-post-section__body pt-5">
           {editingSection === 'hiringPlan' ? (
             <PostJobHiringPlanReviewEditor controller={controller} />
           ) : (
             <div className="space-y-6">
-              <div className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${
-                aiInterviewEnabled
-                  ? 'border-purple-500/40 bg-purple-500/10'
-                  : 'border-border/70 bg-muted/20'
-              }`}>
-                <span className="flex items-center gap-2.5">
-                  <Bot size={17} className={aiInterviewEnabled ? 'text-purple-500' : 'text-muted-foreground'} />
-                  <span>
-                    <strong className="block text-xs font-black text-foreground">
-                      {t('postJobWizard.plan.aiTitle')}
-                    </strong>
-                    <small className="text-[11px] text-muted-foreground">
-                      {t(aiInterviewEnabled
-                        ? 'postJobWizard.plan.aiEnableOnPublish'
-                        : 'postJobWizard.plan.aiDisabled')}
-                    </small>
-                  </span>
-                </span>
-                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
-                  aiInterviewEnabled
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {t(aiInterviewEnabled ? 'postJob.enabled' : 'postJob.disabled', {
-                    defaultValue: aiInterviewEnabled ? 'Enabled' : 'Disabled',
-                  })}
-                </span>
-              </div>
-
               {/* Milestones Review */}
               <div className="space-y-3">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground block">
@@ -519,7 +533,11 @@ export default function PostJobReviewScreen() {
               </div>
 
               {/* Vetting Questions Review */}
-              <div className="pt-5 border-t border-border/60 space-y-3">
+              <div className={`space-y-3 transition-all duration-300 ${
+                aiInterviewEnabled
+                  ? 'job-post-ai-twilight rounded-3xl p-5'
+                  : 'border-t border-border/60 pt-5'
+              }`}>
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <HelpCircle size={14} className="text-[var(--brand)]" />
                   {t('postJob.questionsForInterview')} ({answeredQuestions.length})

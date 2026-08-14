@@ -208,6 +208,7 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
   const {
     milestonePlans, setMilestonePlans, milestoneErrors, setMilestoneErrors,
     expandedMilestone, setExpandedMilestone, questions, setQuestions,
+    aiInterviewEnabled,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver,
     handleDragEnd, MAX_QUESTION_LENGTH,
   } = controller;
@@ -278,7 +279,11 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
         }}
       />
 
-      <div className="grid gap-3 border-t border-border pt-5">
+      <div className={`grid gap-3 transition-all duration-300 ${
+        aiInterviewEnabled
+          ? 'job-post-ai-twilight rounded-3xl p-5'
+          : 'border-t border-border pt-5'
+      }`}>
         <div>
           <h3 className="text-sm font-bold">{t('postJob.questionsForInterview')}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{t('postJob.questionsGuideDesc')}</p>
