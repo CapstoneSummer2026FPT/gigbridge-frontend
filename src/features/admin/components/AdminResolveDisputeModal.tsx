@@ -12,6 +12,16 @@ export interface ViolationState {
   description: string;
 }
 
+const milestoneStatusLabels: Record<number, string> = {
+  [MilestoneStatus.Pending]: 'Pending',
+  [MilestoneStatus.InProgress]: 'In Progress',
+  [MilestoneStatus.Submitted]: 'Submitted',
+  [MilestoneStatus.Approved]: 'Approved',
+  [MilestoneStatus.Disputed]: 'Disputed',
+  [MilestoneStatus.Cancelled]: 'Cancelled',
+  [MilestoneStatus.Completed]: 'Completed',
+};
+
 const resolutionLabels: Record<DisputeResolution, string> = {
   [DisputeResolution.ClientFavored]: 'Client Favored',
   [DisputeResolution.FreelancerFavored]: 'Freelancer Favored',
@@ -33,6 +43,8 @@ interface AdminResolveDisputeModalProps {
   setContractAction: (val: number) => void;
   milestoneDecisions: Record<string, { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string }>;
   setMilestoneDecisions: React.Dispatch<React.SetStateAction<Record<string, { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string }>>>;
+  selectedMilestoneIds: string[];
+  setSelectedMilestoneIds: React.Dispatch<React.SetStateAction<string[]>>;
   clientViolation: ViolationState;
   setClientViolation: React.Dispatch<React.SetStateAction<ViolationState>>;
   freelancerViolation: ViolationState;
@@ -58,6 +70,8 @@ export function AdminResolveDisputeModal({
   setContractAction,
   milestoneDecisions,
   setMilestoneDecisions,
+  selectedMilestoneIds,
+  setSelectedMilestoneIds,
   clientViolation,
   setClientViolation,
   freelancerViolation,
@@ -72,11 +86,27 @@ export function AdminResolveDisputeModal({
 
   if (!showResolveDialog || !selectedDispute) return null;
 
-  const relevantMilestones = selectedDispute.milestones.filter(
-    (m) =>
-      m.lockedAmount > 0 &&
-      (contractAction === 1 || m.status === MilestoneStatus.Disputed || m.milestoneId === selectedDispute.milestoneId)
-  );
+  const isKeepActive = contractAction === 0;
+
+  // Keep Active: only the ticked (top-to-bottom, gap-free) milestones — each still gets a
+  // full Release/Refund/Penalty breakdown below, same as Terminate.
+  // Terminate: every locked milestone needs an explicit admin allocation.
+  const relevantMilestones = isKeepActive
+    ? selectedDispute.milestones.filter((m) => selectedMilestoneIds.includes(m.milestoneId))
+    : selectedDispute.milestones.filter((m) => m.lockedAmount > 0);
+
+  // Keep Active only: the full, order-preserved milestone list backing the sequential
+  // "mark Complete" checklist (matches the backend's SortOrder ordering).
+  const orderedMilestones = selectedDispute.milestones;
+  const toggleMilestoneSelection = (index: number) => {
+    const milestoneId = orderedMilestones[index].milestoneId;
+    const isSelected = selectedMilestoneIds.includes(milestoneId);
+    setSelectedMilestoneIds(
+      isSelected
+        ? orderedMilestones.slice(0, index).map((m) => m.milestoneId)
+        : orderedMilestones.slice(0, index + 1).map((m) => m.milestoneId)
+    );
+  };
 
   const hasAnyAllocationError = relevantMilestones.some((m) => allocationHasError(m.milestoneId));
   const hasViolationError = violationHasError(clientViolation) || violationHasError(freelancerViolation);
@@ -135,12 +165,55 @@ export function AdminResolveDisputeModal({
                 value={contractAction}
                 onChange={(e) => setContractAction(Number(e.target.value))}
               >
-                <option value={0}>Keep Active / Default</option>
+                <option value={0}>Keep Active</option>
                 <option value={1}>Cancel Contract Immediately (Refund Unreleased Escrow)</option>
-                <option value={2}>Complete Contract (Release Approved Funds)</option>
               </select>
             </div>
           </div>
+
+          {/* Keep Active: sequential top-to-bottom "mark Complete" milestone checklist */}
+          {isKeepActive && orderedMilestones.length > 0 && (
+            <div className="rounded-2xl border border-border bg-surface-muted/30 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-text-primary">
+                  {t('admin.disputes.dialog.milestoneCompletion', 'Milestones to Mark Complete')}
+                </h4>
+                <p className="text-[11px] font-semibold text-text-muted">
+                  {t('admin.disputes.dialog.milestoneCompletionHint', 'Select sequentially from the top — no skipping.')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {orderedMilestones.map((milestone, index) => {
+                  const isChecked = selectedMilestoneIds.includes(milestone.milestoneId);
+                  return (
+                    <label
+                      key={milestone.milestoneId}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background px-3 py-2.5 cursor-pointer hover:border-brand/40 transition"
+                    >
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <input
+                          type="checkbox"
+                          className="rounded border-border text-brand focus:ring-brand shrink-0"
+                          checked={isChecked}
+                          onChange={() => toggleMilestoneSelection(index)}
+                        />
+                        <span className="flex flex-col min-w-0">
+                          <strong className="text-xs font-extrabold text-text-primary truncate">{milestone.title}</strong>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{milestoneStatusLabels[milestone.status] ?? milestone.status}</span>
+                        </span>
+                      </span>
+                      {isChecked && (
+                        <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                          +{milestone.lockedAmount.toLocaleString()} GCoin
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Milestone Financial Allocations Table */}
           {relevantMilestones.length > 0 && (

@@ -273,6 +273,11 @@ export function useMessages() {
   const activeConv = conversationsState.find(c => c.id === activeConvId);
   const [isActiveWorkspaceDisputed, setIsActiveWorkspaceDisputed] = useState(false);
   const [activeWorkspaceDisputeId, setActiveWorkspaceDisputeId] = useState<string | null>(null);
+  // Bumped whenever a realtime "ContractUpdated" event lands for the active workspace's
+  // contract (e.g. a dispute resolves) — the effect below only re-derives the lock from
+  // the conversation/room identity otherwise, so without this it stays stuck on whatever
+  // it was when the conversation was first opened, even after the contract un-disputes.
+  const [workspaceLockRefreshTick, setWorkspaceLockRefreshTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -301,7 +306,7 @@ export function useMessages() {
 
     void loadWorkspaceLock();
     return () => { cancelled = true; };
-  }, [activeConv?.contractId, activeConv?.roomType]);
+  }, [activeConv?.contractId, activeConv?.roomType, workspaceLockRefreshTick]);
 
   // ── Messages map ─────────────────────────────────────────────────────────
   const [messagesMap, setMessagesMap] = useState<Record<string, MsgMessage[]>>({});
@@ -417,7 +422,7 @@ export function useMessages() {
   const dealEditorMilestones = useMemo(
     () => dealMilestones.map((milestone, index) => ({
       ...milestone,
-      estimatedDuration: resolvedDealMilestones[index]?.estimatedDuration || milestone.estimatedDuration,
+      dueDate: resolvedDealMilestones[index]?.dueDate ?? milestone.dueDate,
     })),
     [dealMilestones, resolvedDealMilestones],
   );
@@ -592,7 +597,7 @@ export function useMessages() {
         // their own dedicated dispute-detail screen), so they must never be picked as
         // the default either — otherwise landing here can silently open an admin/dispute
         // chat just because it happened to have the most recent message.
-        const selectableConvos = mapped.filter((c: any) => c.conversationType !== ConversationType.Dispute);
+        const selectableConvos = mapped.filter((c: any) => c.conversationType !== ConversationType.Dispute && !c.disputeId);
 
         setActiveConvId(currentActiveConvId => {
           if (selectableConvos.length === 0) return '';
@@ -1035,6 +1040,16 @@ export function useMessages() {
       });
     };
 
+    // Fired whenever a contract's status changes for a reason unrelated to the
+    // negotiation/agreement flow above (e.g. a dispute resolves and the contract goes
+    // back to Active, or gets cancelled) — refresh the sidebar's contractStatus badges
+    // and re-derive the compose-lock for whichever workspace conversation is open, since
+    // neither currently listens for this event and would otherwise stay stuck stale.
+    const handleContractStatusUpdated = () => {
+      loadConversations();
+      setWorkspaceLockRefreshTick(tick => tick + 1);
+    };
+
     const handleContractWorkflowUpdate = (event: unknown) => {
       const eventConversationId = getEventValue(event, 'conversationId', 'ConversationId');
       const eventContractId = getEventValue(event, 'contractId', 'ContractId', 'contractsId', 'ContractsId');
@@ -1130,6 +1145,7 @@ export function useMessages() {
     hubConnection.on('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
     hubConnection.on('ContractMilestonesAccepted', handleContractWorkflowUpdate);
     hubConnection.on('WorkspaceOpened', handleContractWorkflowUpdate);
+    hubConnection.on('ContractUpdated', handleContractStatusUpdated);
     hubConnection.on('ScheduleMeetingChanged', handleMeetingChanged);
     hubConnection.on('ScheduleChanged', handleScheduleChanged);
 
@@ -1145,6 +1161,7 @@ export function useMessages() {
       hubConnection.off('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
       hubConnection.off('ContractMilestonesAccepted', handleContractWorkflowUpdate);
       hubConnection.off('WorkspaceOpened', handleContractWorkflowUpdate);
+      hubConnection.off('ContractUpdated', handleContractStatusUpdated);
       hubConnection.off('ScheduleMeetingChanged', handleMeetingChanged);
       hubConnection.off('ScheduleChanged', handleScheduleChanged);
     };
@@ -1218,7 +1235,9 @@ export function useMessages() {
       (!content && filesToSend.length === 0) ||
       !activeConvId ||
       isActiveWorkspaceDisputed ||
-      activeConv?.status === ConversationStatus.Closed
+      activeConv?.status === ConversationStatus.Closed ||
+      activeConv?.conversationType === ConversationType.Dispute ||
+      Boolean(activeConv?.disputeId)
     ) {
       return;
     }

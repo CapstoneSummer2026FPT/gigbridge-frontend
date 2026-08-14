@@ -652,7 +652,7 @@ export default function DisputeDetailScreen() {
 
               {/* Bento Card 6: Live Mediation Chat Workspace (Col 7) */}
               <div className="bento-col-7 bento-card-chat">
-                <DisputeChat disputeId={dispute.id} />
+                <DisputeChat disputeId={dispute.id} disputeStatus={dispute.status} />
               </div>
             </div>
           </>

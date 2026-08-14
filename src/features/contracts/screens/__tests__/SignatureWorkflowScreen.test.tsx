@@ -141,7 +141,6 @@ describe('SignatureWorkflowScreen policy acceptance', () => {
 
     const policyLink = screen.getByRole('link', { name: /Bộ chính sách GigBridge/i });
     const policyCheckbox = screen.getByRole('checkbox', { name: /Bộ chính sách GigBridge/i });
-    const signButton = screen.getByRole('button', { name: /Sign contract/i });
     const identityInput = screen.getByRole('textbox', { name: /Identity number/i });
     const canvas = document.querySelector('canvas');
 
@@ -166,15 +165,15 @@ describe('SignatureWorkflowScreen policy acceptance', () => {
       '012345678901',
     ));
 
-    const signButton = screen.getByRole('button', { name: /Save temporary signature/i });
-    expect(signButton).toBeDisabled();
-    fireEvent.click(signButton);
+    const saveButton = screen.getByRole('button', { name: /Save temporary signature/i });
+    expect(saveButton).toBeDisabled();
+    fireEvent.click(saveButton);
     expect(contractPostAPI.sign).not.toHaveBeenCalled();
 
     fireEvent.change(identityInput, { target: { value: '001 234 567 890' } });
     fireEvent.click(policyCheckbox);
-    expect(signButton).toBeEnabled();
-    fireEvent.click(signButton);
+    expect(saveButton).toBeEnabled();
+    fireEvent.click(saveButton);
 
     await waitFor(() => expect(contractPostAPI.sign).toHaveBeenCalledWith('contract-1', {
       signatureImageUrl: 'data:image/png;base64,c2ln',

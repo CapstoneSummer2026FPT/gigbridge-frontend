@@ -30,7 +30,12 @@
     "acceptanceCriteria": "Tiêu chí nghiệm thu",
     "workBreakdown": "Cấu trúc phân rã công việc",
     "addWorkItem": "Thêm hạng mục",
-    "defaultAcceptanceCriteria": "Client nghiệm thu khi kết quả bàn giao hoàn thành và đáp ứng yêu cầu project."
+    "defaultAcceptanceCriteria": "Client nghiệm thu khi kết quả bàn giao hoàn thành và đáp ứng yêu cầu project.",
+    "durationUnits": {
+      "weeks": "tuần",
+      "months": "tháng",
+      "years": "năm"
+    }
   },
   "proposalAnswers": {
     "proposalIdMissing": "Thiếu ID đề xuất.",
@@ -383,6 +388,7 @@
     "errApproachMinLength": "Phương án giải pháp phải có ít nhất {{min}} ký tự.",
     "errWorkItem": "Mỗi hạng mục công việc tùy chỉnh cần có tiêu đề và mô tả.",
     "errNoMilestones": "Vui lòng thêm ít nhất một milestone trước khi nộp.",
+    "errClosingDateRequired": "Job chưa có hạn nhận proposal nên không thể tính hạn hoàn thành milestone.",
     "errMilestoneFields": "Vui lòng hoàn thành các trường milestone được làm nổi bật.",
     "errMilestoneTitleRequired": "Tiêu đề mốc thanh toán là bắt buộc.",
     "errMilestoneAmountMin": "Số tiền mốc thanh toán phải lớn hơn 0.",
