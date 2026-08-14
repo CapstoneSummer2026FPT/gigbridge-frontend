@@ -8,7 +8,6 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
-import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
 import { ESignerRole, ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import {
@@ -23,9 +22,9 @@ import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ContractChangeControlPanel } from './ContractChangeControlPanel';
-import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import { ContractLegalCard } from './ContractLegalCard';
 import { ClientEscrowFundingCard } from './ClientEscrowFundingCard';
+import { ClientContractPlanEditor } from './ClientContractPlanEditor';
 import {
   contractStatusMayHaveESignDocument,
   useContractESignDocument,
@@ -75,7 +74,6 @@ export function ClientContractDetails({
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
   const [isFullySignedPendingEscrow, setIsFullySignedPendingEscrow] = useState(false);
   const [hasClientSignedContract, setHasClientSignedContract] = useState(false);
 
@@ -90,41 +88,6 @@ export function ClientContractDetails({
       onRefresh();
     }
   }, [contract.status, esignDocumentState.document?.status, onRefresh]);
-  const [formMilestones, setFormMilestones] = useState<any[]>(
-    milestones.map(m => ({
-      milestoneId: m.id,
-      id: m.id,
-      title: m.title,
-      description: m.description,
-      amount: m.amount,
-      dueDate: m.due_date ? m.due_date.substring(0, 10) : '',
-      estimatedDuration: m.estimatedDuration,
-      deliverables: m.deliverables,
-      acceptanceCriteria: m.acceptanceCriteria,
-      orderIndex: m.id ? milestones.indexOf(m) : 0,
-      workItems: (m.workItems || []).map((item, orderIndex) => ({ id: item.workItemId, ...item, orderIndex })),
-    }))
-  );
-
-  // Sync state if contract/milestones props update
-  useEffect(() => {
-    setFormMilestones(
-      milestones.map(m => ({
-        milestoneId: m.id,
-        id: m.id,
-        title: m.title,
-        description: m.description,
-        amount: m.amount,
-        dueDate: m.due_date ? m.due_date.substring(0, 10) : '',
-        estimatedDuration: m.estimatedDuration,
-        deliverables: m.deliverables,
-        acceptanceCriteria: m.acceptanceCriteria,
-        orderIndex: milestones.indexOf(m),
-        workItems: (m.workItems || []).map((item, orderIndex) => ({ id: item.workItemId, ...item, orderIndex })),
-      }))
-    );
-  }, [contract, milestones]);
-
   useEffect(() => {
     const loadESignStatus = (): void => {
       if (!contract?.contractsId || contract.status !== ContractStatus.PendingSignature) {
@@ -187,85 +150,6 @@ export function ClientContractDetails({
       navigator.clipboard.writeText(contract.contractsId);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
-    }
-  };
-
-  const handleAddMilestone = () => {
-    setFormMilestones([
-      ...formMilestones,
-      {
-        milestoneId: null,
-        title: '',
-        description: '',
-        amount: 0,
-        dueDate: '',
-        estimatedDuration: '',
-        deliverables: '',
-        acceptanceCriteria: '',
-        orderIndex: formMilestones.length,
-        workItems: [],
-      },
-    ]);
-  };
-
-  const handleRemoveMilestone = (index: number) => {
-    setFormMilestones(formMilestones.filter((_, idx) => idx !== index));
-  };
-
-  const handleMilestoneChange = (index: number, field: string, value: any) => {
-    const updated = [...formMilestones];
-    updated[index] = { ...updated[index], [field]: value };
-    setFormMilestones(updated);
-  };
-
-  const handleSaveDetails = async (submitToFreelancer: boolean) => {
-    try {
-      setActionLoading(true);
-      const totalFormAmount = formMilestones.reduce((sum, m) => sum + Number(m.amount || 0), 0);
-      if (totalFormAmount !== contract.totalBudget) {
-        alert(t('contracts.allocatedMilestonesSumMatch'));
-        return;
-      }
-
-      if (formMilestones.length === 0) {
-        alert(t('contracts.atLeastOneMilestoneRequired'));
-        return;
-      }
-
-      const dto = {
-        milestones: formMilestones.map((m, idx) => ({
-          milestoneId: m.milestoneId || m.id || null,
-          title: m.title,
-          description: m.description || '',
-          amount: Number(m.amount),
-          dueDate: m.dueDate ? `${m.dueDate}T00:00:00Z` : null,
-          estimatedDuration: m.estimatedDuration || '',
-          deliverables: m.deliverables || '',
-          acceptanceCriteria: m.acceptanceCriteria || '',
-          orderIndex: idx,
-          workItems: (m.workItems || []).map((item: any, orderIndex: number) => ({
-            workItemId: item.workItemId || item.id || null,
-            title: item.title || '',
-            description: item.description || '',
-            deliverables: item.deliverables || '',
-            estimatedDuration: item.estimatedDuration || '',
-            orderIndex,
-          })),
-        })),
-        submitToFreelancer,
-      };
-
-      const res = await contractPutAPI.updateDetails(contract.contractsId, dto);
-      if (res.success) {
-        onRefresh();
-      } else {
-        alert(res.message || t('contracts.alerts.failedConfirm'));
-      }
-    } catch (err) {
-      console.error(err);
-      alert(t('contracts.alerts.errorOccurred'));
-    } finally {
-      setActionLoading(false);
     }
   };
 
@@ -436,120 +320,12 @@ export function ClientContractDetails({
               {/* Step 1: Define project plan */}
               {contract.status === ContractStatus.PendingContractDetails && (
                 <>
-                  <div className="glass-card p-6 md:p-8 space-y-6">
-                    <div className="flex items-center gap-2.5 border-b border-border pb-4">
-                      <FileText size={20} className="text-brand" />
-                      <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.defineProjectPlan')}</h2>
-                    </div>
-
-                    <div className="bg-brand/10 text-brand border border-brand/20 p-4 rounded-2xl text-xs font-semibold leading-relaxed">
-                      {t('contracts.defineProjectPlanDesc')}
-                    </div>
-
-                    <NestedMilestonePlanEditor
-                      value={formMilestones as EditableMilestonePlan[]}
-                      onChange={plans => setFormMilestones(plans.map(plan => ({ ...plan, milestoneId: plan.id || null })))}
-                      showDueDate
-                      title="Contract milestone and Work Breakdown Structure"
-                      description="Counter the final plan before sending it back to the freelancer for confirmation."
-                    />
-                  </div>
-
-                  {/* Milestones schedule form */}
-                  <div className="glass-card p-6 md:p-8 space-y-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
-                      <div className="flex items-center gap-2.5">
-                        <ListChecks size={20} className="text-brand" />
-                        <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.milestonesSchedule')}</h2>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3.5 py-1.5 border rounded-full text-xs font-extrabold transition-all duration-300
-                          ${formMilestones.reduce((sum, m) => sum + Number(m.amount || 0), 0) === contract.totalBudget
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-rose-500/10 border-rose-500/30 text-rose-500 animate-pulse'
-                          }`}
-                        >
-                          {t('contracts.sum')}: {formatContractAmount(formMilestones.reduce((sum, m) => sum + Number(m.amount || 0), 0))} / {formatContractAmount(contract.totalBudget)}
-                        </span>
-                        <button
-                          onClick={handleAddMilestone}
-                          type="button"
-                          className="btn-primary-custom px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
-                        >
-                          {t('contracts.addMilestone')}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      {formMilestones.map((milestone, idx) => (
-                        <div key={idx} className="flex flex-col md:flex-row items-stretch gap-4 bg-surface-muted/40 border border-border rounded-2xl p-4">
-                          <div className="flex-1">
-                            <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">Title</label>
-                            <input
-                              type="text"
-                              value={milestone.title}
-                              onChange={(e) => handleMilestoneChange(idx, 'title', e.target.value)}
-                              className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-brand transition shadow-xs"
-                              placeholder={t('contracts.milestoneTitlePlaceholder')}
-                            />
-                          </div>
-                          <div className="w-full md:w-44">
-                            <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">{t('contracts.amountTokens')}</label>
-                            <input
-                              type="number"
-                              value={milestone.amount}
-                              onChange={(e) => handleMilestoneChange(idx, 'amount', Number(e.target.value))}
-                              className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-brand transition shadow-xs"
-                              placeholder="0"
-                            />
-                          </div>
-                          <div className="w-full md:w-44">
-                            <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">{t('contracts.dueDate')}</label>
-                            <input
-                              type="date"
-                              value={milestone.dueDate}
-                              onChange={(e) => handleMilestoneChange(idx, 'dueDate', e.target.value)}
-                              className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-brand transition shadow-xs"
-                            />
-                          </div>
-                          <div className="flex items-end justify-end">
-                            <button
-                              onClick={() => handleRemoveMilestone(idx)}
-                              type="button"
-                              className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl transition cursor-pointer font-bold text-xs"
-                            >
-                              {t('contracts.delete')}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-
-                      {formMilestones.length === 0 && (
-                        <p className="text-text-muted text-center py-6 text-xs italic font-semibold">{t('contracts.noMilestonesDefined')}</p>
-                      )}
-                    </div>
-
-                    <div className="flex justify-end gap-3 border-t border-border pt-5">
-                      <button
-                        type="button"
-                        disabled={actionLoading}
-                        onClick={() => handleSaveDetails(false)}
-                        className="px-5 py-2.5 bg-background hover:bg-surface-muted border border-border text-text-primary rounded-xl text-xs font-extrabold transition cursor-pointer shadow-xs"
-                      >
-                        {t('contracts.saveDraftDetails')}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={actionLoading}
-                        onClick={() => handleSaveDetails(true)}
-                        className="btn-primary-custom px-5 py-2.5 rounded-xl text-xs font-extrabold transition cursor-pointer"
-                      >
-                        {t('contracts.submitToFreelancer')}
-                      </button>
-                    </div>
-                  </div>
+                  <ClientContractPlanEditor
+                    contractId={contract.contractsId}
+                    contractBudget={contract.totalBudget}
+                    milestones={milestones}
+                    onRefresh={onRefresh}
+                  />
 
                   <ContractLegalCard
                     contractId={contract.contractsId}

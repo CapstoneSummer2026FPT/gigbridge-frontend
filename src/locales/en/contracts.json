@@ -147,6 +147,12 @@
     "noMilestonesDefined": "No milestones defined. Please add at least one milestone.",
     "saveDraftDetails": "Save Draft Details",
     "submitToFreelancer": "Submit to Freelancer",
+    "planEditor": {
+      "saved": "Contract milestone draft saved.",
+      "updateFailed": "The contract milestone draft could not be updated.",
+      "submitFailed": "The milestone draft was saved, but it could not be submitted to the freelancer.",
+      "budgetExceeded": "Allocated milestone budget cannot exceed the total contract budget."
+    },
     "waitingFreelancerReview": "Waiting for the freelancer to review and confirm the project plan.",
     "waitingFreelancerSign": "Waiting for the freelancer to digitally sign the contract. Once both signatures are collected, escrow funding will begin.",
     "secureContractEscrow": "Secure Contract Escrow",

@@ -1,6 +1,10 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractWorkItem } from '../../types/models/Contract';
+import type {
+  ContractWorkflowResponse,
+  ContractWorkItem,
+  UpdateContractDetailsRequest,
+} from '../../types/models/Contract';
 
 export const contractPutAPI = {
   /**
@@ -8,29 +12,9 @@ export const contractPutAPI = {
    */
   updateDetails: async (
     contractId: string,
-    data: {
-      milestones: Array<{
-        milestoneId?: string | null;
-        title: string;
-        amount: number;
-        dueDate?: string | null;
-        sortOrder?: number | null;
-        description?: string | null;
-        estimatedDuration?: string | null;
-        deliverables?: string | null;
-        acceptanceCriteria?: string | null;
-        workItems?: Array<{
-          workItemId?: string | null;
-          title: string;
-          description?: string | null;
-          deliverables?: string | null;
-          estimatedDuration?: string | null;
-          orderIndex: number;
-        }>;
-      }>;
-    }
-  ): Promise<ApiResponse<any>> => {
-    return apiService.put<any>(`contracts/${contractId}/details`, data);
+    data: UpdateContractDetailsRequest,
+  ): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.put<ContractWorkflowResponse>(`contracts/${contractId}/details`, data);
   },
 
   updateWorkItem: async (
