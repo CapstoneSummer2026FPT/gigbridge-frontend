@@ -18,6 +18,7 @@ import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow'
 import { AvatarCropModal } from './AvatarCropModal';
 import { PortfolioImageCropModal } from './PortfolioImageCropModal';
 import { VietnamLocationSelect } from '../../../shared/components/VietnamLocationSelect';
+import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
 
 type SubTab = 'basic' | 'details' | 'portfolio' | 'experience';
 
@@ -101,6 +102,8 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [savedIdentityCode, setSavedIdentityCode] = useState('');
+  const [identityVerificationTicket, setIdentityVerificationTicket] = useState<string | null>(null);
 
   // Portfolio Management States
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItemDto[]>([]);
@@ -448,6 +451,8 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           preferredLanguage: prefLang === 'en' || prefLang === 'vi' ? prefLang : (i18n.language?.startsWith('en') ? 'en' : 'vi'),
         };
         setAvatarPreview(userProfileRes.data.avatar || user?.avatar || null);
+        setSavedIdentityCode((userProfileRes.data.identityOrTaxCode ?? '').replace(/\s+/g, ''));
+        setIdentityVerificationTicket(null);
       }
 
       if (role === UserRole.Freelancer) {
@@ -593,6 +598,12 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const handleSave = async () => {
     setSaved(false);
     setErrorMessage(null);
+    const normalizedIdentityCode = formData.identityOrTaxCode.replace(/\s+/g, '');
+    const identityChanged = normalizedIdentityCode !== savedIdentityCode;
+    if (identityChanged && !identityVerificationTicket) {
+      setErrorMessage(t('settings:identityVerificationRequired'));
+      return;
+    }
     setSaving(true);
 
     try {
@@ -601,7 +612,8 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         fullName: formData.fullName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
-        identityOrTaxCode: formData.identityOrTaxCode,
+        identityOrTaxCode: normalizedIdentityCode,
+        identityVerificationTicket,
         avatar: formData.avatarUrl,
         preferredLanguage: formData.preferredLanguage,
       });
@@ -611,6 +623,9 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         setSaving(false);
         return;
       }
+
+      setSavedIdentityCode(userUpdateRes.data?.identityOrTaxCode ?? normalizedIdentityCode);
+      setIdentityVerificationTicket(null);
 
       // Sync site language if preferred language changed
       if (formData.preferredLanguage && i18n.language !== formData.preferredLanguage) {
@@ -908,13 +923,19 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
               </div>
 
               <div className="settings-form-group">
-                <label className="settings-form-label">{t('settings.identityCode')}</label>
+                <label htmlFor="settings-identity-code" className="settings-form-label">
+                  {t('settings:identityCode')}
+                </label>
                 <div className="settings-input-wrapper">
                   <FileText size={16} className="settings-input-icon" />
                   <input
+                    id="settings-identity-code"
                     value={formData.identityOrTaxCode}
-                    onChange={e => setFormData(prev => ({ ...prev, identityOrTaxCode: e.target.value }))}
-                    placeholder={t('settings.identityCodePlaceholder')}
+                    onChange={e => {
+                      setFormData(prev => ({ ...prev, identityOrTaxCode: e.target.value }));
+                      setIdentityVerificationTicket(null);
+                    }}
+                    placeholder={t('settings:identityCodePlaceholder')}
                     inputMode="numeric"
                     autoComplete="off"
                     maxLength={16}
@@ -922,8 +943,16 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   />
                 </div>
                 <p className="mt-1 text-[11px] text-secondary">
-                  {t('settings.identityCodeHelp')}
+                  {t('settings:identityCodeHelp')}
                 </p>
+                {formData.identityOrTaxCode.replace(/\s+/g, '') !== savedIdentityCode && (
+                  <IdentityEmailVerification
+                    email={formData.email}
+                    identityCode={formData.identityOrTaxCode}
+                    verificationTicket={identityVerificationTicket}
+                    onVerified={setIdentityVerificationTicket}
+                  />
+                )}
               </div>
 
               <div className="settings-form-group">

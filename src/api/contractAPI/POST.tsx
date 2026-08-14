@@ -194,6 +194,7 @@ export const contractPostAPI = {
       signatureWidth?: number;
       signatureHeight?: number;
       identityOrTaxCode: string;
+      identityVerificationTicket?: string | null;
       policyAccepted: boolean;
       policyVersion: string;
     }

@@ -33,6 +33,7 @@ import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
 const POLICY_VERSION = 'Ver 1.0 Gigbridge';
@@ -188,6 +189,7 @@ export default function SignatureWorkflowScreen() {
   const [signatureDrawn, setSignatureDrawn] = useState(false);
   const [identityOrTaxCode, setIdentityOrTaxCode] = useState('');
   const [profileIdentityCode, setProfileIdentityCode] = useState<string | null>(null);
+  const [identityVerificationTicket, setIdentityVerificationTicket] = useState<string | null>(null);
   const [identityTouched, setIdentityTouched] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [signaturePreviewPdf, setSignaturePreviewPdf] = useState<Blob | null>(null);
@@ -445,6 +447,11 @@ export default function SignatureWorkflowScreen() {
       return;
     }
 
+    if (!profileIdentityCode && !identityVerificationTicket) {
+      setError(t('settings:identityVerificationRequired'));
+      return;
+    }
+
     if (!document?.documentId) {
       setSignaturePreviewError(t('contracts.documentNotReadyPreview'));
       return;
@@ -573,6 +580,7 @@ export default function SignatureWorkflowScreen() {
           }
           : {}),
         identityOrTaxCode: normalizedIdentityCode,
+        identityVerificationTicket,
         policyAccepted: true,
         policyVersion: POLICY_VERSION,
       });
@@ -589,6 +597,7 @@ export default function SignatureWorkflowScreen() {
       }
 
       setProfileIdentityCode(normalizedIdentityCode);
+      setIdentityVerificationTicket(null);
 
       const documentId = getDocumentIdFromResponse(response.data);
       setSignatureStep('complete');
@@ -914,6 +923,7 @@ export default function SignatureWorkflowScreen() {
                   onBlur={() => setIdentityTouched(true)}
                   onChange={event => {
                     setIdentityOrTaxCode(event.target.value);
+                    setIdentityVerificationTicket(null);
                     setSignaturePreviewApplied(false);
                     setSignaturePreviewPdf(null);
                   }}
@@ -928,6 +938,14 @@ export default function SignatureWorkflowScreen() {
                       ? t('contracts.identityCodeSavedHelp')
                       : t('contracts.identityCodeHelp')}
                 </p>
+                {!profileIdentityCode && (
+                  <IdentityEmailVerification
+                    email={user?.email ?? ''}
+                    identityCode={identityOrTaxCode}
+                    verificationTicket={identityVerificationTicket}
+                    onVerified={setIdentityVerificationTicket}
+                  />
+                )}
               </div>
 
               {existingDraftImageUrl && (
@@ -1015,6 +1033,7 @@ export default function SignatureWorkflowScreen() {
                 disabled={
                   (!signatureDrawn && !existingDraftImageUrl) ||
                   !identityCodeIsValid ||
+                  (!profileIdentityCode && !identityVerificationTicket) ||
                   !policyAccepted ||
                   signingInProgress
                 }

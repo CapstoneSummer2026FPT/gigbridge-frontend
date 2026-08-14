@@ -379,7 +379,7 @@
     "signatureEmbeddedDesc": "Chữ ký của bạn sẽ được nhúng an toàn vào đúng ô chữ ký được chỉ định trong tài liệu PDF sau khi gửi.",
     "identityCodeLabel": "Mã định danh (CMND/CCCD)",
     "identityCodePlaceholder": "Nhập 9 hoặc 12 chữ số",
-    "identityCodeHelp": "Nếu hồ sơ chưa có mã định danh, giá trị này sẽ được lưu vào hồ sơ khi bạn gửi chữ ký.",
+    "identityCodeHelp": "Nếu hồ sơ chưa có mã định danh, hãy xác thực qua email tài khoản trước khi ký.",
     "identityCodeSavedHelp": "Mã định danh đã lưu trong hồ sơ được tự động áp dụng cho chữ ký điện tử này.",
     "identityCodeInvalid": "Mã định danh phải gồm đúng 9 hoặc 12 chữ số.",
     "existingDraftSignature": "Chữ ký tạm hiện tại của bạn",

@@ -379,7 +379,7 @@
     "signatureEmbeddedDesc": "Your signature will be securely embedded in your assigned signature field in the generated PDF after you submit it.",
     "identityCodeLabel": "Identity number (ID card/Citizen ID)",
     "identityCodePlaceholder": "Enter 9 or 12 digits",
-    "identityCodeHelp": "If your profile does not have an identity number yet, this value will be saved to it when you submit your signature.",
+    "identityCodeHelp": "If your profile does not have an identity number yet, verify it through your account email before signing.",
     "identityCodeSavedHelp": "Your saved profile identity number is applied automatically to this e-signature.",
     "identityCodeInvalid": "The identity number must contain exactly 9 or 12 digits.",
     "existingDraftSignature": "Your current temporary signature",

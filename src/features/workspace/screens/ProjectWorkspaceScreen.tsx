@@ -46,7 +46,7 @@ import {
 import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import '../../reviews/styles/reviews-screen.css';
 import { FileTypeBadge } from '../../../shared/components/FileTypeBadge';
-import { contractGetAPI, type WorkspaceFileDto } from '../../../api/contractAPI/GET';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { ProjectReceiptCard } from '../../receipts/components/ProjectReceiptCard';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
