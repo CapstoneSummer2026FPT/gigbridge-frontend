@@ -1,0 +1,52 @@
+{
+  "receipts": {
+    "title": "Biên nhận dự án",
+    "subtitle": "Xem, tải xuống và theo dõi trạng thái gửi email của biên nhận từ các dự án đã hoàn thành.",
+    "total": "{{count}} biên nhận",
+    "total_other": "{{count}} biên nhận",
+    "loading": "Đang tải biên nhận...",
+    "loadError": "Không thể tải danh sách biên nhận.",
+    "emptyTitle": "Chưa có biên nhận",
+    "emptyDescription": "Biên nhận sẽ xuất hiện tại đây khi một dự án của bạn hoàn thành.",
+    "projectReceipt": "Biên nhận dự án",
+    "viewDetails": "Xem chi tiết",
+    "download": "Tải PDF",
+    "downloadError": "Không thể tải tệp PDF biên nhận.",
+    "prepareError": "Không thể chuẩn bị biên nhận.",
+    "retryError": "Không thể thử lại biên nhận.",
+    "retry": "Thử lại",
+    "retryGeneration": "Tạo lại PDF",
+    "retryEmail": "Gửi lại email",
+    "generationRetryQueued": "Đã xếp hàng tạo lại biên nhận.",
+    "emailRetryQueued": "Đã xếp hàng gửi lại email biên nhận.",
+    "queuedAfterCompletion": "Dự án đã hoàn thành. Biên nhận đang được chuẩn bị và sẽ được gửi qua email cho bạn.",
+    "prepareWarning": "Dự án đã hoàn thành nhưng chưa thể xếp hàng tạo biên nhận. Hãy mở lại dự án đã hoàn thành để thử lại.",
+    "automaticEmailDescription": "Bản PDF sẽ tự động được gửi qua email khi sẵn sàng.",
+    "emailedDescription": "Bản PDF đã được gửi đến địa chỉ email trong tài khoản GigBridge của bạn.",
+    "preparingTitle": "Đang chuẩn bị biên nhận",
+    "preparingDescription": "Hệ thống đang tạo tệp PDF. Màn hình này sẽ tự cập nhật và biên nhận sẽ được gửi qua email khi sẵn sàng.",
+    "loadingDocument": "Đang tải tài liệu biên nhận...",
+    "documentTitle": "Biên nhận {{number}}",
+    "issued": "Ngày phát hành",
+    "issuedOn": "Phát hành {{date}}",
+    "document": "Tài liệu",
+    "emailDelivery": "Gửi email",
+    "pagination": "Các trang biên nhận",
+    "pageOf": "Trang {{page}} / {{total}}",
+    "generationStatus": {
+      "pending": "PDF đang chờ",
+      "processing": "Đang tạo PDF",
+      "ready": "PDF sẵn sàng",
+      "failed": "Tạo PDF thất bại"
+    },
+    "emailStatus": {
+      "pending": "Email đang chờ",
+      "delivered": "Đã gửi email",
+      "failed": "Gửi email thất bại"
+    },
+    "type": {
+      "client": "Biên nhận khách hàng",
+      "freelancer": "Biên nhận freelancer"
+    }
+  }
+}

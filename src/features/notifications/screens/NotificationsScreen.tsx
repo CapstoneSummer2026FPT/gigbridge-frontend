@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle,
   FileText,
+  FileCheck2,
   MessageSquare,
   Star,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const notificationIcons: Record<string, ReactNode> = {
   ai_suggestion: <Bot size={16} className="text-purple" />,
   system: <Bell size={16} className="text-secondary" />,
   schedule: <CalendarDays size={16} className="text-cyan" />,
+  receipt: <FileCheck2 size={16} className="text-green" />,
 };
 
 type NotificationTab = 'all' | 'unread';

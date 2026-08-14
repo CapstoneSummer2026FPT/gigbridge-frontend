@@ -190,9 +190,13 @@ export const contractPostAPI = {
   sign: async (
     contractId: string,
     payload: {
-      signatureImageUrl: string;
+      signatureImageUrl?: string | null;
       signatureWidth?: number;
       signatureHeight?: number;
+      identityOrTaxCode: string;
+      identityVerificationTicket?: string | null;
+      policyAccepted: boolean;
+      policyVersion: string;
     }
   ): Promise<ApiResponse<any>> => {
     return apiService.post<any>(`contracts/${contractId}/sign`, payload);

@@ -9,7 +9,6 @@ export const MESSAGE_ROOMS: MessageRoom[] = [
   { id: 'room_invited', type: 'invited' },
   { id: 'room_negotiation', type: 'negotiation' },
   { id: 'room_workspace', type: 'workspace' },
-  { id: 'room_dispute', type: 'dispute' },
 ];
 
 export const getMessageRoom = (conversationType: number): MessageRoom => {
@@ -17,9 +16,8 @@ export const getMessageRoom = (conversationType: number): MessageRoom => {
     case ConversationType.JobInvitedRoom:
       return MESSAGE_ROOMS[0];
     case ConversationType.ContractWorkroom:
-      return MESSAGE_ROOMS[2];
     case ConversationType.Dispute:
-      return MESSAGE_ROOMS[3];
+      return MESSAGE_ROOMS[2];
     case ConversationType.JobNegotiation:
     default:
       return MESSAGE_ROOMS[1];

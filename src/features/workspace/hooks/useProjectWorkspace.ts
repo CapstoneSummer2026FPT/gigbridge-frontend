@@ -8,6 +8,7 @@ import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { receiptAPI } from '../../../api/receiptAPI';
 import type { Message } from '../../../types';
 import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Milestone, MilestoneEarlyStartRequest } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
@@ -71,6 +72,7 @@ interface WorkspaceActionResult {
   success: boolean;
   message?: string;
   statusCode?: number;
+  receiptQueued?: boolean;
 }
 
 interface SubmitProductHandoffPayload {
@@ -195,14 +197,24 @@ const getObjectValue = (source: unknown, ...keys: string[]): unknown => {
   return undefined;
 };
 
+const mapWorkspaceAttachment = (attachment: unknown) => ({
+  messageAttachmentId: String(getObjectValue(attachment, 'messageAttachmentId', 'MessageAttachmentId') ?? ''),
+  fileName: String(getObjectValue(attachment, 'fileName', 'FileName') ?? ''),
+  fileUrl: String(getObjectValue(attachment, 'fileUrl', 'FileUrl') ?? ''),
+  mimeType: String(getObjectValue(attachment, 'mimeType', 'MimeType') ?? ''),
+  fileSizeBytes: Number(getObjectValue(attachment, 'fileSizeBytes', 'FileSizeBytes') ?? 0),
+  createdAt: String(getObjectValue(attachment, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
+});
+
 const mapWorkspaceMessage = (message: unknown): Message => {
   const messageType = Number(getObjectValue(message, 'messageType', 'MessageType') ?? 0);
-  const attachments = getObjectValue(message, 'attachments', 'Attachments');
-  const firstAttachment = Array.isArray(attachments) ? attachments[0] : undefined;
+  const rawAttachments = getObjectValue(message, 'attachments', 'Attachments');
+  const attachments = Array.isArray(rawAttachments) ? rawAttachments.map(mapWorkspaceAttachment) : undefined;
+  const firstAttachment = attachments?.[0];
   const clientMessageId = getObjectValue(message, 'clientMessageId', 'ClientMessageId');
   const metadata = getObjectValue(message, 'metadata', 'Metadata');
-  const fileUrl = getObjectValue(firstAttachment, 'fileUrl', 'FileUrl');
-  const fileName = getObjectValue(firstAttachment, 'fileName', 'FileName');
+  const fileUrl = firstAttachment?.fileUrl;
+  const fileName = firstAttachment?.fileName;
 
   return {
     id: String(getObjectValue(message, 'messageId', 'MessageId', 'id') ?? crypto.randomUUID()),
@@ -223,6 +235,7 @@ const mapWorkspaceMessage = (message: unknown): Message => {
     isRead: true,
     fileUrl: typeof fileUrl === 'string' ? fileUrl : undefined,
     fileName: typeof fileName === 'string' ? fileName : undefined,
+    attachments,
   };
 };
 
@@ -251,6 +264,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [projectMessages, setProjectMessages] = useState<Message[]>([]);
+  const [chatAttachments, setChatAttachments] = useState<File[]>([]);
   const [reviewPromptContractId, setReviewPromptContractId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
@@ -287,7 +301,8 @@ export function useProjectWorkspace(initialContractId: string) {
             contractsResponse.data.filter(contract =>
               contract.status === ContractStatus.PendingEscrow ||
               contract.status === ContractStatus.Active ||
-              contract.status === ContractStatus.Disputed
+              contract.status === ContractStatus.Disputed ||
+              contract.status === ContractStatus.Completed
             )
           );
         }
@@ -552,8 +567,19 @@ export function useProjectWorkspace(initialContractId: string) {
   const isPartnerOnline = currentProjData.online;
   const partnerUserId = currentProjData.partnerUserId ?? null;
 
+  const MAX_CHAT_FILES = 5;
+  const MAX_CHAT_FILE_SIZE = 100 * 1024 * 1024;
+
   const handleSendMessage = async (): Promise<void> => {
-    if (isContractLocked(activeContract?.status) || !messageInput.trim() || !project.conversationId) return;
+    const trimmedContent = messageInput.trim();
+    const filesToSend = chatAttachments;
+    if (
+      isContractLocked(activeContract?.status) ||
+      (!trimmedContent && filesToSend.length === 0) ||
+      !project.conversationId
+    ) {
+      return;
+    }
 
     const clientMessageId = crypto.randomUUID();
     const newMessage: Message = {
@@ -561,22 +587,38 @@ export function useProjectWorkspace(initialContractId: string) {
       clientMessageId,
       conversationId: project.conversationId,
       senderId: user?.id ?? '',
-      content: messageInput.trim(),
-      type: 'text',
+      content: trimmedContent,
+      type: filesToSend.length > 0 ? 'file' : 'text',
       createdAt: new Date().toISOString(),
       isRead: true,
       sendStatus: 'pending',
+      attachments: filesToSend.map(file => ({
+        messageAttachmentId: crypto.randomUUID(),
+        fileName: file.name,
+        fileUrl: '',
+        mimeType: file.type,
+        fileSizeBytes: file.size,
+        createdAt: new Date().toISOString(),
+      })),
     };
 
     setProjectMessages(prev => [...prev, newMessage]);
     setMessageInput('');
+    setChatAttachments([]);
 
     try {
-      const response = await messagePostAPI.sendMessage({
-        conversationId: project.conversationId,
-        clientMessageId,
-        content: newMessage.content,
-      });
+      const response = filesToSend.length > 0
+        ? await messagePostAPI.sendMessageWithAttachments(
+            project.conversationId,
+            clientMessageId,
+            trimmedContent || undefined,
+            filesToSend
+          )
+        : await messagePostAPI.sendMessage({
+            conversationId: project.conversationId,
+            clientMessageId,
+            content: trimmedContent,
+          });
 
       if (response.success && response.data) {
         setProjectMessages(prev =>
@@ -608,15 +650,33 @@ export function useProjectWorkspace(initialContractId: string) {
     }
   };
 
-  const handleSimulateAttachment = (): void => {
-    toast.info('File attachments are not available in this workspace yet.');
+  const handleSelectChatFiles = (files: FileList | File[]): void => {
+    const incoming = Array.from(files);
+    if (incoming.length === 0) return;
+
+    const oversized = incoming.find(file => file.size <= 0 || file.size > MAX_CHAT_FILE_SIZE);
+    if (oversized) {
+      toast.error(`"${oversized.name}" exceeds the 100MB attachment limit.`);
+      return;
+    }
+
+    setChatAttachments(prev => {
+      const combined = [...prev, ...incoming];
+      if (combined.length > MAX_CHAT_FILES) {
+        toast.error(`You can attach up to ${MAX_CHAT_FILES} files per message.`);
+        return prev;
+      }
+      return combined;
+    });
+  };
+
+  const handleRemoveChatFile = (index: number): void => {
+    setChatAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleOpenMilestoneEditor = (): void => {
     if (!activeProjectId) return;
-    navigate(isClient
-      ? `/contracts/${activeProjectId}/milestones?mode=contract-edit`
-      : `/contracts/${activeProjectId}/milestones`);
+    navigate(`/workspace/${activeProjectId}`);
   };
 
   const reloadActiveWorkspace = async (): Promise<void> => {
@@ -750,9 +810,14 @@ export function useProjectWorkspace(initialContractId: string) {
       return { success: false, message: response.message || 'Failed to end project.' };
     }
 
+    const receiptResponse = await receiptAPI.prepare(activeProjectId);
     await reloadActiveWorkspace();
     setReviewPromptContractId(activeProjectId);
-    return { success: true, message: response.message };
+    return {
+      success: true,
+      message: response.message,
+      receiptQueued: receiptResponse.success,
+    };
   };
 
   const handleSubmitProductHandoff = async (
@@ -815,11 +880,13 @@ export function useProjectWorkspace(initialContractId: string) {
     partnerUserId,
     isPartnerOnline,
     projectMessages,
+    chatAttachments,
+    handleSelectChatFiles,
+    handleRemoveChatFile,
     reviewPromptContractId,
     clearReviewPrompt: () => setReviewPromptContractId(null),
     refreshWorkspace: reloadActiveWorkspace,
     handleSendMessage,
-    handleSimulateAttachment,
     handleOpenMilestoneEditor,
     handleRequestMilestoneUnlock,
     handleWithdrawMilestone,

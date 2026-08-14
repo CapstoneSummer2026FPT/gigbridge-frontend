@@ -26,10 +26,16 @@ interface BackendESignSignatureResponse {
   SignatureWidth?: number | null;
   signatureHeight?: number | null;
   SignatureHeight?: number | null;
+  identityOrTaxCode?: string | null;
+  IdentityOrTaxCode?: string | null;
+  isDraftValid?: boolean;
+  IsDraftValid?: boolean;
   status?: number;
   Status?: number;
   signedAt?: string | null;
   SignedAt?: string | null;
+  draftSubmittedAt?: string | null;
+  DraftSubmittedAt?: string | null;
   declinedAt?: string | null;
   DeclinedAt?: string | null;
   declineReason?: string | null;
@@ -40,6 +46,8 @@ interface BackendESignSignatureResponse {
   UserAgent?: string | null;
   createdAt?: string;
   CreatedAt?: string;
+  updatedAt?: string | null;
+  UpdatedAt?: string | null;
 }
 
 interface BackendESignDocumentResponse {
@@ -164,13 +172,17 @@ export const normalizeESignSignature = (
     signatureImageUrl: getValue<string | null>(source, 'signatureImageUrl', 'SignatureImageUrl') ?? null,
     signatureWidth: getValue<number | null>(source, 'signatureWidth', 'SignatureWidth') ?? null,
     signatureHeight: getValue<number | null>(source, 'signatureHeight', 'SignatureHeight') ?? null,
+    identityOrTaxCode: getValue<string | null>(source, 'identityOrTaxCode', 'IdentityOrTaxCode') ?? null,
+    isDraftValid: Boolean(getValue<boolean>(source, 'isDraftValid', 'IsDraftValid') ?? false),
     status: Number(getValue(source, 'status', 'Status') ?? 0),
     signedAt: getValue<string | null>(source, 'signedAt', 'SignedAt') ?? null,
+    draftSubmittedAt: getValue<string | null>(source, 'draftSubmittedAt', 'DraftSubmittedAt') ?? null,
     declinedAt: getValue<string | null>(source, 'declinedAt', 'DeclinedAt') ?? null,
     declineReason: getValue<string | null>(source, 'declineReason', 'DeclineReason') ?? null,
     ipAddress: getValue<string | null>(source, 'ipAddress', 'IpAddress') ?? null,
     userAgent: getValue<string | null>(source, 'userAgent', 'UserAgent') ?? null,
     createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
+    updatedAt: getValue<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
   };
 };
 
@@ -279,13 +291,13 @@ const normalizeDocumentListResponse = (
   data: response.data
     ? normalizeESignDocumentListPage(response.data)
     : {
-        items: [],
-        pageNumber: 1,
-        totalPages: 1,
-        totalCount: 0,
-        hasPreviousPage: false,
-        hasNextPage: false,
-      },
+      items: [],
+      pageNumber: 1,
+      totalPages: 1,
+      totalCount: 0,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    },
 });
 
 export const esignGetAPI = {

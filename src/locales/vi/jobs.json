@@ -356,6 +356,7 @@
       "milestoneTitleRequired": "Tên milestone là bắt buộc.",
       "milestoneAmountInvalid": "Số tiền phải lớn hơn 0.",
       "milestoneDurationInvalid": "Thời lượng phải là số nguyên dương theo tuần, tháng hoặc năm.",
+      "milestoneDeadlineRequiresClosingDate": "Vui lòng chọn hạn nhận proposal trước khi thêm milestone.",
       "milestoneDeadlineRequired": "Hạn hoàn thành là bắt buộc.",
       "milestoneDeadlinePast": "Hạn hoàn thành không được ở quá khứ.",
       "milestoneDeadlineAfterClosing": "Hạn milestone phải sau hạn nhận proposal.",

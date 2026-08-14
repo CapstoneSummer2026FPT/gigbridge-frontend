@@ -13,14 +13,16 @@ const esignUrl = 'ESign';
 export const esignPostAPI = {
   previewDocumentPdf: (
     documentId: string,
-    signatureImageUrl: string,
-    signatureWidth: number,
-    signatureHeight: number,
+    signatureImageUrl: string | undefined,
+    signatureWidth: number | undefined,
+    signatureHeight: number | undefined,
+    identityOrTaxCode: string,
   ): Promise<ApiResponse<Blob>> =>
     apiService.postDownload(`${esignUrl}/documents/${documentId}/pdf/preview-signature`, {
       signatureImageUrl,
       signatureWidth,
       signatureHeight,
+      identityOrTaxCode,
     }),
 
   saveDocumentPdf: (

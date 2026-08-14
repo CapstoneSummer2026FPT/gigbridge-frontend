@@ -1,7 +1,17 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { Dispute, DisputeEvidenceDownload, MyDisputesResponse } from '../../types/models/Dispute';
-import { normalizeDispute, normalizeEvidenceDownload, normalizeMyDisputesResponse } from './utils';
+import type {
+  Dispute,
+  DisputeEvidenceDownload,
+  DisputeRemainingJobPostPlan,
+  MyDisputesResponse,
+} from '../../types/models/Dispute';
+import {
+  normalizeDispute,
+  normalizeDisputeRemainingJobPostPlan,
+  normalizeEvidenceDownload,
+  normalizeMyDisputesResponse,
+} from './utils';
 
 const baseUrl = (contractId: string) => `contracts/${contractId}/disputes`;
 
@@ -30,6 +40,16 @@ export const disputeGetAPI = {
     return {
       ...response,
       data: response.data ? normalizeDispute(response.data) : undefined,
+    };
+  },
+
+  getRemainingJobPostPlan: async (
+    disputeId: string
+  ): Promise<ApiResponse<DisputeRemainingJobPostPlan>> => {
+    const response = await apiService.get<unknown>(`disputes/${disputeId}/remaining-job-post-plan`);
+    return {
+      ...response,
+      data: response.data ? normalizeDisputeRemainingJobPostPlan(response.data) : undefined,
     };
   },
 
