@@ -223,10 +223,10 @@ export default function CreateProposalScreen() {
 
                   <div className="p-3 rounded-xl bg-surface-muted/60 border border-border/80">
                     <span className="text-[10px] font-bold uppercase text-text-muted flex items-center gap-1.5 mb-1">
-                      <Clock size={12} /> Deadline
+                      <Clock size={12} /> {t('createProposal.deadline', { defaultValue: 'Hạn chót' })}
                     </span>
                     <span className="font-extrabold text-text-primary truncate block">
-                      {jobPost.endDate ? jobPost.endDate.split('T')[0] : 'Flexible'}
+                      {jobPost.endDate ? jobPost.endDate.split('T')[0] : t('createProposal.flexible', { defaultValue: 'Linh hoạt' })}
                     </span>
                   </div>
                 </div>

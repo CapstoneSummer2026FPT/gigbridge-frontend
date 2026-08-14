@@ -18,7 +18,7 @@
   flex: 1;
   min-height: calc(100vh - 4rem);
   position: relative;
-  z-index: 1;
+  z-index: auto;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -54,7 +54,7 @@
 .guest-layout-main {
   padding-top: 4rem;
   position: relative;
-  z-index: 1;
+  z-index: auto;
 }
 
 /* Sidebar Overlay (Mobile Only) */
@@ -212,4 +212,57 @@
 .nav-search-icon {
   left: 0.875rem;
   pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TopNav Modal Hierarchy Rule: TopNav stays behind any open popup/modal
+   ══════════════════════════════════════════════════════════════ */
+
+.landing-nav-container {
+  z-index: 35 !important;
+}
+
+body:has([role="dialog"]) .landing-nav-container,
+body:has(.modal-backdrop) .landing-nav-container,
+body:has(.modal-overlay) .landing-nav-container,
+body:has(.dialog-overlay) .landing-nav-container,
+body:has([data-state="open"]) .landing-nav-container,
+body:has(.fixed.inset-0:not(.landing-nav-container)) .landing-nav-container,
+body:has(.z-\[120\]) .landing-nav-container,
+body:has(.z-50:not(.landing-nav-container)) .landing-nav-container {
+  z-index: 10 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Native Date & Time Picker Indicator - Pure var(--brand) Mask
+   ══════════════════════════════════════════════════════════════ */
+
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  accent-color: var(--brand);
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  background-color: var(--brand);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='4' rx='2' ry='2'/%3E%3Cline x1='16' x2='16' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='2' y2='6'/%3E%3Cline x1='3' x2='21' y1='10' y2='10'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='4' rx='2' ry='2'/%3E%3Cline x1='16' x2='16' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='2' y2='6'/%3E%3Cline x1='3' x2='21' y1='10' y2='10'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  opacity: 0.9;
+  padding: 4px;
+  border-radius: 6px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.15);
 }
