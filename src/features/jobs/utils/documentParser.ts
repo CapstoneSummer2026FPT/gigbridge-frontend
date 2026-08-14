@@ -1,5 +1,4 @@
 import mammoth from 'mammoth';
-import JSZip from 'jszip';
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 
 // Polyfill DOMMatrix for Node/jsdom environments
@@ -18,7 +17,6 @@ export interface ParsedDocumentResult {
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 export const MAX_PDF_PAGES = 15;
 export const MAX_CHAR_LIMIT = 15000;
-export const MAX_ZIP_UNCOMPRESSED = 15 * 1024 * 1024; // 15 MB
 
 async function getFileArrayBuffer(file: File): Promise<ArrayBuffer> {
   if (typeof file.arrayBuffer === 'function') {
@@ -53,7 +51,7 @@ async function getFileText(file: File): Promise<string> {
 }
 
 /**
- * Extracts pure raw plain text from .docx, .pdf, .txt, .md, and .zip files in the browser.
+ * Extracts pure raw plain text from .docx, .pdf, .txt, and .md files in the browser.
  */
 export async function parseJobDocument(file: File): Promise<ParsedDocumentResult> {
   if (file.size > MAX_FILE_SIZE) {
@@ -90,36 +88,6 @@ export async function parseJobDocument(file: File): Promise<ParsedDocumentResult
           .join(' ');
         if (pageText.trim()) {
           textParts.push(`--- Page ${i} ---\n${pageText}`);
-        }
-      }
-      rawText = textParts.join('\n\n');
-    } else if (ext === '.zip') {
-      fileTypeLabel = 'ZIP';
-      const zip = await JSZip.loadAsync(file);
-      const textParts: string[] = [];
-      let totalUncompressedSize = 0;
-
-      for (const zipFileName of Object.keys(zip.files)) {
-        const entry = zip.files[zipFileName];
-        if (entry.dir || zipFileName.startsWith('__MACOSX/') || zipFileName.startsWith('.')) {
-          continue;
-        }
-
-        const innerExt = zipFileName.slice(zipFileName.lastIndexOf('.')).toLowerCase();
-        if (['.docx', '.pdf', '.txt', '.md'].includes(innerExt)) {
-          const fileData = await entry.async('blob');
-          totalUncompressedSize += fileData.size;
-
-          if (totalUncompressedSize > MAX_ZIP_UNCOMPRESSED) {
-            textParts.push('--- [Zip Archive Size Limit Reached] ---');
-            break;
-          }
-
-          const innerFile = new File([fileData], zipFileName);
-          const parsedInner = await parseJobDocument(innerFile);
-          if (parsedInner.text.trim()) {
-            textParts.push(`--- File: ${zipFileName} ---\n${parsedInner.text}`);
-          }
         }
       }
       rawText = textParts.join('\n\n');
