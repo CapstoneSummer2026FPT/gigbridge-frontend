@@ -392,11 +392,11 @@
       "lockedTitle": "Tạo bản nháp bằng AI là tính năng Premium",
       "lockedDescription": "Nâng cấp gói Client để AI tạo thông tin dự án và câu hỏi phỏng vấn có cấu trúc.",
       "upgrade": "Xem các gói Premium",
-      "attachFile": "Đính kèm tài liệu (.docx, .pdf, .txt, .md, .zip)",
+      "attachFile": "Đính kèm tài liệu (.docx, .pdf, .txt, .md)",
       "extractingText": "Đang trích xuất nội dung tài liệu...",
       "documentAttached": "Đã đính kèm tài liệu",
       "fileTooLarge": "Kích thước tệp vượt quá giới hạn 10 MB.",
-      "unsupportedFormat": "Định dạng tệp không được hỗ trợ. Vui lòng tải .docx, .pdf, .txt, .md hoặc .zip.",
+      "unsupportedFormat": "Định dạng tệp không được hỗ trợ. Vui lòng tải .docx, .pdf, .txt hoặc .md.",
       "parsingFailed": "Không thể đọc tài liệu. Vui lòng kiểm tra lại tệp.",
       "pdfPageLimit": "File PDF vượt quá 15 trang; đã trích xuất 15 trang đầu tiên."
     }

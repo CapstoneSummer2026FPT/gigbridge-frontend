@@ -1,5 +1,5 @@
 import { useState, type FormEvent, useRef, useEffect } from 'react';
-import { Crown, Sparkles, LoaderCircle, ArrowUp, Code2, Palette, PenTool, Eraser, X, Paperclip, FileText, FileArchive, AlertCircle } from 'lucide-react';
+import { Crown, Sparkles, LoaderCircle, ArrowUp, Code2, Palette, PenTool, Eraser, X, Paperclip, FileText, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { parseJobDocument } from '../utils/documentParser';
 
@@ -76,7 +76,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
       if (err.message === 'FILE_TOO_LARGE') {
         setParseError(t('postJobWizard.ai.fileTooLarge', 'File size exceeds 10 MB limit.'));
       } else if (err.message === 'UNSUPPORTED_FORMAT') {
-        setParseError(t('postJobWizard.ai.unsupportedFormat', 'Unsupported file format. Please upload .docx, .pdf, .txt, .md, or .zip.'));
+        setParseError(t('postJobWizard.ai.unsupportedFormat', 'Unsupported file format. Please upload .docx, .pdf, .txt, or .md.'));
       } else {
         setParseError(t('postJobWizard.ai.parsingFailed', 'Could not read document. Please check the file and try again.'));
       }
@@ -156,7 +156,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
           <input
             ref={fileInputRef}
             type="file"
-            accept=".docx,.pdf,.txt,.md,.zip"
+            accept=".docx,.pdf,.txt,.md"
             className="hidden"
             onChange={handleFileSelect}
             disabled={isLoading || isParsingDoc}
@@ -176,11 +176,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
 
                 {attachedFile && !isParsingDoc && (
                   <div className="flex items-center gap-2 bg-[var(--surface-muted)] px-2.5 py-1 rounded-md text-foreground font-medium border border-[var(--border)]">
-                    {fileMeta?.fileType === 'ZIP' ? (
-                      <FileArchive size={14} className="text-amber-500" />
-                    ) : (
-                      <FileText size={14} className="text-blue-500" />
-                    )}
+                    <FileText size={14} className="text-blue-500" />
                     <span className="max-w-[200px] truncate">{attachedFile.name}</span>
                     {fileMeta && (
                       <span className="text-[10px] bg-[var(--brand)]/10 text-[var(--brand)] font-bold px-1.5 py-0.5 rounded">
@@ -227,7 +223,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                   type="button"
                   className="job-post-ai-bar__clear-btn hover:text-[var(--brand)]"
                   onClick={() => fileInputRef.current?.click()}
-                  title={t('postJobWizard.ai.attachFile', 'Attach document (.docx, .pdf, .txt, .md, .zip)')}
+                  title={t('postJobWizard.ai.attachFile', 'Attach document (.docx, .pdf, .txt, .md)')}
                   disabled={isLoading || isParsingDoc}
                 >
                   <Paperclip size={16} />
