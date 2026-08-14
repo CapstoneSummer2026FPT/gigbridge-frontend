@@ -51,8 +51,81 @@
   box-shadow: 0 8px 16px rgba(0, 119, 255, 0.3);
 }
 
+.route-error-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: var(--background);
+}
+
+.route-error-content {
+  width: min(100%, 32rem);
+  padding: 2.5rem;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+.route-error-brand {
+  margin-bottom: 1rem;
+  color: var(--gb-cyan);
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.route-error-heading {
+  margin-bottom: 0.75rem;
+  color: var(--foreground);
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.route-error-text {
+  margin-bottom: 1.75rem;
+  color: var(--gb-text-secondary);
+  line-height: 1.6;
+}
+
+.route-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.route-error-reload {
+  border: 0;
+  cursor: pointer;
+}
+
+.route-error-home {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.route-error-home:hover {
+  color: var(--gb-cyan);
+  border-color: var(--gb-cyan);
+}
+
 @media (max-width: 768px) {
   .not-found-title {
     font-size: 4rem;
+  }
+
+  .route-error-content {
+    padding: 2rem 1.25rem;
   }
 }

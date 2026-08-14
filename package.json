@@ -9,7 +9,11 @@
   },
   "scripts": {
     "prebuild": "node scripts/clean-dist.mjs",
-    "build": "vite build",
+    "build": "npm run build:spa && npm run build:seo-client && npm run build:seo-server && npm run prerender:seo",
+    "build:spa": "vite build",
+    "build:seo-client": "vite build --config vite.seo.config.ts",
+    "build:seo-server": "vite build --ssr src/seo/server.tsx --outDir .seo-build",
+    "prerender:seo": "node scripts/prerender-seo.mjs",
     "postbuild": "node scripts/audit-build-artifact.mjs",
     "audit:artifact": "node scripts/audit-build-artifact.mjs",
     "audit:deadcode": "knip --no-progress --include files,dependencies,exports",

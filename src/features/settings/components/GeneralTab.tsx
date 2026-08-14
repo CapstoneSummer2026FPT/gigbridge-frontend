@@ -38,6 +38,7 @@ interface ProfileForm {
   title: string;
   bio: string;
   availability: number;
+  allowSearchEngineIndexing: boolean;
   majorId: string;
   categoryIds: string[];
   skillIds: string[];
@@ -62,6 +63,7 @@ const initialProfileForm = (user: any): ProfileForm => ({
   title: '',
   bio: '',
   availability: 0,
+  allowSearchEngineIndexing: false,
   majorId: '',
   categoryIds: [],
   skillIds: [],
@@ -486,6 +488,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
             title: profile.title ?? '',
             bio: profile.bio ?? '',
             availability: profile.availability ?? 0,
+            allowSearchEngineIndexing: profile.allowSearchEngineIndexing,
             majorId: profile.majorId ?? '',
             categoryIds: currentCategoryIds,
             skillIds: profile.skills.map(s => s.skillId),
@@ -662,6 +665,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           majorId: formData.majorId,
           categoryIds: formData.categoryIds,
           skillIds: formData.skillIds,
+          allowSearchEngineIndexing: formData.allowSearchEngineIndexing,
         });
 
         if (!response.success) {
@@ -1062,6 +1066,26 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                       </select>
                     </div>
                   </div>
+
+                  <label className="settings-form-group full-width flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] p-4">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowSearchEngineIndexing}
+                      onChange={event => setFormData(previous => ({
+                        ...previous,
+                        allowSearchEngineIndexing: event.target.checked,
+                      }))}
+                      className="mt-1 h-4 w-4"
+                    />
+                    <span>
+                      <span className="block font-bold text-[var(--text-primary)]">
+                        {t('settings.searchEngineVisibility')}
+                      </span>
+                      <span className="mt-1 block text-sm text-[var(--text-muted)]">
+                        {t('settings.searchEngineVisibilityDescription')}
+                      </span>
+                    </span>
+                  </label>
 
                   <div className="settings-form-group full-width">
                     <label className="settings-form-label">{t('settings.major')}</label>

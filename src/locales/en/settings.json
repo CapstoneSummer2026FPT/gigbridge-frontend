@@ -70,6 +70,8 @@
   "headline": "Professional Title / Headline",
   "location": "Location",
   "availability": "Availability Status",
+  "searchEngineVisibility": "Make my profile publicly discoverable",
+  "searchEngineVisibilityDescription": "When enabled, your professional profile may appear on GigBridge and in search engines. Your email address and phone number are never published.",
   "major": "Major / Specialization",
   "categories": "Categories",
   "skills": "Skills",

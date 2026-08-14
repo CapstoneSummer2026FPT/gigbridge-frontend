@@ -2,10 +2,33 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/seo.ts": { "includeFiles": ".seo-build/**" },
+    "api/sitemap.ts": { "includeFiles": ".seo-build/**" }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/"
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.gigbridge.id.vn" }],
+      "destination": "/api/redirect?target=https://gigbridge.id.vn/:path*"
+    },
+    { "source": "/jobs/browse", "destination": "/api/redirect?target=/jobs" },
+    { "source": "/profile/freelancer/:id", "destination": "/api/redirect?target=/freelancers/:id" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/jobs", "destination": "/api/seo?path=/jobs" },
+    { "source": "/jobs/:id", "destination": "/api/seo?path=/jobs/:id" },
+    { "source": "/freelancers", "destination": "/api/seo?path=/freelancers" },
+    { "source": "/freelancers/:id", "destination": "/api/seo?path=/freelancers/:id" },
+    { "source": "/about", "destination": "/about/index.html" },
+    { "source": "/careers", "destination": "/careers/index.html" },
+    { "source": "/faq", "destination": "/faq/index.html" },
+    { "source": "/guide", "destination": "/guide/index.html" },
+    { "source": "/press-kit", "destination": "/press-kit/index.html" },
+    { "source": "/terms", "destination": "/terms/index.html" },
+    { "source": "/privacy", "destination": "/privacy/index.html" },
+    {
+      "source": "/((?!assets/|img/|fonts/|videos/|icons/|audio/|robots.txt|api/).*)",
+      "destination": "/spa.html"
     }
   ]
 }

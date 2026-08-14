@@ -5,6 +5,8 @@ import type {
   FreelancerProfileDetailDto,
   FreelancerSummaryDto,
   PaginatedList,
+  PublicFreelancerProfileDto,
+  PublicFreelancerSummaryDto,
   PublicUserProfileDto,
   UserProfileDto,
 } from '../../types/models/Profile';
@@ -25,6 +27,17 @@ const buildFreelancerDirectoryQuery = (query: FreelancerDirectoryQuery): string 
 };
 
 export const profileGetAPI = {
+  getPublicFreelancerProfile: async (userId: string) => {
+    return await apiService.get<PublicFreelancerProfileDto>(`public/freelancers/${userId}`);
+  },
+
+  getPublicFreelancers: async (query: FreelancerDirectoryQuery = {}) => {
+    const queryString = buildFreelancerDirectoryQuery(query);
+    return await apiService.get<PaginatedList<PublicFreelancerSummaryDto>>(
+      `public/freelancers?${queryString}`,
+    );
+  },
+
   getFreelancerProfile: async (userId: string) => {
     return await apiService.get<FreelancerProfileDetailDto>(`profile/freelancer/${userId}`);
   },
