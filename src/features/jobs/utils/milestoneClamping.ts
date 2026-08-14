@@ -2,6 +2,30 @@ import type { JobPostMilestonePlanDto } from '../../../types/models/Job';
 import { parseJobDuration, durationToWeeks } from './jobDuration';
 
 /**
+ * Resolves a single canonical budget string from min/max budget values.
+ * If both min and max are provided (e.g. 10000 and 20000), calculates the average / midpoint
+ * and rounds it to a clean integer (e.g. 15000).
+ */
+export function resolveCanonicalBudget(
+  min?: number | string | null,
+  max?: number | string | null
+): string {
+  const minVal = min !== null && min !== undefined ? Number(min) : null;
+  const maxVal = max !== null && max !== undefined ? Number(max) : null;
+
+  const validMin = minVal !== null && !isNaN(minVal) && minVal > 0 ? minVal : null;
+  const validMax = maxVal !== null && !isNaN(maxVal) && maxVal > 0 ? maxVal : null;
+
+  if (validMin !== null && validMax !== null) {
+    const average = Math.round((validMin + validMax) / 2);
+    return String(average);
+  }
+  if (validMax !== null) return String(Math.round(validMax));
+  if (validMin !== null) return String(Math.round(validMin));
+  return '';
+}
+
+/**
  * Scales and clamps milestone amounts and duration weeks so that:
  * 1. Sum of milestone amounts equals expectedBudget (e.g. 28,000 GC) exactly.
  * 2. Sum of milestone week durations equals expectedDurationWeeks (e.g. 5 weeks) exactly.

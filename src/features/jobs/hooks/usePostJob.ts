@@ -26,7 +26,7 @@ import {
   parseJobDuration,
   type JobDurationUnit,
 } from '../utils/jobDuration';
-import { clampMilestonesToExpectedTargets } from '../utils/milestoneClamping';
+import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from '../utils/milestoneClamping';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -886,12 +886,15 @@ export function usePostJob() {
     const durationDays = (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 2;
     const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+    const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
+    const canonicalBudgetNum = canonicalBudgetStr ? Number(canonicalBudgetStr) : null;
+
     const promise = jobAPI.generateAIHiringPlan({
       clientPrompt: promptText,
       title: jobTitle || '',
       description: jobDescription || '',
-      budgetMin: generatedData.budgetMin,
-      budgetMax: generatedData.budgetMax,
+      budgetMin: canonicalBudgetNum,
+      budgetMax: canonicalBudgetNum,
       estimatedDuration: generatedData.estimatedDuration,
       proposalClosingDate: computedDeadline,
     }, abortController.signal).then(response => {
@@ -992,7 +995,7 @@ export function usePostJob() {
         skillIds: generatedSkillIds,
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
-        budget: toStringValue(generatedData.budgetMin ?? generatedData.budgetMax) || prev.budget,
+        budget: canonicalBudgetStr || toStringValue(generatedData.budgetMin ?? generatedData.budgetMax) || prev.budget,
         currency: prev.currency || GIGCOIN_CURRENCY_CODE,
         estimatedDurationValue: duration.value || prev.estimatedDurationValue || '2',
         estimatedDurationUnit: duration.unit || prev.estimatedDurationUnit || 'weeks',
