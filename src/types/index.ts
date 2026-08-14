@@ -21,6 +21,9 @@ export * from './models/Proposal';
 // Contracts & Milestones
 export * from './models/Contract';
 
+// Project receipts
+export * from './models/Receipt';
+
 // Messages. The legacy Message.Review shape is intentionally not re-exported
 // because the canonical review contract lives in models/Job.
 export {

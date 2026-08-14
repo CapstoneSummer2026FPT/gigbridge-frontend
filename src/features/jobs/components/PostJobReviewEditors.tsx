@@ -229,7 +229,7 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
 export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
   const { t } = useTranslation('common');
   const {
-    milestonePlans, setMilestonePlans, milestoneErrors, setMilestoneErrors,
+    milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
     expandedMilestone, setExpandedMilestone, questions, setQuestions,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver,
     handleDragEnd, MAX_QUESTION_LENGTH,
@@ -238,13 +238,14 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
   return (
     <div className="grid gap-6">
       <NestedMilestonePlanEditor
-        value={milestonePlans as EditableMilestonePlan[]}
+        value={milestonePlansWithDeadlines as EditableMilestonePlan[]}
         onChange={plans => {
           setMilestonePlans(plans);
           setMilestoneErrors({});
         }}
         optional
         showDueDate
+        dueDateReadOnly
         showWorkItems={false}
         title={t('postJob.baselineMilestoneTitle')}
         description={t('postJob.baselineMilestoneDescription')}

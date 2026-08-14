@@ -88,6 +88,7 @@ interface Props {
   description?: string;
   optional?: boolean;
   showDueDate?: boolean;
+  dueDateReadOnly?: boolean;
   showWorkItems?: boolean;
   showBudgetSummary?: boolean;
   simplifiedMilestoneFields?: boolean;
@@ -162,6 +163,7 @@ export function NestedMilestonePlanEditor({
   description = 'Define payable outcomes, then break each outcome into concrete work items.',
   optional = false,
   showDueDate = false,
+  dueDateReadOnly = false,
   showWorkItems = true,
   showBudgetSummary = true,
   simplifiedMilestoneFields = false,
@@ -544,10 +546,10 @@ export function NestedMilestonePlanEditor({
                         </label>
                         <input
                           data-milestone-field={`${index}.dueDate`}
-                          disabled={readOnly}
+                          disabled={readOnly || dueDateReadOnly}
                           type="date"
                           value={milestone.dueDate || ''}
-                          onChange={e => updateMilestone(index, { dueDate: e.target.value || null })}
+                          onChange={dueDateReadOnly ? undefined : e => updateMilestone(index, { dueDate: e.target.value || null })}
                           aria-describedby={describedBy(`${index}-deadline`, fieldHints.deadline)}
                           className={`${fieldClass('dueDate')} h-11 text-sm font-semibold`}
                         />
