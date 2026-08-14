@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight, Clock3, Coins, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { CustomSelect } from './CustomSelect';
-import { formatGigCoin, formatGigCoinToVnd } from '../utils/gigcoin';
+import GCoinIcon from './GCoinIcon';
+import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
 
 export interface EditablePlanWorkItem {
   id?: string | null;
@@ -311,8 +312,10 @@ export function NestedMilestonePlanEditor({
             </div>
           </div>
           <div className="text-right">
-            <strong className="block text-2xl font-black text-[var(--brand)] tracking-tight">
-              {formatGigCoin(total)}
+            <strong className="inline-flex items-center gap-1.5 text-2xl font-black text-[var(--brand)] tracking-tight">
+              <span>{formatGigCoinNumber(total)}</span>
+              <GCoinIcon size={20} />
+              <span>G-coin</span>
             </strong>
             {total > 0 && (
               <small className="text-xs font-bold text-muted-foreground block mt-0.5">
@@ -381,7 +384,9 @@ export function NestedMilestonePlanEditor({
                   </strong>
                   <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5 font-medium">
                     <span className="inline-flex items-center gap-1 font-bold text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2 py-0.5 rounded-md">
-                      <Coins size={12} /> {formatGigCoin(Number(milestone.amount) || 0)}
+                      <span>{formatGigCoinNumber(Number(milestone.amount) || 0)}</span>
+                      <GCoinIcon size={12} />
+                      <span>G-coin</span>
                     </span>
                     {milestone.estimatedDuration && (
                       <span className="inline-flex items-center gap-1 font-semibold text-foreground bg-muted px-2 py-0.5 rounded-md">
@@ -462,8 +467,9 @@ export function NestedMilestonePlanEditor({
                           aria-describedby={describedBy(`${index}-amount`, fieldHints.amount)}
                           className="w-full border-none bg-transparent outline-none font-extrabold text-sm text-foreground focus:outline-none focus:ring-0 p-0"
                         />
-                        <span className="shrink-0 text-xs font-extrabold text-[var(--brand)] bg-[var(--brand)]/10 px-2.5 py-1 rounded-lg">
-                          G-coin
+                        <span className="shrink-0 inline-flex items-center gap-1 text-xs font-extrabold text-[var(--brand)] bg-[var(--brand)]/10 px-2.5 py-1 rounded-lg">
+                          <GCoinIcon size={13} />
+                          <span>G-coin</span>
                         </span>
                       </div>
                       <div className="text-[11px] text-muted-foreground leading-snug space-y-0.5 pt-0.5">

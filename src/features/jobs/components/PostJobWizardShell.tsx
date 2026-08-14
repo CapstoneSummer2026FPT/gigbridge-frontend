@@ -3,6 +3,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, CircleDollarSign, Cloud, Refr
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import JobPostStepper from '../../../shared/components/JobPostStepper';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import type { AutosaveStatus } from '../hooks/usePostJob';
 import '../../../shared/styles/job-post-stepper.css';
@@ -123,11 +124,19 @@ export function PostJobWizardShell({
                       <dt>{t('postJob.expectedBudget')}</dt>
                       <dd>
                         {milestoneTotal !== undefined && milestoneTotal > 0 ? (
-                          <span className={`job-post-ratio${milestoneTotal > expectedBudget ? ' is-over' : ''}`}>
+                          <span className={`job-post-ratio flex items-center gap-1${milestoneTotal > expectedBudget ? ' is-over' : ''}`}>
                             {milestoneTotal > expectedBudget && <AlertTriangle size={12} />}
-                            {formatGigCoinNumber(milestoneTotal)} / {formatGigCoinNumber(expectedBudget)} G-coin
+                            <span>{formatGigCoinNumber(milestoneTotal)} / {formatGigCoinNumber(expectedBudget)}</span>
+                            <GCoinIcon size={12} />
+                            <span>G-coin</span>
                           </span>
-                        ) : formatGigCoin(expectedBudget)}
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <span>{formatGigCoinNumber(expectedBudget)}</span>
+                            <GCoinIcon size={12} />
+                            <span>G-coin</span>
+                          </span>
+                        )}
                       </dd>
                     </div>
                   )}
@@ -158,7 +167,11 @@ export function PostJobWizardShell({
                 <div>
                   <dt><CircleDollarSign size={14} />{t('postJobWizard.budget')}</dt>
                   <dd className="flex flex-col items-end">
-                    <span>{budget.toLocaleString()} G-coin</span>
+                    <span className="inline-flex items-center gap-1">
+                      <span>{budget.toLocaleString()}</span>
+                      <GCoinIcon size={13} />
+                      <span>G-coin</span>
+                    </span>
                     {budget > 0 && <small className="text-[11px] font-normal text-muted-foreground">≈ {formatGigCoinToVnd(budget)}</small>}
                   </dd>
                 </div>
