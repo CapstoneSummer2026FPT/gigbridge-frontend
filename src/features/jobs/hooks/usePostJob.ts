@@ -19,6 +19,7 @@ import {
   type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
+  durationToDays,
   durationToWeeks,
   formatJobDuration,
   isValidJobDurationValue,
@@ -419,34 +420,28 @@ export function usePostJob() {
     }
   }, [isInstantJobMode]);
 
-  // Dynamically shift milestone due dates sequentially when form.deadline changes
-  useEffect(() => {
-    if (!form.deadline || milestonePlans.length === 0) return;
+  // Milestone deadlines are fully derived: Milestone 1 starts from the job's closing
+  // date (form.deadline), and each following milestone starts from the previous
+  // milestone's computed deadline. This recalculates on every trigger that can affect
+  // it (duration edits, add/remove/reorder, or form.deadline changing) since it's a
+  // plain memo over the current milestonePlans/form.deadline, not a stateful effect.
+  const milestonePlansWithDeadlines = useMemo<JobPostMilestonePlanDto[]>(() => {
+    let previousDueDate = form.deadline || null;
 
-    let previousDueDate = form.deadline;
-    let modified = false;
+    return milestonePlans.map(milestone => {
+      const duration = parseJobDuration(milestone.estimatedDuration);
+      const days = duration.value ? durationToDays(duration.value, duration.unit) : 0;
 
-    const nextMilestones = milestonePlans.map(milestone => {
-      // If a milestone is missing dueDate, or is before/equal to closing date, or is out of order:
-      if (!milestone.dueDate || milestone.dueDate <= form.deadline || (previousDueDate && milestone.dueDate <= previousDueDate)) {
-        const duration = parseJobDuration(milestone.estimatedDuration);
-        const weeks = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 4.333 : duration.unit === 'years' ? 52 : 1) : 2;
-        const days = Math.ceil(weeks * 7);
-
-        const start = previousDueDate ? new Date(previousDueDate) : new Date(form.deadline);
-        const newDueDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-        previousDueDate = newDueDate;
-        modified = true;
-        return { ...milestone, dueDate: newDueDate };
+      if (!previousDueDate || days <= 0) {
+        previousDueDate = null;
+        return { ...milestone, dueDate: null };
       }
-      previousDueDate = milestone.dueDate;
-      return milestone;
-    });
 
-    if (modified) {
-      setMilestonePlans(nextMilestones);
-    }
+      const start = new Date(`${previousDueDate}T00:00:00`);
+      const newDueDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      previousDueDate = newDueDate;
+      return { ...milestone, dueDate: newDueDate };
+    });
   }, [form.deadline, milestonePlans]);
 
   useEffect(() => {
@@ -1072,26 +1067,20 @@ export function usePostJob() {
   };
 
   const validateMilestonePlans = (): PostJobValidationIssue | null => {
+    if (milestonePlans.length > 0 && !form.deadline) {
+      return {
+        message: t('postJobWizard.validation.milestoneDeadlineRequiresClosingDate'),
+        section: 'terms',
+        fieldSelector: '#job-deadline',
+      };
+    }
+
     const errors: Record<string, string> = {};
-    const today = new Date().toISOString().slice(0, 10);
-    let previousDueDate: string | null = null;
     for (const [index, milestone] of milestonePlans.entries()) {
       if (!milestone.title?.trim()) errors[`${index}.title`] = t('postJobWizard.validation.milestoneTitleRequired');
       if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = t('postJobWizard.validation.milestoneAmountInvalid');
-      if (!/^\s*[1-9]\d*\s+(week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
+      if (!/^\s*[1-9]\d*\s+(day|days|week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
         errors[`${index}.estimatedDuration`] = t('postJobWizard.validation.milestoneDurationInvalid');
-      }
-      if (!milestone.dueDate) {
-        errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineRequired');
-      } else {
-        if (milestone.dueDate < today) errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlinePast');
-        if (form.deadline && milestone.dueDate <= form.deadline) {
-          errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineAfterClosing');
-        }
-        if (previousDueDate && milestone.dueDate <= previousDueDate) {
-          errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineSequence');
-        }
-        previousDueDate = milestone.dueDate;
       }
       if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = t('postJobWizard.validation.milestoneDeliverablesRequired');
       if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = t('postJobWizard.validation.milestoneAcceptanceRequired');
@@ -1145,7 +1134,7 @@ export function usePostJob() {
     const durationValue = durationOverrideRef.current ? String(milestoneTotalWeeks) : form.estimatedDurationValue;
     const durationUnit: JobDurationUnit = durationOverrideRef.current ? 'weeks' : form.estimatedDurationUnit;
     const finalQuestions = overrides?.questions || questions;
-    const finalMilestones = overrides?.milestonePlans || milestonePlans;
+    const finalMilestones = overrides?.milestonePlans || milestonePlansWithDeadlines;
     const questionsWithOrderOverrides = finalQuestions.map((question, index) => ({ ...question, orderIndex: index }));
 
     return {
@@ -1661,6 +1650,7 @@ export function usePostJob() {
     questions,
     setQuestions,
     milestonePlans,
+    milestonePlansWithDeadlines,
     attachments,
     isUploadingAttachment,
     attachmentError,
