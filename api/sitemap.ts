@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { renderSitemapXml } from '../src/seo/server';
+import { renderSitemapXml } from '../src/seo/server.js';
 
 export default async function handler(_request: IncomingMessage, response: ServerResponse): Promise<void> {
   const result = await renderSitemapXml();

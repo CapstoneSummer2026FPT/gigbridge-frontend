@@ -15,7 +15,7 @@ import {
 import { JobPostVisibility } from '../../../types/models/Job';
 import type { usePostJob } from '../hooks/usePostJob';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
-import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JOB_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
 import { QuestionRequiredToggle } from './QuestionRequiredToggle';
 

@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight, Clock3, Coins, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { CustomSelect } from './CustomSelect';
 import GCoinIcon from './GCoinIcon';
-import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
 
 export interface EditablePlanWorkItem {
   id?: string | null;

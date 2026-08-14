@@ -1,6 +1,6 @@
 import { renderToString } from 'react-dom/server';
-import { SeoPublicApp } from './SeoPublicApp';
-import { DEFAULT_OG_IMAGE, getSeoMetadata, SITE_URL } from './metadata';
+import { SeoPublicApp } from './SeoPublicApp.js';
+import { DEFAULT_OG_IMAGE, getSeoMetadata, SITE_URL } from './metadata.js';
 import type {
   MarketingRoute,
   SeoFreelancerDetail,

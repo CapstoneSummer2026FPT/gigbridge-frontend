@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { renderSeoResponse } from '../src/seo/server';
+import { renderSeoResponse } from '../src/seo/server.js';
 
 interface SeoRequest extends IncomingMessage {
   readonly query?: Readonly<Record<string, string | readonly string[]>>;
