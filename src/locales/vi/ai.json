@@ -71,8 +71,8 @@
       "description": "Câu hỏi tiếp theo sẽ tự động được phát."
     },
     "proposal": {
-      "submitted": "Đề xuất của bạn đã được gửi thành công.",
-      "submittedWithInterview": "Đề xuất đã được gửi. Hãy bắt đầu phỏng vấn AI khi bạn sẵn sàng.",
+      "submitted": "Đã gửi đề xuất thành công.",
+      "submittedWithInterview": "Đã gửi đề xuất. Sẵn sàng bắt đầu phỏng vấn AI.",
       "readyTitle": "Phỏng vấn AI đã sẵn sàng",
       "readyDescription": "Khách hàng đã bật phỏng vấn AI cho công việc này. Bạn có thể bắt đầu ngay hoặc quay lại đây khi đã sẵn sàng.",
       "completedTitle": "Đã hoàn tất phỏng vấn AI",

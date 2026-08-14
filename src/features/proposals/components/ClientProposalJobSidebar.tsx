@@ -47,10 +47,10 @@ export const sortProposalReviewJobs = (
 });
 
 const statusTone = (status: number) => {
-  if (status === 1) return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
-  if (status === 2) return 'bg-slate-500/10 text-slate-700 dark:text-slate-300';
-  if (status === 3) return 'bg-red-500/10 text-red-700 dark:text-red-300';
-  return 'bg-amber-500/10 text-amber-700 dark:text-amber-300';
+  if (status === 1) return 'bg-emerald-600 text-white font-black shadow-xs border-none';
+  if (status === 2) return 'bg-slate-600 text-white font-black shadow-xs border-none';
+  if (status === 3) return 'bg-rose-600 text-white font-black shadow-xs border-none';
+  return 'bg-amber-500 text-white font-black shadow-xs border-none';
 };
 
 export default function ClientProposalJobSidebar({

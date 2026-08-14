@@ -52,7 +52,7 @@ function getClientNavItems(t: any): NavItem[] {
       icon: <Briefcase size={18} />,
       children: [
         { id: 'post-job', label: t('nav.postJob', { defaultValue: 'Post a Job' }), icon: <PlusCircle size={18} />, path: '/jobs/post/guide', badge: 'AI', badgeType: 'cyan' },
-        { id: 'my-jobs', label: t('nav.myJobs', { defaultValue: 'My Jobs' }), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
+        { id: 'my-jobs', label: t('nav.myJobs', { defaultValue: 'Jobs' }), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
       ],
     },
     {
@@ -64,7 +64,7 @@ function getClientNavItems(t: any): NavItem[] {
         { id: 'contracts', label: t('nav.contracts', { defaultValue: 'Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
         { id: 'projects', label: t('nav.projects', { defaultValue: 'Projects' }), icon: <Flag size={18} />, path: '/projects' },
         { id: 'reviews', label: t('nav.reviews', { defaultValue: 'Reviews' }), icon: <Star size={18} />, path: '/reviews' },
-        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'My Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
+        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
       ],
     },
     {
@@ -115,14 +115,14 @@ function getFreelancerNavItems(t: any): NavItem[] {
     },
     {
       id: 'my-jobs',
-      label: t('nav.myWork', { defaultValue: 'My Work' }),
+      label: t('nav.myWork', { defaultValue: 'Work' }),
       icon: <Briefcase size={18} />,
       children: [
-        { id: 'my-proposals', label: t('nav.myProposals', { defaultValue: 'My Proposals' }), icon: <FileText size={18} />, path: '/proposals' },
-        { id: 'my-contracts', label: t('nav.myContracts', { defaultValue: 'My Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
-        { id: 'my-projects', label: t('nav.myProjects', { defaultValue: 'My Projects' }), icon: <Flag size={18} />, path: '/projects' },
-        { id: 'my-reviews', label: t('nav.myReviews', { defaultValue: 'My Reviews' }), icon: <Star size={18} />, path: '/reviews' },
-        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'My Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
+        { id: 'my-proposals', label: t('nav.myProposals', { defaultValue: 'Proposals' }), icon: <FileText size={18} />, path: '/proposals' },
+        { id: 'my-contracts', label: t('nav.myContracts', { defaultValue: 'Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
+        { id: 'my-projects', label: t('nav.myProjects', { defaultValue: 'Projects' }), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'my-reviews', label: t('nav.myReviews', { defaultValue: 'Reviews' }), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
       ],
     },
     {

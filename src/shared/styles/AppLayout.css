@@ -215,21 +215,26 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   TopNav Modal Hierarchy Rule: TopNav stays behind any open popup/modal
+   TopNav Hierarchy & Z-Index Rules
    ══════════════════════════════════════════════════════════════ */
 
 .landing-nav-container {
-  z-index: 35 !important;
+  z-index: 45;
 }
 
-body:has([role="dialog"]) .landing-nav-container,
-body:has(.modal-backdrop) .landing-nav-container,
-body:has(.modal-overlay) .landing-nav-container,
-body:has(.dialog-overlay) .landing-nav-container,
-body:has([data-state="open"]) .landing-nav-container,
-body:has(.fixed.inset-0:not(.landing-nav-container)) .landing-nav-container,
-body:has(.z-\[120\]) .landing-nav-container,
-body:has(.z-50:not(.landing-nav-container)) .landing-nav-container {
+/* When avatar, notification, or wallet dropdown is open, TopNav floats above sticky headers (z-40) */
+.landing-nav-container.top-nav-menu-open,
+.landing-nav-container:has(.dropdown-menu),
+.landing-nav-container:has([role="menu"]) {
+  z-index: 100 !important;
+}
+
+/* Modal Hierarchy: TopNav stays behind full-screen modals/popups when active */
+body:has([role="dialog"]) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.modal-backdrop) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.modal-overlay) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.dialog-overlay) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.z-\[120\]) .landing-nav-container:not(.top-nav-menu-open) {
   z-index: 10 !important;
 }
 

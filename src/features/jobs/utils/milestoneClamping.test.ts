@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clampMilestonesToExpectedTargets } from './milestoneClamping';
+import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from './milestoneClamping';
 import type { JobPostMilestonePlanDto } from '../../../types/models/Job';
 
 describe('clampMilestonesToExpectedTargets', () => {
@@ -30,5 +30,20 @@ describe('clampMilestonesToExpectedTargets', () => {
     const weekValues = clamped.map(m => Number(m.estimatedDuration?.split(' ')[0]));
     const totalWeeks = weekValues.reduce((sum, w) => sum + w, 0);
     expect(totalWeeks).toBe(5);
+  });
+});
+
+describe('resolveCanonicalBudget', () => {
+  it('calculates average and rounds to integer for range 10,000 - 20,000 GC', () => {
+    expect(resolveCanonicalBudget(10000, 20000)).toBe('15000');
+  });
+
+  it('rounds floating point averages cleanly (e.g. 15000 and 28999.66 -> 22000)', () => {
+    expect(resolveCanonicalBudget(15000, 28999.66)).toBe('22000');
+  });
+
+  it('handles single budget min or max', () => {
+    expect(resolveCanonicalBudget(28000, null)).toBe('28000');
+    expect(resolveCanonicalBudget(null, 15000)).toBe('15000');
   });
 });
