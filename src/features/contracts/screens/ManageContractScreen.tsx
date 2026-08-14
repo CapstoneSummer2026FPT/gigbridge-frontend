@@ -347,9 +347,9 @@ function ClientContractCardItem({
 
   if (status === ContractStatus.Active) {
     primaryAction = {
-      label: t('contracts.manageMilestones'),
+      label: t('contracts.goToWorkspace', { defaultValue: 'Go to workspace' }),
       icon: <ListChecks size={14} />,
-      path: `/contracts/${contract.contractsId}`,
+      path: `/workspace/${contract.contractsId}`,
       styleClass: 'bg-brand text-white shadow-sm',
     };
   } else if (status === ContractStatus.Draft || status === ContractStatus.PendingSignature) {

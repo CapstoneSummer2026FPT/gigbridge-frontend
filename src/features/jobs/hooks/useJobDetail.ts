@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { jobInvitationGetAPI } from '../../../api/jobInvitationAPI/GET';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
@@ -215,6 +216,25 @@ export function useJobDetail() {
             setClientProfile(null);
             setSimilarJobs([]);
             return;
+          }
+
+          // If activeJobPostId is an invitationId, resolve jobPostId from invitations list
+          try {
+            const myInvitations = await jobInvitationGetAPI.getMyInvitations();
+            const foundInv = myInvitations.find(
+              inv => (inv.jobInvitationId || inv.jobInvitationsId) === activeJobPostId
+            );
+            const targetJobPostId = foundInv?.jobPostId || foundInv?.jobPostsId;
+            if (targetJobPostId) {
+              const res = await jobGetAPI.getJobById(targetJobPostId);
+              setJob(res.job);
+              setClient(null);
+              setClientProfile(null);
+              setSimilarJobs([]);
+              return;
+            }
+          } catch (invErr) {
+            console.error('Failed to resolve job invitation in useJobDetail:', invErr);
           }
         }
 

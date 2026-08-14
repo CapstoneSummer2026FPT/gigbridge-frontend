@@ -39,10 +39,10 @@
 }
 
 .contract-area-tab.active {
-  border-color: var(--brand-border, rgba(73, 75, 231, 0.4));
+  border-color: var(--brand, #494be7);
   background: var(--brand, #494be7);
   color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(73, 75, 231, 0.3);
+  box-shadow: 0 4px 14px rgba(73, 75, 231, 0.35);
 }
 
 @media (max-width: 640px) {

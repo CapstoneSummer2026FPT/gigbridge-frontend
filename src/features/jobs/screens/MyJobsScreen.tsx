@@ -60,30 +60,30 @@ const statusBadgeInfo = (status: number | null | undefined, t: any) => {
   if (status === JobPostStatus.Draft) {
     return {
       label: t('myJobs.status.draft', { defaultValue: 'Bản nháp' }),
-      badgeClass: 'bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400',
+      badgeClass: 'bg-amber-500 text-white font-black shadow-xs border-none',
     };
   }
   if (status === JobPostStatus.Open) {
     return {
       label: t('myJobs.status.open', { defaultValue: 'Đang tuyển' }),
-      badgeClass: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+      badgeClass: 'bg-emerald-600 text-white font-black shadow-xs border-none',
     };
   }
   if (status === JobPostStatus.Closed) {
     return {
       label: t('myJobs.status.closed', { defaultValue: 'Đã đóng' }),
-      badgeClass: 'bg-surface-muted border-border text-text-muted',
+      badgeClass: 'bg-slate-600 text-white font-black shadow-xs border-none',
     };
   }
   if (status === JobPostStatus.Cancelled) {
     return {
       label: t('myJobs.status.cancelled', { defaultValue: 'Đã hủy' }),
-      badgeClass: 'bg-rose-500/15 border-rose-500/30 text-rose-500',
+      badgeClass: 'bg-rose-600 text-white font-black shadow-xs border-none',
     };
   }
   return {
     label: t('myJobs.status.unknown', { defaultValue: 'Không rõ' }),
-    badgeClass: 'bg-surface-muted border-border text-text-muted',
+    badgeClass: 'bg-slate-500 text-white font-black shadow-xs border-none',
   };
 };
 

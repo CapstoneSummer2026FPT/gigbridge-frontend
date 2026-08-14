@@ -72,8 +72,8 @@
       "description": "The next question will play automatically."
     },
     "proposal": {
-      "submitted": "Your proposal was submitted successfully.",
-      "submittedWithInterview": "Your proposal was submitted. Start the AI interview whenever you’re ready.",
+      "submitted": "Proposal submitted successfully.",
+      "submittedWithInterview": "Proposal submitted. Start the AI interview whenever you’re ready.",
       "readyTitle": "AI interview ready",
       "readyDescription": "This client enabled an AI interview for the job. You can start it now or return here when you’re ready.",
       "completedTitle": "AI interview completed",

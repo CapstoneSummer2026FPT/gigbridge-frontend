@@ -6,7 +6,7 @@ import {
   AlertCircle, CheckCircle, Clock,
   FileText, Calendar, ArrowLeft, Shield,
   ListChecks, Copy, Check, FileCheck, ChevronDown,
-  Star, ShieldAlert, Edit3, Sparkles, Eye, Mail, LoaderCircle, RefreshCw, Users, Zap, ChevronRight,
+  Star, ShieldAlert, Edit3, Sparkles, Eye, Mail, LoaderCircle, RefreshCw, Users, Zap, ChevronRight, Briefcase, ExternalLink,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
@@ -791,6 +791,40 @@ export function FreelancerContractDetails({
                 </div>
               </div>
 
+              {/* Job Overview Panel */}
+              {(contract.jobPostsId || (contract as any).jobPostId || (contract as any).jobId) && (
+                <div className="relative overflow-hidden rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-md p-5 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-[var(--border)]/70 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-[var(--brand,#494be7)]/10 text-[var(--brand,#494be7)] flex items-center justify-center">
+                        <Briefcase size={15} />
+                      </div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-primary)]">
+                        {t('jobs.jobOverview', { defaultValue: 'Thông tin bài tuyển dụng' })}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-extrabold text-foreground leading-snug line-clamp-2">
+                      {contract.jobTitle || contract.title}
+                    </h4>
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      Hợp đồng công việc được liên kết trực tiếp với bài đăng này.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/jobs/${contract.jobPostsId || (contract as any).jobPostId || (contract as any).jobId}`)}
+                    className="group relative w-full py-2.5 px-3.5 rounded-xl font-extrabold text-xs text-[var(--brand,#494be7)] bg-[var(--brand,#494be7)]/10 border border-[var(--brand,#494be7)]/20 hover:bg-[var(--brand,#494be7)] hover:text-white transition-all duration-200 flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="truncate">{t('jobs.viewJobDetail', { defaultValue: 'Xem chi tiết bài đăng' })}</span>
+                    <ExternalLink size={14} className="group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </button>
+                </div>
+              )}
+
               {/* Quick Actions Panel */}
               <div className="relative overflow-hidden rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-md p-5 space-y-4">
                 {/* Background Ambient Glow */}
@@ -808,20 +842,27 @@ export function FreelancerContractDetails({
                 </div>
 
                 <div className="space-y-2.5 relative z-10">
-                  {/* Manage Milestones / Workspace (Brand Indigo Gradient: Dark to Light) */}
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/workspace/${contract.contractsId}`)}
-                    className="group relative w-full py-3 px-3.5 rounded-xl font-black text-xs text-white bg-gradient-to-r from-[#3f41d0] via-[var(--brand,#494be7)] to-[#6366f1] hover:from-[#3436be] hover:to-[var(--brand,#494be7)] hover:shadow-lg hover:shadow-[var(--brand,#494be7)]/25 transition-all duration-300 flex items-center justify-between cursor-pointer border-none overflow-hidden"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0">
-                        <ListChecks size={15} />
+                  {/* Go to Workspace (Brand Indigo Gradient: Dark to Light) */}
+                  {(contract.status === ContractStatus.Active ||
+                    contract.status === ContractStatus.Completed ||
+                    contract.status === ContractStatus.Disputed ||
+                    Number(contract.status) === 7 ||
+                    Number(contract.status) === 8 ||
+                    Number(contract.status) === 10) && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/workspace/${contract.contractsId}`)}
+                      className="group relative w-full py-3 px-3.5 rounded-xl font-black text-xs text-white bg-gradient-to-r from-[#3f41d0] via-[var(--brand,#494be7)] to-[#6366f1] hover:from-[#3436be] hover:to-[var(--brand,#494be7)] hover:shadow-lg hover:shadow-[var(--brand,#494be7)]/25 transition-all duration-300 flex items-center justify-between cursor-pointer border-none overflow-hidden"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0">
+                          <ListChecks size={15} />
+                        </div>
+                        <span className="truncate">{t('contracts.goToWorkspace', { defaultValue: 'Go to workspace' })}</span>
                       </div>
-                      <span className="truncate">{t('contracts.manageMilestones')}</span>
-                    </div>
-                    <ChevronRight size={15} className="group-hover:translate-x-1 transition-transform shrink-0" />
-                  </button>
+                      <ChevronRight size={15} className="group-hover:translate-x-1 transition-transform shrink-0" />
+                    </button>
+                  )}
 
                   {/* Review Partner (Golden Amber Gradient: Dark to Light) */}
                   {contract.canReview && (
