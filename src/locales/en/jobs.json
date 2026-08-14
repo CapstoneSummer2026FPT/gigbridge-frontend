@@ -359,6 +359,7 @@
       "milestoneTitleRequired": "Milestone title is required.",
       "milestoneAmountInvalid": "Amount must be greater than 0.",
       "milestoneDurationInvalid": "Duration must be a positive whole number in weeks, months or years.",
+      "milestoneDeadlineRequiresClosingDate": "Set the job's proposal closing date before adding milestones.",
       "milestoneDeadlineRequired": "Deadline is required.",
       "milestoneDeadlinePast": "Deadline cannot be in the past.",
       "milestoneDeadlineAfterClosing": "Deadline must be after the proposal closing date.",
@@ -394,11 +395,11 @@
       "lockedTitle": "AI drafting is a Premium feature",
       "lockedDescription": "Upgrade your client plan to generate structured project details and interview questions.",
       "upgrade": "View Premium plans",
-      "attachFile": "Attach document (.docx, .pdf, .txt, .md, .zip)",
+      "attachFile": "Attach document (.docx, .pdf, .txt, .md)",
       "extractingText": "Extracting document text...",
       "documentAttached": "Document attached",
       "fileTooLarge": "File size exceeds 10 MB limit.",
-      "unsupportedFormat": "Unsupported file format. Please upload .docx, .pdf, .txt, .md, or .zip.",
+      "unsupportedFormat": "Unsupported file format. Please upload .docx, .pdf, .txt, or .md.",
       "parsingFailed": "Could not read document. Please check the file and try again.",
       "pdfPageLimit": "PDF exceeds 15 page limit; extracted first 15 pages."
     }

@@ -25,11 +25,17 @@ describe('documentParser', () => {
 
   it('rejects files larger than 10MB limit', async () => {
     const oversizedFile = {
-      name: 'large_archive.zip',
+      name: 'large_document.docx',
       size: MAX_FILE_SIZE + 100,
     } as File;
 
     await expect(parseJobDocument(oversizedFile)).rejects.toThrow('FILE_TOO_LARGE');
+  });
+
+  it('rejects zip files as unsupported format', async () => {
+    const zipFile = new File(['PK...'], 'archive.zip', { type: 'application/zip' });
+
+    await expect(parseJobDocument(zipFile)).rejects.toThrow('UNSUPPORTED_FORMAT');
   });
 
   it('rejects unsupported file formats', async () => {

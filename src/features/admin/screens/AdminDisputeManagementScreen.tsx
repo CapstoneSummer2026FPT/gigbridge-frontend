@@ -168,6 +168,8 @@ export default function AdminDisputeManagementScreen() {
     sendingMessage,
     milestoneDecisions,
     setMilestoneDecisions,
+    selectedMilestoneIds,
+    setSelectedMilestoneIds,
     clientViolation,
     setClientViolation,
     freelancerViolation,
@@ -955,6 +957,8 @@ export default function AdminDisputeManagementScreen() {
             setContractAction={setContractAction}
             milestoneDecisions={milestoneDecisions}
             setMilestoneDecisions={setMilestoneDecisions}
+            selectedMilestoneIds={selectedMilestoneIds}
+            setSelectedMilestoneIds={setSelectedMilestoneIds}
             clientViolation={clientViolation}
             setClientViolation={setClientViolation}
             freelancerViolation={freelancerViolation}

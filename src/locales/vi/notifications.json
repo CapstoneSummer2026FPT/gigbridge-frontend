@@ -8,6 +8,16 @@
     "proposalAccepted": "Đề xuất của bạn đã được chấp nhận!",
     "projectUpdate": "Cập nhật dự án: {{title}}",
     "seeAll": "Xem tất cả",
-    "caughtUp": "Bạn đã xem hết thông báo."
+    "caughtUp": "Bạn đã xem hết thông báo.",
+    "tabs": {
+      "all": "Tất cả",
+      "unread": "Chưa đọc",
+      "work_contracts": "Công việc & Hợp đồng",
+      "payments": "Thanh toán",
+      "receipts": "Biên nhận & Hóa đơn",
+      "messages_schedule": "Tin nhắn & Lịch",
+      "alerts_ai": "Cảnh báo & AI",
+      "system": "Hệ thống"
+    }
   }
 }

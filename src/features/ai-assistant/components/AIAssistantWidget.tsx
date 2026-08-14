@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type WheelEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   AlertTriangle,
@@ -24,9 +24,8 @@ import { aiAssistantAPI } from '../../../api/aiAssistantAPI';
 import '../styles/ai-assistant-widget.css';
 
 const AI_SESSION_KEY = 'gb_ai_widget_v2';
-const AI_TIMEOUT_MS = 5000;
 
-type ServiceState = 'ready' | 'thinking' | 'timeout' | 'unavailable';
+type ServiceState = 'ready' | 'thinking' | 'unavailable';
 
 /* ── Web Audio sound effects ── */
 const playSound = (type: 'send' | 'receive' | 'chime', enabled: boolean) => {
@@ -63,7 +62,6 @@ export default function AIAssistantWidget() {
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'there';
 
   const chatEndRef         = useRef<HTMLDivElement>(null);
-  const timeoutRef         = useRef<number | null>(null);
   const recognitionRef     = useRef<any>(null);
   const textareaRef        = useRef<HTMLTextAreaElement>(null);
 
@@ -156,23 +154,10 @@ export default function AIAssistantWidget() {
 
   /* ── Cleanup on unmount ── */
   useEffect(() => () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     window.speechSynthesis?.cancel();
   }, []);
 
-  /* ── Contextual prompts by URL ── */
-  const prompts = useMemo(() => {
-    const p = location.pathname.toLowerCase();
-    if (p.includes('/jobs/browse') || p.includes('/jobs/saved') || /^\/jobs\/\d+/.test(p))
-      return ['Write a polished proposal for a web developer job.', 'Suggest questions to ask the client before starting.', 'How can I stand out when bidding on high-budget projects?'];
-    if (p.includes('/jobs/post') || p.includes('/client/job-posts'))
-      return ['Draft a job description for a Senior React developer.', 'What are standard screening questions for a designer?', 'Recommend milestones for a 4-week mobile project.'];
-    if (p.includes('/proposals'))
-      return ['Review my proposal pitch for clarity and tone.', 'How can I justify a higher fixed price budget?', 'Draft a follow-up message for a pending proposal.'];
-    if (p.includes('/contracts') || p.includes('/projects') || p.includes('/workspace'))
-      return ['Draft a milestone progress report for my client.', 'Write a polite message asking for deliverable review.', 'Help me outline risks for the next workspace task.'];
-    return ['Draft a client-friendly project update for this week.', 'Help me compare two freelancer proposals objectively.', 'Write a job post for a senior React and Node.js developer.', 'Create interview questions for a mobile developer candidate.'];
-  }, [location.pathname]);
+
 
   /* ── TTS ── */
   const speak = (text: string) => {
@@ -190,7 +175,6 @@ export default function AIAssistantWidget() {
   const stopSpeak = () => window.speechSynthesis?.cancel();
 
   const reset = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     stopSpeak();
     localStorage.removeItem(AI_SESSION_KEY);
     setMessages([]);
@@ -227,11 +211,6 @@ export default function AIAssistantWidget() {
     setError('');
     setServiceState('thinking');
 
-    timeoutRef.current = window.setTimeout(() => {
-      setServiceState('timeout');
-      setError('AI response is taking longer than expected...');
-    }, AI_TIMEOUT_MS);
-
     // Map history and strip disclaimers
     const history = messages.map(m => ({
       role: m.role,
@@ -245,8 +224,6 @@ export default function AIAssistantWidget() {
         collectionName: 'general-knowledge',
         style: 'precision'
       });
-
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       if (!response.success || !response.data) {
         setServiceState('unavailable');
@@ -272,17 +249,12 @@ export default function AIAssistantWidget() {
       if (!isOpen) setUnread(p => p + 1);
       if (voiceEnabled) speak(answer);
     } catch (err: any) {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setServiceState('unavailable');
       setError(err?.message || 'Failed to generate response. Please try again.');
     }
   };
 
-  const handleSuggestionsWheel = (e: WheelEvent) => {
-    e.currentTarget.scrollLeft += e.deltaY * 0.8;
-  };
 
-  const contextLabel = location.pathname === '/' ? 'CORE' : location.pathname.split('/').filter(Boolean)[0]?.toUpperCase() ?? 'CORE';
 
   /* ────────────────────────────────
      RENDER
@@ -420,29 +392,7 @@ export default function AIAssistantWidget() {
           </div>
         </div>
 
-        {/* ── Contextual suggestion pills ── */}
-        <div className="ai-suggestions">
-          <div className="ai-suggestions-label">
-            <Sparkles size={10} />
-            <span>CONTEXTUAL QUERIES ({contextLabel})</span>
-          </div>
-          <div
-            className="ai-suggestions-scroll"
-            onWheel={handleSuggestionsWheel}
-          >
-            {prompts.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                className="ai-pill"
-                onClick={() => { setInput(p); textareaRef.current?.focus(); }}
-                disabled={serviceState === 'thinking'}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {/* ── Composer (input bar) ── */}
         <div className="ai-composer">

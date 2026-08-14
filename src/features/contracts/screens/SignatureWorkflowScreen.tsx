@@ -20,6 +20,7 @@ import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { esignPostAPI } from '../../../api/esignAPI/POST';
+import { profileGetAPI } from '../../../api/profileAPI';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
@@ -27,12 +28,12 @@ import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESig
 import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
 const POLICY_VERSION = 'Ver 1.0 Gigbridge';
@@ -187,6 +188,8 @@ export default function SignatureWorkflowScreen() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDrawn, setSignatureDrawn] = useState(false);
   const [identityOrTaxCode, setIdentityOrTaxCode] = useState('');
+  const [profileIdentityCode, setProfileIdentityCode] = useState<string | null>(null);
+  const [identityVerificationTicket, setIdentityVerificationTicket] = useState<string | null>(null);
   const [identityTouched, setIdentityTouched] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [signaturePreviewPdf, setSignaturePreviewPdf] = useState<Blob | null>(null);
@@ -307,6 +310,17 @@ export default function SignatureWorkflowScreen() {
           setMilestones(milestonesResponse.data);
         }
 
+        try {
+          const profileResponse = await profileGetAPI.getMyUserProfile();
+          const savedIdentityCode = profileResponse.success && profileResponse.data
+            ? normalizeIdentityCode(profileResponse.data.identityOrTaxCode ?? '')
+            : '';
+          setProfileIdentityCode(isValidIdentityCode(savedIdentityCode) ? savedIdentityCode : null);
+        } catch (profileError) {
+          console.warn('Could not load the saved identity number; allowing manual entry.', profileError);
+          setProfileIdentityCode(null);
+        }
+
         await loadDocument(contractId);
 
         const isUserParticipant =
@@ -328,7 +342,9 @@ export default function SignatureWorkflowScreen() {
 
   useEffect(() => {
     if (document) {
-      setIdentityOrTaxCode(currentUserSignature?.identityOrTaxCode ?? '');
+      setIdentityOrTaxCode(
+        profileIdentityCode ?? currentUserSignature?.identityOrTaxCode ?? '',
+      );
     }
 
     if (currentUserDraft) {
@@ -346,7 +362,14 @@ export default function SignatureWorkflowScreen() {
       setPolicyAccepted(false);
       setSignatureStep('review');
     }
-  }, [currentUserDraft, currentUserSignature, document, hasFinalSignature, isContractFinalized]);
+  }, [
+    currentUserDraft,
+    currentUserSignature,
+    document,
+    hasFinalSignature,
+    isContractFinalized,
+    profileIdentityCode,
+  ]);
 
   useEffect(() => {
     if (!canvasRef.current || signatureStep !== 'capture') return;
@@ -421,6 +444,11 @@ export default function SignatureWorkflowScreen() {
     if (!identityCodeIsValid) {
       setIdentityTouched(true);
       setSignaturePreviewError('Identity number must contain exactly 9 or 12 digits.');
+      return;
+    }
+
+    if (!profileIdentityCode && !identityVerificationTicket) {
+      setError(t('settings:identityVerificationRequired'));
       return;
     }
 
@@ -552,6 +580,7 @@ export default function SignatureWorkflowScreen() {
           }
           : {}),
         identityOrTaxCode: normalizedIdentityCode,
+        identityVerificationTicket,
         policyAccepted: true,
         policyVersion: POLICY_VERSION,
       });
@@ -566,6 +595,9 @@ export default function SignatureWorkflowScreen() {
         setError(response.message || t('contracts.failedToSign'));
         return;
       }
+
+      setProfileIdentityCode(normalizedIdentityCode);
+      setIdentityVerificationTicket(null);
 
       const documentId = getDocumentIdFromResponse(response.data);
       setSignatureStep('complete');
@@ -879,7 +911,7 @@ export default function SignatureWorkflowScreen() {
               <h2>{t('contracts.drawYourSignature')}</h2>
 
               <div className="signature-identity-field">
-                <label htmlFor="signature-identity-code">Identity number (ID card/Citizen ID)</label>
+                <label htmlFor="signature-identity-code">{t('contracts.identityCodeLabel')}</label>
                 <input
                   id="signature-identity-code"
                   type="text"
@@ -887,21 +919,33 @@ export default function SignatureWorkflowScreen() {
                   autoComplete="off"
                   maxLength={16}
                   value={identityOrTaxCode}
+                  readOnly={Boolean(profileIdentityCode)}
                   onBlur={() => setIdentityTouched(true)}
                   onChange={event => {
                     setIdentityOrTaxCode(event.target.value);
+                    setIdentityVerificationTicket(null);
                     setSignaturePreviewApplied(false);
                     setSignaturePreviewPdf(null);
                   }}
                   aria-invalid={identityTouched && !identityCodeIsValid}
                   aria-describedby="signature-identity-help"
-                  placeholder="Enter 9 or 12 digits"
+                  placeholder={t('contracts.identityCodePlaceholder')}
                 />
                 <p id="signature-identity-help" className={identityTouched && !identityCodeIsValid ? 'field-error' : ''}>
                   {identityTouched && !identityCodeIsValid
-                    ? 'Identity number must contain exactly 9 or 12 digits.'
-                    : 'This information applies only to this contract and does not update your profile.'}
+                    ? t('contracts.identityCodeInvalid')
+                    : profileIdentityCode
+                      ? t('contracts.identityCodeSavedHelp')
+                      : t('contracts.identityCodeHelp')}
                 </p>
+                {!profileIdentityCode && (
+                  <IdentityEmailVerification
+                    email={user?.email ?? ''}
+                    identityCode={identityOrTaxCode}
+                    verificationTicket={identityVerificationTicket}
+                    onVerified={setIdentityVerificationTicket}
+                  />
+                )}
               </div>
 
               {existingDraftImageUrl && (
@@ -989,6 +1033,7 @@ export default function SignatureWorkflowScreen() {
                 disabled={
                   (!signatureDrawn && !existingDraftImageUrl) ||
                   !identityCodeIsValid ||
+                  (!profileIdentityCode && !identityVerificationTicket) ||
                   !policyAccepted ||
                   signingInProgress
                 }

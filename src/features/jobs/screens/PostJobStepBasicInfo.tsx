@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
-  BriefcaseBusiness, ChevronDown, Clock3, Coins, FileText, Plus, Save, Sparkles,
+  BriefcaseBusiness, ChevronDown, Clock3, FileText, Plus, Save, Sparkles,
   ImagePlus, LoaderCircle, Tag, Trash2, X,
 } from 'lucide-react';
 import { jobAPI } from '../../../api/jobAPI';
 import { useApp } from '../../../app/providers/AppProvider';
 import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
 import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PostJobAiInput } from '../components/PostJobAiInput';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
@@ -315,7 +316,22 @@ export default function PostJobStepBasicInfo() {
           {/* Expected Budget – full width */}
           <div className="job-post-field">
             <label htmlFor="job-budget">{t('postJob.expectedBudget', 'Ngân sách dự kiến')}</label>
-            <input id="job-budget" type="number" min="0" value={form.budget} onChange={event => setForm({ ...form, budget: event.target.value })} placeholder="0" />
+            <div className="relative flex items-center">
+              <input
+                id="job-budget"
+                type="number"
+                min="0"
+                value={form.budget}
+                onChange={event => setForm({ ...form, budget: event.target.value })}
+                placeholder="0"
+                className="w-full pr-36"
+              />
+              {Number(form.budget) > 0 && (
+                <div className="absolute right-2.5 flex items-center gap-1 rounded-md bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2.5 py-1 text-xs font-bold text-[var(--brand)] pointer-events-none select-none">
+                  <span>= {formatGigCoinToVnd(Number(form.budget))}</span>
+                </div>
+              )}
+            </div>
             {/* Quick Budget Presets */}
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Quick:</span>
@@ -324,25 +340,24 @@ export default function PostJobStepBasicInfo() {
                   type="button"
                   key={amount}
                   onClick={() => setForm({ ...form, budget: String(amount) })}
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${
                     form.budget === String(amount)
                       ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
                       : 'bg-muted/40 text-muted-foreground border-border hover:border-[var(--brand)] hover:text-foreground'
                   }`}
                 >
-                  {amount} G-coin
+                  <span>{amount}</span>
+                  <GCoinIcon size={12} />
+                  <span>G-coin</span>
                 </button>
               ))}
             </div>
-            {Number(form.budget) > 0 && (
-              <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--brand)_8%,var(--card))] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] px-3 py-1.5 text-xs text-foreground font-medium">
-                <Coins size={14} className="text-[var(--brand)] flex-shrink-0" />
-                <span>
-                  ≈ <strong>{formatGigCoinToVnd(Number(form.budget))}</strong>
-                  <span className="ml-1 text-muted-foreground text-[11px]">(1 G-coin = 1.000 VNĐ)</span>
-                </span>
-              </div>
-            )}
+            <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--brand)_8%,var(--card))] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] px-3 py-1.5 text-xs text-foreground font-medium">
+              <GCoinIcon size={15} />
+              <span>
+                Chú thích mệnh giá: <strong>1 G-coin = 1.000 VNĐ</strong>
+              </span>
+            </div>
             <small className="mt-0.5 text-muted-foreground">{t('postJobWizard.details.budgetFromMilestones', 'Được tự động tính từ kế hoạch milestone.')}</small>
           </div>
 
