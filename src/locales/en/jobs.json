@@ -358,7 +358,7 @@
       "questionOrderInvalid": "Question order index must be valid.",
       "milestoneTitleRequired": "Milestone title is required.",
       "milestoneAmountInvalid": "Amount must be greater than 0.",
-      "milestoneDurationInvalid": "Duration must be a positive whole number in days, weeks, months or years.",
+      "milestoneDurationInvalid": "Duration must be a positive whole number in weeks, months or years.",
       "milestoneDeadlineRequiresClosingDate": "Set the job's proposal closing date before adding milestones.",
       "milestoneDeadlineRequired": "Deadline is required.",
       "milestoneDeadlinePast": "Deadline cannot be in the past.",

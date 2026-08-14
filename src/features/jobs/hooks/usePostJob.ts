@@ -31,6 +31,15 @@ const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
 const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
 
+// Pure calendar-date math done entirely in UTC so it's unaffected by the browser's
+// local timezone offset — parsing "YYYY-MM-DD" at local midnight and round-tripping
+// through toISOString() would silently lose a day for any timezone ahead of UTC
+// (e.g. Vietnam, UTC+7), since local midnight is still the previous evening in UTC.
+const addDaysToDateString = (dateString: string, days: number): string => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().split('T')[0];
+};
+
 export interface QuestionInput {
   questionText: string;
   isRequired: boolean;
@@ -420,26 +429,28 @@ export function usePostJob() {
     }
   }, [isInstantJobMode]);
 
-  // Milestone deadlines are fully derived: Milestone 1 starts from the job's closing
-  // date (form.deadline), and each following milestone starts from the previous
-  // milestone's computed deadline. This recalculates on every trigger that can affect
-  // it (duration edits, add/remove/reorder, or form.deadline changing) since it's a
-  // plain memo over the current milestonePlans/form.deadline, not a stateful effect.
+  // Milestone deadlines are fully derived: Milestone 1 starts the day after the job's
+  // closing date (form.deadline), and each following milestone starts the day after the
+  // previous milestone's computed deadline — work can't begin the same calendar day the
+  // prior stage ends. This recalculates on every trigger that can affect it (duration
+  // edits, add/remove/reorder, or form.deadline changing) since it's a plain memo over
+  // the current milestonePlans/form.deadline, not a stateful effect.
   const milestonePlansWithDeadlines = useMemo<JobPostMilestonePlanDto[]>(() => {
-    let previousDueDate = form.deadline || null;
+    let nextStart = form.deadline ? addDaysToDateString(form.deadline, 1) : null;
 
     return milestonePlans.map(milestone => {
       const duration = parseJobDuration(milestone.estimatedDuration);
       const days = duration.value ? durationToDays(duration.value, duration.unit) : 0;
 
-      if (!previousDueDate || days <= 0) {
-        previousDueDate = null;
+      if (!nextStart || days <= 0) {
+        nextStart = null;
         return { ...milestone, dueDate: null };
       }
 
-      const start = new Date(`${previousDueDate}T00:00:00`);
-      const newDueDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      previousDueDate = newDueDate;
+      // The start day itself counts as day 1 of the duration, so the deadline is
+      // `days - 1` after the start (e.g. a 7-day span starting Aug 2 ends Aug 8).
+      const newDueDate = addDaysToDateString(nextStart, days - 1);
+      nextStart = addDaysToDateString(newDueDate, 1);
       return { ...milestone, dueDate: newDueDate };
     });
   }, [form.deadline, milestonePlans]);
@@ -1079,7 +1090,7 @@ export function usePostJob() {
     for (const [index, milestone] of milestonePlans.entries()) {
       if (!milestone.title?.trim()) errors[`${index}.title`] = t('postJobWizard.validation.milestoneTitleRequired');
       if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = t('postJobWizard.validation.milestoneAmountInvalid');
-      if (!/^\s*[1-9]\d*\s+(day|days|week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
+      if (!/^\s*[1-9]\d*\s+(week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
         errors[`${index}.estimatedDuration`] = t('postJobWizard.validation.milestoneDurationInvalid');
       }
       if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = t('postJobWizard.validation.milestoneDeliverablesRequired');
