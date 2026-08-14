@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import JobPostStepper from '../../../shared/components/JobPostStepper';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
-import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import type { AutosaveStatus } from '../hooks/usePostJob';
 import '../../../shared/styles/job-post-stepper.css';
 import '../styles/post-job-wizard.css';
