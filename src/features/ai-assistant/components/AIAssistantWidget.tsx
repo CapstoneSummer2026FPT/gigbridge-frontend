@@ -24,9 +24,8 @@ import { aiAssistantAPI } from '../../../api/aiAssistantAPI';
 import '../styles/ai-assistant-widget.css';
 
 const AI_SESSION_KEY = 'gb_ai_widget_v2';
-const AI_TIMEOUT_MS = 5000;
 
-type ServiceState = 'ready' | 'thinking' | 'timeout' | 'unavailable';
+type ServiceState = 'ready' | 'thinking' | 'unavailable';
 
 /* ── Web Audio sound effects ── */
 const playSound = (type: 'send' | 'receive' | 'chime', enabled: boolean) => {
@@ -63,7 +62,6 @@ export default function AIAssistantWidget() {
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'there';
 
   const chatEndRef         = useRef<HTMLDivElement>(null);
-  const timeoutRef         = useRef<number | null>(null);
   const recognitionRef     = useRef<any>(null);
   const textareaRef        = useRef<HTMLTextAreaElement>(null);
 
@@ -156,7 +154,6 @@ export default function AIAssistantWidget() {
 
   /* ── Cleanup on unmount ── */
   useEffect(() => () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     window.speechSynthesis?.cancel();
   }, []);
 
@@ -178,7 +175,6 @@ export default function AIAssistantWidget() {
   const stopSpeak = () => window.speechSynthesis?.cancel();
 
   const reset = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     stopSpeak();
     localStorage.removeItem(AI_SESSION_KEY);
     setMessages([]);
@@ -215,11 +211,6 @@ export default function AIAssistantWidget() {
     setError('');
     setServiceState('thinking');
 
-    timeoutRef.current = window.setTimeout(() => {
-      setServiceState('timeout');
-      setError('AI response is taking longer than expected...');
-    }, AI_TIMEOUT_MS);
-
     // Map history and strip disclaimers
     const history = messages.map(m => ({
       role: m.role,
@@ -233,8 +224,6 @@ export default function AIAssistantWidget() {
         collectionName: 'general-knowledge',
         style: 'precision'
       });
-
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       if (!response.success || !response.data) {
         setServiceState('unavailable');
@@ -260,7 +249,6 @@ export default function AIAssistantWidget() {
       if (!isOpen) setUnread(p => p + 1);
       if (voiceEnabled) speak(answer);
     } catch (err: any) {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setServiceState('unavailable');
       setError(err?.message || 'Failed to generate response. Please try again.');
     }
