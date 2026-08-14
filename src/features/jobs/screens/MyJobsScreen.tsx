@@ -44,6 +44,7 @@ import { usePremiumStatus } from '../../premium/hooks';
 import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
 import '../../premium/styles/premium.css';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
+import { ConfirmationModal } from '../../../shared/components/ConfirmationModal';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
@@ -122,6 +123,32 @@ export default function MyJobsScreen() {
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
   const [interviewTarget, setInterviewTarget] = useState<GetMyJobPostDto>();
   const [premiumActionBusy, setPremiumActionBusy] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    job?: GetMyJobPostDto;
+    actionType?: 'close' | 'cancel';
+  }>({ isOpen: false });
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction.job || !confirmAction.actionType) return;
+    const targetJob = confirmAction.job;
+    const action = confirmAction.actionType;
+    setConfirmAction({ isOpen: false });
+
+    if (action === 'close') {
+      await patchStatus(
+        targetJob,
+        JobPostStatus.Closed,
+        t('myJobs.closeSuccess', { defaultValue: 'Đã đóng tin tuyển dụng.' })
+      );
+    } else if (action === 'cancel') {
+      await patchStatus(
+        targetJob,
+        JobPostStatus.Cancelled,
+        t('myJobs.cancelSuccess', { defaultValue: 'Đã hủy tin tuyển dụng.' })
+      );
+    }
+  };
 
   const loadJobs = async () => {
     setIsLoading(true);
@@ -161,7 +188,7 @@ export default function MyJobsScreen() {
     });
     setPremiumActionBusy(false);
     if (!response.success || !response.data) {
-      return toast.error(response.message || 'Không thể thiết lập phỏng vấn AI.');
+      return toast.error(response.message || t('myJobs.enableAiInterviewFailed', { defaultValue: 'Không thể thiết lập phỏng vấn AI.' }));
     }
     setInterviewTarget(undefined);
     updateLocalJob(job.jobPostsId, { hasAiInterview: true });
@@ -174,7 +201,7 @@ export default function MyJobsScreen() {
     const response = await jobAPI.disableAiInterview(job.jobPostsId);
     setPremiumActionBusy(false);
     if (!response.success) {
-      return toast.error(response.message || 'Không thể tắt phỏng vấn AI.');
+      return toast.error(response.message || t('myJobs.disableAiInterviewFailed', { defaultValue: 'Không thể tắt phỏng vấn AI.' }));
     }
     setInterviewTarget(undefined);
     updateLocalJob(job.jobPostsId, { hasAiInterview: false });
@@ -345,42 +372,42 @@ export default function MyJobsScreen() {
           <div className="rounded-3xl border border-border/80 bg-surface-card p-5 space-y-1.5 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                <Briefcase size={14} className="text-brand" /> Tổng Số Tin Đăng
+                <Briefcase size={14} className="text-brand" /> {t('myJobs.metrics.totalJobs', { defaultValue: 'Tổng Số Tin Đăng' })}
               </span>
             </div>
             <div className="text-3xl font-black text-text-primary tracking-tight">{counts.all}</div>
-            <p className="text-[11px] font-semibold text-text-muted">Tin tuyển dụng trên hệ thống</p>
+            <p className="text-[11px] font-semibold text-text-muted">{t('myJobs.metrics.totalJobsDesc', { defaultValue: 'Tin tuyển dụng trên hệ thống' })}</p>
           </div>
 
           <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-1.5 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 size={14} /> Đang Tuyển Dụng
+                <CheckCircle2 size={14} /> {t('myJobs.metrics.openJobs', { defaultValue: 'Đang Tuyển Dụng' })}
               </span>
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
             </div>
             <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">{counts.open}</div>
-            <p className="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80">Sẵn sàng nhận ứng tuyển</p>
+            <p className="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80">{t('myJobs.metrics.openJobsDesc', { defaultValue: 'Sẵn sàng nhận ứng tuyển' })}</p>
           </div>
 
           <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-5 space-y-1.5 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                <FileText size={14} /> Bản Nháp
+                <FileText size={14} /> {t('myJobs.metrics.draftJobs', { defaultValue: 'Bản Nháp' })}
               </span>
             </div>
             <div className="text-3xl font-black text-amber-600 dark:text-amber-400 tracking-tight">{counts.draft}</div>
-            <p className="text-[11px] font-semibold text-amber-600/80 dark:text-amber-400/80">Cần đăng hoàn tất</p>
+            <p className="text-[11px] font-semibold text-amber-600/80 dark:text-amber-400/80">{t('myJobs.metrics.draftJobsDesc', { defaultValue: 'Cần đăng hoàn tất' })}</p>
           </div>
 
           <div className="rounded-3xl border border-border/80 bg-surface-card p-5 space-y-1.5 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                <Ban size={14} /> Đã Đóng / Hủy
+                <Ban size={14} /> {t('myJobs.metrics.closedCancelled', { defaultValue: 'Đã Đóng / Hủy' })}
               </span>
             </div>
             <div className="text-3xl font-black text-text-primary tracking-tight">{counts.closed + counts.cancelled}</div>
-            <p className="text-[11px] font-semibold text-text-muted">Dự án đã kết thúc</p>
+            <p className="text-[11px] font-semibold text-text-muted">{t('myJobs.metrics.closedCancelledDesc', { defaultValue: 'Dự án đã kết thúc' })}</p>
           </div>
         </div>
 
@@ -439,7 +466,7 @@ export default function MyJobsScreen() {
 
           {/* Results Counter */}
           <div className="text-[11px] font-bold text-text-muted px-1">
-            Hiển thị <span className="text-text-primary font-black">{filteredJobs.length}</span> / {jobs.length} tin đăng
+            {t('myJobs.showingCount', { defaultValue: 'Hiển thị {{count}} / {{total}} tin đăng', count: filteredJobs.length, total: jobs.length })}
           </div>
         </div>
 
@@ -523,7 +550,7 @@ export default function MyJobsScreen() {
 
                         {job.isFeatured && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-2xs">
-                            <Crown size={12} /> Nổi bật
+                            <Crown size={12} /> {t('myJobs.featured', { defaultValue: 'Nổi bật' })}
                           </span>
                         )}
                       </div>
@@ -538,7 +565,7 @@ export default function MyJobsScreen() {
                       {job.status === JobPostStatus.Draft && (
                         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
                           <AlertCircle size={15} className="shrink-0" />
-                          <span>Tin đăng ở trạng thái bản nháp. Bấm "Phát Hành Đăng Tin" bên dưới để phát hành công khai.</span>
+                          <span>{t('myJobs.draftBanner', { defaultValue: 'Tin đăng ở trạng thái bản nháp. Bấm "Phát Hành Đăng Tin" bên dưới để phát hành công khai.' })}</span>
                         </div>
                       )}
 
@@ -569,7 +596,7 @@ export default function MyJobsScreen() {
 
                     {/* Budget Badge Box */}
                     <div className="text-right shrink-0 bg-surface-muted/50 border border-border/60 rounded-2xl p-3 space-y-0.5">
-                      <span className="block text-[9px] font-black uppercase tracking-wider text-text-muted">Ngân sách dự án</span>
+                      <span className="block text-[9px] font-black uppercase tracking-wider text-text-muted">{t('myJobs.projectBudget', { defaultValue: 'Ngân sách dự án' })}</span>
                       <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">
                         <GigCoinBudget min={job.budgetMin} max={job.budgetMax} />
                       </div>
@@ -581,12 +608,12 @@ export default function MyJobsScreen() {
                     <div className="flex items-center gap-6 flex-wrap">
                       <span className="flex items-center gap-1.5 font-bold text-text-primary">
                         <Users size={14} className="text-brand" />
-                        <strong className="text-brand font-black">{job.proposalCount}</strong> Đề xuất / Ứng viên
+                        {t('myJobs.proposalsCount', { defaultValue: '{{count}} Đề xuất / Ứng viên', count: job.proposalCount })}
                       </span>
 
                       <span className="flex items-center gap-1.5">
                         <Calendar size={14} />
-                        Ngày đăng: {formatDate(job.createdAt)}
+                        {t('myJobs.postedDate', { defaultValue: 'Ngày đăng: {{date}}', date: formatDate(job.createdAt) })}
                       </span>
                     </div>
 
@@ -599,7 +626,7 @@ export default function MyJobsScreen() {
                           onClick={() => navigate(`/jobs/my-jobs/${job.jobPostsId}`)}
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-white hover:bg-brand-hover transition-all text-xs font-black cursor-pointer shadow-md"
                         >
-                          <Eye size={14} /> Xem Chi Tiết & Đề Xuất
+                          <Eye size={14} /> {t('myJobs.actions.viewDetails', { defaultValue: 'Xem Chi Tiết & Đề Xuất' })}
                         </button>
 
                         {job.status === JobPostStatus.Open && (
@@ -613,14 +640,14 @@ export default function MyJobsScreen() {
                               disabled={isPending}
                               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand/30 bg-brand/10 text-brand hover:bg-brand/20 transition-all text-xs font-bold cursor-pointer disabled:opacity-50"
                             >
-                              <Users size={14} /> Mời Freelancer
+                              <Users size={14} /> {t('myJobs.actions.inviteFreelancer', { defaultValue: 'Mời Freelancer' })}
                             </button>
 
                              {/* Premium & AI Features Dropdown */}
                             <details style={{ position: 'relative', display: 'inline-block' }}>
                               <summary className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 hover:border-amber-500/70 hover:shadow-lg hover:shadow-amber-500/15 transition-all text-xs font-black cursor-pointer list-none select-none">
                                 <Sparkles size={14} className="text-amber-500 animate-pulse" />
-                                <span className="text-amber-500">Tính Năng AI</span>
+                                <span className="text-amber-500">{t('myJobs.actions.aiFeatures', { defaultValue: 'Tính Năng AI' })}</span>
                                 <ChevronDown size={14} className="text-amber-500 opacity-80" />
                               </summary>
                               <div
@@ -645,7 +672,7 @@ export default function MyJobsScreen() {
                                 {/* Dropdown Header */}
                                 <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/50 pb-2 mb-0.5">
                                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
-                                    <Sparkles size={12} /> Công Cụ AI Nâng Cao
+                                    <Sparkles size={12} /> {t('myJobs.actions.aiToolsHeader', { defaultValue: 'Công Cụ AI Nâng Cao' })}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 text-[9px] font-black uppercase">
                                     VIP
@@ -668,10 +695,10 @@ export default function MyJobsScreen() {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs font-black color-[var(--text-primary)] flex items-center justify-between">
-                                      <span>Gợi ý ứng viên AI</span>
+                                      <span>{t('myJobs.actions.aiCandidateSuggestion', { defaultValue: 'Gợi ý ứng viên AI' })}</span>
                                       {!premiumStatus.isPremium && <Crown size={12} className="text-amber-500 shrink-0 ml-1" />}
                                     </div>
-                                    <div className="text-[10px] font-medium text-text-muted truncate">Ghép nối freelancer phù hợp</div>
+                                    <div className="text-[10px] font-medium text-text-muted truncate">{t('myJobs.actions.aiCandidateSuggestionDesc', { defaultValue: 'Ghép nối freelancer phù hợp' })}</div>
                                   </div>
                                 </button>
 
@@ -695,10 +722,10 @@ export default function MyJobsScreen() {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs font-black color-[var(--text-primary)] flex items-center justify-between">
-                                      <span>{job.isFeatured ? 'Quản lý quảng bá' : 'Quảng bá tin nổi bật'}</span>
+                                      <span>{job.isFeatured ? t('myJobs.actions.managePromotion', { defaultValue: 'Quản lý quảng bá' }) : t('myJobs.actions.promoteFeatured', { defaultValue: 'Quảng bá tin nổi bật' })}</span>
                                       {!premiumStatus.isPremium && !job.isFeatured && <Crown size={12} className="text-amber-500 shrink-0 ml-1" />}
                                     </div>
-                                    <div className="text-[10px] font-medium text-text-muted truncate">Ghim vị trí ưu tiên trang chủ Feed</div>
+                                    <div className="text-[10px] font-medium text-text-muted truncate">{t('myJobs.actions.promoteDesc', { defaultValue: 'Ghim vị trí ưu tiên trang chủ Feed' })}</div>
                                   </div>
                                 </button>
 
@@ -720,9 +747,9 @@ export default function MyJobsScreen() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="text-xs font-black text-rose-500 dark:text-rose-400">
-                                        {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Đang tắt...' : 'Tắt phỏng vấn AI'}
+                                        {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? t('myJobs.actions.turningOff', { defaultValue: 'Đang tắt...' }) : t('myJobs.actions.turnOffAiInterview', { defaultValue: 'Tắt phỏng vấn AI' })}
                                       </div>
-                                      <div className="text-[10px] font-medium text-rose-400/80 truncate">Tạm dừng sàng lọc tự động</div>
+                                      <div className="text-[10px] font-medium text-rose-400/80 truncate">{t('myJobs.actions.turnOffAiInterviewDesc', { defaultValue: 'Tạm dừng sàng lọc tự động' })}</div>
                                     </div>
                                   </button>
                                 ) : (
@@ -742,10 +769,10 @@ export default function MyJobsScreen() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="text-xs font-black color-[var(--text-primary)] flex items-center justify-between">
-                                        <span>{premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Đang bật...' : 'Bật phỏng vấn AI'}</span>
+                                        <span>{premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? t('myJobs.actions.turningOn', { defaultValue: 'Đang bật...' }) : t('myJobs.actions.turnOnAiInterview', { defaultValue: 'Bật phỏng vấn AI' })}</span>
                                         {!premiumStatus.isPremium && <Crown size={12} className="text-amber-500 shrink-0 ml-1" />}
                                       </div>
-                                      <div className="text-[10px] font-medium text-text-muted truncate">Phỏng vấn & chấm điểm AI</div>
+                                      <div className="text-[10px] font-medium text-text-muted truncate">{t('myJobs.actions.turnOnAiInterviewDesc', { defaultValue: 'Phỏng vấn & chấm điểm AI' })}</div>
                                     </div>
                                   </button>
                                 )}
@@ -761,20 +788,42 @@ export default function MyJobsScreen() {
                             disabled={isPending}
                             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all text-xs font-black cursor-pointer shadow-md disabled:opacity-50"
                           >
-                            <Send size={14} /> Phát Hành Đăng Tin
+                            <Send size={14} /> {t('myJobs.actions.publish', { defaultValue: 'Phát Hành Đăng Tin' })}
                           </button>
                         )}
                       </div>
 
-                      {/* Right Group: Configuration & State Management */}
+                      {/* Right Group: Configuration & State Management (CustomSelect moved to end) */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <button
                           type="button"
                           onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-muted hover:bg-border/60 text-text-primary transition-all text-xs font-bold cursor-pointer"
                         >
-                          <HelpCircle size={14} /> Câu Hỏi Sàng Lọc
+                          <HelpCircle size={14} /> {t('myJobs.actions.screeningQuestions', { defaultValue: 'Câu Hỏi Sàng Lọc' })}
                         </button>
+
+                        {canClose(job) && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmAction({ isOpen: true, job, actionType: 'close' })}
+                            disabled={isPending}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-muted text-text-muted hover:text-text-primary transition-all text-xs font-bold cursor-pointer disabled:opacity-50"
+                          >
+                            <Ban size={14} /> {t('myJobs.actions.closeJob', { defaultValue: 'Đóng Tin' })}
+                          </button>
+                        )}
+
+                        {canCancel(job) && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmAction({ isOpen: true, job, actionType: 'cancel' })}
+                            disabled={isPending}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all text-xs font-bold cursor-pointer disabled:opacity-50"
+                          >
+                            <XCircle size={14} /> {t('myJobs.actions.cancelJob', { defaultValue: 'Hủy Tin' })}
+                          </button>
+                        )}
 
                         {canChangeVisibility(job) && (
                           <div className="w-36 shrink-0">
@@ -784,31 +833,9 @@ export default function MyJobsScreen() {
                               options={visibilitySelectOptions}
                               disabled={isPending || job.visibility === 3}
                               searchable={false}
-                              ariaLabel="Quyền riêng tư"
+                              ariaLabel={t('myJobs.visibility.ariaLabel', { defaultValue: 'Quyền riêng tư' })}
                             />
                           </div>
-                        )}
-
-                        {canClose(job) && (
-                          <button
-                            type="button"
-                            onClick={() => patchStatus(job, JobPostStatus.Closed, t('myJobs.closeSuccess', { defaultValue: 'Đã đóng tin tuyển dụng.' }))}
-                            disabled={isPending}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-muted text-text-muted hover:text-text-primary transition-all text-xs font-bold cursor-pointer disabled:opacity-50"
-                          >
-                            <Ban size={14} /> Đóng Tin
-                          </button>
-                        )}
-
-                        {canCancel(job) && (
-                          <button
-                            type="button"
-                            onClick={() => patchStatus(job, JobPostStatus.Cancelled, t('myJobs.cancelSuccess', { defaultValue: 'Đã hủy tin tuyển dụng.' }))}
-                            disabled={isPending}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all text-xs font-bold cursor-pointer disabled:opacity-50"
-                          >
-                            <XCircle size={14} /> Hủy Tin
-                          </button>
                         )}
                       </div>
                     </div>
@@ -831,6 +858,37 @@ export default function MyJobsScreen() {
           }}
         />
       )}
+
+      {/* Confirmation Modal for Close & Cancel Actions */}
+      <ConfirmationModal
+        isOpen={confirmAction.isOpen}
+        onClose={() => setConfirmAction({ isOpen: false })}
+        onConfirm={() => void handleConfirmAction()}
+        isLoading={pendingJobId === confirmAction.job?.jobPostsId}
+        variant={confirmAction.actionType === 'cancel' ? 'danger' : 'warning'}
+        icon={confirmAction.actionType === 'cancel' ? <XCircle size={22} /> : <Ban size={22} />}
+        title={
+          confirmAction.actionType === 'cancel'
+            ? t('myJobs.confirmCancelTitle', { defaultValue: 'Xác nhận hủy tin tuyển dụng' })
+            : t('myJobs.confirmCloseTitle', { defaultValue: 'Xác nhận đóng tin tuyển dụng' })
+        }
+        description={
+          confirmAction.actionType === 'cancel'
+            ? t('myJobs.confirmCancelDesc', {
+                defaultValue: 'Bạn có chắc chắn muốn hủy tin tuyển dụng "{{title}}"? Hành động hủy tin tuyển dụng không thể hoàn tác.',
+                title: confirmAction.job?.title || '',
+              })
+            : t('myJobs.confirmCloseDesc', {
+                defaultValue: 'Bạn có chắc chắn muốn đóng tin tuyển dụng "{{title}}"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.',
+                title: confirmAction.job?.title || '',
+              })
+        }
+        confirmText={
+          confirmAction.actionType === 'cancel'
+            ? t('myJobs.actions.cancelJob', { defaultValue: 'Hủy Tin' })
+            : t('myJobs.actions.closeJob', { defaultValue: 'Đóng Tin' })
+        }
+      />
     </AppLayout>
   );
 }
