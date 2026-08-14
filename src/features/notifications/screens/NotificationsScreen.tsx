@@ -1,13 +1,8 @@
-import type { ReactNode } from 'react';
 import {
-  AlertTriangle,
   ArrowUpDown,
   BarChart3,
   Bell,
-  Bot,
-  Briefcase,
   Calendar,
-  CalendarDays,
   CheckCheck,
   CheckCircle,
   ChevronLeft,
@@ -15,21 +10,17 @@ import {
   Circle,
   ExternalLink,
   FileCheck2,
-  FileText,
   Filter,
   Inbox,
   LayoutGrid,
-  MessageSquare,
   RotateCw,
   Rows,
   Search,
   Sparkles,
-  Star,
   Zap,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
-import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { useNotificationsScreen, type PageSizeOption, type SortOrderOption } from '../hooks/useNotificationsScreen';
 import { CATEGORY_GROUP_ICONS, type NotificationCategoryGroup } from '../utils/notificationDesignRules';
 import '../styles/notifications-screen.css';
