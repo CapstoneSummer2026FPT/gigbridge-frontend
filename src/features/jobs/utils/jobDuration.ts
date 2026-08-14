@@ -99,3 +99,39 @@ export const durationToDays = (
 
   return durationValue * DAYS_PER_UNIT[unit];
 };
+
+// Pure calendar-date math done entirely in UTC so it's unaffected by the browser's local
+// timezone offset — parsing "YYYY-MM-DD" at local midnight and round-tripping through
+// toISOString() would silently lose a day for any timezone ahead of UTC (e.g. Vietnam,
+// UTC+7), since local midnight is still the previous evening in UTC.
+export const addDaysToDateString = (dateString: string, days: number): string => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().split('T')[0];
+};
+
+// Chains a sequence of milestone durations into deadlines. Milestone 1 starts the day
+// after `anchorDate` (job closing date, proposal's job closing date, or "today" for
+// negotiations); each following milestone starts the day after the previous one's
+// deadline. The start day itself counts as day 1 of a milestone's duration. Once the
+// chain can no longer be computed (no anchor yet, or an unparseable duration), that
+// entry and every one after it come back null.
+export const computeChainedDueDates = (
+  anchorDate: string | null | undefined,
+  durations: Array<string | null | undefined>
+): (string | null)[] => {
+  let nextStart = anchorDate ? addDaysToDateString(anchorDate, 1) : null;
+
+  return durations.map(duration => {
+    const parsed = parseJobDuration(duration);
+    const days = parsed.value ? durationToDays(parsed.value, parsed.unit) : 0;
+
+    if (!nextStart || days <= 0) {
+      nextStart = null;
+      return null;
+    }
+
+    const dueDate = addDaysToDateString(nextStart, days - 1);
+    nextStart = addDaysToDateString(dueDate, 1);
+    return dueDate;
+  });
+};

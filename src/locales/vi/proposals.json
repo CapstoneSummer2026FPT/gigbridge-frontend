@@ -30,7 +30,12 @@
     "acceptanceCriteria": "Tiêu chí nghiệm thu",
     "workBreakdown": "Cấu trúc phân rã công việc",
     "addWorkItem": "Thêm hạng mục",
-    "defaultAcceptanceCriteria": "Client nghiệm thu khi kết quả bàn giao hoàn thành và đáp ứng yêu cầu project."
+    "defaultAcceptanceCriteria": "Client nghiệm thu khi kết quả bàn giao hoàn thành và đáp ứng yêu cầu project.",
+    "durationUnits": {
+      "weeks": "tuần",
+      "months": "tháng",
+      "years": "năm"
+    }
   },
   "proposalAnswers": {
     "proposalIdMissing": "Thiếu ID đề xuất.",
@@ -372,6 +377,7 @@
     "errNarrative": "Vui lòng hoàn thành thư giới thiệu và giải pháp trước khi nộp.",
     "errWorkItem": "Mỗi hạng mục công việc tùy chỉnh cần có tiêu đề và mô tả.",
     "errNoMilestones": "Vui lòng thêm ít nhất một milestone trước khi nộp.",
+    "errClosingDateRequired": "Job chưa có hạn nhận proposal nên không thể tính hạn hoàn thành milestone.",
     "errMilestoneFields": "Vui lòng hoàn thành các trường milestone được làm nổi bật.",
     "errRate": "Mức chi phí đề xuất phải lớn hơn 0.",
     "errDuration": "Thời gian đề xuất phải là một số nguyên dương.",

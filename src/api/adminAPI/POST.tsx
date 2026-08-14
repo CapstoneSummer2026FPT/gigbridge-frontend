@@ -44,6 +44,7 @@ export interface AdminResolveDisputePayload {
     penaltyAmount: number;
     reason?: string | null;
   }[];
+  selectedMilestoneIds: string[];
   contractAction: number;
   clientViolation: AdminViolationPayload;
   freelancerViolation: AdminViolationPayload;

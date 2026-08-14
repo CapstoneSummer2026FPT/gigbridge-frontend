@@ -30,7 +30,12 @@
     "acceptanceCriteria": "Acceptance criteria",
     "workBreakdown": "Work Breakdown Structure",
     "addWorkItem": "Add work item",
-    "defaultAcceptanceCriteria": "The client accepts this milestone when its deliverable is complete and meets the project requirements."
+    "defaultAcceptanceCriteria": "The client accepts this milestone when its deliverable is complete and meets the project requirements.",
+    "durationUnits": {
+      "weeks": "weeks",
+      "months": "months",
+      "years": "years"
+    }
   },
   "proposalAnswers": {
     "proposalIdMissing": "Proposal ID is missing.",
@@ -372,6 +377,7 @@
     "errNarrative": "Complete the required cover letter and approach before submitting.",
     "errWorkItem": "Every custom work breakdown item needs a title and description.",
     "errNoMilestones": "Add at least one milestone before submitting.",
+    "errClosingDateRequired": "The job's proposal closing date is missing, so milestone deadlines can't be calculated.",
     "errMilestoneFields": "Complete the highlighted milestone fields before submitting.",
     "errRate": "Proposed rate must be greater than 0.",
     "errDuration": "Proposal duration must be a positive whole number.",
