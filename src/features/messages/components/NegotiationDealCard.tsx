@@ -8,6 +8,8 @@ import {
   Layers3,
   Loader2,
   X,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -35,11 +37,11 @@ interface NegotiationDealCardProps {
 }
 
 function statusTone(status: DealStatus, isLatestOffer: boolean) {
-  if (!isLatestOffer) return 'border-border bg-muted text-muted-foreground';
-  if (status === 'agreed') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
-  if (status === 'declined') return 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300';
-  if (status === 'pending_freelancer') return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
-  return 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300';
+  if (!isLatestOffer) return 'border border-border bg-muted text-muted-foreground font-bold';
+  if (status === 'agreed') return 'border border-emerald-500/50 bg-emerald-600 text-white font-black shadow-sm';
+  if (status === 'declined') return 'border border-red-500/50 bg-red-600 text-white font-black shadow-sm';
+  if (status === 'pending_freelancer') return 'border border-amber-500/60 bg-amber-500 text-slate-950 font-black shadow-sm';
+  return 'border border-[var(--gb-cyan)]/60 bg-[var(--gb-cyan)] text-white font-black shadow-sm';
 }
 
 function DetailField({ label, value }: { label: string; value?: string | null }) {
@@ -237,85 +239,99 @@ export function NegotiationDealCard({
 
   return (
     <>
-      <article className="msg-deal-card my-1 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-3">
+      <article className="msg-deal-card w-full max-w-[480px] my-2.5 p-[1.5px] rounded-3xl bg-gradient-to-r from-[var(--gb-cyan)] via-teal-400 to-indigo-500 shadow-[0_8px_30px_rgba(0,229,255,0.18)] transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,229,255,0.28)]">
+        <div className="relative overflow-hidden rounded-[calc(1.5rem-1.5px)] bg-gradient-to-b from-card via-card/95 to-muted/20 backdrop-blur-xl p-5">
+          {/* Ambient background glow */}
+          <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-[var(--gb-cyan)]/15 to-purple-500/10 blur-2xl rounded-full pointer-events-none" />
+
+          {/* Header */}
+          <div className="relative z-10 flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]">
-                <CreditCard size={19} />
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--gb-cyan)]/20 to-teal-500/20 text-[var(--gb-cyan)] border border-[var(--gb-cyan)]/30 shadow-sm">
+                <CreditCard size={20} />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-foreground">{t('messages.deal.title')}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{t('messages.deal.subtitle')}</p>
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--gb-cyan)]">
+                  <Sparkles size={11} />
+                  <span>OFFICIAL FINAL OFFER</span>
+                </div>
+                <p className="truncate text-base font-black text-foreground mt-0.5">{t('messages.deal.title')}</p>
               </div>
             </div>
-            <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold ${statusTone(status, isLatestOffer)}`}>
+            <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-extrabold shadow-sm ${statusTone(status, isLatestOffer)}`}>
               {statusLabel}
             </span>
           </div>
 
-          <div className="mt-4 flex items-end justify-between gap-4">
+          {/* Budget & Stats Grid */}
+          <div className="relative z-10 mt-4 p-4 rounded-2xl bg-surface-muted/40 border border-border/60 backdrop-blur-sm flex items-end justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 {t('messages.deal.finalBudget')}
               </p>
-              <p className="mt-1 flex items-center gap-1 text-2xl font-black text-[var(--gb-cyan)]">
-                <GCoinIcon size={22} />
+              <p className="mt-1 flex items-center gap-1.5 text-2xl font-black text-[var(--gb-cyan)]">
+                <GCoinIcon size={24} />
                 {displayAmount.toLocaleString(language)}
               </p>
             </div>
             <div className="flex gap-2 text-center">
-              <div className="min-w-14 rounded-lg bg-muted/70 px-2 py-1.5">
+              <div className="min-w-[60px] rounded-xl bg-card/80 border border-border/60 px-2.5 py-1.5 shadow-sm">
                 <p className="text-sm font-black text-foreground">{milestones.length}</p>
-                <p className="text-[9px] uppercase text-muted-foreground">{t('messages.deal.milestones')}</p>
+                <p className="text-[9px] font-bold uppercase text-muted-foreground">{t('messages.deal.milestones')}</p>
               </div>
-              <div className="min-w-14 rounded-lg bg-muted/70 px-2 py-1.5">
+              <div className="min-w-[60px] rounded-xl bg-card/80 border border-border/60 px-2.5 py-1.5 shadow-sm">
                 <p className="text-sm font-black text-foreground">{workItemCount}</p>
-                <p className="text-[9px] uppercase text-muted-foreground">{t('messages.deal.tasks')}</p>
+                <p className="text-[9px] font-bold uppercase text-muted-foreground">{t('messages.deal.tasks')}</p>
               </div>
             </div>
           </div>
 
+          {/* Milestones Preview List */}
           {detail === undefined ? (
-            <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 size={13} className="animate-spin" />
+            <p className="relative z-10 mt-3.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 size={13} className="animate-spin text-[var(--gb-cyan)]" />
               {t('messages.deal.loadingDetails')}
             </p>
           ) : milestones.length ? (
-            <ol className="mt-3 space-y-1.5 border-t border-border pt-3">
+            <ol className="relative z-10 mt-3.5 space-y-2 border-t border-border/60 pt-3.5">
               {milestones.slice(0, 2).map((milestone, index) => (
-                <li key={milestone.id || index} className="flex items-center justify-between gap-3 text-xs">
-                  <span className="min-w-0 truncate text-foreground">
-                    <strong className="mr-1 text-muted-foreground">{index + 1}.</strong>
-                    {milestone.title?.trim() || t('messages.deal.untitledMilestone')}
+                <li key={milestone.id || index} className="flex items-center justify-between gap-3 text-xs p-2 rounded-xl bg-muted/30 border border-border/40">
+                  <span className="min-w-0 truncate text-foreground font-semibold flex items-center gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--gb-cyan)]/15 text-[10px] font-black text-[var(--gb-cyan)]">
+                      {index + 1}
+                    </span>
+                    <span className="truncate">{milestone.title?.trim() || t('messages.deal.untitledMilestone')}</span>
                   </span>
-                  <span className="shrink-0 font-bold text-muted-foreground">
+                  <span className="shrink-0 font-extrabold text-[var(--gb-cyan)] flex items-center gap-1">
+                    <GCoinIcon size={12} />
                     {milestone.amount.toLocaleString(language)}
                   </span>
                 </li>
               ))}
               {milestones.length > 2 && (
-                <li className="text-[11px] font-semibold text-[var(--gb-cyan)]">
-                  {t('messages.deal.moreMilestones', { count: milestones.length - 2 })}
+                <li className="text-[11px] font-extrabold text-[var(--gb-cyan)] pl-1">
+                  + {t('messages.deal.moreMilestones', { count: milestones.length - 2 })}
                 </li>
               )}
             </ol>
           ) : (
-            <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+            <p className="relative z-10 mt-3.5 border-t border-border/60 pt-3.5 text-xs text-muted-foreground">
               {t('messages.deal.noMilestones')}
             </p>
           )}
-        </div>
 
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="flex w-full items-center justify-center gap-2 border-0 border-t border-border bg-muted/30 px-4 py-3 text-xs font-bold text-[var(--gb-cyan)] transition-colors hover:bg-[var(--gb-cyan)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gb-cyan)] focus-visible:ring-inset"
-        >
-          <FileText size={15} />
-          {t('messages.deal.viewDetails')}
-        </button>
+          {/* Action Trigger Button */}
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className="relative z-10 mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white shadow-md shadow-blue-500/20 px-4 py-3 text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer border-none"
+          >
+            <FileText size={15} />
+            <span>{t('messages.deal.viewDetails')}</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
       </article>
 
       {isOpen && createPortal(

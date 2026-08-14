@@ -28,6 +28,7 @@ import { NestedMilestonePlanEditor } from '../../../shared/components/NestedMile
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { useCreateProposal } from '../hooks/useCreateProposal';
+import { JOB_DURATION_UNITS } from '../../jobs/utils/jobDuration';
 import '../styles/create-proposal-screen.css';
 
 export default function CreateProposalScreen() {
@@ -223,10 +224,10 @@ export default function CreateProposalScreen() {
 
                   <div className="p-3 rounded-xl bg-surface-muted/60 border border-border/80">
                     <span className="text-[10px] font-bold uppercase text-text-muted flex items-center gap-1.5 mb-1">
-                      <Clock size={12} /> Deadline
+                      <Clock size={12} /> {t('createProposal.deadline', { defaultValue: 'Hạn chót' })}
                     </span>
                     <span className="font-extrabold text-text-primary truncate block">
-                      {jobPost.endDate ? jobPost.endDate.split('T')[0] : 'Flexible'}
+                      {jobPost.endDate ? jobPost.endDate.split('T')[0] : t('createProposal.flexible', { defaultValue: 'Linh hoạt' })}
                     </span>
                   </div>
                 </div>
@@ -377,7 +378,9 @@ export default function CreateProposalScreen() {
                 title={t('proposalMilestoneEditor.title')}
                 description={t('proposalMilestoneEditor.description')}
                 showDueDate
+                dueDateReadOnly
                 simplifiedMilestoneFields
+                durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`proposalMilestoneEditor.durationUnits.${unit}`) }))}
                 expandedIndex={expandedMilestone}
                 onExpandedChange={setExpandedMilestone}
                 advancedIndexes={advancedMilestoneIndexes}

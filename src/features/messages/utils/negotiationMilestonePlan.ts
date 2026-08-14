@@ -1,15 +1,13 @@
 import type {
   NegotiationMilestoneDto,
   NegotiationWorkItemDto,
-} from '../../types/models/Message';
-import {
-  currentLocalDate,
-  deriveMilestoneDuration,
-} from '../proposals/utils/proposalMilestonePlan';
+} from '../../../types/models/Message';
+import { currentLocalDate } from '../../proposals/utils/proposalMilestonePlan';
 import {
   calculateProposalBudget,
   calculateProposalDuration,
-} from '../proposals/utils/proposalTotals';
+} from '../../proposals/utils/proposalTotals';
+import { computeChainedDueDates, parseJobDuration } from '../../jobs/utils/jobDuration';
 
 const MAX_AMOUNT = 9_999_999_999_999_999.99;
 
@@ -57,29 +55,32 @@ export const prepareNegotiationMilestonesForEditing = (
   return { milestones: editable, advancedIndexes };
 };
 
+// Milestone Deadline is derived from the user-entered Duration, not the other way around:
+// Milestone 1 starts the day after "today" (the negotiation always anchors to the current
+// date — by the time a deal is negotiated, the job's application-closing date is normally
+// already in the past), and each following milestone starts the day after the previous
+// one's computed deadline.
 export const resolveNegotiationMilestones = (
   milestones: readonly NegotiationMilestoneDto[],
   defaultAcceptanceCriteria: string,
   today = currentLocalDate(),
 ): NegotiationMilestoneDto[] => {
-  let intervalStart = today;
+  const ordered = normalizeNegotiationMilestones(milestones);
+  const dueDates = computeChainedDueDates(today, ordered.map(milestone => milestone.estimatedDuration));
 
-  return normalizeNegotiationMilestones(milestones).map(milestone => {
-    const estimatedDuration = deriveMilestoneDuration(intervalStart, milestone.dueDate);
+  return ordered.map((milestone, index) => {
     const customWorkItems = milestone.workItems || [];
     const workItems = normalizeWorkItems(customWorkItems.length > 0 ? customWorkItems : [{
       title: normalizeText(milestone.title),
       description: normalizeText(milestone.deliverables),
       deliverables: normalizeText(milestone.deliverables),
-      estimatedDuration,
+      estimatedDuration: milestone.estimatedDuration,
       orderIndex: 0,
     }]);
 
-    if (milestone.dueDate) intervalStart = milestone.dueDate.slice(0, 10);
-
     return {
       ...milestone,
-      estimatedDuration,
+      dueDate: dueDates[index],
       acceptanceCriteria: normalizeText(milestone.acceptanceCriteria) || defaultAcceptanceCriteria,
       workItems,
     };
@@ -98,9 +99,7 @@ export type NegotiationPlanValidationCode =
   | 'milestoneRequired'
   | 'titleRequired'
   | 'amountInvalid'
-  | 'deadlineRequired'
-  | 'deadlinePast'
-  | 'deadlineSequence'
+  | 'durationInvalid'
   | 'deliverablesRequired'
   | 'workItemTitleRequired'
   | 'workItemDescriptionRequired';
@@ -114,7 +113,6 @@ export interface NegotiationPlanValidationResult {
 
 export const validateNegotiationMilestones = (
   milestones: readonly NegotiationMilestoneDto[],
-  today = currentLocalDate(),
 ): NegotiationPlanValidationResult => {
   if (milestones.length === 0) {
     return {
@@ -127,7 +125,6 @@ export const validateNegotiationMilestones = (
 
   const errors: Record<string, NegotiationPlanValidationCode> = {};
   const advancedIndexes = new Set<number>();
-  let previousDueDate: string | null = null;
 
   normalizeNegotiationMilestones(milestones).forEach((milestone, milestoneIndex) => {
     if (!normalizeText(milestone.title)) errors[`${milestoneIndex}.title`] = 'titleRequired';
@@ -135,15 +132,8 @@ export const validateNegotiationMilestones = (
     if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT || Math.round(amount * 100) / 100 !== amount) {
       errors[`${milestoneIndex}.amount`] = 'amountInvalid';
     }
-    const dueDate = milestone.dueDate?.slice(0, 10) || '';
-    if (!dueDate) {
-      errors[`${milestoneIndex}.dueDate`] = 'deadlineRequired';
-    } else {
-      if (dueDate < today) errors[`${milestoneIndex}.dueDate`] = 'deadlinePast';
-      if (previousDueDate && dueDate <= previousDueDate) {
-        errors[`${milestoneIndex}.dueDate`] = 'deadlineSequence';
-      }
-      previousDueDate = dueDate;
+    if (!parseJobDuration(milestone.estimatedDuration).value) {
+      errors[`${milestoneIndex}.estimatedDuration`] = 'durationInvalid';
     }
     if (!normalizeText(milestone.deliverables)) {
       errors[`${milestoneIndex}.deliverables`] = 'deliverablesRequired';

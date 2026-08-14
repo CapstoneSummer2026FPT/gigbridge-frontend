@@ -21,8 +21,6 @@ interface ClientProposalJobSidebarProps {
   onCreateJob: () => void;
 }
 
-const inputClass =
-  'h-10 w-full rounded-xl border border-border bg-background px-3 text-xs font-bold text-text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm cursor-pointer';
 const focusClass =
   'outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
@@ -64,11 +62,19 @@ export default function ClientProposalJobSidebar({
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<JobStatusFilter>('all');
-  const [sort, setSort] = useState<JobSort>('proposals');
+  const [sort, setSort] = useState<JobSort>('created');
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const selectedJob = jobs.find(job => job.jobPostsId === selectedJobId);
-  const hasFilters = Boolean(search.trim()) || status !== 'all' || sort !== 'proposals';
+  const hasFilters = Boolean(search.trim()) || status !== 'all' || sort !== 'created';
+
+  const jobSelectOptions = useMemo(() => {
+    return jobs.map(job => ({
+      value: job.jobPostsId,
+      label: job.title || 'Dự án',
+      badge: `${job.proposalCount || 0} đơn`,
+    }));
+  }, [jobs]);
 
   const statusLabel = (value: number) => {
     if (value === 1) return t('proposalReview.jobStatuses.open');
@@ -143,7 +149,7 @@ export default function ClientProposalJobSidebar({
 
       <div
         id="proposal-project-list"
-        className={`${mobileOpen ? 'mt-3 block' : 'hidden'} overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:mt-0 lg:flex lg:flex-col lg:max-h-[720px]`}
+        className={`${mobileOpen ? 'mt-3 block' : 'hidden'} overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:mt-0 lg:flex lg:flex-col lg:max-h-[calc(100vh-8rem)]`}
       >
         <div className="border-b border-border p-4">
           <div className="flex items-start justify-between gap-3">
@@ -171,22 +177,25 @@ export default function ClientProposalJobSidebar({
             )}
           </div>
 
-          <label className="relative mt-4 block">
-            <span className="sr-only">{t('proposalReview.projectSidebar.search')}</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-            <input
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder={t('proposalReview.projectSidebar.searchPlaceholder')}
-              className={`${inputClass} pl-9`}
+          <div className="mt-3">
+            <CustomSelect
+              ariaLabel="Select job post"
+              value={selectedJobId || ''}
+              onChange={val => selectJob(val)}
+              options={jobSelectOptions}
+              leftIcon={<Search size={14} />}
+              searchable={true}
+              placeholder={t('proposalReview.projectSidebar.selectJobPlaceholder', { defaultValue: 'Tìm & chọn nhanh bài đăng...' })}
+              searchPlaceholder={t('proposalReview.projectSidebar.searchPlaceholder', { defaultValue: 'Nhập tên bài đăng để tìm...' })}
             />
-          </label>
+          </div>
 
           <div className="mt-2.5 grid grid-cols-2 gap-2">
             <CustomSelect
               ariaLabel={t('proposalReview.projectSidebar.status')}
               value={status}
               onChange={val => setStatus(val as JobStatusFilter)}
+              searchable={true}
               options={[
                 { value: 'all', label: t('proposalReview.projectSidebar.statuses.all') },
                 { value: '0', label: t('proposalReview.jobStatuses.draft') },

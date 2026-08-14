@@ -21,10 +21,10 @@ import {
 } from '../utils/proposalTotals';
 import { useTranslation } from '../../../hooks/useTranslation';
 import {
-  currentLocalDate,
   extractCustomWorkItems,
   resolveProposalMilestonePlan,
 } from '../utils/proposalMilestonePlan';
+import { parseJobDuration } from '../../jobs/utils/jobDuration';
 
 const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
   title: '',
@@ -43,6 +43,10 @@ const normalizeOrder = <T extends { orderIndex: number }>(items: T[]) =>
 export function useCreateProposal() {
   const navigate = useNavigate();
   const { t } = useTranslation(['proposals', 'common']);
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   const { jobPostId, proposalId } = useParams<{ jobPostId?: string; proposalId?: string }>();
   const [jobPost, setJobPost] = useState<JobPostDetailDto | null>(null);
@@ -71,7 +75,6 @@ export function useCreateProposal() {
 
   const resolvedJobPostId = proposal?.jobPostId || jobPostId || '';
   const draftProposalId = proposal?.proposalId || proposalId || '';
-  const today = useMemo(() => currentLocalDate(), []);
   const defaultAcceptanceCriteria = t('proposalMilestoneEditor.defaultAcceptanceCriteria');
 
   const resolvedPlan = useMemo(() => resolveProposalMilestonePlan(
@@ -79,8 +82,7 @@ export function useCreateProposal() {
     workItems,
     defaultAcceptanceCriteria,
     jobPost?.endDate,
-    today,
-  ), [defaultAcceptanceCriteria, jobPost?.endDate, milestones, today, workItems]);
+  ), [defaultAcceptanceCriteria, jobPost?.endDate, milestones, workItems]);
 
   const milestoneTotal = useMemo(
     () => calculateProposalBudget(resolvedPlan.milestonePlans.map(item => item.amount)),
@@ -126,38 +128,38 @@ export function useCreateProposal() {
         setError('');
         if (proposalId) {
           const response = await proposalGetAPI.getProposalDetail(proposalId);
-          if (!response.success || !response.data) return setError(response.message || t('createProposal.errLoadProposal'));
+          if (!response.success || !response.data) return setError(response.message || tRef.current('createProposal.errLoadProposal'));
           hydrateProposal(response.data);
           const jobResponse = await jobGetAPI.getJobPostDetail(response.data.jobPostId);
           if (jobResponse.success && jobResponse.data) setJobPost(jobResponse.data);
           return;
         }
-        if (!jobPostId) return setError(t('createProposal.errMissingJobId'));
+        if (!jobPostId) return setError(tRef.current('createProposal.errMissingJobId'));
         const [jobResponse, existingResponse] = await Promise.all([
           jobGetAPI.getJobPostDetail(jobPostId),
           proposalGetAPI.getMyProposalByJobPost(jobPostId),
         ]);
-        if (!jobResponse.success || !jobResponse.data) return setError(jobResponse.message || t('createProposal.errLoadJob'));
+        if (!jobResponse.success || !jobResponse.data) return setError(jobResponse.message || tRef.current('createProposal.errLoadJob'));
         setJobPost(jobResponse.data);
         if (existingResponse.success && existingResponse.data) {
           hydrateProposal(existingResponse.data);
           setNotice(canEditProposal(existingResponse.data.status)
-            ? t('createProposal.draftReadyNotice')
-            : t('createProposal.readOnlyNotice', { status: getStatusLabel(existingResponse.data.status) }));
+            ? tRef.current('createProposal.draftReadyNotice')
+            : tRef.current('createProposal.readOnlyNotice', { status: getStatusLabel(existingResponse.data.status) }));
         } else if (jobResponse.data.milestonePlans?.length) {
           const baseline = normalizeOrder(jobResponse.data.milestonePlans.map(item => ({ ...item, workItems: undefined })));
           setMilestones(baseline);
           setWorkItems([]);
           setAdvancedMilestoneIndexes([]);
           setExpandedMilestone(0);
-          setNotice(t('createProposal.baselineCopiedNotice'));
+          setNotice(tRef.current('createProposal.baselineCopiedNotice'));
         }
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [jobPostId, proposalId, t]);
+  }, [jobPostId, proposalId]);
 
   const proposalPayload = () => ({
     coverLetter: coverLetter.trim(),
@@ -206,25 +208,15 @@ export function useCreateProposal() {
       return t('createProposal.errWorkItem');
     }
     if (!milestones.length) return t('createProposal.errNoMilestones');
+    if (!jobPost?.endDate) return t('createProposal.errClosingDateRequired');
     const errors: Record<string, string> = {};
-    const proposalClosingDate = jobPost?.endDate?.split('T')[0] || null;
-    let previousDueDate: string | null = null;
     milestones.forEach((item, index) => {
-      if (!item.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
-      if (Number(item.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
-      if (!item.dueDate) {
-        errors[`${index}.dueDate`] = 'Deadline is required.';
-      } else {
-        if (item.dueDate < today) errors[`${index}.dueDate`] = 'Deadline cannot be in the past.';
-        if (proposalClosingDate && item.dueDate <= proposalClosingDate) {
-          errors[`${index}.dueDate`] = 'Deadline must be after the proposal closing date.';
-        }
-        if (previousDueDate && item.dueDate <= previousDueDate) {
-          errors[`${index}.dueDate`] = 'Deadline must be later than the previous milestone deadline.';
-        }
-        previousDueDate = item.dueDate;
+      if (!item.title?.trim()) errors[`${index}.title`] = t('createProposal.errMilestoneTitleRequired');
+      if (Number(item.amount) <= 0) errors[`${index}.amount`] = t('createProposal.errMilestoneAmountMin');
+      if (!parseJobDuration(item.estimatedDuration).value) {
+        errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in week(s), month(s), or year(s).';
       }
-      if (!item.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
+      if (!item.deliverables?.trim()) errors[`${index}.deliverables`] = t('createProposal.errMilestoneDeliverablesRequired');
     });
     const firstErrorKey = Object.keys(errors)[0];
     if (firstErrorKey) {

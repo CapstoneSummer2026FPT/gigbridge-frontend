@@ -63,7 +63,7 @@ export default function BrowseJobsScreen() {
   const [committedBudgetMax, setCommittedBudgetMax] = useState('');
   const [workType, setWorkType] = useState('All');
   const [datePosted, setDatePosted] = useState('Any time');
-  const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
+  const [sortBy, setSortBy] = useState<'relevance' | 'date'>('date');
   const [showFilters, setShowFilters] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [savingJobIds, setSavingJobIds] = useState<Set<string>>(new Set());
