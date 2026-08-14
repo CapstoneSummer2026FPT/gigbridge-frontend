@@ -449,14 +449,14 @@ function ContractCardItem({
             {primaryAction.icon} {primaryAction.label}
           </button>
 
-          {/* Manage Milestones button for Active Freelancer Contracts */}
+          {/* Go to Workspace button for Active Freelancer Contracts */}
           {status === ContractStatus.Active && (
             <button
               type="button"
-              onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
+              onClick={() => onNavigate(`/workspace/${contract.contractsId}`)}
               className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
             >
-              <ListChecks size={14} /> {t('contracts.manageMilestones')}
+              <ListChecks size={14} /> {t('contracts.goToWorkspace', { defaultValue: 'Go to workspace' })}
             </button>
           )}
 

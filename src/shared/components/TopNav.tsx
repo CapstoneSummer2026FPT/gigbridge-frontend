@@ -6,6 +6,7 @@ import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
 import { useApp } from '../../app/providers/AppProvider';
 import { walletGetAPI } from '../../api/walletAPI/GET';
+import { messageGetAPI } from '../../api/messageAPI/GET';
 import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { TopNavNotificationDropdown } from '../../features/notifications/components/TopNavNotificationDropdown';
 import Button from './Button';
@@ -36,6 +37,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [searchVal, setSearchVal] = useState('');
 
   // Safely get app context - might be null for guest users
@@ -91,6 +93,37 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       window.removeEventListener('gigbridge-wallet-updated', fetchWalletBalance);
     };
   }, [location.pathname, location.search, role, user?.id]);
+
+  // Unread messages data
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUnreadMessages = async () => {
+      if (!user) {
+        setUnreadMessagesCount(0);
+        return;
+      }
+      try {
+        const response = await messageGetAPI.getMyConversations();
+        if (isMounted && response.success && Array.isArray(response.data)) {
+          const totalUnread = response.data.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0);
+          setUnreadMessagesCount(totalUnread);
+        }
+      } catch (err) {
+        // Safe fallback
+      }
+    };
+
+    void fetchUnreadMessages();
+    const intervalId = window.setInterval(fetchUnreadMessages, 15000);
+    window.addEventListener('gigbridge-messages-updated', fetchUnreadMessages);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('gigbridge-messages-updated', fetchUnreadMessages);
+    };
+  }, [location.pathname, user?.id]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,11 +298,13 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     );
   }
 
+  const isAnyDropdownOpen = showUserMenu || showNotifs || showWalletMenu;
+
   // ═══════════════════════════════════════════════════════════════
   // STANDARD APPLICATION TOP NAV
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-35 h-16 border-none landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
+    <div className={`fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 h-16 border-none landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300 ${isAnyDropdownOpen ? 'z-[100] top-nav-menu-open' : 'z-[45]'}`}>
       {/* Hamburger Menu Button - Show on both mobile and desktop when logged in */}
       {showMenuButton && (
         <button
@@ -446,7 +481,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             title={t('nav.messages', { defaultValue: 'Messages' })}
             aria-label={t('nav.messages', { defaultValue: 'Messages' })}
           >
-            <MessageSquare size={16} className="text-muted" />
+            <MessageSquare size={16} className={unreadMessagesCount > 0 ? 'text-[var(--brand)]' : 'text-muted'} />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white shadow-sm ring-2 ring-background animate-in zoom-in duration-200">
+                {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+              </span>
+            )}
           </button>
         ) : null}
 

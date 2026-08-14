@@ -601,16 +601,24 @@ export function useMessages() {
 
         setActiveConvId(currentActiveConvId => {
           if (selectableConvos.length === 0) return '';
+
+          const searchParams = new URLSearchParams(location.search);
+          const queryConvId = searchParams.get('conversationId');
+          const queryProposalId = searchParams.get('proposalId');
+          const stateConvId = queryConvId || location.state?.activeConvId;
+          const stateProposalId = queryProposalId || location.state?.proposalId;
+
+          const foundById = selectableConvos.find((c: any) => c.id === stateConvId);
+          const foundByProposal = selectableConvos.find((c: any) => c.proposalId === stateProposalId);
+
+          if (foundById) return foundById.id;
+          if (foundByProposal) return foundByProposal.id;
+
           if (currentActiveConvId && selectableConvos.some((c: any) => c.id === currentActiveConvId)) {
             return currentActiveConvId;
           }
 
-          const queryConvId = new URLSearchParams(location.search).get('conversationId');
-          const stateConvId = queryConvId || location.state?.activeConvId;
-          const stateProposalId = location.state?.proposalId;
-          const foundById = selectableConvos.find((c: any) => c.id === stateConvId);
-          const foundByProposal = selectableConvos.find((c: any) => c.proposalId === stateProposalId);
-          return foundById ? foundById.id : foundByProposal ? foundByProposal.id : selectableConvos[0].id;
+          return selectableConvos[0].id;
         });
       }
     } catch (err) {
@@ -619,6 +627,33 @@ export function useMessages() {
       setLoading(false);
     }
   }, [user, location.state, location.search]);
+
+  // Sync activeConvId when URL search params change (e.g. clicking notification while already on /messages)
+  useEffect(() => {
+    if (conversationsState.length === 0) return;
+    const searchParams = new URLSearchParams(location.search);
+    const queryConvId = searchParams.get('conversationId');
+    const queryProposalId = searchParams.get('proposalId');
+    const stateProposalId = location.state?.proposalId;
+
+    const targetProposalId = queryProposalId || stateProposalId;
+
+    if (queryConvId) {
+      const found = conversationsState.find(c => c.id === queryConvId);
+      if (found) {
+        setActiveConvId(found.id);
+        return;
+      }
+    }
+
+    if (targetProposalId) {
+      const found = conversationsState.find(c => c.proposalId === targetProposalId);
+      if (found) {
+        setActiveConvId(found.id);
+        return;
+      }
+    }
+  }, [location.search, location.state, conversationsState]);
 
   useEffect(() => {
     loadConversations();

@@ -143,39 +143,229 @@ function ScheduleCard({ schedule, latest, onEdit, onCancel, onRetry, onLatest, o
         'Schedule change awaiting client response',
         'Schedule change rejected — original date remains confirmed',
       ][schedule.agreementStatus] || 'Schedule updated';
+
   return (
-    <div className={`w-[min(420px,75vw)] rounded-2xl border p-4 shadow-sm ${cancelled ? 'border-red-500/30 bg-red-500/5' : 'border-[var(--gb-cyan)]/30 bg-card'}`}>
-      <div className="flex justify-between gap-3">
-        <div className="flex gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] flex items-center justify-center shrink-0"><CalendarDays size={19} /></div>
-          <div className="min-w-0"><p className="font-bold text-sm truncate">{schedule.title}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">{eventLabel} by {schedule.actorName}</p></div>
+    <div className={`w-[min(440px,85vw)] rounded-2xl border bg-card p-4.5 shadow-md overflow-hidden transition-all ${
+      cancelled ? 'border-rose-500/40' : confirmed ? 'border-emerald-500/40' : 'border-amber-500/40'
+    }`}>
+      {/* Header Row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+            cancelled ? 'bg-rose-600 text-white' : confirmed ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+          }`}>
+            <CalendarDays size={22} />
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-extrabold text-sm text-foreground truncate">{schedule.title}</h4>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
+              {eventLabel} by {schedule.actorName}
+            </p>
+          </div>
         </div>
-        {!latest && <button onClick={onLatest} className="text-[10px] text-[var(--gb-cyan)] border-none bg-transparent cursor-pointer">{t('schedule.superseded')}</button>}
+        {!latest && (
+          <button onClick={onLatest} className="text-[10px] font-extrabold text-[var(--gb-cyan)] hover:underline border-none bg-transparent cursor-pointer shrink-0">
+            {t('schedule.superseded')}
+          </button>
+        )}
       </div>
-      <div className="mt-3 rounded-xl bg-muted/60 p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{reschedulePending ? 'Currently confirmed' : 'Meeting time'}</p>
-        <p className="text-xs font-semibold">{vietnamDate(schedule.scheduledAtUtc)}</p>
-        {reschedulePending && schedule.proposedScheduledAtUtc && <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2"><p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Requested new date</p><p className="mt-1 text-xs font-bold text-amber-700">{vietnamDate(schedule.proposedScheduledAtUtc)}</p></div>}
-        {latest && !cancelled && hasConfirmedTime && (!started || !meetingReady) && <p className="text-xs text-[var(--gb-cyan)] font-bold mt-1" aria-live="off">{countdown(schedule.scheduledAtUtc, now)}</p>}
-        {latest && !cancelled && hasConfirmedTime && started && meetingReady && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white no-underline transition-colors hover:bg-emerald-700"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
-        <p className="text-[10px] text-muted-foreground mt-1">Cancellation cutoff: {vietnamDate(schedule.cutoffUtc)}</p>
-        {startLocalHour < 2 && <p className="text-[10px] text-amber-600 mt-2 font-semibold">Short cancellation window: this event begins close to Vietnam midnight.</p>}
+
+      {/* Meeting Details Box */}
+      <div className="mt-3.5 rounded-xl bg-muted/50 p-3.5 border border-border/40 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            {reschedulePending ? 'Currently confirmed' : 'Meeting time'}
+          </span>
+          {latest && !cancelled && hasConfirmedTime && (!started || !meetingReady) && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[11px] font-black" aria-live="off">
+              <Clock3 size={12} />
+              {countdown(schedule.scheduledAtUtc, now)}
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs font-black text-foreground flex items-center gap-1.5">
+          <CalendarPlus size={14} className="text-muted-foreground shrink-0" />
+          <span>{vietnamDate(schedule.scheduledAtUtc)}</span>
+        </p>
+
+        {reschedulePending && schedule.proposedScheduledAtUtc && (
+          <div className="rounded-xl bg-amber-500 text-white p-3 shadow-xs">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider opacity-90">Requested new date</p>
+            <p className="mt-1 text-xs font-black">{vietnamDate(schedule.proposedScheduledAtUtc)}</p>
+          </div>
+        )}
+
+        {latest && !cancelled && hasConfirmedTime && started && meetingReady && (
+          <a
+            href={schedule.meeting!.joinUri!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white no-underline shadow-sm transition hover:bg-emerald-700 cursor-pointer"
+          >
+            <Video size={16} />
+            <span>{t('schedule.meetingJoin')}</span>
+            <ExternalLink size={13} />
+          </a>
+        )}
+
+        <div className="pt-1 flex flex-col gap-1 border-t border-border/40 text-[10px] text-muted-foreground font-medium">
+          <span>Cancellation cutoff: <strong>{vietnamDate(schedule.cutoffUtc)}</strong></span>
+          {startLocalHour < 2 && (
+            <span className="text-amber-600 font-bold flex items-center gap-1 mt-0.5">
+              <AlertCircle size={12} /> Short cancellation window: event begins close to Vietnam midnight.
+            </span>
+          )}
+        </div>
       </div>
-      {latest && <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-black border ${cancelled ? 'bg-red-600 text-white border-red-500' : confirmed ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-amber-500 text-slate-950 border-amber-400'}`}>{agreementLabel}</div>}
-      {latest && (schedule.agreementStatus === 3 || reschedulePending) && schedule.counterProposalEditExpiresAtUtc && <p className="mt-2 text-[10px] text-muted-foreground">Freelancer may edit this request until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.</p>}
-      {latest && !cancelled && hasConfirmedTime && schedule.meeting?.status === 1 && <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700"><Loader2 size={14} className="animate-spin" />{t('schedule.meetingPending')}</div>}
-      {latest && !cancelled && hasConfirmedTime && meetingReady && !started && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 no-underline transition-colors hover:bg-emerald-500/20"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
-      {latest && !cancelled && schedule.meeting?.status === 3 && <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600"><span className="flex items-center gap-2"><AlertCircle size={14} />{t('schedule.meetingFailed')}</span>{schedule.meeting.canRetry && <button type="button" disabled={retryingMeet} onClick={async () => { setRetryingMeet(true); try { await onRetry(); } finally { setRetryingMeet(false); } }} className="rounded-lg border-none bg-red-600 px-3 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-50">{retryingMeet ? t('schedule.meetingPending') : t('schedule.meetingRetry')}</button>}</div>}
-      {schedule.details && <><button onClick={() => setExpanded(x => !x)} className="mt-2 flex items-center gap-1 text-xs text-muted-foreground border-none bg-transparent cursor-pointer">{expanded ? <ChevronUp size={13}/> : <ChevronDown size={13}/>} Details</button>{expanded && <p className="text-xs whitespace-pre-wrap mt-2">{schedule.details}</p>}</>}
-      {cancelled && schedule.cancellationReason && <p className="mt-3 text-xs text-red-600"><strong>Reason:</strong> {schedule.cancellationReason}</p>}
-      {latest && !cancelled && <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-        {canEdit && <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> {t('schedule.edit')}</button>}
-        {canEditCounter && <button onClick={() => onCounterProposal(true)} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> Edit proposed time</button>}
-        {schedule.canProposeTime && <button onClick={() => onCounterProposal(false)} className="px-3 py-1.5 rounded-lg text-xs bg-[var(--gb-cyan)] text-white border-none cursor-pointer">{schedule.agreementStatus === 2 ? 'Choose new time' : `Request date change (${remainingRescheduleRequests} left)`}</button>}
-        {canRespond && schedule.canAccept && <button disabled={actionBusy} onClick={onAccept} className="px-3 py-1.5 rounded-lg text-xs bg-emerald-600 text-white border-none cursor-pointer disabled:opacity-50">Accept</button>}
-        {canRespond && schedule.canReject && <button disabled={actionBusy} onClick={onReject} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer disabled:opacity-50">Reject</button>}
-        {canCancel && <button onClick={onCancel} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer">{t('schedule.cancel')}</button>}
-      </div>}
+
+      {/* Agreement Status Banner */}
+      {latest && (
+        <div className={`mt-3 rounded-xl px-3.5 py-2.5 text-xs font-black text-white shadow-xs flex items-center gap-2 ${
+          cancelled ? 'bg-rose-600' : confirmed ? 'bg-emerald-600' : 'bg-amber-500'
+        }`}>
+          {cancelled ? <AlertCircle size={16} className="shrink-0" /> : confirmed ? <CheckCircle size={16} className="shrink-0" /> : <Clock3 size={16} className="shrink-0" />}
+          <span>{agreementLabel}</span>
+        </div>
+      )}
+
+      {latest && (schedule.agreementStatus === 3 || reschedulePending) && schedule.counterProposalEditExpiresAtUtc && (
+        <p className="mt-2 text-[10px] text-muted-foreground font-semibold">
+          Freelancer may edit this request until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.
+        </p>
+      )}
+
+      {/* Meeting Status Indicators */}
+      {latest && !cancelled && hasConfirmedTime && schedule.meeting?.status === 1 && (
+        <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-amber-500 text-white px-3.5 py-2.5 text-xs font-black shadow-xs">
+          <Loader2 size={16} className="animate-spin shrink-0" />
+          <span>{t('schedule.meetingPending')}</span>
+        </div>
+      )}
+
+      {latest && !cancelled && hasConfirmedTime && meetingReady && !started && (
+        <a
+          href={schedule.meeting!.joinUri!}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white no-underline shadow-md transition hover:bg-emerald-700 cursor-pointer"
+        >
+          <Video size={16} />
+          <span>{t('schedule.meetingJoin')}</span>
+          <ExternalLink size={13} />
+        </a>
+      )}
+
+      {latest && !cancelled && schedule.meeting?.status === 3 && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-rose-600 text-white px-3.5 py-2.5 text-xs font-black shadow-xs">
+          <span className="flex items-center gap-2">
+            <AlertCircle size={16} />
+            {t('schedule.meetingFailed')}
+          </span>
+          {schedule.meeting.canRetry && (
+            <button
+              type="button"
+              disabled={retryingMeet}
+              onClick={async () => {
+                setRetryingMeet(true);
+                try { await onRetry(); } finally { setRetryingMeet(false); }
+              }}
+              className="rounded-lg bg-white text-rose-600 px-3 py-1.5 text-xs font-black cursor-pointer disabled:opacity-50 hover:bg-slate-100 transition"
+            >
+              {retryingMeet ? t('schedule.meetingPending') : t('schedule.meetingRetry')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Details Collapse */}
+      {schedule.details && (
+        <div className="mt-2.5">
+          <button
+            type="button"
+            onClick={() => setExpanded(x => !x)}
+            className="flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground border-none bg-transparent cursor-pointer transition"
+          >
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <span>Details</span>
+          </button>
+          {expanded && (
+            <p className="text-xs font-medium whitespace-pre-wrap mt-2 p-2.5 rounded-xl bg-muted/40 text-foreground border border-border/30">
+              {schedule.details}
+            </p>
+          )}
+        </div>
+      )}
+
+      {cancelled && schedule.cancellationReason && (
+        <div className="mt-3 p-2.5 rounded-xl bg-rose-600 text-white text-xs font-semibold shadow-xs">
+          <strong>Reason:</strong> {schedule.cancellationReason}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      {latest && !cancelled && (
+        <div className="mt-3.5 flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/40">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 border border-border text-foreground cursor-pointer flex items-center gap-1.5 transition"
+            >
+              <Pencil size={13} />
+              <span>{t('schedule.edit')}</span>
+            </button>
+          )}
+          {canEditCounter && (
+            <button
+              type="button"
+              onClick={() => onCounterProposal(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 border border-border text-foreground cursor-pointer flex items-center gap-1.5 transition"
+            >
+              <Pencil size={13} />
+              <span>Edit proposed time</span>
+            </button>
+          )}
+          {schedule.canProposeTime && (
+            <button
+              type="button"
+              onClick={() => onCounterProposal(false)}
+              className="px-3 py-1.5 rounded-xl text-xs font-black bg-[var(--gb-cyan)] text-white hover:opacity-90 border-none cursor-pointer shadow-xs transition"
+            >
+              {schedule.agreementStatus === 2 ? 'Choose new time' : `Request date change (${remainingRescheduleRequests} left)`}
+            </button>
+          )}
+          {canRespond && schedule.canAccept && (
+            <button
+              type="button"
+              disabled={actionBusy}
+              onClick={onAccept}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 border-none cursor-pointer shadow-xs transition disabled:opacity-50"
+            >
+              Accept
+            </button>
+          )}
+          {canRespond && schedule.canReject && (
+            <button
+              type="button"
+              disabled={actionBusy}
+              onClick={onReject}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-rose-600 text-white hover:bg-rose-700 border-none cursor-pointer shadow-xs transition disabled:opacity-50"
+            >
+              Reject
+            </button>
+          )}
+          {canCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-rose-600 text-white hover:bg-rose-700 border-none cursor-pointer shadow-xs transition"
+            >
+              {t('schedule.cancel')}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

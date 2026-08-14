@@ -43,11 +43,13 @@ import { useClientProposals, type SortBy } from '../hooks/useClientProposals';
 import '../styles/client-proposals-screen.css';
 
 const badgeClass = (status: number) => {
-  if (status === ProposalStatus.Accepted) return 'border border-emerald-500/40 bg-emerald-500/15 text-text-primary font-black';
-  if (status === ProposalStatus.Rejected || status === ProposalStatus.Withdrawn) return 'border border-rose-500/40 bg-rose-500/15 text-text-primary font-black';
-  if (status === ProposalStatus.Shortlisted) return 'border border-blue-500/40 bg-blue-500/20 text-text-primary font-black';
-  if (status === ProposalStatus.Draft) return 'border border-border bg-slate-500/15 text-text-primary font-black';
-  return 'border border-amber-500/40 bg-amber-500/15 text-text-primary font-black';
+  const value = Number(status);
+  if (value === ProposalStatus.Accepted) return 'bg-emerald-600 text-white font-black shadow-xs border-none';
+  if (value === ProposalStatus.Rejected) return 'bg-rose-600 text-white font-black shadow-xs border-none';
+  if (value === ProposalStatus.Withdrawn) return 'bg-slate-500 text-white font-black shadow-xs border-none';
+  if (value === ProposalStatus.Shortlisted) return 'bg-blue-600 text-white font-black shadow-xs border-none';
+  if (value === ProposalStatus.Draft) return 'bg-slate-600 text-white font-black shadow-xs border-none';
+  return 'bg-amber-500 text-white font-black shadow-xs border-none';
 };
 
 const formatDate = (value?: string | null) => value
@@ -236,8 +238,8 @@ export default function ClientProposalsScreen() {
             ) : (
               <>
                 {selectedJob && !selectedJobCanNegotiate && (
-                  <div role="status" className="rounded-2xl border border-amber-500/40 bg-amber-500/15 px-4 py-3 text-xs font-black text-text-primary flex items-center gap-2.5 shadow-sm">
-                    <ShieldAlert size={16} className="text-amber-500 shrink-0" />
+                  <div role="status" className="rounded-2xl bg-amber-500 text-white px-4 py-3 text-xs font-black flex items-center gap-2.5 shadow-md">
+                    <ShieldAlert size={18} className="shrink-0 text-white" />
                     <span>{t('proposalReview.readOnly')}</span>
                   </div>
                 )}

@@ -9,7 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
+import { ESignDocumentStatus, ESignerRole, SignatureStatus } from '../../../types/models/ESign';
 import type { ContractESignDocumentState } from '../hooks/useContractESignDocument';
 import { useESignPdf } from '../hooks/useESignPdf';
 
@@ -64,6 +64,11 @@ export function ContractLegalCard({
       document.status === ESignDocumentStatus.PartiallySigned
     );
 
+  const isClientRole = document?.currentUserSignerRole === ESignerRole.Client;
+  const waitingCounterpartLabel = isClientRole
+    ? 'Đợi Freelancer ký'
+    : 'Đợi Client ký';
+
   return (
     <section
       className="glass-card p-6 md:p-8 space-y-5"
@@ -90,7 +95,9 @@ export function ContractLegalCard({
         {document ? (
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
             <FileCheck size={13} aria-hidden="true" />
-            {t(`contracts.legal.status.${documentStatusKey[document.status]}`)}
+            {hasValidCurrentUserDraft && document.status !== ESignDocumentStatus.FullySigned
+              ? waitingCounterpartLabel
+              : t(`contracts.legal.status.${documentStatusKey[document.status]}`)}
           </span>
         ) : null}
       </div>
@@ -131,7 +138,9 @@ export function ContractLegalCard({
                     document.status === ESignDocumentStatus.Voided
                   ? t('contracts.legal.readOnlyDocumentDescription')
                   : hasValidCurrentUserDraft
-                    ? t('contracts.legal.waitingForCounterpartDescription')
+                    ? (isClientRole
+                        ? 'Bạn đã hoàn tất ký tạm thời. Đang chờ Freelancer ký để chốt hợp đồng.'
+                        : 'Bạn đã hoàn tất ký tạm thời. Đang chờ Client ký để chốt hợp đồng.')
                     : hasIncompleteCurrentUserDraft
                       ? t('contracts.legal.incompleteDraftDescription')
                       : t('contracts.legal.documentDescription')}
@@ -172,7 +181,9 @@ export function ContractLegalCard({
               className="btn-primary-custom inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold"
             >
               <FileCheck size={17} aria-hidden="true" />
-              {t('contracts.legal.viewAndSign')}
+              {hasValidCurrentUserDraft
+                ? t('contracts.legal.viewSignedDocument', { defaultValue: 'View Signed Contract' })
+                : t('contracts.legal.viewAndSign')}
             </Link>
           ) : (
             <Link
@@ -180,8 +191,8 @@ export function ContractLegalCard({
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/15"
             >
               <FileCheck size={17} aria-hidden="true" />
-              {document.status === ESignDocumentStatus.FullySigned
-                ? t('contracts.legal.viewSignedDocument')
+              {document.status === ESignDocumentStatus.FullySigned || hasValidCurrentUserDraft
+                ? t('contracts.legal.viewSignedDocument', { defaultValue: 'View Signed Contract' })
                 : t('contracts.legal.viewDocument')}
             </Link>
           )

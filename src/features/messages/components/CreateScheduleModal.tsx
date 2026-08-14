@@ -116,49 +116,42 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
       className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Outer Linear Brand Gradient Wrapper */}
-      <div className="relative w-full max-w-xl p-[1.5px] rounded-3xl bg-gradient-to-r from-[var(--brand)] via-teal-400 to-indigo-500 shadow-[0_25px_60px_-15px_rgba(0,229,255,0.25)] animate-in zoom-in-95 duration-200">
+      {/* Main Modal Shell */}
+      <div className="relative w-full max-w-xl bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
 
-        {/* Main Modal Shell */}
-        <div className="relative overflow-hidden rounded-[calc(1.5rem-1.5px)] bg-gradient-to-b from-card via-card/98 to-muted/30 backdrop-blur-xl flex flex-col">
+        {/* Modal Header */}
+        <div className="px-6 pt-6 pb-5 border-b border-border bg-muted/30 flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 shadow-sm">
+              <Calendar size={22} />
+            </span>
 
-          {/* Ambient Background Glows */}
-          <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-purple-500/15 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-12 -left-12 w-56 h-56 rounded-full bg-gradient-to-tr from-teal-500/15 to-blue-500/10 blur-3xl pointer-events-none" />
-
-          {/* Modal Header */}
-          <div className="relative z-10 px-6 pt-6 pb-5 border-b border-border/60 bg-gradient-to-r from-surface-muted/60 via-card to-card flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand)]/25 to-teal-500/20 text-[var(--brand)] border border-[var(--brand)]/35 shadow-md shadow-cyan-500/10">
-                <Calendar size={22} />
-              </span>
-
-              <div className="min-w-0 space-y-0.5">
-                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">
-                  <Sparkles size={11} />
-                  <span>{isCancel ? 'HỦY BỎ LỊCH HẸN' : 'GIGBRIDGE SCHEDULING SYSTEM'}</span>
-                </div>
-                <h2 className="text-lg font-black text-foreground tracking-tight truncate">
-                  {modalTitle}
-                </h2>
-                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Clock size={12} className="text-[var(--brand)] shrink-0" />
-                  <span>{t('schedule.vietnamTime', 'Múi giờ chuẩn: Việt Nam (GMT+7)')}</span>
-                </p>
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">
+                <Sparkles size={11} />
+                <span>{isCancel ? 'HỦY BỎ LỊCH HẸN' : 'GIGBRIDGE SCHEDULING SYSTEM'}</span>
               </div>
+              <h2 className="text-lg font-black text-foreground tracking-tight truncate">
+                {modalTitle}
+              </h2>
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Clock size={12} className="text-[var(--brand)] shrink-0" />
+                <span>{t('schedule.vietnamTime', 'Múi giờ chuẩn: Việt Nam (GMT+7)')}</span>
+              </p>
             </div>
-
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all border-none bg-transparent cursor-pointer shrink-0"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
           </div>
 
-          {/* Modal Content Body */}
-          <div className="relative z-10 p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all border-none bg-transparent cursor-pointer shrink-0"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modal Content Body */}
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
 
             {/* Mode: CANCEL */}
             {isCancel ? (
@@ -214,22 +207,24 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
 
                 {/* Late night / Midnight warning */}
                 {scheduleTime && isLateNight && (
-                  <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 space-y-2.5 text-xs shadow-sm">
-                    <div className="flex items-start gap-2.5">
-                      <AlertTriangle size={17} className="shrink-0 mt-0.5" />
-                      <span className="font-semibold leading-relaxed">
-                        Lịch hẹn bắt đầu vào khoảng nửa đêm (00:00 - 02:00 sáng tại Việt Nam). Vui lòng xác nhận bạn và đối tác đã thống nhất khung giờ này.
-                      </span>
+                  <div className="p-[1.5px] rounded-2xl bg-gradient-to-r from-amber-500 via-amber-500/40 to-transparent shadow-sm">
+                    <div className="p-4 rounded-[calc(1rem-1.5px)] bg-amber-500/15 text-foreground space-y-2.5 text-xs">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle size={17} className="shrink-0 mt-0.5 text-amber-500" />
+                        <span className="font-bold leading-relaxed text-foreground">
+                          Lịch hẹn bắt đầu vào khoảng nửa đêm (00:00 - 02:00 sáng tại Việt Nam). Vui lòng xác nhận bạn và đối tác đã thống nhất khung giờ này.
+                        </span>
+                      </div>
+                      <label className="flex items-center gap-2.5 font-bold cursor-pointer pt-2 text-foreground border-t border-amber-500/20">
+                        <input
+                          type="checkbox"
+                          checked={midnightConfirmed}
+                          onChange={e => setMidnightConfirmed(e.target.checked)}
+                          className="w-4 h-4 rounded border-amber-500/60 text-[var(--brand)] focus:ring-0 cursor-pointer"
+                        />
+                        <span className="text-foreground">Tôi đã hiểu và muốn tiếp tục đặt lịch</span>
+                      </label>
                     </div>
-                    <label className="flex items-center gap-2.5 font-bold cursor-pointer pt-1 text-foreground border-t border-amber-500/20">
-                      <input
-                        type="checkbox"
-                        checked={midnightConfirmed}
-                        onChange={e => setMidnightConfirmed(e.target.checked)}
-                        className="w-4 h-4 rounded border-amber-500 text-[var(--brand)] focus:ring-0 cursor-pointer"
-                      />
-                      <span>Tôi đã hiểu và muốn tiếp tục đặt lịch</span>
-                    </label>
                   </div>
                 )}
 
@@ -282,7 +277,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                     </label>
 
                     {/* Google Meet Card */}
-                    <div className="p-4.5 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card space-y-3 shadow-sm">
+                    <div className="p-4.5 rounded-2xl border border-emerald-500/30 bg-card space-y-3 shadow-sm">
                       <label className="flex items-center gap-3 text-xs font-bold text-foreground cursor-pointer">
                         <input
                           type="checkbox"
@@ -411,9 +406,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
               )}
             </button>
           </div>
-
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };

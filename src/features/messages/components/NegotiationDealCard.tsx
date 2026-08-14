@@ -41,7 +41,7 @@ function statusTone(status: DealStatus, isLatestOffer: boolean) {
   if (status === 'agreed') return 'border border-emerald-500/50 bg-emerald-600 text-white font-black shadow-sm';
   if (status === 'declined') return 'border border-red-500/50 bg-red-600 text-white font-black shadow-sm';
   if (status === 'pending_freelancer') return 'border border-amber-500/60 bg-amber-500 text-slate-950 font-black shadow-sm';
-  return 'border border-[var(--gb-cyan)]/60 bg-[var(--gb-cyan)] text-white font-black shadow-sm';
+  return 'border border-[var(--brand)]/60 bg-[var(--brand)] text-white font-black shadow-sm';
 }
 
 function DetailField({ label, value }: { label: string; value?: string | null }) {
@@ -88,7 +88,7 @@ function MilestoneDetail({
     <details className="group overflow-hidden rounded-2xl border border-border bg-card" open={index === 0}>
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 marker:hidden">
         <span className="flex min-w-0 items-center gap-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--gb-cyan)]/10 text-xs font-black text-[var(--gb-cyan)]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--brand)]/10 text-xs font-black text-[var(--brand)]">
             {index + 1}
           </span>
           <span className="min-w-0">
@@ -106,7 +106,7 @@ function MilestoneDetail({
           </span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
-          <span className="inline-flex items-center gap-1 font-black text-[var(--gb-cyan)]">
+          <span className="inline-flex items-center gap-1 font-black text-[var(--brand)]">
             <GCoinIcon size={16} />
             {milestone.amount.toLocaleString(language)}
           </span>
@@ -239,99 +239,94 @@ export function NegotiationDealCard({
 
   return (
     <>
-      <article className="msg-deal-card w-full max-w-[480px] my-2.5 p-[1.5px] rounded-3xl bg-gradient-to-r from-[var(--gb-cyan)] via-teal-400 to-indigo-500 shadow-[0_8px_30px_rgba(0,229,255,0.18)] transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,229,255,0.28)]">
-        <div className="relative overflow-hidden rounded-[calc(1.5rem-1.5px)] bg-gradient-to-b from-card via-card/95 to-muted/20 backdrop-blur-xl p-5">
-          {/* Ambient background glow */}
-          <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-[var(--gb-cyan)]/15 to-purple-500/10 blur-2xl rounded-full pointer-events-none" />
-
-          {/* Header */}
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--gb-cyan)]/20 to-teal-500/20 text-[var(--gb-cyan)] border border-[var(--gb-cyan)]/30 shadow-sm">
-                <CreditCard size={20} />
-              </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--gb-cyan)]">
-                  <Sparkles size={11} />
-                  <span>OFFICIAL FINAL OFFER</span>
-                </div>
-                <p className="truncate text-base font-black text-foreground mt-0.5">{t('messages.deal.title')}</p>
-              </div>
-            </div>
-            <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-extrabold shadow-sm ${statusTone(status, isLatestOffer)}`}>
-              {statusLabel}
+      <article className="msg-deal-card my-2.5 w-full max-w-[480px] rounded-3xl border border-[var(--brand)]/40 bg-card p-5 shadow-md shadow-[var(--brand)]/10 transition-all duration-300 hover:border-[var(--brand)] hover:shadow-lg hover:shadow-[var(--brand)]/15">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 shadow-sm">
+              <CreditCard size={20} />
             </span>
-          </div>
-
-          {/* Budget & Stats Grid */}
-          <div className="relative z-10 mt-4 p-4 rounded-2xl bg-surface-muted/40 border border-border/60 backdrop-blur-sm flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                {t('messages.deal.finalBudget')}
-              </p>
-              <p className="mt-1 flex items-center gap-1.5 text-2xl font-black text-[var(--gb-cyan)]">
-                <GCoinIcon size={24} />
-                {displayAmount.toLocaleString(language)}
-              </p>
-            </div>
-            <div className="flex gap-2 text-center">
-              <div className="min-w-[60px] rounded-xl bg-card/80 border border-border/60 px-2.5 py-1.5 shadow-sm">
-                <p className="text-sm font-black text-foreground">{milestones.length}</p>
-                <p className="text-[9px] font-bold uppercase text-muted-foreground">{t('messages.deal.milestones')}</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">
+                <Sparkles size={11} />
+                <span>OFFICIAL FINAL OFFER</span>
               </div>
-              <div className="min-w-[60px] rounded-xl bg-card/80 border border-border/60 px-2.5 py-1.5 shadow-sm">
-                <p className="text-sm font-black text-foreground">{workItemCount}</p>
-                <p className="text-[9px] font-bold uppercase text-muted-foreground">{t('messages.deal.tasks')}</p>
-              </div>
+              <p className="truncate text-base font-black text-foreground mt-0.5">{t('messages.deal.title')}</p>
             </div>
           </div>
-
-          {/* Milestones Preview List */}
-          {detail === undefined ? (
-            <p className="relative z-10 mt-3.5 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 size={13} className="animate-spin text-[var(--gb-cyan)]" />
-              {t('messages.deal.loadingDetails')}
-            </p>
-          ) : milestones.length ? (
-            <ol className="relative z-10 mt-3.5 space-y-2 border-t border-border/60 pt-3.5">
-              {milestones.slice(0, 2).map((milestone, index) => (
-                <li key={milestone.id || index} className="flex items-center justify-between gap-3 text-xs p-2 rounded-xl bg-muted/30 border border-border/40">
-                  <span className="min-w-0 truncate text-foreground font-semibold flex items-center gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--gb-cyan)]/15 text-[10px] font-black text-[var(--gb-cyan)]">
-                      {index + 1}
-                    </span>
-                    <span className="truncate">{milestone.title?.trim() || t('messages.deal.untitledMilestone')}</span>
-                  </span>
-                  <span className="shrink-0 font-extrabold text-[var(--gb-cyan)] flex items-center gap-1">
-                    <GCoinIcon size={12} />
-                    {milestone.amount.toLocaleString(language)}
-                  </span>
-                </li>
-              ))}
-              {milestones.length > 2 && (
-                <li className="text-[11px] font-extrabold text-[var(--gb-cyan)] pl-1">
-                  + {t('messages.deal.moreMilestones', { count: milestones.length - 2 })}
-                </li>
-              )}
-            </ol>
-          ) : (
-            <p className="relative z-10 mt-3.5 border-t border-border/60 pt-3.5 text-xs text-muted-foreground">
-              {t('messages.deal.noMilestones')}
-            </p>
-          )}
-
-          {/* Action Trigger Button */}
-          <button
-            ref={triggerRef}
-            type="button"
-            onClick={() => setIsOpen(true)}
-            className="relative z-10 mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white shadow-md shadow-blue-500/20 px-4 py-3 text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer border-none"
-          >
-            <FileText size={15} />
-            <span>{t('messages.deal.viewDetails')}</span>
-            <ArrowRight size={14} />
-          </button>
+          <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-extrabold shadow-sm ${statusTone(status, isLatestOffer)}`}>
+            {statusLabel}
+          </span>
         </div>
+
+        {/* Budget & Stats Grid */}
+        <div className="mt-4 p-4 rounded-2xl bg-muted/40 border border-border/80 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {t('messages.deal.finalBudget')}
+            </p>
+            <p className="mt-1 flex items-center gap-1.5 text-2xl font-black text-[var(--brand)]">
+              <GCoinIcon size={24} />
+              {displayAmount.toLocaleString(language)}
+            </p>
+          </div>
+          <div className="flex gap-2 text-center">
+            <div className="min-w-[60px] rounded-xl bg-card border border-border px-2.5 py-1.5 shadow-sm">
+              <p className="text-sm font-black text-foreground">{milestones.length}</p>
+              <p className="text-[9px] font-bold uppercase text-muted-foreground">{t('messages.deal.milestones')}</p>
+            </div>
+            <div className="min-w-[60px] rounded-xl bg-card border border-border px-2.5 py-1.5 shadow-sm">
+              <p className="text-sm font-black text-foreground">{workItemCount}</p>
+              <p className="text-[9px] font-bold uppercase text-muted-foreground">{t('messages.deal.tasks')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Milestones Preview List */}
+        {detail === undefined ? (
+          <p className="mt-3.5 flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 size={13} className="animate-spin text-[var(--brand)]" />
+            {t('messages.deal.loadingDetails')}
+          </p>
+        ) : milestones.length ? (
+          <ol className="mt-3.5 space-y-2 border-t border-border/80 pt-3.5">
+            {milestones.slice(0, 2).map((milestone, index) => (
+              <li key={milestone.id || index} className="flex items-center justify-between gap-3 text-xs p-2.5 rounded-xl bg-muted/30 border border-border/50">
+                <span className="min-w-0 truncate text-foreground font-semibold flex items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--brand)]/15 text-[10px] font-black text-[var(--brand)]">
+                    {index + 1}
+                  </span>
+                  <span className="truncate">{milestone.title?.trim() || t('messages.deal.untitledMilestone')}</span>
+                </span>
+                <span className="shrink-0 font-extrabold text-[var(--brand)] flex items-center gap-1">
+                  <GCoinIcon size={12} />
+                  {milestone.amount.toLocaleString(language)}
+                </span>
+              </li>
+            ))}
+            {milestones.length > 2 && (
+              <li className="text-[11px] font-extrabold text-[var(--brand)] pl-1">
+                + {t('messages.deal.moreMilestones', { count: milestones.length - 2 })}
+              </li>
+            )}
+          </ol>
+        ) : (
+          <p className="mt-3.5 border-t border-border/80 pt-3.5 text-xs text-muted-foreground">
+            {t('messages.deal.noMilestones')}
+          </p>
+        )}
+
+        {/* Action Trigger Button */}
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white shadow-md shadow-blue-500/15 px-4 py-3 text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer border-none"
+        >
+          <FileText size={15} />
+          <span>{t('messages.deal.viewDetails')}</span>
+          <ArrowRight size={14} />
+        </button>
       </article>
 
       {isOpen && createPortal(
@@ -350,7 +345,7 @@ export function NegotiationDealCard({
           >
             <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand)]/10 text-[var(--brand)]">
                   <CreditCard size={21} />
                 </span>
                 <div className="min-w-0">
@@ -365,19 +360,19 @@ export function NegotiationDealCard({
                 type="button"
                 onClick={closeModal}
                 aria-label={t('messages.deal.close')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gb-cyan)]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
               >
                 <X size={18} />
               </button>
             </header>
 
             <div className="messages-custom-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-              <section className="grid gap-3 rounded-2xl border border-[var(--gb-cyan)]/25 bg-[var(--gb-cyan)]/5 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+              <section className="grid gap-3 rounded-2xl border border-[var(--brand)]/25 bg-[var(--brand)]/5 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
                     {t('messages.deal.finalBudget')}
                   </p>
-                  <p className="mt-1 flex items-center gap-1 text-3xl font-black text-[var(--gb-cyan)]">
+                  <p className="mt-1 flex items-center gap-1 text-3xl font-black text-[var(--brand)]">
                     <GCoinIcon size={27} />
                     {displayAmount.toLocaleString(language)}
                   </p>
@@ -400,7 +395,7 @@ export function NegotiationDealCard({
                         {t('messages.deal.offeredOn')}
                       </dt>
                       <dd className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <CalendarDays size={14} className="text-[var(--gb-cyan)]" />
+                        <CalendarDays size={14} className="text-[var(--brand)]" />
                         {createdAt}
                       </dd>
                     </div>
@@ -490,7 +485,7 @@ export function NegotiationDealCard({
                       closeModal();
                       void onAccept(offerId, displayAmount);
                     }}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border-none bg-[var(--gb-cyan)] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border-none bg-[var(--brand)] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {actionBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                     {t('messages.deal.accept')}
