@@ -26,6 +26,7 @@ import {
   parseJobDuration,
   type JobDurationUnit,
 } from '../utils/jobDuration';
+import { clampMilestonesToExpectedTargets } from '../utils/milestoneClamping';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -520,7 +521,10 @@ export function usePostJob() {
           majorName: job.majorName || '',
           categoryName: job.categoryName || '',
         });
-        setMilestonePlans(withoutWorkBreakdownItems(job.milestonePlans || []));
+        const activeBudget = Number(hasBudgetFromWizardNavigation ? form.budget : loadedForm.budget) || null;
+        const activeWeeks = loadedForm.estimatedDurationValue ? durationToWeeks(loadedForm.estimatedDurationValue, loadedForm.estimatedDurationUnit) : 0;
+        const hydratedPlans = withoutWorkBreakdownItems(job.milestonePlans || []);
+        setMilestonePlans(clampMilestonesToExpectedTargets(hydratedPlans, activeBudget, activeWeeks));
         setAttachments(job.attachments || []);
         setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
         setSkillNameById(prev => {
@@ -933,7 +937,10 @@ export function usePostJob() {
       let nextQuestions: QuestionInput[] = [];
 
       if (rawMilestones && rawMilestones.length > 0) {
-        nextMilestones = withoutWorkBreakdownItems(rawMilestones);
+        const strippedMilestones = withoutWorkBreakdownItems(rawMilestones);
+        const targetBudgetValue = generatedData.budgetMin ?? generatedData.budgetMax ?? (form.budget ? Number(form.budget) : null);
+        const targetWeeksValue = duration.value ? durationToWeeks(duration.value, duration.unit) : expectedDurationWeeks;
+        nextMilestones = clampMilestonesToExpectedTargets(strippedMilestones, targetBudgetValue, targetWeeksValue);
       }
       if (rawQuestions && rawQuestions.length > 0) {
         nextQuestions = rawQuestions.map((qText: string) => ({
@@ -1353,6 +1360,11 @@ export function usePostJob() {
   const navigateWizard = async (path: '/jobs/post' | '/jobs/post/plan' | '/jobs/post/review'): Promise<void> => {
     setErrorMessage(null);
     try {
+      if (path === '/jobs/post/plan' && milestonePlans.length > 0) {
+        const expectedBudgetVal = form.budget ? Number(form.budget) : null;
+        const clamped = clampMilestonesToExpectedTargets(milestonePlans, expectedBudgetVal, expectedDurationWeeks);
+        setMilestonePlans(clamped);
+      }
       const currentJobPostId = await flushAutosave();
       allowNextNavigation();
       navigate(path, { state: buildNavigationState(currentJobPostId) });
