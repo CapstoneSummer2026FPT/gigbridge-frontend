@@ -2,7 +2,10 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "cleanUrls": true,
+  "functions": {
+    "api/seo.ts": { "includeFiles": ".seo-build/**" },
+    "api/sitemap.ts": { "includeFiles": ".seo-build/**" }
+  },
   "rewrites": [
     {
       "source": "/:path*",

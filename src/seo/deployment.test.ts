@@ -21,8 +21,15 @@ describe('SEO deployment rules', () => {
   it('routes legacy URLs, www canonicalization, SSR, and SPA fallback in order', () => {
     const config = JSON.parse(
       readFileSync('vercel.json', 'utf8'),
-    ) as { readonly rewrites: ReadonlyArray<{ readonly source: string; readonly destination: string }> };
+    ) as {
+      readonly cleanUrls?: boolean;
+      readonly functions: Readonly<Record<string, { readonly includeFiles: string }>>;
+      readonly rewrites: ReadonlyArray<{ readonly source: string; readonly destination: string }>;
+    };
 
+    expect(config.cleanUrls).not.toBe(true);
+    expect(config.functions['api/seo.ts']?.includeFiles).toBe('.seo-build/**');
+    expect(config.functions['api/sitemap.ts']?.includeFiles).toBe('.seo-build/**');
     expect(config.rewrites.slice(0, 3)).toEqual([
       expect.objectContaining({ source: '/:path*', destination: '/api/redirect?target=https://gigbridge.id.vn/:path*' }),
       { source: '/jobs/browse', destination: '/api/redirect?target=/jobs' },

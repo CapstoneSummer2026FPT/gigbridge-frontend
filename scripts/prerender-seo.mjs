@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -18,5 +18,3 @@ for (const route of routes) {
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, serverModule.prerenderMarketingDocument(route, template), 'utf8');
 }
-
-await rm(serverBuildDirectory, { recursive: true, force: true });

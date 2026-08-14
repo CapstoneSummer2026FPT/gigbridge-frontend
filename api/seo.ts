@@ -1,5 +1,16 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { renderSeoResponse } from '../src/seo/server.js';
+
+interface SeoServerModule {
+  readonly renderSeoResponse: (path: string) => Promise<{
+    readonly status: number;
+    readonly html: string;
+  }>;
+}
+
+const SEO_SERVER_MODULE_PATH = '../.seo-build/server.js';
+
+const loadSeoServer = async (): Promise<SeoServerModule> =>
+  import(SEO_SERVER_MODULE_PATH) as Promise<SeoServerModule>;
 
 interface SeoRequest extends IncomingMessage {
   readonly query?: Readonly<Record<string, string | readonly string[]>>;
@@ -13,6 +24,7 @@ const requestedPath = (request: SeoRequest): string => {
 
 export default async function handler(request: SeoRequest, response: ServerResponse): Promise<void> {
   const path = requestedPath(request);
+  const { renderSeoResponse } = await loadSeoServer();
   const result = await renderSeoResponse(path);
   const isPublicListing = path === '/jobs' || path === '/freelancers';
   response.statusCode = result.status;
