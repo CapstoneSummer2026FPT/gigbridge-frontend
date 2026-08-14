@@ -41,6 +41,12 @@ export default defineConfig(({ mode }) => ({
     },
   },
 
+  // The Vercel functions load the generated SEO server bundle dynamically.
+  // Keep it self-contained so runtime file tracing does not miss React SSR.
+  ssr: {
+    noExternal: true,
+  },
+
   // Keep diagnostics available while developing without shipping API errors,
   // identifiers, or verbose SignalR traces to production browsers.
   esbuild: mode === 'production'

@@ -22,7 +22,7 @@ import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 
 const VND_PER_GIGCOIN = 1000;
-const MIN_VND = 10_000;
+const MIN_VND = 50_000;
 const MAX_VND = 250_000_000;
 const LAST_PAYOS_ORDER_CODE_KEY = 'gigbridge:lastPayOsTopUpOrderCode';
 
@@ -445,11 +445,25 @@ export default function WalletDepositScreen() {
                   />
                 </div>
                 <div className="flex items-center justify-between text-[11px] font-bold text-text-muted px-1">
-                  <span>Tối thiểu: {fmtVnd(MIN_VND)} đ</span>
-                  <span>Tối đa: {fmtVnd(MAX_VND)} đ</span>
+                  <span>{t('walletDeposit.minAmount', { amount: `${fmtVnd(MIN_VND)} đ`, defaultValue: `Tối thiểu: ${fmtVnd(MIN_VND)} đ` })}</span>
+                  <span>{t('walletDeposit.maxAmount', { amount: `${fmtVnd(MAX_VND)} đ`, defaultValue: `Tối đa: ${fmtVnd(MAX_VND)} đ` })}</span>
                 </div>
 
-                {customVnd && parseInt(customVnd, 10) > 0 && (
+                {customVnd && parseInt(customVnd, 10) > 0 && parseInt(customVnd, 10) < MIN_VND && (
+                  <div className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 flex items-center gap-2 text-xs font-bold text-rose-600 dark:text-rose-400 animate-in fade-in">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>{t('walletDeposit.errorMinAmount', { amount: `${fmtVnd(MIN_VND)} đ`, minCoin: MIN_VND / VND_PER_GIGCOIN, defaultValue: `Số tiền nạp tối thiểu là ${fmtVnd(MIN_VND)} đ (${MIN_VND / VND_PER_GIGCOIN} GigCoin).` })}</span>
+                  </div>
+                )}
+
+                {customVnd && parseInt(customVnd, 10) > MAX_VND && (
+                  <div className="mt-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 flex items-center gap-2 text-xs font-bold text-rose-600 dark:text-rose-400 animate-in fade-in">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>{t('walletDeposit.errorMaxAmount', { amount: `${fmtVnd(MAX_VND)} đ`, defaultValue: `Số tiền nạp tối đa là ${fmtVnd(MAX_VND)} đ.` })}</span>
+                  </div>
+                )}
+
+                {customVnd && parseInt(customVnd, 10) >= MIN_VND && parseInt(customVnd, 10) <= MAX_VND && (
                   <div className="mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 animate-in fade-in">
                     <span>{t('walletDeposit.gigcoinReceived')}:</span>
                     <span className="flex items-center gap-1 font-black text-sm">

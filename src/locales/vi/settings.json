@@ -70,6 +70,8 @@
   "headline": "Chức danh / Headline",
   "location": "Vị trí / Địa điểm",
   "availability": "Trạng thái sẵn sàng",
+  "searchEngineVisibility": "Cho phép hiển thị hồ sơ công khai",
+  "searchEngineVisibilityDescription": "Khi bật, hồ sơ chuyên môn của bạn có thể xuất hiện trên GigBridge và công cụ tìm kiếm. Email và số điện thoại không được công khai.",
   "major": "Chuyên ngành (Major)",
   "categories": "Danh mục",
   "skills": "Kỹ năng",

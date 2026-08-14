@@ -331,6 +331,10 @@ export function useJobDetail() {
   // ── Actions ───────────────────────────────────────────────────
   const toggleSavedJob = async () => {
     if (!job) return;
+    if (!user) {
+      navigate(`/auth/login?returnUrl=${encodeURIComponent(`/jobs/${job.id}`)}`);
+      return;
+    }
     if (!user || role !== UserRole.Freelancer) {
       toast.error('Please log in as a freelancer to save jobs.');
       return;
@@ -357,7 +361,11 @@ export function useJobDetail() {
   };
 
   const handleApplyJob = async () => {
-    if (!job || !user) return;
+    if (!job) return;
+    if (!user) {
+      navigate(`/auth/login?returnUrl=${encodeURIComponent(`/jobs/${job.id}`)}`);
+      return;
+    }
     if (job.status !== 'open' || job.visibility === 3) {
       setProposalMessage('This job post is no longer accepting proposals.');
       return;
