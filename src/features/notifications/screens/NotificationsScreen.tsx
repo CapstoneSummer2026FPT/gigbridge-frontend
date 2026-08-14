@@ -1,57 +1,40 @@
+import type { ReactNode } from 'react';
 import {
-  Bell,
-  CheckCheck,
-  Search,
-  ExternalLink,
-  Calendar,
-  Sparkles,
-  Circle,
-  CheckCircle,
-  FileText,
-  FileCheck2,
-  MessageSquare,
-  Star,
-  LayoutGrid,
-  Rows,
-  RotateCw,
-  Filter,
+  AlertTriangle,
   ArrowUpDown,
+  BarChart3,
+  Bell,
+  Bot,
+  Briefcase,
+  Calendar,
+  CalendarDays,
+  CheckCheck,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Circle,
+  ExternalLink,
+  FileCheck2,
+  FileText,
+  Filter,
   Inbox,
-  BarChart3,
+  LayoutGrid,
+  MessageSquare,
+  RotateCw,
+  Rows,
+  Search,
+  Sparkles,
+  Star,
   Zap,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
-import { useNotificationsScreen, type NotificationCategoryGroup, type PageSizeOption, type SortOrderOption } from '../hooks/useNotificationsScreen';
-import { CATEGORY_GROUP_ICONS } from '../utils/notificationDesignRules';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { useNotificationsScreen, type PageSizeOption, type SortOrderOption } from '../hooks/useNotificationsScreen';
+import { CATEGORY_GROUP_ICONS, type NotificationCategoryGroup } from '../utils/notificationDesignRules';
 import '../styles/notifications-screen.css';
 
-const notificationIcons: Record<string, ReactNode> = {
-  job: <Briefcase size={16} className="text-cyan" />,
-  proposal: <Briefcase size={16} className="text-cyan" />,
-  contract: <FileText size={16} className="text-cyan" />,
-  message: <MessageSquare size={16} className="text-purple" />,
-  milestone: <CheckCircle size={16} className="text-green" />,
-  payment: <GCoinIcon size={16} />,
-  review: <Star size={16} className="text-amber" />,
-  dispute: <AlertTriangle size={16} className="text-red" />,
-  ai_suggestion: <Bot size={16} className="text-purple" />,
-  system: <Bell size={16} className="text-secondary" />,
-  schedule: <CalendarDays size={16} className="text-cyan" />,
-};
 
-type NotificationTab = 'all' | 'unread';
-
-const relativeTime = (value: string) => {
-  const timestamp = new Date(value).getTime();
-  if (!Number.isFinite(timestamp)) return '';
-  const hours = Math.max(0, Math.floor((Date.now() - timestamp) / 3_600_000));
-  if (hours < 1) return 'Just now';
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-};
 
 export default function NotificationsScreen() {
   const {
@@ -361,6 +344,18 @@ export default function NotificationsScreen() {
                             {isVi
                               ? 'Gợi ý thông minh từ Trợ lý GigBridge AI'
                               : 'Smart recommendation from GigBridge AI'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Embedded Receipt Highlight */}
+                      {notification.type === 'receipt' && (
+                        <div className="notif-bento-widget-ai border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          <FileCheck2 size={15} />
+                          <span>
+                            {isVi
+                              ? 'Biên nhận & hóa đơn giao dịch điện tử'
+                              : 'Official e-receipt & transaction record'}
                           </span>
                         </div>
                       )}

@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Crown,
+  FileCheck2,
   FileText,
   MessageSquare,
   ShieldAlert,
@@ -21,6 +22,7 @@ export type NotificationCategoryGroup =
   | 'unread'
   | 'work_contracts'
   | 'payments'
+  | 'receipts'
   | 'messages_schedule'
   | 'alerts_ai'
   | 'system';
@@ -83,6 +85,16 @@ export const NOTIFICATION_DESIGN_RULES: Record<UiNotificationType, NotificationD
     icon: <Wallet size={18} className="text-brand" />,
     categoryLabelVi: 'Thanh toán',
     categoryLabelEn: 'Payment',
+    badgeClass: 'bg-brand/10 border-brand/20 text-brand font-extrabold',
+    accentClass: 'border-l-brand',
+    iconBgClass: 'bg-brand/10 border-brand/20 text-brand',
+  },
+  receipt: {
+    type: 'receipt',
+    group: 'receipts',
+    icon: <FileCheck2 size={18} className="text-brand" />,
+    categoryLabelVi: 'Biên nhận',
+    categoryLabelEn: 'Receipt',
     badgeClass: 'bg-brand/10 border-brand/20 text-brand font-extrabold',
     accentClass: 'border-l-brand',
     iconBgClass: 'bg-brand/10 border-brand/20 text-brand',
@@ -194,6 +206,7 @@ export const CATEGORY_GROUP_ICONS: Record<NotificationCategoryGroup, ReactNode> 
   unread: <Bell size={15} className="text-brand" />,
   work_contracts: <Briefcase size={15} className="text-brand" />,
   payments: <Wallet size={15} className="text-brand" />,
+  receipts: <FileCheck2 size={15} className="text-brand" />,
   messages_schedule: <CalendarDays size={15} className="text-brand" />,
   alerts_ai: <Bot size={15} className="text-brand" />,
   system: <Bell size={15} className="text-text-muted" />,

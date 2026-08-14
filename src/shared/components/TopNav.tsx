@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare, Sparkles, ArrowRight, Clock } from 'lucide-react';
+import { Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -29,8 +29,7 @@ const navItems = [
 ];
 
 export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}) {
-  const { t, i18n } = useTranslation();
-  const isVi = i18n.language === 'vi';
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);

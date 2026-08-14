@@ -1,5 +1,4 @@
-import React from 'react';
-import { AlertTriangle, Ban, CheckCircle2, Info, Loader2, X, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, Loader2, X, XCircle } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export type ConfirmationModalVariant = 'danger' | 'warning' | 'info' | 'success';

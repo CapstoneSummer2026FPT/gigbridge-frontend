@@ -31,6 +31,7 @@ export interface UseNotificationsScreenReturn {
   totalPages: number;
   totalFilteredCount: number;
   paginatedNotifications: UiNotification[];
+  notifications: UiNotification[];
   categoryCounts: Record<NotificationCategoryGroup, number>;
   unreadCount: number;
   readCount: number;
@@ -86,6 +87,7 @@ export function useNotificationsScreen(): UseNotificationsScreenReturn {
       unread: unreadCount,
       work_contracts: 0,
       payments: 0,
+      receipts: 0,
       messages_schedule: 0,
       alerts_ai: 0,
       system: 0,
@@ -147,6 +149,7 @@ export function useNotificationsScreen(): UseNotificationsScreenReturn {
       { id: 'unread', label: tNotif('notifications.tabs.unread', { defaultValue: 'Chưa đọc' }) },
       { id: 'work_contracts', label: tNotif('notifications.tabs.work_contracts', { defaultValue: 'Công việc & Hợp đồng' }) },
       { id: 'payments', label: tNotif('notifications.tabs.payments', { defaultValue: 'Thanh toán' }) },
+      { id: 'receipts', label: tNotif('notifications.tabs.receipts', { defaultValue: 'Biên nhận & Hóa đơn' }) },
       { id: 'messages_schedule', label: tNotif('notifications.tabs.messages_schedule', { defaultValue: 'Tin nhắn & Lịch' }) },
       { id: 'alerts_ai', label: tNotif('notifications.tabs.alerts_ai', { defaultValue: 'Cảnh báo & AI' }) },
       { id: 'system', label: tNotif('notifications.tabs.system', { defaultValue: 'Hệ thống' }) },

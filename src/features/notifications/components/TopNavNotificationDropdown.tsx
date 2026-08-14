@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Bell, Sparkles, ChevronRight, ArrowRight, Clock } from 'lucide-react';
 import type { User } from '../../../types/models/User';
