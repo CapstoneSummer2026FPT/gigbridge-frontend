@@ -1,13 +1,13 @@
 import type {
   NegotiationMilestoneDto,
   NegotiationWorkItemDto,
-} from '../../types/models/Message';
-import { currentLocalDate } from '../proposals/utils/proposalMilestonePlan';
+} from '../../../types/models/Message';
+import { currentLocalDate } from '../../proposals/utils/proposalMilestonePlan';
 import {
   calculateProposalBudget,
   calculateProposalDuration,
-} from '../proposals/utils/proposalTotals';
-import { computeChainedDueDates, parseJobDuration } from '../jobs/utils/jobDuration';
+} from '../../proposals/utils/proposalTotals';
+import { computeChainedDueDates, parseJobDuration } from '../../jobs/utils/jobDuration';
 
 const MAX_AMOUNT = 9_999_999_999_999_999.99;
 

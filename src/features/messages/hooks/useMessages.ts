@@ -20,8 +20,8 @@ import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { disputeGetAPI } from '../../../api/disputeAPI';
-import { getMessageRoom } from '../messageRooms';
-import { getContractWorkflowRoute } from '../contractWorkflowRoute';
+import { getMessageRoom } from '../utils/messageRooms';
+import { getContractWorkflowRoute } from '../utils/contractWorkflowRoute';
 import { useOngoingScheduleStatus } from './useOngoingScheduleStatus';
 import {
   calculateNegotiationBudget,
@@ -30,7 +30,7 @@ import {
   prepareNegotiationMilestonesForEditing,
   resolveNegotiationMilestones,
   validateNegotiationMilestones,
-} from '../negotiationMilestonePlan';
+} from '../utils/negotiationMilestonePlan';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
