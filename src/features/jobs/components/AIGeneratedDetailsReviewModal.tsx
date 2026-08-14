@@ -1,5 +1,6 @@
 import { X, Sparkles, Check } from 'lucide-react';
 import type { GenerateJobDescriptionDetailsResponse } from '../../../types/models/Job';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 interface Props {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export function AIGeneratedDetailsReviewModal({
   onOk,
   onCancel,
 }: Props) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const handleConfirm = onOk || onApprove || (() => {});
@@ -37,14 +39,16 @@ export function AIGeneratedDetailsReviewModal({
               <Sparkles size={22} className="text-primary-500" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-foreground">AI Job Post Generated</h3>
+              <h3 className="text-lg font-bold text-foreground">
+                {t('aiJobGeneratedModal.title', { defaultValue: 'Tạo Bài Đăng Tuyển Dụng AI Thành Công' })}
+              </h3>
             </div>
           </div>
           <button
             type="button"
             className="job-post-modal-close-btn"
             onClick={handleDismiss}
-            aria-label="Close"
+            aria-label={t('common.close', { defaultValue: 'Đóng' })}
           >
             <X size={20} />
           </button>
@@ -53,14 +57,22 @@ export function AIGeneratedDetailsReviewModal({
         {/* Modal Content */}
         <div className="job-post-modal-content py-3 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Your AI job description, budget, timeline, and skill requirements have been created successfully.
+            {t('aiJobGeneratedModal.description', {
+              defaultValue: 'Mô tả công việc, ngân sách, thời gian triển khai và danh sách kỹ năng đã được AI khởi tạo thành công.',
+            })}
           </p>
           <p className="mt-2 font-medium text-foreground">
-            Click <strong>Apply to Form</strong> to prefill these details into your draft, where you can inspect and edit them directly.
+            {t('aiJobGeneratedModal.instructionBefore', { defaultValue: 'Bấm ' })}
+            <strong>{t('aiJobGeneratedModal.applyToForm', { defaultValue: 'Áp dụng vào mẫu' })}</strong>
+            {t('aiJobGeneratedModal.instructionAfter', {
+              defaultValue: ' để tự động điền các thông tin này vào bản nháp của bạn, nơi bạn có thể kiểm tra và chỉnh sửa trực tiếp.',
+            })}
           </p>
           {data?.title && (
             <div className="mt-3 rounded-lg border border-border/80 bg-muted/30 p-2.5 text-xs">
-              <span className="font-semibold text-foreground">Suggested Title: </span>
+              <span className="font-semibold text-foreground">
+                {t('aiJobGeneratedModal.suggestedTitle', { defaultValue: 'Tiêu đề gợi ý: ' })}
+              </span>
               <span className="text-muted-foreground">{data.title}</span>
             </div>
           )}
@@ -69,11 +81,11 @@ export function AIGeneratedDetailsReviewModal({
         {/* Modal Footer Actions */}
         <div className="job-post-modal-footer pt-3">
           <button type="button" className="job-post-btn-secondary" onClick={handleDismiss}>
-            Cancel
+            {t('common.cancel', { defaultValue: 'Hủy' })}
           </button>
           <button type="button" className="job-post-btn-primary" onClick={handleConfirm}>
             <Check size={18} className="mr-2 inline" />
-            Apply to Form
+            {t('aiJobGeneratedModal.applyToForm', { defaultValue: 'Áp dụng vào mẫu' })}
           </button>
         </div>
       </div>

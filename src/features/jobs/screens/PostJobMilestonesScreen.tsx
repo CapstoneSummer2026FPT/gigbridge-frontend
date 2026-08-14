@@ -26,7 +26,7 @@ export default function PostJobMilestonesScreen() {
   const routeState = location.state as PostJobRouteState | null;
   const {
     form, previewTitle, errorMessage, isDraftInitializing, draftError,
-    milestonePlans, setMilestonePlans, milestoneErrors, setMilestoneErrors,
+    milestonePlans, milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
     expandedMilestones, setExpandedMilestones, questions, setQuestions,
     aiInterviewEnabled, setAiInterviewEnabled,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver, handleDragEnd,
@@ -147,13 +147,14 @@ export default function PostJobMilestonesScreen() {
         {milestonesOpen && (
           <div className="job-post-section__body">
             <NestedMilestonePlanEditor
-              value={milestonePlans as EditableMilestonePlan[]}
+              value={milestonePlansWithDeadlines as EditableMilestonePlan[]}
               onChange={plans => {
                 setMilestonePlans(plans);
                 setMilestoneErrors({});
               }}
               optional
               showDueDate
+              dueDateReadOnly
               showWorkItems={false}
               title={t('postJob.baselineMilestoneTitle')}
               description={t('postJob.baselineMilestoneDescription')}

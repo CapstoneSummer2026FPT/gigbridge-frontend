@@ -19,12 +19,14 @@ import {
   type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
+  computeChainedDueDates,
   durationToWeeks,
   formatJobDuration,
   isValidJobDurationValue,
   parseJobDuration,
   type JobDurationUnit,
 } from '../utils/jobDuration';
+import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from '../utils/milestoneClamping';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -421,34 +423,15 @@ export function usePostJob() {
     }
   }, [isInstantJobMode]);
 
-  // Dynamically shift milestone due dates sequentially when form.deadline changes
-  useEffect(() => {
-    if (!form.deadline || milestonePlans.length === 0) return;
-
-    let previousDueDate = form.deadline;
-    let modified = false;
-
-    const nextMilestones = milestonePlans.map(milestone => {
-      // If a milestone is missing dueDate, or is before/equal to closing date, or is out of order:
-      if (!milestone.dueDate || milestone.dueDate <= form.deadline || (previousDueDate && milestone.dueDate <= previousDueDate)) {
-        const duration = parseJobDuration(milestone.estimatedDuration);
-        const weeks = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 4.333 : duration.unit === 'years' ? 52 : 1) : 2;
-        const days = Math.ceil(weeks * 7);
-
-        const start = previousDueDate ? new Date(previousDueDate) : new Date(form.deadline);
-        const newDueDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-        previousDueDate = newDueDate;
-        modified = true;
-        return { ...milestone, dueDate: newDueDate };
-      }
-      previousDueDate = milestone.dueDate;
-      return milestone;
-    });
-
-    if (modified) {
-      setMilestonePlans(nextMilestones);
-    }
+  // Milestone deadlines are fully derived: Milestone 1 starts the day after the job's
+  // closing date (form.deadline), and each following milestone starts the day after the
+  // previous milestone's computed deadline — work can't begin the same calendar day the
+  // prior stage ends. This recalculates on every trigger that can affect it (duration
+  // edits, add/remove/reorder, or form.deadline changing) since it's a plain memo over
+  // the current milestonePlans/form.deadline, not a stateful effect.
+  const milestonePlansWithDeadlines = useMemo<JobPostMilestonePlanDto[]>(() => {
+    const dueDates = computeChainedDueDates(form.deadline, milestonePlans.map(milestone => milestone.estimatedDuration));
+    return milestonePlans.map((milestone, index) => ({ ...milestone, dueDate: dueDates[index] }));
   }, [form.deadline, milestonePlans]);
 
   useEffect(() => {
@@ -516,7 +499,10 @@ export function usePostJob() {
           majorName: job.majorName || '',
           categoryName: job.categoryName || '',
         });
-        setMilestonePlans(withoutWorkBreakdownItems(job.milestonePlans || []));
+        const activeBudget = Number(hasBudgetFromWizardNavigation ? form.budget : loadedForm.budget) || null;
+        const activeWeeks = loadedForm.estimatedDurationValue ? durationToWeeks(loadedForm.estimatedDurationValue, loadedForm.estimatedDurationUnit) : 0;
+        const hydratedPlans = withoutWorkBreakdownItems(job.milestonePlans || []);
+        setMilestonePlans(clampMilestonesToExpectedTargets(hydratedPlans, activeBudget, activeWeeks));
         setAttachments(job.attachments || []);
         setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
         setSkillNameById(prev => {
@@ -903,12 +889,15 @@ export function usePostJob() {
     const durationDays = (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 2;
     const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+    const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
+    const canonicalBudgetNum = canonicalBudgetStr ? Number(canonicalBudgetStr) : null;
+
     const promise = jobAPI.generateAIHiringPlan({
       clientPrompt: promptText,
       title: jobTitle || '',
       description: jobDescription || '',
-      budgetMin: generatedData.budgetMin,
-      budgetMax: generatedData.budgetMax,
+      budgetMin: canonicalBudgetNum,
+      budgetMax: canonicalBudgetNum,
       estimatedDuration: generatedData.estimatedDuration,
       proposalClosingDate: computedDeadline,
     }, abortController.signal).then(response => {
@@ -930,7 +919,10 @@ export function usePostJob() {
       let nextQuestions: QuestionInput[] = [];
 
       if (rawMilestones && rawMilestones.length > 0) {
-        nextMilestones = withoutWorkBreakdownItems(rawMilestones);
+        const strippedMilestones = withoutWorkBreakdownItems(rawMilestones);
+        const targetBudgetValue = generatedData.budgetMin ?? generatedData.budgetMax ?? (form.budget ? Number(form.budget) : null);
+        const targetWeeksValue = duration.value ? durationToWeeks(duration.value, duration.unit) : expectedDurationWeeks;
+        nextMilestones = clampMilestonesToExpectedTargets(strippedMilestones, targetBudgetValue, targetWeeksValue);
       }
       if (rawQuestions && rawQuestions.length > 0) {
         nextQuestions = rawQuestions.map((qText: string) => ({
@@ -1006,7 +998,7 @@ export function usePostJob() {
         skillIds: generatedSkillIds,
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
-        budget: toStringValue(generatedData.budgetMin ?? generatedData.budgetMax) || prev.budget,
+        budget: canonicalBudgetStr || toStringValue(generatedData.budgetMin ?? generatedData.budgetMax) || prev.budget,
         currency: prev.currency || GIGCOIN_CURRENCY_CODE,
         estimatedDurationValue: duration.value || prev.estimatedDurationValue || '2',
         estimatedDurationUnit: duration.unit || prev.estimatedDurationUnit || 'weeks',
@@ -1075,26 +1067,20 @@ export function usePostJob() {
   };
 
   const validateMilestonePlans = (): PostJobValidationIssue | null => {
+    if (milestonePlans.length > 0 && !form.deadline) {
+      return {
+        message: t('postJobWizard.validation.milestoneDeadlineRequiresClosingDate'),
+        section: 'terms',
+        fieldSelector: '#job-deadline',
+      };
+    }
+
     const errors: Record<string, string> = {};
-    const today = new Date().toISOString().slice(0, 10);
-    let previousDueDate: string | null = null;
     for (const [index, milestone] of milestonePlans.entries()) {
       if (!milestone.title?.trim()) errors[`${index}.title`] = t('postJobWizard.validation.milestoneTitleRequired');
       if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = t('postJobWizard.validation.milestoneAmountInvalid');
       if (!/^\s*[1-9]\d*\s+(week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
         errors[`${index}.estimatedDuration`] = t('postJobWizard.validation.milestoneDurationInvalid');
-      }
-      if (!milestone.dueDate) {
-        errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineRequired');
-      } else {
-        if (milestone.dueDate < today) errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlinePast');
-        if (form.deadline && milestone.dueDate <= form.deadline) {
-          errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineAfterClosing');
-        }
-        if (previousDueDate && milestone.dueDate <= previousDueDate) {
-          errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineSequence');
-        }
-        previousDueDate = milestone.dueDate;
       }
       if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = t('postJobWizard.validation.milestoneDeliverablesRequired');
       if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = t('postJobWizard.validation.milestoneAcceptanceRequired');
@@ -1148,7 +1134,7 @@ export function usePostJob() {
     const durationValue = durationOverrideRef.current ? String(milestoneTotalWeeks) : form.estimatedDurationValue;
     const durationUnit: JobDurationUnit = durationOverrideRef.current ? 'weeks' : form.estimatedDurationUnit;
     const finalQuestions = overrides?.questions || questions;
-    const finalMilestones = overrides?.milestonePlans || milestonePlans;
+    const finalMilestones = overrides?.milestonePlans || milestonePlansWithDeadlines;
     const questionsWithOrderOverrides = finalQuestions.map((question, index) => ({ ...question, orderIndex: index }));
 
     return {
@@ -1357,6 +1343,11 @@ export function usePostJob() {
   const navigateWizard = async (path: '/jobs/post' | '/jobs/post/plan' | '/jobs/post/review'): Promise<void> => {
     setErrorMessage(null);
     try {
+      if (path === '/jobs/post/plan' && milestonePlans.length > 0) {
+        const expectedBudgetVal = form.budget ? Number(form.budget) : null;
+        const clamped = clampMilestonesToExpectedTargets(milestonePlans, expectedBudgetVal, expectedDurationWeeks);
+        setMilestonePlans(clamped);
+      }
       const currentJobPostId = await flushAutosave();
       allowNextNavigation();
       navigate(path, { state: buildNavigationState(currentJobPostId) });
@@ -1689,6 +1680,7 @@ export function usePostJob() {
     aiInterviewEnabled,
     setAiInterviewEnabled,
     milestonePlans,
+    milestonePlansWithDeadlines,
     attachments,
     isUploadingAttachment,
     attachmentError,

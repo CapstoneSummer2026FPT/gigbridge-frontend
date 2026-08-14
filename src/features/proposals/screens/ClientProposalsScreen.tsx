@@ -163,8 +163,8 @@ export default function ClientProposalsScreen() {
       <div ref={containerRef} className="min-h-[calc(100vh-4rem)] bg-background text-text-primary">
         
         {/* ── Top Glass Header Bar ─────────────────────────────────────────── */}
-        <header className="cps-gsap-header cps-header sticky top-0 z-40 border-b border-border px-4 py-4 backdrop-blur lg:px-8">
-          <div className="mx-auto flex max-w-[1600px] min-w-0 items-center gap-4">
+        <header className="cps-gsap-header cps-header sticky top-0 z-40 border-b border-border px-6 py-3.5 backdrop-blur shrink-0">
+          <div className="w-full min-w-0 flex items-center gap-4">
             <button
               type="button"
               onClick={() => navigate('/client/dashboard')}
@@ -206,18 +206,20 @@ export default function ClientProposalsScreen() {
         </header>
 
         {/* ── Main Workspace ─────────────────────────────────────────────────── */}
-        <main className="mx-auto grid max-w-[1600px] gap-5 px-4 py-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:px-8">
+        <main className="w-full flex flex-col lg:flex-row gap-4 p-4 min-w-0">
           
           {/* Left Sidebar: Job Posts Navigation */}
-          <ClientProposalJobSidebar
-            jobs={jobs}
-            selectedJobId={selectedJobId}
-            onSelect={selectJob}
-            onCreateJob={() => navigate('/jobs/post')}
-          />
+          <div className="w-full lg:w-[420px] shrink-0">
+            <ClientProposalJobSidebar
+              jobs={jobs}
+              selectedJobId={selectedJobId}
+              onSelect={selectJob}
+              onCreateJob={() => navigate('/jobs/post')}
+            />
+          </div>
 
           {/* Right Main Content */}
-          <div className="min-w-0 space-y-5">
+          <div className="flex-1 min-w-0 space-y-4">
             {viewMode === 'aiJudging' ? (
               <ProposalJudgingListView
                 jobPostId={selectedJobId || ''}

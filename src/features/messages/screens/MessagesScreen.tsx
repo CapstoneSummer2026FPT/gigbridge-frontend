@@ -1,8 +1,8 @@
 import {
-  Send, Paperclip, Smile, Info, X, Ban, Download as DownloadIcon,
+  Send, Paperclip, Smile, Info, X, Download as DownloadIcon,
   ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
-  ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
+  ExternalLink, MessageSquare, ArrowRightLeft,
   Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
   ShieldAlert, Lock, Award, LockKeyhole,
@@ -16,9 +16,10 @@ import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { FinalOfferEditor } from '../components/FinalOfferEditor';
+import { CreateScheduleModal } from '../components/CreateScheduleModal';
 import { useMessages } from '../hooks/useMessages';
 import { ConversationStatus, ConversationType } from '../../../types/models/Message';
-import { MESSAGE_ROOMS } from '../messageRooms';
+import { MESSAGE_ROOMS } from '../utils/messageRooms';
 import { CombinedIssueReportsModal, useReportContract } from '../../report-contracts';
 import {
   ContractReportResolutionAction,
@@ -40,8 +41,15 @@ const ROOM_COPY = {
 // Dispute conversations share the workspace room bucket (roomId) but have their own
 // dedicated dispute-detail screen — every roomId membership check on this screen must
 // exclude them, or they leak into room counts/badges and can get auto-selected on tab switch.
-function isRoomConvo(c: { roomId: string; conversationType?: number }, roomId: string): boolean {
-  return c.roomId === roomId && c.conversationType !== ConversationType.Dispute;
+// Excluded by BOTH conversationType and disputeId (belt-and-suspenders): a conversation
+// tied to a dispute must never surface here regardless of which field a given backend
+// response path populates.
+function isDisputeConvo(c: { conversationType?: number; disputeId?: string | null }): boolean {
+  return c.conversationType === ConversationType.Dispute || Boolean(c.disputeId);
+}
+
+function isRoomConvo(c: { roomId: string; conversationType?: number; disputeId?: string | null }, roomId: string): boolean {
+  return c.roomId === roomId && !isDisputeConvo(c);
 }
 
 function countdown(start: string, now: number) {
@@ -152,7 +160,7 @@ function ScheduleCard({ schedule, latest, onEdit, onCancel, onRetry, onLatest, o
         <p className="text-[10px] text-muted-foreground mt-1">Cancellation cutoff: {vietnamDate(schedule.cutoffUtc)}</p>
         {startLocalHour < 2 && <p className="text-[10px] text-amber-600 mt-2 font-semibold">Short cancellation window: this event begins close to Vietnam midnight.</p>}
       </div>
-      {latest && <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${cancelled ? 'bg-red-500/10 text-red-600' : confirmed ? 'bg-emerald-500/10 text-emerald-700' : 'bg-amber-500/10 text-amber-700'}`}>{agreementLabel}</div>}
+      {latest && <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-black border ${cancelled ? 'bg-red-600 text-white border-red-500' : confirmed ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-amber-500 text-slate-950 border-amber-400'}`}>{agreementLabel}</div>}
       {latest && (schedule.agreementStatus === 3 || reschedulePending) && schedule.counterProposalEditExpiresAtUtc && <p className="mt-2 text-[10px] text-muted-foreground">Freelancer may edit this request until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.</p>}
       {latest && !cancelled && hasConfirmedTime && schedule.meeting?.status === 1 && <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700"><Loader2 size={14} className="animate-spin" />{t('schedule.meetingPending')}</div>}
       {latest && !cancelled && hasConfirmedTime && meetingReady && !started && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 no-underline transition-colors hover:bg-emerald-500/20"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
@@ -206,16 +214,11 @@ export default function MessagesScreen() {
     handleRemoveChatFile,
     isFavorited,
     setIsFavorited,
-    isBlocked,
-    setIsBlocked,
-    showConvMenu,
-    setShowConvMenu,
     showNegModal,
     setShowNegModal,
     negStatus,
     chatEndRef,
     chatHistoryRef,
-    convMenuRef,
     handleSelectConv,
     handleSendMessage,
     handleProposeDeal,
@@ -1110,89 +1113,17 @@ export default function MessagesScreen() {
                       <Smile size={16} />
                     </button>
 
-                    {/* ── Conversation Settings (tùy chỉnh) – Client only ── */}
-                    {isClient && (
-                      <div className="relative" ref={convMenuRef}>
-                        <button
-                          id="btn-conv-settings"
-                          onClick={() => setShowConvMenu(prev => !prev)}
-                          title="Conversation Settings"
-                          className={`w-8 h-8 flex items-center justify-center rounded-full transition-all cursor-pointer border-none bg-transparent ${
-                            showConvMenu
-                              ? 'bg-muted text-foreground'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                          }`}
-                        >
-                          <Settings2 size={16} />
-                        </button>
-
-                        {/* Dropdown menu */}
-                        {showConvMenu && (
-                          <div className="msg-conv-settings-menu absolute bottom-full left-0 mb-2 w-56 bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
-                            <div className="px-3 py-2 border-b border-border">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Conversation Actions</p>
-                            </div>
-
-                            {/* "Vào vòng đàm phán" – only when in Invited room and not yet requested */}
-                            {activeConv.roomType === 'invited' && negStatus === 'idle' && canNegotiateActiveJob && (
-                              <button
-                                onClick={handleSendNegotiationRequest}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-foreground hover:bg-teal-500/10 hover:text-teal-600 transition-colors cursor-pointer text-left border-none bg-transparent"
-                              >
-                                <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-500 flex-shrink-0">
-                                  <ArrowRightLeft size={14} />
-                                </div>
-                                <span>Vào vòng đàm phán</span>
-                              </button>
-                            )}
-
-                            {activeConv.roomType === 'invited' && negStatus === 'idle' && !canNegotiateActiveJob && (
-                              <div className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground">
-                                <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0 text-amber-600">
-                                  <ArrowRightLeft size={14} />
-                                </div>
-                                <span className="text-xs">Job post is no longer open for negotiation.</span>
-                              </div>
-                            )}
-
-                            {/* Already requested state */}
-                            {activeConv.roomType === 'invited' && negStatus === 'pending' && (
-                              <div className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground">
-                                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                                  <ArrowRightLeft size={14} />
-                                </div>
-                                <span className="text-xs">Đang chờ phản hồi...</span>
-                              </div>
-                            )}
-
-                            {/* Already in negotiation */}
-                            {activeConv.roomType === 'negotiation' && (
-                              <div className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground">
-                                <div className="w-7 h-7 rounded-lg bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)] flex-shrink-0">
-                                  <ArrowRightLeft size={14} />
-                                </div>
-                                <span className="text-xs">Đang trong vòng đàm phán</span>
-                              </div>
-                            )}
-
-                            <div className="border-t border-border">
-                              <button
-                                onClick={() => { setShowConvMenu(false); setIsBlocked(!isBlocked); }}
-                                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors cursor-pointer text-left border-none bg-transparent ${
-                                  isBlocked
-                                    ? 'text-green-600 hover:bg-green-500/10'
-                                    : 'text-red-500 hover:bg-red-500/10'
-                                }`}
-                              >
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isBlocked ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                                  <Ban size={14} />
-                                </div>
-                                <span>{isBlocked ? 'Bỏ chặn liên lạc' : 'Chặn liên lạc'}</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    {/* ── Request Negotiation button – Client only when in Invited room ── */}
+                    {isClient && activeConv.roomType === 'invited' && negStatus === 'idle' && canNegotiateActiveJob && (
+                      <button
+                        id="btn-request-negotiation"
+                        onClick={handleSendNegotiationRequest}
+                        title="Vào vòng đàm phán"
+                        className="h-8 px-3 flex items-center gap-1.5 rounded-full text-xs font-bold text-teal-600 bg-teal-500/10 hover:bg-teal-500/20 transition-all cursor-pointer border-none"
+                      >
+                        <ArrowRightLeft size={14} />
+                        <span>Vào vòng đàm phán</span>
+                      </button>
                     )}
 
                     {/* Deal Price button – only in Negotiation rooms for clients */}
@@ -1344,24 +1275,7 @@ export default function MessagesScreen() {
               </div>
             </div>
 
-            {/* Block button */}
-            <div className="mt-auto p-6 bg-muted/30 border-t border-border">
-              <button
-                id="btn-block-contact"
-                onClick={() => {
-                  setIsBlocked(!isBlocked);
-                  alert(isBlocked ? 'Contact unblocked.' : 'Contact blocked.');
-                }}
-                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border font-bold text-xs uppercase tracking-widest transition-all cursor-pointer ${
-                  isBlocked
-                    ? 'border-green-500/30 text-green-500 hover:bg-green-500/5'
-                    : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
-                }`}
-              >
-                <Ban size={13} />
-                {isBlocked ? 'Unblock Contact' : 'Block Contact'}
-              </button>
-            </div>
+
           </aside>
           )}
         </div>
@@ -1415,31 +1329,35 @@ export default function MessagesScreen() {
         </div>
       )}
 
-      {showScheduleModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl max-w-md w-full space-y-4">
-            <div className="flex justify-between"><div><h3 className="font-bold">{scheduleMode.startsWith('counter') ? (editingSchedule?.agreementStatus === 0 || editingSchedule?.agreementStatus === 6 ? 'Request a schedule date change' : 'Choose your desired time and date') : t(`schedule.${scheduleMode}`)}</h3><p className="text-xs text-muted-foreground">{t('schedule.vietnamTime')}</p></div><button onClick={() => setShowScheduleModal(false)} className="border-none bg-transparent cursor-pointer"><X size={17}/></button></div>
-            {scheduleMode === 'cancel' ? (
-              <textarea maxLength={1000} value={scheduleReason} onChange={e => setScheduleReason(e.target.value)} placeholder={t('schedule.reason')} className="w-full min-h-28 bg-background border border-border rounded-xl p-3 text-sm" />
-            ) : <>
-              {!scheduleMode.startsWith('counter') && <input maxLength={200} value={scheduleTitle} onChange={e => setScheduleTitle(e.target.value)} placeholder={t('schedule.title')} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />}
-              <div className="rounded-xl border border-border bg-background p-3 space-y-3">
-                <label className="block text-xs font-semibold text-muted-foreground">Meeting date and time</label>
-                <input type="datetime-local" value={scheduleTime} onChange={e => { setScheduleTime(e.target.value); setMidnightConfirmed(Number(e.target.value.slice(11, 13)) >= 2); }} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />
-              </div>
-              {scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && <label className="text-xs text-amber-600 bg-amber-500/10 rounded-lg p-2 flex gap-2"><input type="checkbox" checked={midnightConfirmed} onChange={e => setMidnightConfirmed(e.target.checked)}/>I understand this event starts near Vietnam midnight and may have a very short cancellation window.</label>}
-              {scheduleMode === 'counter-create' && editingSchedule && (editingSchedule.agreementStatus === 0 || editingSchedule.agreementStatus === 6) && <p className="rounded-lg bg-[var(--gb-cyan)]/10 p-2 text-xs text-[var(--gb-cyan)]">The client can accept or reject this request. You have {editingSchedule.remainingRescheduleRequests ?? Math.max(0, 3 - (editingSchedule.rescheduleRequestCount ?? 0))} of 3 schedule change requests remaining.</p>}
-              {!scheduleMode.startsWith('counter') && <textarea maxLength={4000} value={scheduleDetails} onChange={e => setScheduleDetails(e.target.value)} placeholder={t('schedule.details')} className="w-full min-h-24 bg-background border border-border rounded-xl p-3 text-sm" />}
-              {scheduleMode === 'create' && <label className="flex items-center gap-3 rounded-xl border border-border bg-background p-3 text-sm cursor-pointer"><input type="checkbox" checked={scheduleSendEmail} onChange={e => setScheduleSendEmail(e.target.checked)} /><span><span className="block font-semibold">Send meeting invitation by email</span><span className="block text-xs text-muted-foreground">Email both meeting participants when this schedule is created.</span></span></label>}
-              {scheduleMode === 'create' && <div className="rounded-xl border border-border bg-background p-3 space-y-2"><label className="flex items-center gap-3 text-sm cursor-pointer"><input type="checkbox" checked={scheduleAddGoogleMeet} onChange={e => setScheduleAddGoogleMeet(e.target.checked)} /><Video size={17} className="text-emerald-600" />{t('schedule.addGoogleMeet')}</label>{scheduleAddGoogleMeet && <div className="pl-7">{googleMeetStatusLoading ? <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 size={13} className="animate-spin" />Checking Google connection...</p> : googleMeetStatus?.isConnected ? <p className="text-xs font-semibold text-emerald-700">{t('schedule.connectedAs', { email: googleMeetStatus.googleEmail || 'Google' })}</p> : <button type="button" onClick={connectGoogleMeet} disabled={googleMeetConnecting} className="rounded-lg border-none bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-50">{googleMeetConnecting ? 'Connecting...' : googleMeetStatus?.needsReconnect ? t('schedule.reconnectGoogle') : t('schedule.connectGoogle')}</button>}</div>}</div>}
-              {scheduleMode === 'edit' && editingSchedule?.remainingEdits === 1 && <p className="text-xs text-amber-600">Saving will use the final shared edit.</p>}
-            </>}
-            {scheduleError && <p className="text-xs text-red-600 bg-red-500/10 rounded-lg p-2">{scheduleError}</p>}
-            {scheduleConflict && <button disabled={scheduleMode === 'edit' && scheduleConflict.remainingEdits === 0} onClick={confirmScheduleRetry} className="w-full py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 text-xs cursor-pointer disabled:opacity-50">Confirm retry against version {scheduleConflict.version}{scheduleConflict.remainingEdits === 1 ? ' using the final edit' : ''}</button>}
-            <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || googleMeetConnecting || (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : scheduleMode.startsWith('counter') ? !scheduleTime : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : scheduleMode === 'counter-create' ? 'Send request' : scheduleMode === 'counter-edit' ? 'Update request' : t('schedule.save')}</button></div>
-          </div>
-        </div>
-      )}
+      <CreateScheduleModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        scheduleMode={scheduleMode}
+        editingSchedule={editingSchedule}
+        scheduleTitle={scheduleTitle}
+        setScheduleTitle={setScheduleTitle}
+        scheduleDetails={scheduleDetails}
+        setScheduleDetails={setScheduleDetails}
+        scheduleTime={scheduleTime}
+        setScheduleTime={setScheduleTime}
+        scheduleReason={scheduleReason}
+        setScheduleReason={setScheduleReason}
+        scheduleError={scheduleError}
+        scheduleSaving={scheduleSaving}
+        scheduleConflict={scheduleConflict}
+        midnightConfirmed={midnightConfirmed}
+        setMidnightConfirmed={setMidnightConfirmed}
+        scheduleAddGoogleMeet={scheduleAddGoogleMeet}
+        setScheduleAddGoogleMeet={setScheduleAddGoogleMeet}
+        scheduleSendEmail={scheduleSendEmail}
+        setScheduleSendEmail={setScheduleSendEmail}
+        googleMeetStatusLoading={googleMeetStatusLoading}
+        googleMeetStatus={googleMeetStatus}
+        googleMeetConnecting={googleMeetConnecting}
+        connectGoogleMeet={connectGoogleMeet}
+        confirmScheduleRetry={confirmScheduleRetry}
+        submitSchedule={submitSchedule}
+      />
 
       <CombinedIssueReportsModal
         isOpen={Boolean(viewReportId)}

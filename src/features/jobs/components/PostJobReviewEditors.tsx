@@ -14,6 +14,8 @@ import {
 } from '../../../shared/components/NestedMilestonePlanEditor';
 import { JobPostVisibility } from '../../../types/models/Job';
 import type { usePostJob } from '../hooks/usePostJob';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JOB_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
 import { QuestionRequiredToggle } from './QuestionRequiredToggle';
 
@@ -164,7 +166,28 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
       <div className="job-post-grid">
         <div className="job-post-field">
           <label htmlFor="job-budget">{t('postJob.expectedBudget')}</label>
-          <input id="job-budget" type="number" min="0" value={form.budget} onChange={event => setForm({ ...form, budget: event.target.value })} placeholder="0" />
+          <div className="relative flex items-center">
+            <input
+              id="job-budget"
+              type="number"
+              min="0"
+              value={form.budget}
+              onChange={event => setForm({ ...form, budget: event.target.value })}
+              placeholder="0"
+              className="w-full pr-36"
+            />
+            {Number(form.budget) > 0 && (
+              <div className="absolute right-2.5 flex items-center gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2.5 py-1 text-xs font-bold text-[var(--brand)] pointer-events-none select-none">
+                <span>= {formatGigCoinToVnd(Number(form.budget))}</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--brand)_8%,var(--card))] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] px-3 py-1.5 text-xs text-foreground font-medium">
+            <GCoinIcon size={15} />
+            <span>
+              Chú thích mệnh giá: <strong>1 G-coin = 1.000 VNĐ</strong>
+            </span>
+          </div>
           <small>{t('postJobWizard.details.budgetFromMilestones')}</small>
         </div>
         <div className="job-post-field">
@@ -206,7 +229,7 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
 export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
   const { t } = useTranslation('common');
   const {
-    milestonePlans, setMilestonePlans, milestoneErrors, setMilestoneErrors,
+    milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
     expandedMilestone, setExpandedMilestone, questions, setQuestions,
     aiInterviewEnabled,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver,
@@ -216,13 +239,14 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
   return (
     <div className="grid gap-6">
       <NestedMilestonePlanEditor
-        value={milestonePlans as EditableMilestonePlan[]}
+        value={milestonePlansWithDeadlines as EditableMilestonePlan[]}
         onChange={plans => {
           setMilestonePlans(plans);
           setMilestoneErrors({});
         }}
         optional
         showDueDate
+        dueDateReadOnly
         showWorkItems={false}
         title={t('postJob.baselineMilestoneTitle')}
         description={t('postJob.baselineMilestoneDescription')}

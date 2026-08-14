@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Bot, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Tags } from 'lucide-react';
-import { formatGigCoin, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
 import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
@@ -199,8 +200,10 @@ export default function PostJobReviewScreen() {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-background/80 backdrop-blur-md p-3.5 rounded-2xl border border-border/70 shadow-xs">
             <div className="px-3 py-1.5 rounded-xl bg-muted/60 text-center">
               <span className="text-[10px] font-bold text-muted-foreground uppercase block">Ngân sách</span>
-              <strong className="text-sm font-black text-[var(--brand)]">
-                {formatGigCoin(Number(form.budget) || milestonePlanTotal)}
+              <strong className="text-sm font-black text-[var(--brand)] inline-flex items-center gap-1">
+                <span>{formatGigCoinNumber(Number(form.budget) || milestonePlanTotal)}</span>
+                <GCoinIcon size={14} />
+                <span>G-coin</span>
               </strong>
             </div>
             <div className="px-3 py-1.5 rounded-xl bg-muted/60 text-center">
@@ -353,8 +356,10 @@ export default function PostJobReviewScreen() {
                   <Coins size={15} className="text-[var(--brand)]" />
                   {t('postJob.expectedBudget')}
                 </span>
-                <strong className="block text-xl font-black text-[var(--brand)]">
-                  {formatGigCoin(Number(form.budget) || milestonePlanTotal)}
+                <strong className="inline-flex items-center gap-1.5 text-xl font-black text-[var(--brand)]">
+                  <span>{formatGigCoinNumber(Number(form.budget) || milestonePlanTotal)}</span>
+                  <GCoinIcon size={16} />
+                  <span>G-coin</span>
                 </strong>
                 {(Number(form.budget) > 0 || milestonePlanTotal > 0) && (
                   <span className="block text-[11px] font-extrabold text-muted-foreground">
@@ -416,11 +421,10 @@ export default function PostJobReviewScreen() {
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all ${
-              aiInterviewEnabled
+            <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all ${aiInterviewEnabled
                 ? 'border-transparent bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-[0_0_14px_rgba(168,85,247,0.18)]'
                 : 'border-border/70 bg-muted/30 text-muted-foreground'
-            }`}>
+              }`}>
               <Bot size={14} />
               <span className="text-[10px] font-black uppercase tracking-wider">
                 {t('postJobWizard.plan.aiInterviewShort', { defaultValue: 'AI Interview' })}
@@ -474,8 +478,10 @@ export default function PostJobReviewScreen() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center gap-1 font-black text-sm text-[var(--brand)] bg-[var(--brand)]/10 px-3.5 py-1.5 rounded-xl border border-[var(--brand)]/20">
-                              <Coins size={14} /> {formatGigCoin(Number(milestone.amount))}
-                              <small className="font-bold text-muted-foreground text-[10px]">
+                              <span>{formatGigCoinNumber(Number(milestone.amount))}</span>
+                              <GCoinIcon size={14} />
+                              <span>G-coin</span>
+                              <small className="font-bold text-muted-foreground text-[10px] ml-1">
                                 (≈{formatGigCoinToVnd(Number(milestone.amount))})
                               </small>
                             </span>
@@ -533,11 +539,10 @@ export default function PostJobReviewScreen() {
               </div>
 
               {/* Vetting Questions Review */}
-              <div className={`space-y-3 transition-all duration-300 ${
-                aiInterviewEnabled
+              <div className={`space-y-3 transition-all duration-300 ${aiInterviewEnabled
                   ? 'job-post-ai-twilight rounded-3xl p-5'
                   : 'border-t border-border/60 pt-5'
-              }`}>
+                }`}>
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <HelpCircle size={14} className="text-[var(--brand)]" />
                   {t('postJob.questionsForInterview')} ({answeredQuestions.length})
@@ -555,11 +560,10 @@ export default function PostJobReviewScreen() {
                           {index + 1}. {question.questionText}
                         </span>
                         <span
-                          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
-                            question.isRequired
+                          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${question.isRequired
                               ? 'bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20'
                               : 'bg-muted text-muted-foreground border border-border/60'
-                          }`}
+                            }`}
                         >
                           {t(question.isRequired ? 'postJob.required' : 'postJob.optional')}
                         </span>

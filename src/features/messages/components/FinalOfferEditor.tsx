@@ -7,6 +7,7 @@ import {
 import type { NegotiationMilestoneDto } from '../../../types/models/Message';
 import { formatGigCoin, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { JOB_DURATION_UNITS } from '../../jobs/utils/jobDuration';
 import '../styles/final-offer-editor.css';
 
 interface FinalOfferEditorProps {
@@ -179,8 +180,10 @@ export function FinalOfferEditor({
                 onAdvancedIndexesChange={onAdvancedIndexesChange}
                 errors={errors}
                 showDueDate
+                dueDateReadOnly
                 showBudgetSummary={false}
                 simplifiedMilestoneFields
+                durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
                 milestoneTitleMaxLength={200}
                 workItemTitleMaxLength={200}
                 durationMaxLength={100}

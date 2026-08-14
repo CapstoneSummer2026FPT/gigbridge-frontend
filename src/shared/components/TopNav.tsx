@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
+import { Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
 import { useApp } from '../../app/providers/AppProvider';
 import { walletGetAPI } from '../../api/walletAPI/GET';
 import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
-import { useUserNotifications } from '../../features/notifications/hooks/useUserNotifications';
+import { TopNavNotificationDropdown } from '../../features/notifications/components/TopNavNotificationDropdown';
 import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
 import { formatGigCoinNumber } from '../utils/gigcoin';
@@ -63,12 +63,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     return item;
   });
 
-  // Wallet and notification data
-  const notificationUser = location.pathname === '/notifications' ? null : user;
-  const { notifications, unreadCount, markAsRead } = useUserNotifications(notificationUser, {
-    pageSize: 8,
-    pollMs: 45000,
-  });
+  // Wallet data
 
   useEffect(() => {
     let isMounted = true;
@@ -178,7 +173,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     return (
       <div
         ref={navContainerRef}
-        className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-50 h-16 border-none transition-all duration-700 landing-nav-container"
+        className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-35 h-16 border-none transition-all duration-700 landing-nav-container"
       >
         <header className="absolute top-1/2 w-full -translate-y-1/2">
           <nav className="flex size-full items-center justify-between p-4">
@@ -274,7 +269,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   // STANDARD APPLICATION TOP NAV
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-50 h-16 border-none landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
+    <div className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-35 h-16 border-none landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
       {/* Hamburger Menu Button - Show on both mobile and desktop when logged in */}
       {showMenuButton && (
         <button
@@ -431,60 +426,17 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
           </div>
         )}
 
-        {/* Notifications */}
-        {user ? (
-          <div className="relative">
-            <button
-              onClick={() => { setShowNotifs(!showNotifs); setShowUserMenu(false); setShowWalletMenu(false); }}
-              className="p-2 rounded-lg transition-all relative glass-button"
-            >
-              <Bell size={16} className="text-muted" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center notification-badge">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifs && (
-              <div className="absolute right-0 top-12 w-80 rounded-2xl p-3 z-50 dropdown-menu">
-                <div className="flex items-center justify-between mb-3 px-2">
-                  <p className="text-primary font-semibold text-sm">{t('notifications.title')}</p>
-                  <button
-                    onClick={() => { setShowNotifs(false); navigate('/notifications'); }}
-                    className="text-xs text-cyan"
-                  >
-                    {t('notifications.seeAll')}
-                  </button>
-                </div>
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.slice(0, 5).map(n => (
-                       <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
-                        onClick={() => {
-                          void markAsRead(n.id);
-                          setShowNotifs(false);
-                          navigate(n.actionUrl || '/notifications');
-                        }}>
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-primary text-xs font-medium">{n.title}</p>
-                          {!n.isRead && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />}
-                        </div>
-                        {n.body && <p className="text-xs mt-0.5 line-clamp-2 text-secondary">{n.body}</p>}
-                        {n.schedule && <p className="text-[10px] mt-1 text-cyan">{new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(n.schedule.scheduledAtUtc))} ICT · {n.schedule.actorName}</p>}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center">
-                      <p className="text-primary text-sm font-medium">{t('notifications.noNotifications')}</p>
-                      <p className="text-xs text-secondary mt-1">{t('notifications.caughtUp')}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
+        {/* Notifications Dropdown Component */}
+        <TopNavNotificationDropdown
+          user={user}
+          isOpen={showNotifs}
+          onToggle={() => {
+            setShowNotifs(!showNotifs);
+            setShowUserMenu(false);
+            setShowWalletMenu(false);
+          }}
+          onClose={() => setShowNotifs(false)}
+        />
 
         {/* Messages Icon (Positioned immediately to the right of Notifications Bell) */}
         {user ? (

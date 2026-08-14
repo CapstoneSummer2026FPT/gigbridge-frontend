@@ -1,13 +1,30 @@
 {
   "notifications": {
     "title": "Notifications",
+    "subTitle": "Your latest activity and updates",
     "markAsRead": "Mark as read",
+    "markAsUnread": "Mark as unread",
     "markAllAsRead": "Mark all as read",
     "noNotifications": "No notifications",
+    "noNotificationsDesc": "You are all caught up in this category.",
+    "searchPlaceholder": "Search notifications by keyword...",
     "newMessage": "New message from {{name}}",
     "proposalAccepted": "Your proposal was accepted!",
     "projectUpdate": "Project update: {{title}}",
     "seeAll": "See all",
-    "caughtUp": "You're all caught up."
+    "caughtUp": "You're all caught up.",
+    "unreadCount": "{{count}} unread",
+    "allCaughtUp": "All caught up",
+    "joinMeeting": "Join meeting",
+    "tabs": {
+      "all": "All",
+      "unread": "Unread",
+      "work_contracts": "Work & Contracts",
+      "payments": "Payments",
+      "receipts": "Receipts & Invoices",
+      "messages_schedule": "Messages & Schedule",
+      "alerts_ai": "Alerts & AI",
+      "system": "System"
+    }
   }
 }
