@@ -40,8 +40,15 @@ const ROOM_COPY = {
 // Dispute conversations share the workspace room bucket (roomId) but have their own
 // dedicated dispute-detail screen — every roomId membership check on this screen must
 // exclude them, or they leak into room counts/badges and can get auto-selected on tab switch.
-function isRoomConvo(c: { roomId: string; conversationType?: number }, roomId: string): boolean {
-  return c.roomId === roomId && c.conversationType !== ConversationType.Dispute;
+// Excluded by BOTH conversationType and disputeId (belt-and-suspenders): a conversation
+// tied to a dispute must never surface here regardless of which field a given backend
+// response path populates.
+function isDisputeConvo(c: { conversationType?: number; disputeId?: string | null }): boolean {
+  return c.conversationType === ConversationType.Dispute || Boolean(c.disputeId);
+}
+
+function isRoomConvo(c: { roomId: string; conversationType?: number; disputeId?: string | null }, roomId: string): boolean {
+  return c.roomId === roomId && !isDisputeConvo(c);
 }
 
 function countdown(start: string, now: number) {

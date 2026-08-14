@@ -592,7 +592,7 @@ export function useMessages() {
         // their own dedicated dispute-detail screen), so they must never be picked as
         // the default either — otherwise landing here can silently open an admin/dispute
         // chat just because it happened to have the most recent message.
-        const selectableConvos = mapped.filter((c: any) => c.conversationType !== ConversationType.Dispute);
+        const selectableConvos = mapped.filter((c: any) => c.conversationType !== ConversationType.Dispute && !c.disputeId);
 
         setActiveConvId(currentActiveConvId => {
           if (selectableConvos.length === 0) return '';
@@ -1218,7 +1218,9 @@ export function useMessages() {
       (!content && filesToSend.length === 0) ||
       !activeConvId ||
       isActiveWorkspaceDisputed ||
-      activeConv?.status === ConversationStatus.Closed
+      activeConv?.status === ConversationStatus.Closed ||
+      activeConv?.conversationType === ConversationType.Dispute ||
+      Boolean(activeConv?.disputeId)
     ) {
       return;
     }
