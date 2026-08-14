@@ -289,6 +289,7 @@ export interface UserProfileDto {
   email: string;
   avatar?: string | null;
   phoneNumber?: string | null;
+  identityOrTaxCode?: string | null;
   preferredLanguage?: string | null;
   role: number;
   isPremium: boolean;
@@ -299,6 +300,8 @@ export interface UpdateUserProfileDto {
   email: string;
   avatar?: string | null;
   phoneNumber?: string | null;
+  identityOrTaxCode?: string | null;
+  identityVerificationTicket?: string | null;
   preferredLanguage?: string | null;
 }
 
