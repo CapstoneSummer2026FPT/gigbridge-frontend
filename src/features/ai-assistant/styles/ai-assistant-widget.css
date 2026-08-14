@@ -520,6 +520,8 @@
   border: 1px solid var(--ai-border);
   font-size: 0.8rem;
   font-weight: 750;
+  box-shadow: 0 4px 12px rgba(23, 130, 252, 0.05);
+  animation: aiPulseThinking 2s infinite ease-in-out;
 }
 
 .ai-typing-bars {
@@ -704,6 +706,17 @@
   }
   to {
     transform: scaleY(1);
+  }
+}
+
+@keyframes aiPulseThinking {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(23, 130, 252, 0.05);
+    border-color: var(--ai-border);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(23, 130, 252, 0.15);
+    border-color: color-mix(in srgb, var(--ai-brand) 30%, transparent);
   }
 }
 
