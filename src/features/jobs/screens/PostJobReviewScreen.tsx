@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Tags } from 'lucide-react';
-import { formatGigCoin, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
 import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
@@ -184,8 +185,10 @@ export default function PostJobReviewScreen() {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-background/80 backdrop-blur-md p-3.5 rounded-2xl border border-border/70 shadow-xs">
             <div className="px-3 py-1.5 rounded-xl bg-muted/60 text-center">
               <span className="text-[10px] font-bold text-muted-foreground uppercase block">Ngân sách</span>
-              <strong className="text-sm font-black text-[var(--brand)]">
-                {formatGigCoin(Number(form.budget) || milestonePlanTotal)}
+              <strong className="text-sm font-black text-[var(--brand)] inline-flex items-center gap-1">
+                <span>{formatGigCoinNumber(Number(form.budget) || milestonePlanTotal)}</span>
+                <GCoinIcon size={14} />
+                <span>G-coin</span>
               </strong>
             </div>
             <div className="px-3 py-1.5 rounded-xl bg-muted/60 text-center">
@@ -338,8 +341,10 @@ export default function PostJobReviewScreen() {
                   <Coins size={15} className="text-[var(--brand)]" />
                   {t('postJob.expectedBudget')}
                 </span>
-                <strong className="block text-xl font-black text-[var(--brand)]">
-                  {formatGigCoin(Number(form.budget) || milestonePlanTotal)}
+                <strong className="inline-flex items-center gap-1.5 text-xl font-black text-[var(--brand)]">
+                  <span>{formatGigCoinNumber(Number(form.budget) || milestonePlanTotal)}</span>
+                  <GCoinIcon size={16} />
+                  <span>G-coin</span>
                 </strong>
                 {(Number(form.budget) > 0 || milestonePlanTotal > 0) && (
                   <span className="block text-[11px] font-extrabold text-muted-foreground">
@@ -430,8 +435,10 @@ export default function PostJobReviewScreen() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center gap-1 font-black text-sm text-[var(--brand)] bg-[var(--brand)]/10 px-3.5 py-1.5 rounded-xl border border-[var(--brand)]/20">
-                              <Coins size={14} /> {formatGigCoin(Number(milestone.amount))}
-                              <small className="font-bold text-muted-foreground text-[10px]">
+                              <span>{formatGigCoinNumber(Number(milestone.amount))}</span>
+                              <GCoinIcon size={14} />
+                              <span>G-coin</span>
+                              <small className="font-bold text-muted-foreground text-[10px] ml-1">
                                 (≈{formatGigCoinToVnd(Number(milestone.amount))})
                               </small>
                             </span>

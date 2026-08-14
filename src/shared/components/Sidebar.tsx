@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   BarChart2, Shield, Flag, HelpCircle,
   TrendingUp, PlusCircle, Zap, Bookmark,
-  ChevronDown, Wallet, Banknote, Star, Scale
+  ChevronDown, Wallet, Banknote, Star, Scale, FileCheck2
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -89,6 +89,7 @@ function getClientNavItems(t: any): NavItem[] {
       children: [
         { id: 'deposit', label: t('wallet.deposit', { defaultValue: 'Deposit' }), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
         { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+        { id: 'receipts', label: t('nav.receipts', { defaultValue: 'Receipts' }), icon: <FileCheck2 size={18} />, path: '/receipts' },
         { id: 'financial-overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
       ],
     },
@@ -138,6 +139,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
         { id: 'overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
         { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdrawals' },
         { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+        { id: 'receipts', label: t('nav.receipts', { defaultValue: 'Receipts' }), icon: <FileCheck2 size={18} />, path: '/receipts' },
       ],
     },
   ];

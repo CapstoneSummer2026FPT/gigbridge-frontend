@@ -1,4 +1,4 @@
 export interface SendOtpRequest {
   email: string;
-  purpose: 'signup';
+  purpose: 'signup' | 'identity_verification';
 }
