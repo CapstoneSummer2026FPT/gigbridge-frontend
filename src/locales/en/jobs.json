@@ -291,6 +291,9 @@
       "standardDesc": "Freelancers answer these questions directly when submitting proposals, helping you evaluate their approach and experience without endless chat back-and-forth.",
       "aiTitle": "2. Automated AI Interview (Premium Plan ✦)",
       "aiDesc": "When AI Interviewer is enabled, these questions serve as the prompt basis for the AI Agent to conduct 1-on-1 interviews with applicants and generate detailed evaluation scores!",
+      "aiEnableOnPublish": "Enabled on publish",
+      "aiDisabled": "Enable AI interview on publish",
+      "aiUpgrade": "Upgrade to enable",
       "presetTitle": "Popular question suggestions (Click to add):",
       "presetSimilar": "Have you worked on a project of similar scope before?",
       "presetPortfolio": "Please share a link to your most relevant work or portfolio.",
@@ -376,6 +379,8 @@
     "messages": {
       "aiGenerated": "Project details generated. Review them before continuing.",
       "published": "Project request published.",
+      "publishedWithAiInterview": "Project request published with AI interviews enabled.",
+      "publishedAiInterviewFailed": "Project request was published, but the AI interview could not be enabled. You can retry from My Jobs.",
       "draftSaved": "Project request saved as draft.",
       "emptyDraftDiscarded": "Empty draft discarded.",
       "attachmentUploaded": "Project image uploaded.",

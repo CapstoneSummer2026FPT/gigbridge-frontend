@@ -288,6 +288,9 @@
       "standardDesc": "Freelancer sẽ trả lời các câu hỏi này ngay khi gửi Proposal. Giúp bạn đánh giá tư duy, thái độ và kinh nghiệm thực tế của ứng viên mà không cần chat qua lại nhiều lần.",
       "aiTitle": "2. AI Phỏng vấn tự động (Gói Premium ✦)",
       "aiDesc": "Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!",
+      "aiEnableOnPublish": "Sẽ bật khi đăng bài",
+      "aiDisabled": "Bật AI Interview khi đăng bài",
+      "aiUpgrade": "Nâng cấp để bật",
       "presetTitle": "Gợi ý câu hỏi phổ biến (Click để thêm):",
       "presetSimilar": "Bạn đã từng thực hiện dự án nào có quy mô tương tự chưa?",
       "presetPortfolio": "Hãy gửi link sản phẩm hoặc portfolio tiêu biểu nhất của bạn.",
@@ -373,6 +376,8 @@
     "messages": {
       "aiGenerated": "Đã tạo thông tin dự án. Vui lòng kiểm tra trước khi tiếp tục.",
       "published": "Đã đăng Project Request.",
+      "publishedWithAiInterview": "Đã đăng Project Request và bật phỏng vấn AI.",
+      "publishedAiInterviewFailed": "Project Request đã được đăng nhưng chưa thể bật phỏng vấn AI. Bạn có thể thử lại tại Dự án của tôi.",
       "draftSaved": "Đã lưu Project Request dưới dạng bản nháp.",
       "emptyDraftDiscarded": "Đã loại bỏ bản nháp trống.",
       "attachmentUploaded": "Đã tải hình ảnh dự án lên.",

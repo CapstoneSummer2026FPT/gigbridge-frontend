@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Tags } from 'lucide-react';
+import { ArrowLeft, Bot, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Tags } from 'lucide-react';
 import { formatGigCoin, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
 import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
@@ -29,6 +29,7 @@ export default function PostJobReviewScreen() {
     form, selectedOfficialSkills, selectedMajorName, selectedCategoryName,
     previewTitle, errorMessage, isActionDisabled, isDraftInitializing,
     draftError, questions, milestonePlans, milestonePlanTotal,
+    aiInterviewEnabled,
     milestoneTotalWeeks, isBudgetExceeded, isDurationExceeded,
     attachments,
     isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
@@ -407,6 +408,35 @@ export default function PostJobReviewScreen() {
             <PostJobHiringPlanReviewEditor controller={controller} />
           ) : (
             <div className="space-y-6">
+              <div className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${
+                aiInterviewEnabled
+                  ? 'border-purple-500/40 bg-purple-500/10'
+                  : 'border-border/70 bg-muted/20'
+              }`}>
+                <span className="flex items-center gap-2.5">
+                  <Bot size={17} className={aiInterviewEnabled ? 'text-purple-500' : 'text-muted-foreground'} />
+                  <span>
+                    <strong className="block text-xs font-black text-foreground">
+                      {t('postJobWizard.plan.aiTitle')}
+                    </strong>
+                    <small className="text-[11px] text-muted-foreground">
+                      {t(aiInterviewEnabled
+                        ? 'postJobWizard.plan.aiEnableOnPublish'
+                        : 'postJobWizard.plan.aiDisabled')}
+                    </small>
+                  </span>
+                </span>
+                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
+                  aiInterviewEnabled
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {t(aiInterviewEnabled ? 'postJob.enabled' : 'postJob.disabled', {
+                    defaultValue: aiInterviewEnabled ? 'Enabled' : 'Disabled',
+                  })}
+                </span>
+              </div>
+
               {/* Milestones Review */}
               <div className="space-y-3">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground block">

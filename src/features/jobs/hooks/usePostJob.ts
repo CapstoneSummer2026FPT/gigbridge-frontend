@@ -91,6 +91,7 @@ export interface PostJobRouteJobData {
 export interface PostJobRouteState {
   jobPostId?: string | null;
   jobData?: PostJobRouteJobData | null;
+  enableAiInterview?: boolean;
 }
 
 export type PostJobSubmitMode = 'draft' | 'plan' | 'review' | 'publish';
@@ -327,6 +328,7 @@ export function usePostJob() {
 
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
+  const [aiInterviewEnabled, setAiInterviewEnabled] = useState(routeState?.enableAiInterview ?? false);
   const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
     withoutWorkBreakdownItems(initialJobData?.milestonePlans || []));
   const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
@@ -685,6 +687,7 @@ export function usePostJob() {
     setSkillNameById({});
     setForm(initialFormFromState(null));
     setQuestions([emptyQuestion()]);
+    setAiInterviewEnabled(false);
     setMilestonePlans([]);
     setAttachments([]);
     setAttachmentError(null);
@@ -1198,6 +1201,7 @@ export function usePostJob() {
   }): PostJobRouteState => ({
     jobPostId: currentJobPostId,
     jobData: buildRouteJobData(overrides),
+    enableAiInterview: aiInterviewEnabled,
   });
 
   const ensureDraftJobPostId = async (): Promise<string> => {
@@ -1530,7 +1534,29 @@ export function usePostJob() {
       if (mode === 'publish') {
         const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
         if (!publishResponse.success) throw new Error(publishResponse.message || 'Project request could not be published.');
-        toast.success(t('postJobWizard.messages.published'));
+
+        let aiInterviewSetupFailed = false;
+        if (aiInterviewEnabled) {
+          const answeredQuestionCount = questions.filter(question => question.questionText.trim()).length;
+          try {
+            const interviewResponse = await jobAPI.createAiInterview(currentJobPostId, {
+              language: 'auto',
+              mode: 'voice',
+              questionCount: Math.min(20, answeredQuestionCount || 5),
+            });
+            aiInterviewSetupFailed = !interviewResponse.success || !interviewResponse.data;
+          } catch {
+            aiInterviewSetupFailed = true;
+          }
+        }
+
+        if (aiInterviewSetupFailed) {
+          toast.error(t('postJobWizard.messages.publishedAiInterviewFailed'));
+        } else {
+          toast.success(t(aiInterviewEnabled
+            ? 'postJobWizard.messages.publishedWithAiInterview'
+            : 'postJobWizard.messages.published'));
+        }
         allowNextNavigation();
         navigate('/jobs/my-jobs');
         return { status: 'success' };
@@ -1660,6 +1686,8 @@ export function usePostJob() {
     draggedIndex,
     questions,
     setQuestions,
+    aiInterviewEnabled,
+    setAiInterviewEnabled,
     milestonePlans,
     attachments,
     isUploadingAttachment,

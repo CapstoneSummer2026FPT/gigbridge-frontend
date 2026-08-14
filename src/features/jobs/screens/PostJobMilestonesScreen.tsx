@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronDown, GripVertical, HelpCircle, ListChecks, Plus, Save, Sparkles, Trash2, Zap } from 'lucide-react';
+import { ArrowLeft, Bot, CheckCircle2, ChevronDown, Crown, GripVertical, HelpCircle, ListChecks, Plus, Save, Sparkles, Trash2, Zap } from 'lucide-react';
 import {
   NestedMilestonePlanEditor,
   type EditableMilestonePlan,
@@ -13,16 +13,22 @@ import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
+import '../../premium/styles/auto-renew.css';
 
 export default function PostJobMilestonesScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation('common');
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
   const routeState = location.state as PostJobRouteState | null;
   const {
     form, previewTitle, errorMessage, isDraftInitializing, draftError,
     milestonePlans, setMilestonePlans, milestoneErrors, setMilestoneErrors,
     expandedMilestones, setExpandedMilestones, questions, setQuestions,
+    aiInterviewEnabled, setAiInterviewEnabled,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver, handleDragEnd,
     MAX_QUESTION_LENGTH, milestonePlanTotal, milestoneTotalWeeks, expectedDurationWeeks,
     isBudgetExceeded, isDurationExceeded, isActionDisabled,
@@ -59,6 +65,15 @@ export default function PostJobMilestonesScreen() {
   const estimatedDuration = form.estimatedDurationValue
     ? `${form.estimatedDurationValue} ${t(`postJob.durationUnits.${form.estimatedDurationUnit}`)}`
     : null;
+
+  const handleAiInterviewToggle = (): void => {
+    if (premiumStatus.loading) return;
+    if (!premiumStatus.isPremium) {
+      navigate('/premium/client/pricing');
+      return;
+    }
+    setAiInterviewEnabled(current => !current);
+  };
 
   return (
     <PostJobWizardShell
@@ -258,14 +273,52 @@ export default function PostJobMilestonesScreen() {
                 </div>
 
                 {/* AI Interview Benefit (Premium) */}
-                <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-card p-3.5 space-y-1.5 shadow-2xs">
-                  <strong className="font-black text-purple-600 dark:text-purple-400 flex items-center gap-1.5 text-xs">
-                    <Sparkles size={15} className="shrink-0" />
-                    {t('postJobWizard.plan.aiTitle', '2. AI Phỏng vấn tự động (Gói Premium ✦)')}
-                  </strong>
+                <div
+                  className={`rounded-xl border p-3.5 space-y-2 text-left shadow-2xs transition-all ${
+                    aiInterviewEnabled
+                      ? 'border-purple-500 bg-gradient-to-br from-purple-500/20 via-purple-500/10 to-card ring-2 ring-purple-500/15'
+                      : 'border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-card hover:border-purple-500/60 hover:bg-purple-500/10'
+                  }`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <strong className="font-black text-purple-600 dark:text-purple-400 flex items-center gap-1.5 text-xs">
+                      <Sparkles size={15} className="shrink-0" />
+                      {t('postJobWizard.plan.aiTitle', '2. AI Phỏng vấn tự động (Gói Premium ✦)')}
+                    </strong>
+                    {!premiumStatus.loading && !premiumStatus.isPremium && <Crown size={14} className="shrink-0 text-amber-500" />}
+                  </span>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
                   </p>
+                  <span className="flex items-center justify-between gap-3 border-t border-purple-500/15 pt-2">
+                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider ${
+                      aiInterviewEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                    }`}>
+                      {aiInterviewEnabled ? <CheckCircle2 size={13} /> : <Bot size={13} />}
+                      {t(aiInterviewEnabled
+                        ? 'postJobWizard.plan.aiEnableOnPublish'
+                        : premiumStatus.isPremium
+                          ? 'postJobWizard.plan.aiDisabled'
+                          : 'postJobWizard.plan.aiUpgrade')}
+                    </span>
+                    <label
+                      className={`cp-toggle ${aiInterviewEnabled ? '' : 'off'}`}
+                      title={t(aiInterviewEnabled
+                        ? 'postJobWizard.plan.aiEnableOnPublish'
+                        : 'postJobWizard.plan.aiDisabled')}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={aiInterviewEnabled}
+                        disabled={premiumStatus.loading || isActionDisabled}
+                        onChange={handleAiInterviewToggle}
+                        aria-label={t(aiInterviewEnabled
+                          ? 'postJobWizard.plan.aiEnableOnPublish'
+                          : 'postJobWizard.plan.aiDisabled')}
+                      />
+                      <span className="cp-slider" />
+                    </label>
+                  </span>
                 </div>
               </div>
             </div>
