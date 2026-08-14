@@ -8,7 +8,7 @@ import {
 import { jobAPI } from '../../../api/jobAPI';
 import { useApp } from '../../../app/providers/AppProvider';
 import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
-import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PostJobAiInput } from '../components/PostJobAiInput';
