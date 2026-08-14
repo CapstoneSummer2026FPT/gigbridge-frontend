@@ -2,6 +2,7 @@ import { lazy, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-router';
 import { useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
+import { RouteErrorScreen } from './components/RouteErrorScreen';
 import { RootLayout } from './layouts/RootLayout';
 
 const LandingScreen = lazy(() => import('../features/landing/screens/LandingPagePremium'));
@@ -180,6 +181,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <RouteErrorScreen />,
     children: [
       // Public routes - redirect to dashboard if authenticated
       { index: true, element: <PublicRoute><LandingScreen /></PublicRoute> },
