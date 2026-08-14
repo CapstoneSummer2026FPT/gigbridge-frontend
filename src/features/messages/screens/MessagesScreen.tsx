@@ -19,7 +19,7 @@ import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { CreateScheduleModal } from '../components/CreateScheduleModal';
 import { useMessages } from '../hooks/useMessages';
 import { ConversationStatus, ConversationType } from '../../../types/models/Message';
-import { MESSAGE_ROOMS } from '../messageRooms';
+import { MESSAGE_ROOMS } from '../utils/messageRooms';
 import { CombinedIssueReportsModal, useReportContract } from '../../report-contracts';
 import {
   ContractReportResolutionAction,

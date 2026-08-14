@@ -1,4 +1,4 @@
-import { ConversationType, type RoomType } from '../../types/models/Message';
+import { ConversationType, type RoomType } from '../../../types/models/Message';
 
 export interface MessageRoom {
   id: string;
