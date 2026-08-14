@@ -2,8 +2,7 @@ import type {
   ProposalMilestonePlanDto,
   ProposalWorkBreakdownItemDto,
 } from '../../../types/models/Proposal';
-
-const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
+import { computeChainedDueDates } from '../../jobs/utils/jobDuration';
 
 const normalizeText = (value?: string | null) => value?.trim() || '';
 
@@ -12,36 +11,11 @@ const dateOnly = (value?: string | null): string | null => {
   return candidate && /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : null;
 };
 
-const dateOnlyMilliseconds = (value: string): number => {
-  const [year, month, day] = value.split('-').map(Number);
-  return Date.UTC(year, month - 1, day);
-};
-
 export const currentLocalDate = (now = new Date()): string => {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-export const deriveMilestoneDuration = (
-  startDate: string,
-  dueDate?: string | null,
-): string => {
-  const normalizedDueDate = dateOnly(dueDate);
-  const elapsedDays = normalizedDueDate
-    ? Math.ceil((dateOnlyMilliseconds(normalizedDueDate) - dateOnlyMilliseconds(startDate)) / DAY_IN_MILLISECONDS)
-    : 0;
-  const weeks = Math.max(1, Math.ceil(elapsedDays / 7));
-  return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
-};
-
-const initialMilestoneDate = (
-  proposalClosingDate: string | null | undefined,
-  today: string,
-): string => {
-  const closingDate = dateOnly(proposalClosingDate);
-  return closingDate && closingDate > today ? closingDate : today;
 };
 
 const normalizeMilestones = (milestones: ProposalMilestonePlanDto[]) =>
@@ -103,24 +77,29 @@ export interface ResolvedProposalMilestonePlan {
   workBreakdownItems: ProposalWorkBreakdownItemDto[];
 }
 
+// Milestone Deadline is derived from the freelancer-entered Duration, not the other way
+// around: Milestone 1 starts the day after the job's closing date (proposalClosingDate),
+// and each following milestone starts the day after the previous one's computed deadline.
 export const resolveProposalMilestonePlan = (
   milestones: ProposalMilestonePlanDto[],
   customWorkItems: ProposalWorkBreakdownItemDto[],
   defaultAcceptanceCriteria: string,
   proposalClosingDate?: string | null,
-  today = currentLocalDate(),
 ): ResolvedProposalMilestonePlan => {
-  let intervalStart = initialMilestoneDate(proposalClosingDate, today);
+  const orderedMilestones = normalizeMilestones(milestones);
+  const dueDates = computeChainedDueDates(
+    dateOnly(proposalClosingDate),
+    orderedMilestones.map(milestone => milestone.estimatedDuration),
+  );
   const flatWorkItems: ProposalWorkBreakdownItemDto[] = [];
 
-  const milestonePlans = normalizeMilestones(milestones).map((milestone, milestoneIndex) => {
-    const estimatedDuration = deriveMilestoneDuration(intervalStart, milestone.dueDate);
+  const milestonePlans = orderedMilestones.map((milestone, milestoneIndex) => {
     const customItems = linkedWorkItems(milestone, milestoneIndex, customWorkItems);
     const resolvedItems = (customItems.length > 0 ? customItems : [{
       title: normalizeText(milestone.title),
       description: normalizeText(milestone.deliverables),
       deliverables: normalizeText(milestone.deliverables),
-      estimatedDuration,
+      estimatedDuration: milestone.estimatedDuration,
       orderIndex: 0,
     }]).map((item, orderIndex) => ({
       ...item,
@@ -134,13 +113,10 @@ export const resolveProposalMilestonePlan = (
       orderIndex: flatWorkItems.length,
     }));
 
-    const normalizedDueDate = dateOnly(milestone.dueDate);
-    if (normalizedDueDate) intervalStart = normalizedDueDate;
-
     return {
       ...milestone,
       amount: Number(milestone.amount) || 0,
-      estimatedDuration,
+      dueDate: dueDates[milestoneIndex],
       acceptanceCriteria: normalizeText(milestone.acceptanceCriteria) || defaultAcceptanceCriteria,
       workItems: resolvedItems,
     };

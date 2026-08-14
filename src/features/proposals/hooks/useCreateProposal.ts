@@ -21,10 +21,10 @@ import {
 } from '../utils/proposalTotals';
 import { useTranslation } from '../../../hooks/useTranslation';
 import {
-  currentLocalDate,
   extractCustomWorkItems,
   resolveProposalMilestonePlan,
 } from '../utils/proposalMilestonePlan';
+import { parseJobDuration } from '../../jobs/utils/jobDuration';
 
 const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
   title: '',
@@ -71,7 +71,6 @@ export function useCreateProposal() {
 
   const resolvedJobPostId = proposal?.jobPostId || jobPostId || '';
   const draftProposalId = proposal?.proposalId || proposalId || '';
-  const today = useMemo(() => currentLocalDate(), []);
   const defaultAcceptanceCriteria = t('proposalMilestoneEditor.defaultAcceptanceCriteria');
 
   const resolvedPlan = useMemo(() => resolveProposalMilestonePlan(
@@ -79,8 +78,7 @@ export function useCreateProposal() {
     workItems,
     defaultAcceptanceCriteria,
     jobPost?.endDate,
-    today,
-  ), [defaultAcceptanceCriteria, jobPost?.endDate, milestones, today, workItems]);
+  ), [defaultAcceptanceCriteria, jobPost?.endDate, milestones, workItems]);
 
   const milestoneTotal = useMemo(
     () => calculateProposalBudget(resolvedPlan.milestonePlans.map(item => item.amount)),
@@ -206,23 +204,13 @@ export function useCreateProposal() {
       return t('createProposal.errWorkItem');
     }
     if (!milestones.length) return t('createProposal.errNoMilestones');
+    if (!jobPost?.endDate) return t('createProposal.errClosingDateRequired');
     const errors: Record<string, string> = {};
-    const proposalClosingDate = jobPost?.endDate?.split('T')[0] || null;
-    let previousDueDate: string | null = null;
     milestones.forEach((item, index) => {
       if (!item.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
       if (Number(item.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
-      if (!item.dueDate) {
-        errors[`${index}.dueDate`] = 'Deadline is required.';
-      } else {
-        if (item.dueDate < today) errors[`${index}.dueDate`] = 'Deadline cannot be in the past.';
-        if (proposalClosingDate && item.dueDate <= proposalClosingDate) {
-          errors[`${index}.dueDate`] = 'Deadline must be after the proposal closing date.';
-        }
-        if (previousDueDate && item.dueDate <= previousDueDate) {
-          errors[`${index}.dueDate`] = 'Deadline must be later than the previous milestone deadline.';
-        }
-        previousDueDate = item.dueDate;
+      if (!parseJobDuration(item.estimatedDuration).value) {
+        errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in week(s), month(s), or year(s).';
       }
       if (!item.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
     });

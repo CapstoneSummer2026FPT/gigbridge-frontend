@@ -4,21 +4,20 @@ import type {
   ProposalWorkBreakdownItemDto,
 } from '../../../../types/models/Proposal';
 import {
-  deriveMilestoneDuration,
   extractCustomWorkItems,
   resolveProposalMilestonePlan,
 } from '../../utils/proposalMilestonePlan';
 
 const milestone = (
   orderIndex: number,
-  dueDate: string,
+  estimatedDuration: string,
   overrides: Partial<ProposalMilestonePlanDto> = {},
 ): ProposalMilestonePlanDto => ({
   title: `Milestone ${orderIndex + 1}`,
   description: `Legacy description ${orderIndex + 1}`,
   amount: 100,
-  estimatedDuration: '',
-  dueDate,
+  estimatedDuration,
+  dueDate: null,
   deliverables: `Deliverable ${orderIndex + 1}`,
   acceptanceCriteria: '',
   orderIndex,
@@ -26,34 +25,39 @@ const milestone = (
 });
 
 describe('proposal milestone plan defaults', () => {
-  it('derives whole weeks from the milestone interval with a one-week minimum', () => {
-    expect(deriveMilestoneDuration('2026-07-08', '2026-07-22')).toBe('2 weeks');
-    expect(deriveMilestoneDuration('2026-07-22', '2026-07-23')).toBe('1 week');
-    expect(deriveMilestoneDuration('2026-07-22', null)).toBe('1 week');
-  });
-
-  it('uses the closing date for the first milestone and the previous deadline thereafter', () => {
+  it('computes each deadline from the closing date, then chains off the previous deadline', () => {
     const resolved = resolveProposalMilestonePlan(
-      [milestone(0, '2026-07-22'), milestone(1, '2026-08-12')],
+      [milestone(0, '2 weeks'), milestone(1, '3 weeks')],
       [],
       'Default acceptance',
       '2026-07-08T12:00:00Z',
-      '2026-07-01',
     );
 
-    expect(resolved.milestonePlans.map(item => item.estimatedDuration))
-      .toEqual(['2 weeks', '3 weeks']);
+    // Closing date 2026-07-08 -> Milestone 1 starts 07-09, +2 weeks (day-1-counts) -> 07-22.
+    // Milestone 2 starts the day after (07-23), +3 weeks (day-1-counts) -> 08-12.
+    expect(resolved.milestonePlans.map(item => item.dueDate))
+      .toEqual(['2026-07-22', '2026-08-12']);
     expect(resolved.milestonePlans.map(item => item.acceptanceCriteria))
       .toEqual(['Default acceptance', 'Default acceptance']);
   });
 
-  it('generates one compatible work item in flat and nested payloads', () => {
+  it('leaves deadlines null when the closing date is missing', () => {
     const resolved = resolveProposalMilestonePlan(
-      [milestone(0, '2026-07-15')],
+      [milestone(0, '2 weeks')],
       [],
       'Default acceptance',
       null,
-      '2026-07-01',
+    );
+
+    expect(resolved.milestonePlans.map(item => item.dueDate)).toEqual([null]);
+  });
+
+  it('generates one compatible work item in flat and nested payloads', () => {
+    const resolved = resolveProposalMilestonePlan(
+      [milestone(0, '2 weeks')],
+      [],
+      'Default acceptance',
+      '2026-07-01T00:00:00Z',
     );
 
     const expected = expect.objectContaining({
@@ -69,7 +73,7 @@ describe('proposal milestone plan defaults', () => {
   });
 
   it('preserves custom WBS but recognizes a legacy generated item', () => {
-    const loadedMilestone = milestone(0, '2026-07-15', { estimatedDuration: '2 weeks' });
+    const loadedMilestone = milestone(0, '2 weeks');
     const generatedItem: ProposalWorkBreakdownItemDto = {
       title: loadedMilestone.title,
       description: loadedMilestone.deliverables,

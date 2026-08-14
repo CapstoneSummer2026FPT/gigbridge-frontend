@@ -422,7 +422,7 @@ export function useMessages() {
   const dealEditorMilestones = useMemo(
     () => dealMilestones.map((milestone, index) => ({
       ...milestone,
-      estimatedDuration: resolvedDealMilestones[index]?.estimatedDuration || milestone.estimatedDuration,
+      dueDate: resolvedDealMilestones[index]?.dueDate ?? milestone.dueDate,
     })),
     [dealMilestones, resolvedDealMilestones],
   );
