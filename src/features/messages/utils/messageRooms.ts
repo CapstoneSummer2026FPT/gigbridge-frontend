@@ -6,20 +6,18 @@ export interface MessageRoom {
 }
 
 export const MESSAGE_ROOMS: MessageRoom[] = [
-  { id: 'room_invited', type: 'invited' },
   { id: 'room_negotiation', type: 'negotiation' },
   { id: 'room_workspace', type: 'workspace' },
 ];
 
 export const getMessageRoom = (conversationType: number): MessageRoom => {
   switch (conversationType) {
-    case ConversationType.JobInvitedRoom:
-      return MESSAGE_ROOMS[0];
     case ConversationType.ContractWorkroom:
     case ConversationType.Dispute:
-      return MESSAGE_ROOMS[2];
+      return MESSAGE_ROOMS[1];
+    case ConversationType.JobInvitedRoom:
     case ConversationType.JobNegotiation:
     default:
-      return MESSAGE_ROOMS[1];
+      return MESSAGE_ROOMS[0];
   }
 };
