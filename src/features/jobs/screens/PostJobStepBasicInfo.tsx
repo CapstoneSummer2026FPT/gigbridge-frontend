@@ -14,6 +14,7 @@ import { usePremiumStatus } from '../../premium/hooks';
 import { PostJobAiInput } from '../components/PostJobAiInput';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
+import { PostJobDraftsModal } from '../components/PostJobDraftsModal';
 import { usePostJob } from '../hooks/usePostJob';
 import CustomSelect from '../../../shared/components/CustomSelect';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
@@ -83,50 +84,16 @@ export default function PostJobStepBasicInfo() {
 
   const overlay = (
     <>
-      {isDraftModalOpen && (
-        <div className="fixed inset-0 z-[90] grid place-items-center bg-black/55 p-4 backdrop-blur-sm" onClick={() => setIsDraftModalOpen(false)}>
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" onClick={event => event.stopPropagation()}>
-            <div className="flex items-start justify-between border-b border-border p-5">
-              <div>
-                <h2 className="text-lg font-extrabold">{t('postJob.continueDraftTitle')}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{t('postJob.continueDraftDesc', { count: drafts.length })}</p>
-              </div>
-              <button type="button" onClick={() => setIsDraftModalOpen(false)} aria-label={t('common.close')}><X size={18} /></button>
-            </div>
-            <div className="max-h-[55vh] overflow-y-auto p-5">
-              {isDraftsLoading && <p className="py-8 text-center text-sm text-muted-foreground">{t('postJob.checkingDrafts')}</p>}
-              {draftsError && <p className="rounded-xl bg-red-500/10 p-3 text-sm text-red-500">{draftsError}</p>}
-              {!isDraftsLoading && !draftsError && drafts.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border p-8 text-center">
-                  <FileText className="mx-auto mb-2 text-muted-foreground" />
-                  <strong>{t('postJob.noDrafts')}</strong>
-                  <p className="mt-1 text-xs text-muted-foreground">{t('postJob.noDraftsDesc')}</p>
-                </div>
-              )}
-              <div className="grid gap-2">
-                {drafts.map(draft => (
-                  <button
-                    type="button"
-                    key={draft.jobPostsId}
-                    onClick={() => continueDraft(draft)}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background p-4 text-left hover:border-[var(--brand)]"
-                  >
-                    <span className="min-w-0">
-                      <strong className="block truncate text-sm">{draft.title || t('postJob.untitledDraft')}</strong>
-                      <small className="text-muted-foreground">{new Date(draft.updatedAt || draft.createdAt).toLocaleString()}</small>
-                    </span>
-                    <span className="text-xs font-bold text-[var(--brand)]">{t('postJob.editDraft')}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-border p-4">
-              <button type="button" className="job-post-button job-post-button--secondary" onClick={() => setIsDraftModalOpen(false)}>{t('postJob.cancel')}</button>
-              <button type="button" className="job-post-button job-post-button--primary" onClick={createNewDraft}>{t('postJob.createNewJobPost2')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PostJobDraftsModal
+        isOpen={isDraftModalOpen}
+        drafts={drafts}
+        isLoading={isDraftsLoading}
+        error={draftsError}
+        onSelectDraft={continueDraft}
+        onCreateNew={createNewDraft}
+        onClose={() => setIsDraftModalOpen(false)}
+        onRefresh={loadDrafts}
+      />
 
       <PostJobLeavePrompt
         isOpen={isLeavePromptOpen}
