@@ -325,29 +325,6 @@ export default function ClientPricingScreen() {
           )}
         </section>
 
-        {/* ══════════════════════════════════════
-            CHAPTER 3 — THE REALITY CHECK
-        ══════════════════════════════════════ */}
-        <section className="cp-reality">
-          <p className="cp-reality-label">{t('clientPricing.realityLabel')}</p>
-          <div className="cp-reality-grid">
-            <div className="cp-reality-stat">
-              <div className="cp-reality-number">{t('clientPricing.realityStat1Num')}</div>
-              <p className="cp-reality-caption">{t('clientPricing.realityStat1Title')}</p>
-              <p className="cp-reality-sub">{t('clientPricing.realityStat1Sub')}</p>
-            </div>
-            <div className="cp-reality-stat">
-              <div className="cp-reality-number">{t('clientPricing.realityStat2Num')}</div>
-              <p className="cp-reality-caption">{t('clientPricing.realityStat2Title')}</p>
-              <p className="cp-reality-sub">{t('clientPricing.realityStat2Sub')}</p>
-            </div>
-            <div className="cp-reality-stat">
-              <div className="cp-reality-number">{t('clientPricing.realityStat3Num')}</div>
-              <p className="cp-reality-caption">{t('clientPricing.realityStat3Title')}</p>
-              <p className="cp-reality-sub">{t('clientPricing.realityStat3Sub')}</p>
-            </div>
-          </div>
-        </section>
 
         {/* ══════════════════════════════════════
             CHAPTER 4 — CLIENT SUPERPOWERS (5 OFFICIAL FEATURES)
