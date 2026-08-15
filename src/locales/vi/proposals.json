@@ -30,6 +30,8 @@
     "acceptanceCriteria": "Tiêu chí nghiệm thu",
     "workBreakdown": "Cấu trúc phân rã công việc",
     "addWorkItem": "Thêm hạng mục",
+    "expandAll": "Mở rộng tất cả",
+    "collapseAll": "Thu gọn tất cả",
     "defaultAcceptanceCriteria": "Client nghiệm thu khi kết quả bàn giao hoàn thành và đáp ứng yêu cầu project.",
     "durationUnits": {
       "weeks": "tuần",
