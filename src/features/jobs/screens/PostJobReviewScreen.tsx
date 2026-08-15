@@ -422,15 +422,15 @@ export default function PostJobReviewScreen() {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all ${aiInterviewEnabled
-                ? 'border-transparent bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-[0_0_14px_rgba(168,85,247,0.18)]'
+                ? 'border-transparent bg-purple-500/10 text-purple-800 dark:text-purple-200 shadow-[0_0_14px_rgba(168,85,247,0.18)]'
                 : 'border-border/70 bg-muted/30 text-muted-foreground'
               }`}>
-              <Bot size={14} />
-              <span className="text-[10px] font-black uppercase tracking-wider">
+              <Bot size={14} className="post-job-ai-toggle-label" />
+              <span className="post-job-ai-toggle-label text-[10px] font-black uppercase tracking-wider">
                 {t('postJobWizard.plan.aiInterviewShort', { defaultValue: 'AI Interview' })}
               </span>
               <label
-                className={`cp-toggle ${aiInterviewEnabled ? '' : 'off'}`}
+                className={`cp-toggle cp-toggle--ai ${aiInterviewEnabled ? '' : 'off'}`}
                 title={t(aiInterviewEnabled
                   ? 'postJobWizard.plan.aiEnableOnPublish'
                   : 'postJobWizard.plan.aiDisabled')}

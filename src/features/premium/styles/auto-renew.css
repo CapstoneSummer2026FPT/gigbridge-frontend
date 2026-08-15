@@ -121,15 +121,45 @@
   }
 }
 
+/* AI Interview variant: indigo ON state with a restrained blue nudge. */
+.cp-toggle--ai input:checked + .cp-slider {
+  background-color: #4f46e5;
+  box-shadow: 0 0 14px rgba(79, 70, 229, 0.38);
+  animation: none;
+}
+
+.cp-toggle--ai input:checked + .cp-slider::before {
+  animation: none;
+}
+
+.cp-toggle--ai input:not(:checked) + .cp-slider {
+  border-color: rgba(79, 70, 229, 0.38);
+  box-shadow: 0 0 7px rgba(79, 70, 229, 0.16);
+}
+
+.cp-toggle--ai input:not(:checked) + .cp-slider::before {
+  animation: cp-ai-nudge-thumb 2.8s infinite ease-in-out;
+}
+
+@keyframes cp-ai-nudge-thumb {
+  0%, 100% {
+    transform: translateX(0);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+  }
+  30% {
+    transform: translateX(6px);
+    box-shadow: 0 0 8px rgba(79, 70, 229, 0.34);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+  70% {
+    transform: translateX(8px);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.42);
+  }
+}
+
 .cp-toggle input:disabled + .cp-slider {
   opacity: 0.5;
   cursor: wait;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cp-toggle input:checked + .cp-slider,
-  .cp-toggle input:checked + .cp-slider::before,
-  .cp-toggle input:not(:checked) + .cp-slider::before {
-    animation: none;
-  }
 }

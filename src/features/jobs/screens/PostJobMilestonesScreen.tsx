@@ -226,7 +226,7 @@ export default function PostJobMilestonesScreen() {
 
       {/* SECTION: INTERVIEW QUESTIONS */}
       <section className={`job-post-section transition-all duration-300 ${
-        aiInterviewEnabled ? 'job-post-ai-twilight' : ''
+        aiInterviewEnabled ? 'job-post-ai-tint' : ''
       }`}>
         <button type="button" className="job-post-section__header job-post-accordion__trigger" onClick={() => setQuestionsOpen(current => !current)} aria-expanded={questionsOpen}>
           <span className="job-post-section__heading">
@@ -305,7 +305,7 @@ export default function PostJobMilestonesScreen() {
                           : 'postJobWizard.plan.aiUpgrade')}
                     </span>
                     <label
-                      className={`cp-toggle ${aiInterviewEnabled ? '' : 'off'}`}
+                      className={`cp-toggle cp-toggle--ai ${aiInterviewEnabled ? '' : 'off'}`}
                       title={t(aiInterviewEnabled
                         ? 'postJobWizard.plan.aiEnableOnPublish'
                         : 'postJobWizard.plan.aiDisabled')}

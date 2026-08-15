@@ -1300,60 +1300,16 @@
   box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 35%, transparent);
 }
 .job-post-ai-twilight {
-  --ai-twilight-glow:
-    0 0 24px 6px rgba(192, 132, 252, 0.21),
-    0 10px 48px 14px rgba(139, 92, 246, 0.15),
-    0 24px 72px 22px rgba(99, 102, 241, 0.08);
-  --ai-twilight-glow-peak:
-    0 0 32px 10px rgba(192, 132, 252, 0.28),
-    0 12px 58px 18px rgba(139, 92, 246, 0.2),
-    0 28px 82px 26px rgba(99, 102, 241, 0.11);
   position: relative;
   isolation: isolate;
   border: 0;
-  background:
-    radial-gradient(ellipse 78% 115% at 94% 0%, rgba(216, 180, 254, 0.42), transparent 62%),
-    radial-gradient(ellipse 72% 100% at 2% 100%, rgba(129, 140, 248, 0.25), transparent 66%),
-    linear-gradient(135deg, rgba(237, 233, 254, 0.72), rgba(224, 231, 255, 0.5) 52%, rgba(250, 245, 255, 0.38));
-  box-shadow: var(--ai-twilight-glow);
-  animation: job-post-ai-twilight-on 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+  background: rgba(237, 233, 254, 0.58);
+  box-shadow: none;
 }
 
 .dark .job-post-ai-twilight {
-  --ai-twilight-glow:
-    0 0 26px 7px rgba(168, 85, 247, 0.19),
-    0 12px 52px 16px rgba(124, 58, 237, 0.14),
-    0 26px 76px 24px rgba(79, 70, 229, 0.088);
-  --ai-twilight-glow-peak:
-    0 0 34px 11px rgba(168, 85, 247, 0.26),
-    0 14px 62px 20px rgba(124, 58, 237, 0.19),
-    0 30px 88px 28px rgba(79, 70, 229, 0.12);
-  background:
-    radial-gradient(ellipse 78% 115% at 94% 0%, rgba(168, 85, 247, 0.3), transparent 62%),
-    radial-gradient(ellipse 72% 100% at 2% 100%, rgba(79, 70, 229, 0.24), transparent 66%),
-    linear-gradient(135deg, rgba(76, 29, 149, 0.18), rgba(49, 46, 129, 0.14) 52%, rgba(15, 23, 42, 0.08));
+  background: rgba(49, 46, 129, 0.16);
   color: rgba(250, 245, 255, 0.96);
-}
-
-@keyframes job-post-ai-twilight-on {
-  0% {
-    box-shadow:
-      0 0 0 0 rgba(192, 132, 252, 0),
-      0 0 0 0 rgba(139, 92, 246, 0),
-      0 0 0 0 rgba(99, 102, 241, 0);
-  }
-  62% {
-    box-shadow: var(--ai-twilight-glow-peak);
-  }
-  100% {
-    box-shadow: var(--ai-twilight-glow);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .job-post-ai-twilight {
-    animation: none;
-  }
 }
 
 .dark .job-post-ai-twilight h3,
@@ -1373,4 +1329,23 @@
 .dark .job-post-ai-twilight textarea::placeholder,
 .dark .job-post-ai-twilight input::placeholder {
   color: rgba(221, 214, 254, 0.62);
+}
+
+.job-post-ai-tint {
+  border: 0;
+  background: rgba(237, 233, 254, 0.58);
+  box-shadow: none;
+}
+
+.dark .job-post-ai-tint {
+  background: rgba(49, 46, 129, 0.16);
+}
+
+.post-job-ai-toggle-label {
+  color: #4c1d95 !important;
+  opacity: 1;
+}
+
+.dark .post-job-ai-toggle-label {
+  color: #f3e8ff !important;
 }
