@@ -1,0 +1,7 @@
+/**
+ * Manage Milestone Styles
+ */
+
+.manage-milestone-panel {
+  background: var(--gb-bg-card, rgba(255, 255, 255, 0.04));
+}

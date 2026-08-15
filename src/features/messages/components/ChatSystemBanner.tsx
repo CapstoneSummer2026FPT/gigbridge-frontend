@@ -131,17 +131,53 @@ export function ChatSystemBanner({
     navigate('/contracts');
   };
 
+  if (isProductMaterials) {
+    return (
+      <div className="flex justify-center my-3 w-full min-w-0 px-1">
+        <div className="w-[min(560px,100%)] max-w-full rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-card to-card p-3.5 sm:p-4 shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <div className="flex items-start gap-3 sm:gap-3.5 min-w-0">
+            {/* Glowing Emerald Icon Box */}
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/25 shrink-0 mt-0.5">
+              <FolderOpen size={20} />
+            </div>
+
+            {/* Body Content */}
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[9px] font-black tracking-wide uppercase shadow-2xs shrink-0">
+                  <FolderOpen size={10} /> {isVi ? 'Tư liệu sản phẩm' : 'Product Materials'}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-semibold shrink-0">
+                  {isVi ? 'Đã đính kèm' : 'Attached'}
+                </span>
+              </div>
+
+              <p className="text-xs font-bold text-foreground leading-relaxed pt-0.5 break-words [overflow-wrap:anywhere] min-w-0">
+                {content}
+              </p>
+
+              <div className="pt-1 flex items-center gap-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold min-w-0">
+                <Sparkles size={12} className="shrink-0 animate-pulse" />
+                <span className="truncate min-w-0">{isVi ? 'Tất cả file đã tự động lưu vào tab "File chung"' : 'All files saved to "Shared Files" tab'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex justify-center my-2.5 w-full">
-      <div className={`w-[min(540px,90vw)] rounded-2xl border bg-card p-3.5 px-4 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${config.borderClass}`}>
+    <div className="flex justify-center my-2.5 w-full min-w-0 px-1">
+      <div className={`w-[min(540px,100%)] max-w-full rounded-2xl border bg-card p-3.5 px-4 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden ${config.borderClass}`}>
         {/* Content Side */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 max-w-full">
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${config.bgClass}`}
           >
             {config.icon}
           </div>
-          <p className="text-xs font-bold text-foreground leading-relaxed">
+          <p className="text-xs font-bold text-foreground leading-relaxed break-words [overflow-wrap:anywhere] min-w-0">
             {content}
           </p>
         </div>
