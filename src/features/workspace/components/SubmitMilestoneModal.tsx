@@ -6,7 +6,14 @@ import {
   type FormEvent,
 } from 'react';
 import { AlertCircle, FileText, Loader2, Upload, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTranslation } from '../../../hooks/useTranslation';
+import type { UploadTransferProgress } from '../../../service/apiService';
+import type { ApiTransportError } from '../../../types/common';
+import {
+  FileUploadProgress,
+  type FileUploadPhase,
+} from '../../../shared/components/FileUploadProgress';
 import {
   MILESTONE_FILE_ACCEPT,
   MAX_MILESTONE_FILES,
@@ -19,12 +26,20 @@ import {
 interface SubmissionResult {
   success: boolean;
   message?: string;
+  statusCode?: number;
+  transportError?: ApiTransportError;
 }
 
 interface SubmitMilestoneModalProps {
   milestoneTitle: string;
   onClose: () => void;
-  onSubmit: (payload: MilestoneSubmissionPayload) => Promise<SubmissionResult>;
+  onSubmit: (
+    payload: MilestoneSubmissionPayload,
+    lifecycle: {
+      onUploadProgress: (progress: UploadTransferProgress) => void;
+      onRefreshing: () => void;
+    },
+  ) => Promise<SubmissionResult>;
 }
 
 const formatMegabytes = (bytes: number): string =>
@@ -40,7 +55,9 @@ export function SubmitMilestoneModal({
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionPhase, setSubmissionPhase] = useState<FileUploadPhase | 'idle'>('idle');
+  const [uploadProgress, setUploadProgress] = useState<UploadTransferProgress | null>(null);
+  const isSubmitting = submissionPhase !== 'idle';
 
   const getValidationMessage = (validationError: MilestoneFileValidationError): string => {
     switch (validationError) {
@@ -57,6 +74,19 @@ export function SubmitMilestoneModal({
       case 'unsupported':
         return t('workspace.unsupportedDeliverableFileError');
     }
+  };
+
+  const getSubmissionErrorMessage = (result: SubmissionResult): string => {
+    if (result.statusCode === 413) {
+      return t('workspace.totalDeliverableSizeError');
+    }
+    if (result.transportError === 'timeout') {
+      return t('fileUploadError.timeout');
+    }
+    if (result.transportError === 'network') {
+      return t('fileUploadError.network');
+    }
+    return result.message || t('workspace.failedSubmitDeliverableError');
   };
 
   const selectFile = (file: File): void => {
@@ -102,25 +132,38 @@ export function SubmitMilestoneModal({
       return;
     }
 
-    setIsSubmitting(true);
+    setSubmissionPhase('uploading');
+    setUploadProgress(null);
     setError(null);
     try {
-      const result = await onSubmit({ description: trimmedDescription, files });
+      const result = await onSubmit(
+        { description: trimmedDescription, files },
+        {
+          onUploadProgress: progress => {
+            setUploadProgress(progress);
+            setSubmissionPhase(progress.percent === 100 ? 'processing' : 'uploading');
+          },
+          onRefreshing: () => setSubmissionPhase('refreshing'),
+        },
+      );
       if (!result.success) {
-        setError(result.message || t('workspace.failedSubmitDeliverableError'));
+        setError(getSubmissionErrorMessage(result));
+        setSubmissionPhase('idle');
+        setUploadProgress(null);
         return;
       }
+      toast.success(t('workspace.submitDeliverableSuccess'));
       onClose();
     } catch {
       setError(t('workspace.failedSubmitDeliverableError'));
-    } finally {
-      setIsSubmitting(false);
+      setSubmissionPhase('idle');
+      setUploadProgress(null);
     }
   };
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" role="presentation">
-      <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title">
+      <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title" aria-busy={isSubmitting}>
         <div className="p-6 border-b border-border/60 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0">
@@ -133,7 +176,7 @@ export function SubmitMilestoneModal({
               <p className="text-xs font-bold text-brand mt-0.5">{milestoneTitle}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={isSubmitting} className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer" title={t('common.close')}>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" title={t('common.close')}>
             <X size={18} />
           </button>
         </div>
@@ -182,7 +225,7 @@ export function SubmitMilestoneModal({
                       <p className="text-[10px] font-bold text-text-muted mt-0.5">{formatMegabytes(file.size)}</p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => removeFile(index)} disabled={isSubmitting} className="p-2 rounded-xl text-text-muted hover:text-destructive hover:bg-destructive/10 transition cursor-pointer" title={t('workspace.removeDeliverableFile')}>
+                  <button type="button" onClick={() => removeFile(index)} disabled={isSubmitting} className="p-2 rounded-xl text-text-muted hover:text-destructive hover:bg-destructive/10 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" title={t('workspace.removeDeliverableFile')}>
                     <X size={16} />
                   </button>
                 </li>
@@ -198,10 +241,23 @@ export function SubmitMilestoneModal({
             <textarea id="workspace-deliverable-description" value={description} onChange={event => setDescription(event.target.value)} maxLength={5000} rows={4} placeholder={t('workspace.addNotesPlaceholder')} disabled={isSubmitting} className="w-full bg-surface-card border border-border/80 focus:border-brand rounded-2xl p-3.5 text-xs font-medium text-text-primary focus:outline-none transition resize-none placeholder:text-text-muted/60" />
           </div>
 
+          {submissionPhase !== 'idle' && (
+            <FileUploadProgress phase={submissionPhase} progress={uploadProgress} />
+          )}
+
           <div className="pt-3 flex items-center justify-end gap-3 border-t border-border/60">
             <button type="button" onClick={onClose} disabled={isSubmitting} className="px-5 py-2.5 rounded-xl border border-border bg-surface-card hover:bg-surface-muted text-text-primary text-xs font-black transition cursor-pointer disabled:opacity-50">{t('common.cancel')}</button>
             <button type="submit" disabled={isSubmitting || files.length === 0} className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-brand-foreground text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer">
-              {isSubmitting ? <><Loader2 size={15} className="animate-spin" />{t('workspace.submitting')}</> : <><Upload size={15} />{t('common.submit')}</>}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  {submissionPhase === 'uploading'
+                    ? t('workspace.uploadingDeliverable')
+                    : submissionPhase === 'processing'
+                      ? t('workspace.processingDeliverable')
+                      : t('workspace.refreshingWorkspace')}
+                </>
+              ) : <><Upload size={15} />{t('common.submit')}</>}
             </button>
           </div>
         </form>

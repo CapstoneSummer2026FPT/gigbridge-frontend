@@ -34,6 +34,11 @@ import { ManageMilestone } from '../components/ManageMilestone';
 import { ChatAndInfoPanel } from '../components/ChatAndInfoPanel';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { SubmitMilestoneModal } from '../components/SubmitMilestoneModal';
+import type { UploadTransferProgress } from '../../../service/apiService';
+import {
+  FileUploadProgress,
+  type FileUploadPhase,
+} from '../../../shared/components/FileUploadProgress';
 
 export default function ProjectWorkspaceScreen() {
   const { t } = useTranslation();
@@ -84,7 +89,9 @@ export default function ProjectWorkspaceScreen() {
   const [productFile, setProductFile] = useState<File | null>(null);
   const [productLink, setProductLink] = useState('');
   const [productError, setProductError] = useState<string | null>(null);
-  const [isSendingProduct, setIsSendingProduct] = useState(false);
+  const [productSubmissionPhase, setProductSubmissionPhase] = useState<FileUploadPhase | 'idle'>('idle');
+  const [productUploadProgress, setProductUploadProgress] = useState<UploadTransferProgress | null>(null);
+  const isSendingProduct = productSubmissionPhase !== 'idle';
   const [raiseIssueModalOpen, setRaiseIssueModalOpen] = useState(false);
   const [reportListOpen, setReportListOpen] = useState(false);
   const [viewReportId, setViewReportId] = useState<string | null>(null);
@@ -283,7 +290,8 @@ export default function ProjectWorkspaceScreen() {
     setProductFile(null);
     setProductLink('');
     setProductError(null);
-    setIsSendingProduct(false);
+    setProductSubmissionPhase('idle');
+    setProductUploadProgress(null);
     if (productFileInputRef.current) {
       productFileInputRef.current.value = '';
     }
@@ -338,24 +346,52 @@ export default function ProjectWorkspaceScreen() {
       }
     }
 
-    setIsSendingProduct(true);
+    const submittedMode = productMode;
+    setProductSubmissionPhase(submittedMode === 'file' ? 'uploading' : 'processing');
+    setProductUploadProgress(null);
     setProductError(null);
 
-    const result = await handleSubmitProductHandoff({
-      note: trimmedNote,
-      file: productMode === 'file' ? productFile : null,
-      externalUrl: productMode === 'link' ? trimmedLink : undefined,
-    });
+    try {
+      const result = await handleSubmitProductHandoff(
+        {
+          note: trimmedNote,
+          file: submittedMode === 'file' ? productFile : null,
+          externalUrl: submittedMode === 'link' ? trimmedLink : undefined,
+        },
+        {
+          onUploadProgress: submittedMode === 'file'
+            ? progress => {
+                setProductUploadProgress(progress);
+                setProductSubmissionPhase(progress.percent === 100 ? 'processing' : 'uploading');
+              }
+            : undefined,
+          onRefreshing: () => setProductSubmissionPhase('refreshing'),
+        },
+      );
 
-    if (!result.success) {
-      setProductError(result.message || t('workspace.failedSendMaterialsError'));
-      setIsSendingProduct(false);
-      return;
+      if (!result.success) {
+        const failureMessage = result.statusCode === 413
+          ? t('fileUploadError.requestTooLarge')
+          : result.transportError === 'timeout'
+            ? t('fileUploadError.timeout')
+            : result.transportError === 'network'
+              ? t('fileUploadError.network')
+              : result.message || t('workspace.failedSendMaterialsError');
+        setProductError(failureMessage);
+        setProductSubmissionPhase('idle');
+        setProductUploadProgress(null);
+        return;
+      }
+
+      toast.success(t('workspace.sendMaterialsSuccess'));
+      resetProductModal();
+      setActiveTab('files');
+      setShowInfo(true);
+    } catch {
+      setProductError(t('workspace.failedSendMaterialsError'));
+      setProductSubmissionPhase('idle');
+      setProductUploadProgress(null);
     }
-
-    resetProductModal();
-    setActiveTab('files');
-    setShowInfo(true);
   };
 
 
@@ -835,13 +871,13 @@ export default function ProjectWorkspaceScreen() {
           key={submitModal.milestoneId}
           milestoneTitle={submitModal.title}
           onClose={() => setSubmitModal(null)}
-          onSubmit={payload => handleSubmitMilestoneDeliverable(submitModal.milestoneId, payload)}
+          onSubmit={(payload, lifecycle) => handleSubmitMilestoneDeliverable(submitModal.milestoneId, payload, lifecycle)}
         />
       )}
 
       {productModalOpen && (
         <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" role="presentation">
-          <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-product-title">
+          <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-product-title" aria-busy={isSendingProduct}>
             {/* Header */}
             <div className="p-6 border-b border-border/60 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -858,7 +894,7 @@ export default function ProjectWorkspaceScreen() {
               <button
                 type="button"
                 onClick={resetProductModal}
-                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer"
+                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 title={t('common.close')}
                 disabled={isSendingProduct}
               >
@@ -879,7 +915,10 @@ export default function ProjectWorkspaceScreen() {
               <div className="p-1 rounded-2xl bg-surface-muted border border-border/60 grid grid-cols-2 gap-1" role="tablist">
                 <button
                   type="button"
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${productMode === 'file'
+                  role="tab"
+                  aria-selected={productMode === 'file'}
+                  disabled={isSendingProduct}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${productMode === 'file'
                       ? 'bg-background text-brand shadow-sm border border-border/60'
                       : 'text-text-muted hover:text-text-primary'
                     }`}
@@ -894,7 +933,10 @@ export default function ProjectWorkspaceScreen() {
                 </button>
                 <button
                   type="button"
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer ${productMode === 'link'
+                  role="tab"
+                  aria-selected={productMode === 'link'}
+                  disabled={isSendingProduct}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${productMode === 'link'
                       ? 'bg-background text-brand shadow-sm border border-border/60'
                       : 'text-text-muted hover:text-text-primary'
                     }`}
@@ -926,15 +968,17 @@ export default function ProjectWorkspaceScreen() {
                     className="hidden"
                   />
                   {!productFile ? (
-                    <div
+                    <button
+                      type="button"
                       onClick={() => productFileInputRef.current?.click()}
-                      className="border-2 border-dashed border-border/80 hover:border-brand/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer bg-surface-card/40 hover:bg-surface-card transition text-center group"
+                      disabled={isSendingProduct}
+                      className="w-full border-2 border-dashed border-border/80 hover:border-brand/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer bg-surface-card/40 hover:bg-surface-card transition text-center group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="w-12 h-12 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand group-hover:scale-110 transition-transform mb-3">
                         <Upload size={22} />
                       </div>
-                      <p className="text-xs font-black text-text-primary">Click hoặc kéo thả file vật tư vào đây</p>
-                    </div>
+                      <p className="text-xs font-black text-text-primary">{t('workspace.selectWorkMaterialFile')}</p>
+                    </button>
                   ) : (
                     <div className="border border-brand/40 bg-brand/5 rounded-2xl p-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
@@ -948,12 +992,13 @@ export default function ProjectWorkspaceScreen() {
                       </div>
                       <button
                         type="button"
+                        disabled={isSendingProduct}
                         onClick={() => {
                           setProductFile(null);
                           if (productFileInputRef.current) productFileInputRef.current.value = '';
                         }}
-                        className="p-2 rounded-xl text-text-muted hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
-                        title="Xóa file"
+                        className="p-2 rounded-xl text-text-muted hover:text-destructive hover:bg-destructive/10 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={t('workspace.removeWorkMaterialFile')}
                       >
                         <X size={16} />
                       </button>
@@ -997,6 +1042,16 @@ export default function ProjectWorkspaceScreen() {
                 />
               </div>
 
+              {productSubmissionPhase !== 'idle' && (
+                <FileUploadProgress
+                  phase={productSubmissionPhase}
+                  progress={productMode === 'file' ? productUploadProgress : null}
+                  label={productMode === 'link' && productSubmissionPhase === 'processing'
+                    ? t('workspace.sendingWorkMaterial')
+                    : undefined}
+                />
+              )}
+
               {/* Footer Actions */}
               <div className="pt-3 flex items-center justify-end gap-3 border-t border-border/60">
                 <button
@@ -1019,7 +1074,13 @@ export default function ProjectWorkspaceScreen() {
                   {isSendingProduct ? (
                     <>
                       <Loader2 size={15} className="animate-spin" />
-                      {t('workspace.sending')}
+                      {productSubmissionPhase === 'uploading'
+                        ? t('workspace.uploadingDeliverable')
+                        : productSubmissionPhase === 'refreshing'
+                          ? t('workspace.refreshingWorkspace')
+                          : productMode === 'link'
+                            ? t('workspace.sendingWorkMaterial')
+                            : t('workspace.processingDeliverable')}
                     </>
                   ) : (
                     <>
