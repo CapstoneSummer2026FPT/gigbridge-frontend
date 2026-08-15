@@ -484,21 +484,6 @@ export default function PostJobStepBasicInfo() {
                     </div>
                   )}
                 </div>
-
-                {/* Job Post Visibility */}
-                <div className="job-post-field">
-                  <label htmlFor="job-visibility" className="font-bold text-foreground">{t('postJob.visibility', 'Phạm vi hiển thị')}</label>
-                  <CustomSelect
-                    value={form.visibility}
-                    options={[
-                      { value: String(JobPostVisibility.Public), label: t('postJob.public', 'Công khai (Public)') },
-                      { value: String(JobPostVisibility.Private), label: t('postJob.private', 'Riêng tư (Private)') },
-                      { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnly', 'Chỉ qua lời mời (Invite Only)') },
-                    ]}
-                    onChange={val => setForm({ ...form, visibility: val })}
-                    searchable={false}
-                  />
-                </div>
               </div>
             )}
           </div>
