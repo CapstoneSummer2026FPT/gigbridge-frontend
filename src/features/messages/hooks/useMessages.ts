@@ -1236,7 +1236,7 @@ export function useMessages() {
   };
 
   const MAX_CHAT_FILES = 5;
-  const MAX_CHAT_FILE_SIZE = 100 * 1024 * 1024;
+  const MAX_CHAT_FILE_SIZE = 10 * 1024 * 1024;
 
   const handleSelectChatFiles = (files: FileList | File[]): void => {
     const incoming = Array.from(files);
@@ -1244,7 +1244,7 @@ export function useMessages() {
 
     const oversized = incoming.find(file => file.size <= 0 || file.size > MAX_CHAT_FILE_SIZE);
     if (oversized) {
-      console.error(`"${oversized.name}" exceeds the 100MB attachment limit.`);
+      console.error(`"${oversized.name}" exceeds the 10MB attachment limit.`);
       return;
     }
 
