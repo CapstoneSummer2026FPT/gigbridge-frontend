@@ -148,8 +148,6 @@
     "scopeMenuLabel": "Chọn phạm vi tìm kiếm",
     "talent": "Nhân tài",
     "talentDescription": "Tìm freelancer theo tên, chuyên môn hoặc kỹ năng",
-    "projects": "Dự án",
-    "projectsDescription": "Tìm trong các dự án đang hoạt động của bạn",
     "jobs": "Công việc",
     "jobsDescription": "Xem công việc do khách hàng đăng",
     "resultsFor": "Kết quả cho “{{query}}”",

@@ -2,7 +2,6 @@ import type { ChangeEvent, FocusEvent, FormEvent } from 'react';
 import {
   BriefcaseBusiness,
   ChevronDown,
-  FolderKanban,
   Search,
   UsersRound,
 } from 'lucide-react';
@@ -49,19 +48,13 @@ export function TopNavSearch({
       icon: UsersRound,
     },
     {
-      value: TOP_NAV_SEARCH_SCOPE.Projects,
-      label: t('topNavSearch.projects'),
-      description: t('topNavSearch.projectsDescription'),
-      icon: FolderKanban,
-    },
-    {
       value: TOP_NAV_SEARCH_SCOPE.Jobs,
       label: t('topNavSearch.jobs'),
       description: t('topNavSearch.jobsDescription'),
       icon: BriefcaseBusiness,
     },
   ];
-  const selectedOption = options.find(option => option.value === scope) ?? options[2];
+  const selectedOption = options.find(option => option.value === scope) ?? options[0];
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();

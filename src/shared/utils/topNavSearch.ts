@@ -1,6 +1,5 @@
 export const TOP_NAV_SEARCH_SCOPE = {
   Talent: 'talent',
-  Projects: 'projects',
   Jobs: 'jobs',
 } as const;
 
@@ -10,7 +9,6 @@ export type TopNavSearchScope = (
 
 const SEARCH_BASE_PATH: Record<TopNavSearchScope, string> = {
   [TOP_NAV_SEARCH_SCOPE.Talent]: '/freelancers',
-  [TOP_NAV_SEARCH_SCOPE.Projects]: '/projects',
   [TOP_NAV_SEARCH_SCOPE.Jobs]: '/jobs',
 };
 

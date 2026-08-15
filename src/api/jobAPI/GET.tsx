@@ -40,6 +40,21 @@ export interface PublicJobSearchResult {
   searchEventId: string | null;
 }
 
+export interface ProfileMatchedJobSearchParams {
+  pageIndex?: number;
+  pageSize?: number;
+  majorCategoryIds?: readonly string[];
+  search?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  skills?: string;
+  workType?: string;
+  postedWithinDays?: number;
+  sortBy?: string;
+  sortDesc?: boolean;
+  searchEventId?: string | null;
+}
+
 const getAnalyticsSession = () => {
   const key = 'gigbridge_analytics_session';
   const current = localStorage.getItem(key);
@@ -261,6 +276,43 @@ export const jobGetAPI = {
       `${jobPostsUrl}/search`, params, { 'X-Analytics-Session': getAnalyticsSession() }, signal,
     );
     if (!response.success || !response.data) throw new Error(response.message || 'Unable to search jobs.');
+    return {
+      ...response.data,
+      items: response.data.items.map(toLegacyJobFromSummary),
+    };
+  },
+
+  /**
+   * GET /api/JobPosts/profile-matches
+   * Freelancer-only deterministic feed based on selected profile categories and profile skills.
+   */
+  getProfileMatchedJobs: async (
+    params: ProfileMatchedJobSearchParams,
+    signal?: AbortSignal,
+  ): Promise<PublicJobSearchResult> => {
+    const query = new URLSearchParams();
+    if (params.pageIndex !== undefined) query.set('pageIndex', String(params.pageIndex));
+    if (params.pageSize !== undefined) query.set('pageSize', String(params.pageSize));
+    params.majorCategoryIds?.forEach(id => query.append('majorCategoryIds', id));
+    if (params.search) query.set('search', params.search);
+    if (params.budgetMin !== undefined) query.set('budgetMin', String(params.budgetMin));
+    if (params.budgetMax !== undefined) query.set('budgetMax', String(params.budgetMax));
+    if (params.skills) query.set('skills', params.skills);
+    if (params.workType) query.set('workType', params.workType);
+    if (params.postedWithinDays !== undefined) query.set('postedWithinDays', String(params.postedWithinDays));
+    if (params.sortBy) query.set('sortBy', params.sortBy);
+    if (params.sortDesc !== undefined) query.set('sortDesc', String(params.sortDesc));
+    if (params.searchEventId) query.set('searchEventId', params.searchEventId);
+
+    const response = await apiService.get<PagedJobSearchResponse>(
+      `${jobPostsUrl}/profile-matches?${query.toString()}`,
+      undefined,
+      { 'X-Analytics-Session': getAnalyticsSession() },
+      signal,
+    );
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Unable to load profile-matched jobs.');
+    }
     return {
       ...response.data,
       items: response.data.items.map(toLegacyJobFromSummary),

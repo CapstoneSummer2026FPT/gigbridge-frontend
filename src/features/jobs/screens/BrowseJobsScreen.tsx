@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Flame, Crown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,14 +15,21 @@ import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import type { FreelancerSummaryDto } from '../../../types/models/Profile';
+import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
+import type { MajorCategoryDto } from '../../../types/models/Category';
 import { premiumAPI } from '../../premium/api';
 import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import {
   BROWSE_JOBS_VIEW,
-  shouldUseRecommendedJobsByDefault,
+  PROFILE_CATEGORY_PARAM,
+  buildBrowseCategoryTags,
+  parseProfileCategoryIds,
+  resolveBrowseJobsView,
+  serializeProfileCategoryIds,
   type BrowseJobsView,
 } from '../utils/browseJobsView';
+import { BrowseJobCategoryTags } from '../components/BrowseJobCategoryTags';
 
 const PAGE_SIZE = 20;
 const WORK_TYPES = ['All', 'fixed'];
@@ -70,12 +77,15 @@ export default function BrowseJobsScreen() {
   const [committedBudgetMax, setCommittedBudgetMax] = useState('');
   const [workType, setWorkType] = useState('All');
   const [datePosted, setDatePosted] = useState('Any time');
-  const [sortBy, setSortBy] = useState<'relevance' | 'date'>('date');
+  const [sortBy, setSortBy] = useState<'relevance' | 'date'>(() => (
+    resolveBrowseJobsView(Boolean(user), isFreelancer, params.get('view'), hasExplicitBrowseCriteria)
+      === BROWSE_JOBS_VIEW.Profile ? 'relevance' : 'date'
+  ));
   const [showFilters, setShowFilters] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [savingJobIds, setSavingJobIds] = useState<Set<string>>(new Set());
   const [allJobs, setAllJobs] = useState<BrowseJob[]>([]);
-  const [categoryOptions, setCategoryOptions] = useState<string[]>(['All']);
+  const [categoryTaxonomy, setCategoryTaxonomy] = useState<MajorCategoryDto[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [topFreelancers, setTopFreelancers] = useState<FreelancerSummaryDto[]>([]);
@@ -84,19 +94,38 @@ export default function BrowseJobsScreen() {
   const [page, setPage] = useState(() => Math.max(1, Number(params.get('page')) || 1));
   const [totalResults, setTotalResults] = useState(0);
   const [searchEventId, setSearchEventId] = useState<string | null>(null);
-  const [recommendedMode, setRecommendedMode] = useState(() => (
-    shouldUseRecommendedJobsByDefault(
+  const [browseView, setBrowseView] = useState<BrowseJobsView>(() => (
+    resolveBrowseJobsView(
       Boolean(user),
       isFreelancer,
       params.get('view'),
       hasExplicitBrowseCriteria,
     )
   ));
+  const [freelancerProfile, setFreelancerProfile] = useState<FreelancerProfileDetailDto | null>(null);
+  const [profileLoading, setProfileLoading] = useState(Boolean(user && isFreelancer));
+  const [profileFallbackMessage, setProfileFallbackMessage] = useState<string | null>(null);
+  const [selectedProfileCategoryIds, setSelectedProfileCategoryIds] = useState<string[]>(() => (
+    parseProfileCategoryIds(params.get(PROFILE_CATEGORY_PARAM)) ?? []
+  ));
   const [recommendedJobs, setRecommendedJobs] = useState<BrowseJob[]>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const defaultViewAppliedRef = useRef(Boolean(user && isFreelancer));
+  const browseViewRef = useRef<BrowseJobsView>(browseView);
+
+  const isProfileView = browseView === BROWSE_JOBS_VIEW.Profile;
+  const isRecommendedView = browseView === BROWSE_JOBS_VIEW.Recommended;
+  const profileDefaultCategoryIds = useMemo(() => Array.from(new Set(
+    (freelancerProfile?.categories || []).map(item => item.majorCategoryId.toLowerCase()),
+  )), [freelancerProfile]);
+  const categoryTags = useMemo(() => buildBrowseCategoryTags(
+    categoryTaxonomy,
+    freelancerProfile?.categories || [],
+  ), [categoryTaxonomy, freelancerProfile]);
+  const categoryOptions = useMemo(() => ['All', ...Array.from(new Set(
+    categoryTaxonomy.map(item => item.categoryName).filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right))], [categoryTaxonomy]);
 
   useEffect(() => {
     const routeParams = new URLSearchParams(location.search);
@@ -110,13 +139,35 @@ export default function BrowseJobsScreen() {
     setCategory(routeCategory);
     setPage(routePage);
 
-    if (routeView === BROWSE_JOBS_VIEW.All) {
-      setRecommendedMode(false);
-      setRecommendedJobs([]);
-    } else if (routeView === BROWSE_JOBS_VIEW.Recommended && user && isFreelancer) {
-      setRecommendedMode(true);
+    const nextView = resolveBrowseJobsView(
+      Boolean(user),
+      isFreelancer,
+      routeView,
+      Boolean(routeSearch || routeParams.get('cat')),
+    );
+    if (browseViewRef.current !== nextView) {
+      setSortBy(nextView === BROWSE_JOBS_VIEW.Profile ? 'relevance' : 'date');
+      browseViewRef.current = nextView;
     }
-  }, [isFreelancer, location.search, user]);
+    setBrowseView(nextView);
+    if (nextView !== BROWSE_JOBS_VIEW.Recommended) setRecommendedJobs([]);
+
+    const routeProfileCategories = parseProfileCategoryIds(routeParams.get(PROFILE_CATEGORY_PARAM));
+    if (routeProfileCategories !== null) {
+      setSelectedProfileCategoryIds(routeProfileCategories);
+    } else if (nextView === BROWSE_JOBS_VIEW.Profile && freelancerProfile) {
+      setSelectedProfileCategoryIds(profileDefaultCategoryIds);
+      setParamsRef.current(current => {
+        const next = new URLSearchParams(current);
+        next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(profileDefaultCategoryIds));
+        return next;
+      }, { replace: true });
+    }
+  }, [freelancerProfile, isFreelancer, location.search, profileDefaultCategoryIds, user]);
+
+  useEffect(() => {
+    browseViewRef.current = browseView;
+  }, [browseView]);
 
   // Reusable GSAP Entrance Hook
   usePageGSAP({
@@ -131,21 +182,82 @@ export default function BrowseJobsScreen() {
   });
 
   useEffect(() => {
-    if (defaultViewAppliedRef.current || !user || !isFreelancer) return;
+    if (!user || !isFreelancer) {
+      setFreelancerProfile(null);
+      setProfileLoading(false);
+      setProfileFallbackMessage(null);
+      return;
+    }
 
-    defaultViewAppliedRef.current = true;
-    setRecommendedMode(
-      shouldUseRecommendedJobsByDefault(
-        true,
-        true,
-        params.get('view'),
-        hasExplicitBrowseCriteria,
-      ),
-    );
-  }, [hasExplicitBrowseCriteria, isFreelancer, params, user]);
+    let isMounted = true;
+    setProfileLoading(true);
+    setProfileFallbackMessage(null);
+
+    profileGetAPI.getMyFreelancerProfile()
+      .then(response => {
+        if (!isMounted) return;
+        const profile = response.success ? response.data : null;
+        const hasMatchData = Boolean(profile?.categories?.length || profile?.skills?.length);
+        if (!profile || !hasMatchData) {
+          setFreelancerProfile(profile || null);
+          setProfileFallbackMessage(t('jobs.profileFallback'));
+          setBrowseView(BROWSE_JOBS_VIEW.All);
+          setParamsRef.current(current => {
+            const next = new URLSearchParams(current);
+            next.set('view', BROWSE_JOBS_VIEW.All);
+            next.delete(PROFILE_CATEGORY_PARAM);
+            return next;
+          }, { replace: true });
+          return;
+        }
+
+        setFreelancerProfile(profile);
+        const profileCategoryIds = Array.from(new Set(
+          profile.categories.map(item => item.majorCategoryId.toLowerCase()),
+        ));
+        const requestedIds = parseProfileCategoryIds(new URLSearchParams(location.search).get(PROFILE_CATEGORY_PARAM));
+        const validIds = requestedIds === null
+          ? profileCategoryIds
+          : requestedIds;
+        setSelectedProfileCategoryIds(validIds);
+
+        const requestedView = resolveBrowseJobsView(
+          true,
+          true,
+          new URLSearchParams(location.search).get('view'),
+          Boolean(new URLSearchParams(location.search).get('q')?.trim() || new URLSearchParams(location.search).get('cat')),
+        );
+        if (requestedView === BROWSE_JOBS_VIEW.Profile) {
+          setParamsRef.current(current => {
+            const next = new URLSearchParams(current);
+            next.set('view', BROWSE_JOBS_VIEW.Profile);
+            next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(validIds));
+            return next;
+          }, { replace: true });
+        }
+      })
+      .catch(error => {
+        if (!isMounted) return;
+        console.error('Failed to load freelancer profile for Browse Jobs:', error);
+        setFreelancerProfile(null);
+        setProfileFallbackMessage(t('jobs.profileFallback'));
+        setBrowseView(BROWSE_JOBS_VIEW.All);
+        setParamsRef.current(current => {
+          const next = new URLSearchParams(current);
+          next.set('view', BROWSE_JOBS_VIEW.All);
+          next.delete(PROFILE_CATEGORY_PARAM);
+          return next;
+        }, { replace: true });
+      })
+      .finally(() => {
+        if (isMounted) setProfileLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [isFreelancer, user]);
 
   useEffect(() => {
-    if (!recommendedMode || !user || !isFreelancer) {
+    if (!isRecommendedView || !user || !isFreelancer) {
       setRecommendedLoading(false);
       return;
     }
@@ -175,7 +287,7 @@ export default function BrowseJobsScreen() {
     return () => {
       isMounted = false;
     };
-  }, [isFreelancer, recommendedMode, t, user]);
+  }, [isFreelancer, isRecommendedView, t, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -265,7 +377,7 @@ export default function BrowseJobsScreen() {
 
   useEffect(() => {
     const controller = new AbortController();
-    if (recommendedMode) {
+    if (isRecommendedView || (isProfileView && profileLoading)) {
       setLoading(false);
       return () => controller.abort();
     }
@@ -274,20 +386,28 @@ export default function BrowseJobsScreen() {
       try {
         setLoading(true);
         setLoadError(null);
-        const result = await jobGetAPI.searchPublicJobs({
+        const commonFilters = {
           pageIndex: page,
           pageSize: PAGE_SIZE,
           search: committedSearch || undefined,
           budgetMin: committedBudgetMin ? Number(committedBudgetMin) : undefined,
           budgetMax: committedBudgetMax ? Number(committedBudgetMax) : undefined,
-          sortBy: sortBy === 'date' ? 'newest' : undefined,
+          sortBy: sortBy === 'date' ? 'newest' : 'relevance',
           sortDesc: true,
-          category: category === 'All' ? undefined : category,
           skills: committedSkills || undefined,
           workType: workType === 'All' ? undefined : workType,
           postedWithinDays: getDatePostedDays(datePosted) ?? undefined,
           searchEventId: page > 1 ? searchEventId : null,
-        }, controller.signal);
+        };
+        const result = isProfileView
+          ? await jobGetAPI.getProfileMatchedJobs({
+            ...commonFilters,
+            majorCategoryIds: selectedProfileCategoryIds,
+          }, controller.signal)
+          : await jobGetAPI.searchPublicJobs({
+            ...commonFilters,
+            category: category === 'All' ? undefined : category,
+          }, controller.signal);
         setAllJobs(result.items.map(job => ({
           ...job,
           datePosted: job.createdAt || '',
@@ -298,7 +418,7 @@ export default function BrowseJobsScreen() {
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error('Failed to fetch jobs:', error);
-        setLoadError('Unable to load jobs from the backend.');
+        setLoadError(t('jobs.loadError'));
         setAllJobs([]);
         setTotalResults(0);
       } finally {
@@ -307,7 +427,7 @@ export default function BrowseJobsScreen() {
     };
     void fetchJobs();
     return () => controller.abort();
-  }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, page, recommendedMode, sortBy, workType]);
+  }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, isProfileView, isRecommendedView, page, profileLoading, selectedProfileCategoryIds, sortBy, t, workType]);
 
   useEffect(() => {
     let isMounted = true;
@@ -323,10 +443,7 @@ export default function BrowseJobsScreen() {
     let isMounted = true;
     jobGetAPI.getMajorCategories().then(response => {
       if (!isMounted || !response.success || !response.data) return;
-      const categories = Array.from(new Set(
-        response.data.map(item => item.categoryName).filter(Boolean)
-      )).sort((a, b) => a.localeCompare(b));
-      setCategoryOptions(['All', ...categories]);
+      setCategoryTaxonomy(response.data);
     });
 
     return () => {
@@ -337,7 +454,7 @@ export default function BrowseJobsScreen() {
   const budgetInvalid = Boolean(budgetMin && budgetMax && Number(budgetMin) > Number(budgetMax));
   const jobs = budgetInvalid ? [] : allJobs;
   const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
-  const pagedJobs = recommendedMode ? recommendedJobs : jobs;
+  const pagedJobs = isRecommendedView ? recommendedJobs : jobs;
 
   useEffect(() => {
     setParamsRef.current(current => {
@@ -359,6 +476,7 @@ export default function BrowseJobsScreen() {
   };
 
   const setBrowseViewParam = (view: BrowseJobsView): void => {
+    setBrowseView(view);
     setParamsRef.current(current => {
       const next = new URLSearchParams(current);
       next.set('view', view);
@@ -373,15 +491,13 @@ export default function BrowseJobsScreen() {
   };
 
   const enterRecommendedMode = (): void => {
-    setRecommendedMode(true);
     setBrowseViewParam(BROWSE_JOBS_VIEW.Recommended);
     resetBrowsePage();
   };
 
   const exitRecommendedMode = (): void => {
-    setRecommendedMode(false);
     setRecommendedJobs([]);
-    setBrowseViewParam(BROWSE_JOBS_VIEW.All);
+    setBrowseViewParam(freelancerProfile ? BROWSE_JOBS_VIEW.Profile : BROWSE_JOBS_VIEW.All);
     resetBrowsePage();
   };
 
@@ -391,7 +507,7 @@ export default function BrowseJobsScreen() {
       return;
     }
 
-    if (recommendedMode) {
+    if (isRecommendedView) {
       exitRecommendedMode();
       return;
     }
@@ -400,14 +516,15 @@ export default function BrowseJobsScreen() {
   };
 
   const selectCategory = (nextCategory: string): void => {
-    setRecommendedMode(false);
     setRecommendedJobs([]);
+    setBrowseView(BROWSE_JOBS_VIEW.All);
     setCategory(nextCategory);
     resetBrowsePage();
     setParamsRef.current(current => {
       const next = new URLSearchParams(current);
       next.set('view', BROWSE_JOBS_VIEW.All);
       next.set('page', '1');
+      next.delete(PROFILE_CATEGORY_PARAM);
       if (nextCategory === 'All') next.delete('cat');
       else next.set('cat', nextCategory);
       return next;
@@ -418,17 +535,54 @@ export default function BrowseJobsScreen() {
     selectCategory(event.target.value);
   };
 
-  const handleCategoryPillClick = (event: MouseEvent<HTMLButtonElement>): void => {
-    selectCategory(event.currentTarget.value);
+  const resetProfileMode = (): void => {
+    if (!freelancerProfile) {
+      selectCategory('All');
+      return;
+    }
+    setRecommendedJobs([]);
+    setBrowseView(BROWSE_JOBS_VIEW.Profile);
+    setCategory('All');
+    setSelectedProfileCategoryIds(profileDefaultCategoryIds);
+    resetBrowsePage();
+    setParamsRef.current(current => {
+      const next = new URLSearchParams(current);
+      next.set('view', BROWSE_JOBS_VIEW.Profile);
+      next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(profileDefaultCategoryIds));
+      next.delete('cat');
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
+  };
+
+  const toggleProfileCategory = (majorCategoryId: string): void => {
+    if (!freelancerProfile) return;
+    const normalizedId = majorCategoryId.toLowerCase();
+    const nextIds = selectedProfileCategoryIds.includes(normalizedId)
+      ? selectedProfileCategoryIds.filter(id => id !== normalizedId)
+      : [...selectedProfileCategoryIds, normalizedId];
+    setRecommendedJobs([]);
+    setBrowseView(BROWSE_JOBS_VIEW.Profile);
+    setSelectedProfileCategoryIds(nextIds);
+    setCategory('All');
+    resetBrowsePage();
+    setParamsRef.current(current => {
+      const next = new URLSearchParams(current);
+      next.set('view', BROWSE_JOBS_VIEW.Profile);
+      next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(nextIds));
+      next.delete('cat');
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
   };
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    if (recommendedMode) exitRecommendedMode();
+    if (isRecommendedView) exitRecommendedMode();
     setSearch(sanitizeSearch(event.target.value));
   };
 
   const handleFilterToggle = (): void => {
-    if (recommendedMode) exitRecommendedMode();
+    if (isRecommendedView) exitRecommendedMode();
     setShowFilters(current => !current);
   };
 
@@ -522,13 +676,17 @@ export default function BrowseJobsScreen() {
                     type="button"
                     onClick={findMatchingJobs}
                     disabled={recommendedLoading}
-                    className={`browse-jobs-filter-btn ${recommendedMode ? 'active' : ''} ${isAiMatchHighlighted ? 'ai-match-breathe' : ''}`}
+                    className={`browse-jobs-filter-btn ${isRecommendedView ? 'active' : ''} ${isAiMatchHighlighted ? 'ai-match-breathe' : ''}`}
                   >
                     <Sparkles size={16} />
-                    <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : recommendedMode ? t('jobs.exitRecommended') : t('jobs.findMatchingJobs')}</span>
+                    <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : isRecommendedView ? t('jobs.backToProfileMatches') : t('jobs.findMatchingJobs')}</span>
                   </button>
                 )}
               </div>
+
+              {profileFallbackMessage && (
+                <p className="browse-jobs-profile-notice" role="status">{profileFallbackMessage}</p>
+              )}
 
               {/* Filter Expansion Grid */}
               {showFilters && (
@@ -536,31 +694,37 @@ export default function BrowseJobsScreen() {
                   <div className="browse-jobs-filter-grid">
                     <label>
                       {t('jobs.category')}
-                      <select value={category} onChange={handleCategorySelectChange}>
-                        {categoryOptions.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : item}</option>)}
-                      </select>
+                      {isProfileView ? (
+                        <div className="browse-jobs-profile-category-summary">
+                          {t('jobs.profileCategoriesSelected', { count: selectedProfileCategoryIds.length })}
+                        </div>
+                      ) : (
+                        <select value={category} onChange={handleCategorySelectChange}>
+                          {categoryOptions.map(item => <option key={item} value={item}>{item === 'All' ? t('jobs.all') : item}</option>)}
+                        </select>
+                      )}
                     </label>
                     <label>
                       {t('jobs.skills')}
-                      <input value={skills} onChange={event => setSkills(sanitizeSearch(event.target.value))} placeholder="React, SQL..." />
+                      <input value={skills} onChange={event => { if (isRecommendedView) exitRecommendedMode(); setSkills(sanitizeSearch(event.target.value)); }} placeholder="React, SQL..." />
                     </label>
                     <label>
                       {t('jobs.minBudget')}
-                      <input type="number" min="0" value={budgetMin} onChange={event => setBudgetMin(event.target.value)} />
+                      <input type="number" min="0" value={budgetMin} onChange={event => { if (isRecommendedView) exitRecommendedMode(); setBudgetMin(event.target.value); }} />
                     </label>
                     <label>
                       {t('jobs.maxBudget')}
-                      <input type="number" min="0" value={budgetMax} onChange={event => setBudgetMax(event.target.value)} />
+                      <input type="number" min="0" value={budgetMax} onChange={event => { if (isRecommendedView) exitRecommendedMode(); setBudgetMax(event.target.value); }} />
                     </label>
                     <label>
                       {t('jobs.workType')}
-                      <select value={workType} onChange={event => { setWorkType(event.target.value); resetBrowsePage(); }}>
+                      <select value={workType} onChange={event => { if (isRecommendedView) exitRecommendedMode(); setWorkType(event.target.value); resetBrowsePage(); }}>
                         {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : t('jobs.fixedPrice')}</option>)}
                       </select>
                     </label>
                     <label>
                       {t('jobs.datePosted')}
-                      <select value={datePosted} onChange={event => { setDatePosted(event.target.value); resetBrowsePage(); }}>
+                      <select value={datePosted} onChange={event => { if (isRecommendedView) exitRecommendedMode(); setDatePosted(event.target.value); resetBrowsePage(); }}>
                         {DATE_POSTED.map(item => <option key={item} value={item}>{translateDatePosted(item)}</option>)}
                       </select>
                     </label>
@@ -571,34 +735,22 @@ export default function BrowseJobsScreen() {
             </div>
 
             {/* Category Filter Horizontal Smooth Scroll Pill Container */}
-            <div className="browse-category-scroll-container">
-              {user && isFreelancer ? (
-                <button
-                  type="button"
-                  onClick={enterRecommendedMode}
-                  className={`browse-category-pill ${recommendedMode ? 'active' : ''}`}
-                >
-                  <Sparkles size={14} />
-                  {t('jobs.forYou')}
-                </button>
-              ) : null}
-              {categoryOptions.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  value={cat}
-                  onClick={handleCategoryPillClick}
-                  className={`browse-category-pill ${!recommendedMode && category === cat ? 'active' : ''}`}
-                >
-                  {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
-                </button>
-              ))}
-            </div>
+            <BrowseJobCategoryTags
+              view={browseView}
+              tags={categoryTags}
+              selectedProfileCategoryIds={selectedProfileCategoryIds}
+              publicCategory={category}
+              isFreelancer={Boolean(user && isFreelancer && freelancerProfile)}
+              onResetProfile={resetProfileMode}
+              onSelectAll={() => selectCategory('All')}
+              onToggleProfileCategory={toggleProfileCategory}
+              onSelectPublicCategory={selectCategory}
+            />
 
             {/* Results Count & Sort Dropdown */}
             <div>
               <div className="flex items-center justify-between mb-3.5">
-                {recommendedMode ? (
+                {isRecommendedView ? (
                   <div className="flex items-center gap-2">
                     <Sparkles size={15} className="text-[var(--brand,#494be7)]" />
                     <p className="text-sm browse-jobs-desc font-medium">
@@ -608,18 +760,26 @@ export default function BrowseJobsScreen() {
                       )}
                     </p>
                   </div>
+                ) : isProfileView ? (
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-[var(--brand,#494be7)]" />
+                    <p className="text-sm browse-jobs-desc font-medium">
+                      {t('jobs.profileMatchedJobsTitle')}
+                      <span className="text-[var(--brand,#494be7)] font-bold"> · {totalResults}</span>
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-sm browse-jobs-desc font-medium">
                     <span className="text-[var(--brand,#494be7)] font-bold">{totalResults}</span> {t('jobs.openJobsFound')}
                   </p>
                 )}
-                {recommendedMode ? (
+                {isRecommendedView ? (
                   <button
                     type="button"
                     onClick={exitRecommendedMode}
                     className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
                   >
-                    {t('jobs.exitRecommended')}
+                    {t('jobs.backToProfileMatches')}
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -743,7 +903,7 @@ export default function BrowseJobsScreen() {
               </div>
 
               {/* Recommended Loading State */}
-              {recommendedMode && recommendedLoading && (
+              {isRecommendedView && recommendedLoading && (
                 <div className="text-center py-16 browse-jobs-glass-card">
                   <Sparkles size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)] animate-pulse" />
                   <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
@@ -752,18 +912,31 @@ export default function BrowseJobsScreen() {
                 </div>
               )}
 
+              {isProfileView && profileLoading && (
+                <div className="text-center py-16 browse-jobs-glass-card">
+                  <Sparkles size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)] animate-pulse" />
+                  <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
+                    {t('jobs.profileLoading')}
+                  </p>
+                </div>
+              )}
+
               {/* Empty State */}
-              {!recommendedLoading && !loading && pagedJobs.length === 0 && (
+              {!recommendedLoading && !profileLoading && !loading && pagedJobs.length === 0 && (
                 <div className="text-center py-16 browse-jobs-glass-card">
                   <Bot size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)]" />
                   <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
-                    {recommendedMode ? t('jobs.noRecommendedJobs') : (loadError || t('jobs.noJobsFound'))}
+                    {isRecommendedView
+                      ? t('jobs.noRecommendedJobs')
+                      : isProfileView
+                        ? (loadError || t('jobs.profileNoMatches'))
+                        : (loadError || t('jobs.noJobsFound'))}
                   </p>
                 </div>
               )}
 
               {/* Pagination */}
-              {!recommendedMode && totalResults > PAGE_SIZE && (
+              {!isRecommendedView && totalResults > PAGE_SIZE && (
                 <div className="browse-jobs-pagination">
                   <button type="button" disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>
                     {t('jobs.previous')}
