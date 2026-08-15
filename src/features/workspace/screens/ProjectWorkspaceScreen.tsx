@@ -763,16 +763,6 @@ export default function ProjectWorkspaceScreen() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isClient && activeContract?.status === ContractStatus.Active && (
-              <button
-                onClick={() => setProductModalOpen(true)}
-                className="bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-green-500/20 transition-all uppercase tracking-widest cursor-pointer flex items-center gap-2"
-                title={t('workspace.sendMaterialsTooltip')}
-              >
-                <Upload size={14} />
-                <span>{t('workspace.sendMaterialsButton')}</span>
-              </button>
-            )}
             {activeContract?.status === ContractStatus.Active && workspaceContractId && (
               <>
                 <button
@@ -1117,8 +1107,8 @@ export default function ProjectWorkspaceScreen() {
 
               {/* Right Stats & Actions */}
               <div className="flex items-center gap-3 shrink-0">
-                <div className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl font-bold text-emerald-600 dark:text-emerald-400">
-                  <span className="text-[10px] uppercase tracking-wider opacity-80">{t('workspace.paidAmount')}:</span>
+                <div className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-black shadow-2xs">
+                  <span className="text-[10px] uppercase tracking-wider text-white/90">{t('workspace.paidAmount')}:</span>
                   <GigCoinAmount amount={project.paidAmount || 0} />
                 </div>
 
@@ -1795,7 +1785,7 @@ export default function ProjectWorkspaceScreen() {
                           )}
                           <div className="flex flex-col gap-1">
                             {msg.type === 'file' ? (
-                              <div className="flex flex-col gap-1.5 max-w-[280px]">
+                              <div className="flex flex-col gap-1.5 w-full max-w-[320px] sm:max-w-[380px] min-w-0 overflow-hidden">
                                 {msg.content && (
                                   <p className="text-xs text-foreground">{msg.content}</p>
                                 )}
@@ -1910,12 +1900,26 @@ export default function ProjectWorkspaceScreen() {
                               <Paperclip size={14} />
                             </button>
                             <button
+                              type="button"
                               onClick={() => setMessageInput(prev => `${prev ?? ''}😊`)}
                               className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
                               title={t('workspace.addEmoji')}
                             >
                               <Smile size={14} />
                             </button>
+
+                            {/* Send Work Materials Button for Client inside Chat Toolbar */}
+                            {isClient && activeContract?.status === ContractStatus.Active && (
+                              <button
+                                type="button"
+                                onClick={() => setProductModalOpen(true)}
+                                className="h-7 px-3 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ml-1 active:scale-95"
+                                title={t('workspace.sendMaterialsTooltip')}
+                              >
+                                <Upload size={12} />
+                                <span>{t('workspace.sendMaterialsButton')}</span>
+                              </button>
+                            )}
                           </div>
                           <button
                             onClick={handleSendMessage}
