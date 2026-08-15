@@ -22,11 +22,7 @@ import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromot
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import {
   BROWSE_JOBS_VIEW,
-  PROFILE_CATEGORY_PARAM,
-  buildBrowseCategoryTags,
-  parseProfileCategoryIds,
   resolveBrowseJobsView,
-  serializeProfileCategoryIds,
   type BrowseJobsView,
 } from '../utils/browseJobsView';
 import { BrowseJobCategoryTags } from '../components/BrowseJobCategoryTags';
@@ -105,9 +101,6 @@ export default function BrowseJobsScreen() {
   const [freelancerProfile, setFreelancerProfile] = useState<FreelancerProfileDetailDto | null>(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(user && isFreelancer));
   const [profileFallbackMessage, setProfileFallbackMessage] = useState<string | null>(null);
-  const [selectedProfileCategoryIds, setSelectedProfileCategoryIds] = useState<string[]>(() => (
-    parseProfileCategoryIds(params.get(PROFILE_CATEGORY_PARAM)) ?? []
-  ));
   const [recommendedJobs, setRecommendedJobs] = useState<BrowseJob[]>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
 
@@ -116,13 +109,6 @@ export default function BrowseJobsScreen() {
 
   const isProfileView = browseView === BROWSE_JOBS_VIEW.Profile;
   const isRecommendedView = browseView === BROWSE_JOBS_VIEW.Recommended;
-  const profileDefaultCategoryIds = useMemo(() => Array.from(new Set(
-    (freelancerProfile?.categories || []).map(item => item.majorCategoryId.toLowerCase()),
-  )), [freelancerProfile]);
-  const categoryTags = useMemo(() => buildBrowseCategoryTags(
-    categoryTaxonomy,
-    freelancerProfile?.categories || [],
-  ), [categoryTaxonomy, freelancerProfile]);
   const categoryOptions = useMemo(() => ['All', ...Array.from(new Set(
     categoryTaxonomy.map(item => item.categoryName).filter(Boolean),
   )).sort((left, right) => left.localeCompare(right))], [categoryTaxonomy]);
@@ -152,18 +138,14 @@ export default function BrowseJobsScreen() {
     setBrowseView(nextView);
     if (nextView !== BROWSE_JOBS_VIEW.Recommended) setRecommendedJobs([]);
 
-    const routeProfileCategories = parseProfileCategoryIds(routeParams.get(PROFILE_CATEGORY_PARAM));
-    if (routeProfileCategories !== null) {
-      setSelectedProfileCategoryIds(routeProfileCategories);
-    } else if (nextView === BROWSE_JOBS_VIEW.Profile && freelancerProfile) {
-      setSelectedProfileCategoryIds(profileDefaultCategoryIds);
+    if (routeParams.has('profileCats')) {
       setParamsRef.current(current => {
         const next = new URLSearchParams(current);
-        next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(profileDefaultCategoryIds));
+        next.delete('profileCats');
         return next;
       }, { replace: true });
     }
-  }, [freelancerProfile, isFreelancer, location.search, profileDefaultCategoryIds, user]);
+  }, [isFreelancer, location.search, user]);
 
   useEffect(() => {
     browseViewRef.current = browseView;
@@ -197,7 +179,7 @@ export default function BrowseJobsScreen() {
       .then(response => {
         if (!isMounted) return;
         const profile = response.success ? response.data : null;
-        const hasMatchData = Boolean(profile?.categories?.length || profile?.skills?.length);
+        const hasMatchData = Boolean(profile?.majorId);
         if (!profile || !hasMatchData) {
           setFreelancerProfile(profile || null);
           setProfileFallbackMessage(t('jobs.profileFallback'));
@@ -205,22 +187,13 @@ export default function BrowseJobsScreen() {
           setParamsRef.current(current => {
             const next = new URLSearchParams(current);
             next.set('view', BROWSE_JOBS_VIEW.All);
-            next.delete(PROFILE_CATEGORY_PARAM);
+            next.delete('profileCats');
             return next;
           }, { replace: true });
           return;
         }
 
         setFreelancerProfile(profile);
-        const profileCategoryIds = Array.from(new Set(
-          profile.categories.map(item => item.majorCategoryId.toLowerCase()),
-        ));
-        const requestedIds = parseProfileCategoryIds(new URLSearchParams(location.search).get(PROFILE_CATEGORY_PARAM));
-        const validIds = requestedIds === null
-          ? profileCategoryIds
-          : requestedIds;
-        setSelectedProfileCategoryIds(validIds);
-
         const requestedView = resolveBrowseJobsView(
           true,
           true,
@@ -231,7 +204,7 @@ export default function BrowseJobsScreen() {
           setParamsRef.current(current => {
             const next = new URLSearchParams(current);
             next.set('view', BROWSE_JOBS_VIEW.Profile);
-            next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(validIds));
+            next.delete('profileCats');
             return next;
           }, { replace: true });
         }
@@ -245,7 +218,7 @@ export default function BrowseJobsScreen() {
         setParamsRef.current(current => {
           const next = new URLSearchParams(current);
           next.set('view', BROWSE_JOBS_VIEW.All);
-          next.delete(PROFILE_CATEGORY_PARAM);
+          next.delete('profileCats');
           return next;
         }, { replace: true });
       })
@@ -402,7 +375,6 @@ export default function BrowseJobsScreen() {
         const result = isProfileView
           ? await jobGetAPI.getProfileMatchedJobs({
             ...commonFilters,
-            majorCategoryIds: selectedProfileCategoryIds,
           }, controller.signal)
           : await jobGetAPI.searchPublicJobs({
             ...commonFilters,
@@ -427,7 +399,7 @@ export default function BrowseJobsScreen() {
     };
     void fetchJobs();
     return () => controller.abort();
-  }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, isProfileView, isRecommendedView, page, profileLoading, selectedProfileCategoryIds, sortBy, t, workType]);
+  }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, isProfileView, isRecommendedView, page, profileLoading, sortBy, t, workType]);
 
   useEffect(() => {
     let isMounted = true;
@@ -524,7 +496,7 @@ export default function BrowseJobsScreen() {
       const next = new URLSearchParams(current);
       next.set('view', BROWSE_JOBS_VIEW.All);
       next.set('page', '1');
-      next.delete(PROFILE_CATEGORY_PARAM);
+      next.delete('profileCats');
       if (nextCategory === 'All') next.delete('cat');
       else next.set('cat', nextCategory);
       return next;
@@ -535,6 +507,10 @@ export default function BrowseJobsScreen() {
     selectCategory(event.target.value);
   };
 
+  const selectAllJobs = (): void => {
+    selectCategory('All');
+  };
+
   const resetProfileMode = (): void => {
     if (!freelancerProfile) {
       selectCategory('All');
@@ -543,33 +519,11 @@ export default function BrowseJobsScreen() {
     setRecommendedJobs([]);
     setBrowseView(BROWSE_JOBS_VIEW.Profile);
     setCategory('All');
-    setSelectedProfileCategoryIds(profileDefaultCategoryIds);
     resetBrowsePage();
     setParamsRef.current(current => {
       const next = new URLSearchParams(current);
       next.set('view', BROWSE_JOBS_VIEW.Profile);
-      next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(profileDefaultCategoryIds));
-      next.delete('cat');
-      next.set('page', '1');
-      return next;
-    }, { replace: true });
-  };
-
-  const toggleProfileCategory = (majorCategoryId: string): void => {
-    if (!freelancerProfile) return;
-    const normalizedId = majorCategoryId.toLowerCase();
-    const nextIds = selectedProfileCategoryIds.includes(normalizedId)
-      ? selectedProfileCategoryIds.filter(id => id !== normalizedId)
-      : [...selectedProfileCategoryIds, normalizedId];
-    setRecommendedJobs([]);
-    setBrowseView(BROWSE_JOBS_VIEW.Profile);
-    setSelectedProfileCategoryIds(nextIds);
-    setCategory('All');
-    resetBrowsePage();
-    setParamsRef.current(current => {
-      const next = new URLSearchParams(current);
-      next.set('view', BROWSE_JOBS_VIEW.Profile);
-      next.set(PROFILE_CATEGORY_PARAM, serializeProfileCategoryIds(nextIds));
+      next.delete('profileCats');
       next.delete('cat');
       next.set('page', '1');
       return next;
@@ -695,8 +649,10 @@ export default function BrowseJobsScreen() {
                     <label>
                       {t('jobs.category')}
                       {isProfileView ? (
-                        <div className="browse-jobs-profile-category-summary">
-                          {t('jobs.profileCategoriesSelected', { count: selectedProfileCategoryIds.length })}
+                        <div className="browse-jobs-profile-major-summary">
+                          {t('jobs.profileMajorSelected', {
+                            major: freelancerProfile?.majorName || t('jobs.forYou'),
+                          })}
                         </div>
                       ) : (
                         <select value={category} onChange={handleCategorySelectChange}>
@@ -737,13 +693,11 @@ export default function BrowseJobsScreen() {
             {/* Category Filter Horizontal Smooth Scroll Pill Container */}
             <BrowseJobCategoryTags
               view={browseView}
-              tags={categoryTags}
-              selectedProfileCategoryIds={selectedProfileCategoryIds}
+              categories={categoryOptions.filter(item => item !== 'All')}
               publicCategory={category}
               isFreelancer={Boolean(user && isFreelancer && freelancerProfile)}
               onResetProfile={resetProfileMode}
-              onSelectAll={() => selectCategory('All')}
-              onToggleProfileCategory={toggleProfileCategory}
+              onSelectAll={selectAllJobs}
               onSelectPublicCategory={selectCategory}
             />
 

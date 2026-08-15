@@ -167,12 +167,6 @@
   box-shadow: 0 4px 14px rgba(73, 75, 231, 0.3);
 }
 
-.browse-category-pill.profile-category:not(.active) {
-  border-color: color-mix(in srgb, var(--brand, #494be7) 35%, var(--border, #e5e7eb));
-  color: var(--brand, #494be7);
-  background: color-mix(in srgb, var(--brand, #494be7) 6%, var(--surface, #ffffff));
-}
-
 .browse-jobs-profile-notice {
   margin-top: 0.75rem;
   padding: 0.7rem 0.85rem;
@@ -184,7 +178,7 @@
   font-weight: 600;
 }
 
-.browse-jobs-profile-category-summary {
+.browse-jobs-profile-major-summary {
   display: flex;
   align-items: center;
   min-height: 2.5rem;

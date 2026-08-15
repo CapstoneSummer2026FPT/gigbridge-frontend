@@ -43,7 +43,6 @@ export interface PublicJobSearchResult {
 export interface ProfileMatchedJobSearchParams {
   pageIndex?: number;
   pageSize?: number;
-  majorCategoryIds?: readonly string[];
   search?: string;
   budgetMin?: number;
   budgetMax?: number;
@@ -293,7 +292,6 @@ export const jobGetAPI = {
     const query = new URLSearchParams();
     if (params.pageIndex !== undefined) query.set('pageIndex', String(params.pageIndex));
     if (params.pageSize !== undefined) query.set('pageSize', String(params.pageSize));
-    params.majorCategoryIds?.forEach(id => query.append('majorCategoryIds', id));
     if (params.search) query.set('search', params.search);
     if (params.budgetMin !== undefined) query.set('budgetMin', String(params.budgetMin));
     if (params.budgetMax !== undefined) query.set('budgetMax', String(params.budgetMax));
