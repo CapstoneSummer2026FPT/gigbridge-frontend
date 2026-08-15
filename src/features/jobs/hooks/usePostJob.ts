@@ -28,6 +28,7 @@ import {
   type JobDurationUnit,
 } from '../utils/jobDuration';
 import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from '../utils/milestoneClamping';
+import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -436,9 +437,8 @@ export function usePostJob() {
   // edits, add/remove/reorder, or form.deadline changing) since it's a plain memo over
   // the current milestonePlans/form.deadline, not a stateful effect.
   const milestonePlansWithDeadlines = useMemo<JobPostMilestonePlanDto[]>(() => {
-    // Milestone calculations start simply from current day (today)
-    const todayDateStr = new Date().toISOString().split('T')[0];
-    const anchorDate = addDaysToDateString(todayDateStr, -1);
+    // Milestone calculations start from the current local day (today)
+    const anchorDate = currentLocalDate();
     const dueDates = computeChainedDueDates(anchorDate, milestonePlans.map(milestone => milestone.estimatedDuration));
     return milestonePlans.map((milestone, index) => ({ ...milestone, dueDate: dueDates[index] }));
   }, [milestonePlans]);
@@ -894,11 +894,11 @@ export function usePostJob() {
     setBackgroundHiringPlanError(null);
 
     const maxAiProposalDays = 21; // 3 weeks max for AI generated proposal end date
-    const maxAiDeadlineIso = new Date(Date.now() + maxAiProposalDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const maxAiDeadlineIso = addDaysToDateString(currentLocalDate(), maxAiProposalDays);
     const duration = parseJobDuration(generatedData.estimatedDuration);
     const rawDays = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14;
     const durationDays = Math.min(rawDays, maxAiProposalDays);
-    const calculatedDeadline = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const calculatedDeadline = addDaysToDateString(currentLocalDate(), durationDays);
     const computedDeadline = (form.deadline && form.deadline <= maxAiDeadlineIso) ? form.deadline : calculatedDeadline;
 
     const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
@@ -1048,11 +1048,13 @@ export function usePostJob() {
       return { message: t('postJobWizard.validation.durationInvalid'), section: 'terms', fieldSelector: '#job-duration' };
     }
 
-    if (form.deadline) {
-      const endDate = new Date(`${form.deadline}T23:59:59`);
-      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
-        return { message: t('postJobWizard.validation.deadlineInvalid'), section: 'terms', fieldSelector: '#job-deadline' };
-      }
+    if (!form.deadline) {
+      return { message: t('postJobWizard.validation.deadlineRequired', 'Proposal closing date is required.'), section: 'terms', fieldSelector: '#job-deadline' };
+    }
+
+    const endDate = new Date(`${form.deadline}T23:59:59`);
+    if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
+      return { message: t('postJobWizard.validation.deadlineInvalid', 'End date must be in the future'), section: 'terms', fieldSelector: '#job-deadline' };
     }
 
     return null;
@@ -1457,7 +1459,7 @@ export function usePostJob() {
             try {
               const durationWeeks = form.estimatedDurationValue ? Number(form.estimatedDurationValue) * (form.estimatedDurationUnit === 'months' ? 4.333 : form.estimatedDurationUnit === 'years' ? 52 : 1) : 2;
               const durationDays = Math.ceil(durationWeeks * 7) * 2;
-              const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+              const computedDeadline = form.deadline || addDaysToDateString(currentLocalDate(), durationDays);
 
               if (!form.deadline) {
                 setForm(prev => ({ ...prev, deadline: computedDeadline }));
