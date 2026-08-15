@@ -359,6 +359,7 @@ export function ManageMilestone({
                             const isTodo = itemStatus === ContractWorkItemStatus.Todo;
                             const isItemInProgress = itemStatus === ContractWorkItemStatus.InProgress;
                             const isDone = itemStatus === ContractWorkItemStatus.Completed;
+                            const isRevisionRequired = itemStatus === ContractWorkItemStatus.RevisionRequired;
                             const canToggleWorkItem = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && !isCompleted && !isSubmitted;
 
                             return (
@@ -385,7 +386,7 @@ export function ManageMilestone({
 
                                 {canToggleWorkItem && (
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    {isTodo && (
+                                    {(isTodo || isRevisionRequired) && (
                                       <button
                                         type="button"
                                         disabled={isMilestoneActionPending}
@@ -397,7 +398,11 @@ export function ManageMilestone({
                                         className="px-2.5 py-1 rounded-lg font-extrabold text-[10px] bg-brand hover:bg-brand-hover text-brand-foreground transition cursor-pointer flex items-center gap-1 shadow-2xs"
                                       >
                                         <Play size={11} />
-                                        <span>{t('workspace.startWorkItem', { defaultValue: 'Start Work Item' })}</span>
+                                        <span>
+                                          {isRevisionRequired
+                                            ? t('workspace.startRevision', { defaultValue: 'Start Revision' })
+                                            : t('workspace.startWorkItem', { defaultValue: 'Start Work Item' })}
+                                        </span>
                                       </button>
                                     )}
 

@@ -33,6 +33,7 @@ import { WorkspaceListBar } from '../components/WorkspaceListBar';
 import { ManageMilestone } from '../components/ManageMilestone';
 import { ChatAndInfoPanel } from '../components/ChatAndInfoPanel';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { SubmitMilestoneModal } from '../components/SubmitMilestoneModal';
 
 export default function ProjectWorkspaceScreen() {
   const { t } = useTranslation();
@@ -66,10 +67,6 @@ export default function ProjectWorkspaceScreen() {
   };
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [submitModal, setSubmitModal] = useState<{ milestoneId: string; title: string } | null>(null);
-  const [submitDescription, setSubmitDescription] = useState('');
-  const [submitFile, setSubmitFile] = useState<File | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
   const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
   const [milestoneActionError, setMilestoneActionError] = useState<{ milestoneId: string; message: string } | null>(null);
   const [withdrawDialogMilestone, setWithdrawDialogMilestone] = useState<{
@@ -95,9 +92,7 @@ export default function ProjectWorkspaceScreen() {
   const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
   const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const withdrawalRequestInFlightRef = useRef(false);
-  const submitFileInputRef = useRef<HTMLInputElement>(null);
   const productFileInputRef = useRef<HTMLInputElement>(null);
-  const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     isWorkspaceLoading,
@@ -125,9 +120,6 @@ export default function ProjectWorkspaceScreen() {
     partnerUserId,
     isPartnerOnline,
     projectMessages,
-    chatAttachments,
-    handleSelectChatFiles,
-    handleRemoveChatFile,
     reviewPromptContractId,
     clearReviewPrompt,
     refreshWorkspace,
@@ -283,71 +275,6 @@ export default function ProjectWorkspaceScreen() {
     });
     return () => { cancelled = true; };
   }, [isContractDisputed, workspaceContractId]);
-
-  const resetSubmitModal = () => {
-    setSubmitModal(null);
-    setSubmitDescription('');
-    setSubmitFile(null);
-    setSubmitError(null);
-    setIsSubmittingDeliverable(false);
-    if (submitFileInputRef.current) {
-      submitFileInputRef.current.value = '';
-    }
-  };
-
-  const handleSelectSubmitFile = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    setSubmitError(null);
-
-    if (!file) {
-      setSubmitFile(null);
-      return;
-    }
-
-    if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
-      setSubmitFile(null);
-      setSubmitError(t('workspace.fileSizeValidationError'));
-      if (submitFileInputRef.current) {
-        submitFileInputRef.current.value = '';
-      }
-      return;
-    }
-
-    setSubmitFile(file);
-  };
-
-  const handleSubmitDeliverable = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!submitModal) return;
-
-    const trimmedDescription = submitDescription.trim();
-
-    if (trimmedDescription.length > 5000) {
-      setSubmitError(t('workspace.descriptionMaxLengthError'));
-      return;
-    }
-
-    if (!submitFile) {
-      setSubmitError(t('workspace.chooseFileBeforeSubmitError'));
-      return;
-    }
-
-    setIsSubmittingDeliverable(true);
-    setSubmitError(null);
-
-    const result = await handleSubmitMilestoneDeliverable(submitModal.milestoneId, {
-      description: trimmedDescription,
-      file: submitFile,
-    });
-
-    if (!result.success) {
-      setSubmitError(result.message || t('workspace.failedSubmitDeliverableError'));
-      setIsSubmittingDeliverable(false);
-      return;
-    }
-
-    resetSubmitModal();
-  };
 
   const resetProductModal = () => {
     setProductModalOpen(false);
@@ -809,13 +736,9 @@ export default function ProjectWorkspaceScreen() {
                 isBlocked={isBlocked}
                 setIsBlocked={setIsBlocked}
                 projectMessages={projectMessages}
-                chatAttachments={chatAttachments}
-                chatFileInputRef={chatFileInputRef}
                 chatEndRef={chatEndRef}
                 messageInput={messageInput}
                 setMessageInput={setMessageInput}
-                handleSelectChatFiles={handleSelectChatFiles}
-                handleRemoveChatFile={handleRemoveChatFile}
                 handleSendMessage={handleSendMessage}
                 isWorkspaceLocked={isWorkspaceLocked}
                 isContractDisputed={isContractDisputed}
@@ -902,143 +825,12 @@ export default function ProjectWorkspaceScreen() {
       />
 
       {submitModal && (
-        <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" role="presentation">
-          <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title">
-            {/* Header */}
-            <div className="p-6 border-b border-border/60 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0">
-                  <Upload size={20} />
-                </div>
-                <div>
-                  <h3 id="workspace-submit-title" className="text-base font-black text-text-primary tracking-tight">
-                    {t('workspace.submitDeliverableModalTitle')}
-                  </h3>
-                  <p className="text-xs font-bold text-brand mt-0.5">{submitModal.title}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={resetSubmitModal}
-                className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer"
-                title={t('common.close')}
-                disabled={isSubmittingDeliverable}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmitDeliverable} className="p-6 space-y-5">
-              {submitError && (
-                <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
-                  <AlertCircle size={16} className="shrink-0" />
-                  <span>{submitError}</span>
-                </div>
-              )}
-
-              {/* Upload Dropzone / File Picker */}
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-wider text-text-muted block">
-                  {t('workspace.fileSourceOption')} <span className="text-destructive">*</span>
-                </label>
-                <input
-                  ref={submitFileInputRef}
-                  id="workspace-deliverable-file"
-                  type="file"
-                  onChange={handleSelectSubmitFile}
-                  disabled={isSubmittingDeliverable}
-                  className="hidden"
-                />
-
-                {!submitFile ? (
-                  <div
-                    onClick={() => submitFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-border/80 hover:border-brand/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer bg-surface-card/40 hover:bg-surface-card transition text-center group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand group-hover:scale-110 transition-transform mb-3">
-                      <Upload size={22} />
-                    </div>
-                    <p className="text-xs font-black text-text-primary">Click hoặc kéo thả file sản phẩm vào đây</p>
-                    <p className="text-[10px] font-bold text-text-muted mt-1">Hỗ trợ các định dạng PDF, ZIP, RAR, PNG, MP4... (Tối đa 100MB)</p>
-                  </div>
-                ) : (
-                  <div className="border border-brand/40 bg-brand/5 rounded-2xl p-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand shrink-0">
-                        <FileText size={20} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-black text-text-primary truncate">{submitFile.name}</p>
-                        <p className="text-[10px] font-bold text-text-muted mt-0.5">{(submitFile.size / (1024 * 1024)).toFixed(2)} MB</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSubmitFile(null);
-                        if (submitFileInputRef.current) submitFileInputRef.current.value = '';
-                      }}
-                      className="p-2 rounded-xl text-text-muted hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
-                      title="Xóa file"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Description Field */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="workspace-deliverable-description" className="text-xs font-black uppercase tracking-wider text-text-muted">
-                    {t('workspace.descriptionField')}
-                  </label>
-                  <span className="text-[10px] font-bold text-text-muted">{(submitDescription ?? '').length}/5000</span>
-                </div>
-                <textarea
-                  id="workspace-deliverable-description"
-                  value={submitDescription ?? ''}
-                  onChange={(event) => setSubmitDescription(event.target.value)}
-                  maxLength={5000}
-                  rows={4}
-                  placeholder={t('workspace.addNotesPlaceholder')}
-                  disabled={isSubmittingDeliverable}
-                  className="w-full bg-surface-card border border-border/80 focus:border-brand rounded-2xl p-3.5 text-xs font-medium text-text-primary focus:outline-none transition resize-none placeholder:text-text-muted/60"
-                />
-              </div>
-
-              {/* Footer Actions */}
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={resetSubmitModal}
-                  disabled={isSubmittingDeliverable}
-                  className="px-5 py-2.5 rounded-xl border border-border bg-surface-card hover:bg-surface-muted text-text-primary text-xs font-black transition cursor-pointer disabled:opacity-50"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingDeliverable || !submitFile}
-                  className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-brand-foreground text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer"
-                >
-                  {isSubmittingDeliverable ? (
-                    <>
-                      <Loader2 size={15} className="animate-spin" />
-                      {t('workspace.submitting')}
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={15} />
-                      {t('common.submit')}
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <SubmitMilestoneModal
+          key={submitModal.milestoneId}
+          milestoneTitle={submitModal.title}
+          onClose={() => setSubmitModal(null)}
+          onSubmit={payload => handleSubmitMilestoneDeliverable(submitModal.milestoneId, payload)}
+        />
       )}
 
       {productModalOpen && (
