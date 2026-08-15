@@ -17,6 +17,7 @@ import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
+import '../../../shared/components/styles/conic-border-button.css';
 
 export default function PostJobMilestonesScreen() {
   const navigate = useNavigate();
@@ -213,8 +214,8 @@ export default function PostJobMilestonesScreen() {
                 estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
                 taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
                 workItemDeliverables: t('postJobWizard.plan.milestoneCopy.workItemDeliverables'),
-                autoBalanceOn: t('postJobWizard.plan.milestoneCopy.autoBalanceOn', '⚡ Auto-balance: ON'),
-                autoBalanceOff: t('postJobWizard.plan.milestoneCopy.autoBalanceOff', '⚡ Auto-balance: OFF'),
+                autoBalanceOn: t('postJobWizard.plan.milestoneCopy.autoBalanceOn', 'Auto-balance: ON'),
+                autoBalanceOff: t('postJobWizard.plan.milestoneCopy.autoBalanceOff', 'Auto-balance: OFF'),
                 autoBalanceOnDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOnDesc', 'Editing any milestone automatically rebalances the remaining budget across all unlocked milestones.'),
                 autoBalanceOffDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOffDesc', 'Auto-balance is OFF. Every milestone will keep the exact value you enter.'),
                 resetBalance: t('postJobWizard.plan.milestoneCopy.resetBalance', '↺ Reset & Split Budget'),
@@ -305,76 +306,80 @@ export default function PostJobMilestonesScreen() {
                   </p>
                 </div>
 
-                {/* AI Interview Benefit (Premium with Interactive Toggle Switch & Magnetic Nudge Animation) */}
-                <div
-                  onClick={handleToggleAiInterview}
-                  className={`group relative flex flex-col justify-between rounded-xl border p-3.5 transition-all duration-300 cursor-pointer shadow-2xs ${
-                    isAiInterviewEnabled
-                      ? 'border-purple-500/50 bg-gradient-to-br from-purple-500/15 via-purple-500/10 to-card shadow-md shadow-purple-500/10 ring-1 ring-purple-500/20'
-                      : 'border-purple-500/30 bg-gradient-to-br from-purple-500/8 via-card to-card hover:border-purple-500/50 hover:shadow-purple-500/10'
-                  }`}
-                >
-                  <style>{`
-                    @keyframes cp-nudge-thumb {
-                      0%, 100% {
-                        transform: translateX(0);
-                        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                {/* AI Interview Benefit (Premium with Conic Running Border & Brand/Mint Theme) */}
+                <div className="conic-border-wrap conic-border-card rounded-xl cursor-pointer">
+                  <div
+                    onClick={handleToggleAiInterview}
+                    className={`conic-border-card-inner rounded-[calc(0.75rem-1.5px)] justify-between items-stretch p-3.5 space-y-1.5 text-left transition-all duration-300 ${
+                      isAiInterviewEnabled
+                        ? 'bg-[var(--brand,#494be7)]/10 dark:bg-[var(--brand,#494be7)]/20'
+                        : 'bg-card'
+                    }`}
+                  >
+                    <style>{`
+                      @keyframes cp-nudge-thumb {
+                        0%, 100% {
+                          transform: translateX(0);
+                          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                        }
+                        30% {
+                          transform: translateX(7px);
+                          box-shadow: 0 0 10px rgba(73, 75, 231, 0.6);
+                        }
+                        50% {
+                          transform: translateX(2px);
+                        }
+                        70% {
+                          transform: translateX(9px);
+                          box-shadow: 0 0 12px rgba(73, 75, 231, 0.7);
+                        }
                       }
-                      30% {
-                        transform: translateX(7px);
-                        box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
-                      }
-                      50% {
-                        transform: translateX(2px);
-                      }
-                      70% {
-                        transform: translateX(9px);
-                        box-shadow: 0 0 12px rgba(168, 85, 247, 0.7);
-                      }
-                    }
-                  `}</style>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <strong className="font-black text-purple-600 dark:text-purple-400 flex items-center gap-1.5 text-xs">
-                          <Sparkles size={15} className="shrink-0 animate-pulse text-purple-500" />
-                          {t('postJobWizard.plan.aiTitle', '2. AI Phỏng vấn tự động (Gói Premium ✦)')}
-                        </strong>
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
-                            isAiInterviewEnabled
-                              ? 'bg-purple-600 text-white shadow-xs'
-                              : 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30'
-                          }`}
-                        >
-                          {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
-                        </span>
+                    `}</style>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <strong className="font-black text-[var(--brand,#494be7)] flex items-center gap-1.5 text-xs">
+                            <Sparkles size={15} className="shrink-0 animate-pulse text-[var(--brand,#494be7)]" />
+                            {t('postJobWizard.plan.aiTitle', '2. AI Phỏng vấn tự động (Gói Premium ✦)')}
+                          </strong>
+                          <span
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
+                              isAiInterviewEnabled
+                                ? 'bg-[var(--brand,#494be7)] text-white shadow-xs'
+                                : 'bg-[var(--brand,#494be7)]/15 text-[var(--brand,#494be7)] border border-[var(--brand,#494be7)]/30'
+                            }`}
+                          >
+                            {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
+                        </p>
                       </div>
 
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
-                      </p>
-                    </div>
-
-                    {/* Toggle Switch (iOS / Bento Style with Magnetic Nudge Animation) */}
-                    <div className="pt-0.5 shrink-0">
-                      <div
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-purple-500/30 transition-colors duration-300 ease-in-out focus:outline-none ${
-                          isAiInterviewEnabled ? 'bg-purple-600 shadow-sm shadow-purple-500/40 ring-2 ring-purple-500/20' : 'bg-purple-950/20 dark:bg-purple-900/30'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
+                      {/* Toggle Switch (iOS / Bento Style with Magnetic Nudge Animation) */}
+                      <div className="pt-0.5 shrink-0">
+                        <div
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-all duration-300 ease-in-out focus:outline-none ${
                             isAiInterviewEnabled
-                              ? 'translate-x-5'
-                              : 'translate-x-0 style-[animation:cp-nudge-thumb_2.8s_infinite_ease-in-out]'
+                              ? 'bg-gradient-to-r from-[var(--brand,#494be7)] to-[#6366f1] border-[var(--brand,#494be7)] shadow-md shadow-[var(--brand,#494be7)]/30 ring-2 ring-[var(--brand,#494be7)]/20'
+                              : 'bg-muted border-border'
                           }`}
-                          style={
-                            !isAiInterviewEnabled
-                              ? { animation: 'cp-nudge-thumb 2.8s infinite ease-in-out' }
-                              : undefined
-                          }
-                        />
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
+                              isAiInterviewEnabled
+                                ? 'translate-x-5'
+                                : 'translate-x-0'
+                            }`}
+                            style={
+                              !isAiInterviewEnabled
+                                ? { animation: 'cp-nudge-thumb 2.8s infinite ease-in-out' }
+                                : undefined
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -414,11 +419,10 @@ export default function PostJobMilestonesScreen() {
                 onDragStart={event => handleDragStart(event, index)}
                 onDragOver={event => handleDragOver(event, index)}
                 onDragEnd={handleDragEnd}
-                className={`rounded-2xl border p-4.5 transition-all shadow-sm ${
-                  draggedIndex === index
+                className={`rounded-2xl border p-4.5 transition-all shadow-sm ${draggedIndex === index
                     ? 'border-[var(--brand)] ring-2 ring-[var(--brand)]/20 opacity-60 bg-[var(--brand)]/5'
                     : 'border-border/80 bg-card hover:border-[var(--brand)]/60'
-                }`}
+                  }`}
               >
                 <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-xs font-black text-foreground">

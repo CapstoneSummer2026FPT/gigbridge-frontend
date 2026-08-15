@@ -57,40 +57,81 @@
   border: 0;
 }
 
+@keyframes ai-fab-conic-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-fab-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow: 0 0 18px rgba(73, 75, 231, 0.35), 0 0 10px rgba(175, 219, 255, 0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  pointer-events: auto;
+}
+
+.ai-fab-wrap:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 0 28px rgba(73, 75, 231, 0.55), 0 0 16px rgba(175, 219, 255, 0.6);
+}
+
+.ai-fab-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -250%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--brand, #494be7) 90deg,
+    var(--mint, #AFDBFF) 180deg,
+    var(--brand, #494be7) 270deg,
+    var(--mint, #AFDBFF) 360deg
+  );
+  animation: ai-fab-conic-rotate 3.5s linear infinite;
+}
+
 .ai-fab {
   position: relative;
   z-index: 2;
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 3.4rem;
+  height: 3.4rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border-radius: 999px;
-  color: var(--primary-foreground, #ffffff);
-  background: linear-gradient(135deg, var(--ai-brand), var(--ai-accent));
-  box-shadow: 0 14px 34px rgba(23, 130, 252, 0.28);
+  border-radius: 9999px;
+  color: var(--brand, #494be7);
+  background: var(--card, #1e1e2d);
+  border: none;
   cursor: pointer;
   outline: none;
   pointer-events: auto;
-  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, color 180ms ease;
 }
 
 .ai-fab:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 42px rgba(23, 130, 252, 0.34);
+  background: var(--card, #1e1e2d);
+  color: var(--mint, #AFDBFF);
 }
 
 .ai-fab:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--ai-brand) 38%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--brand, #494be7) 38%, transparent);
   outline-offset: 4px;
 }
 
 .ai-fab.is-open {
-  color: var(--ai-text);
-  background: var(--ai-surface-strong);
-  border: 1px solid var(--ai-border);
-  box-shadow: var(--ai-shadow);
+  color: var(--brand, #494be7);
+  background: var(--card, #1e1e2d);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .ai-fab-icon-wrap {

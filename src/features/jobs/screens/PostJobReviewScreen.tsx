@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Sparkles, Tags } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Lock, Mail, Pencil, Save, Sparkles, Tags } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
@@ -24,6 +24,7 @@ import {
   type PostJobReviewSection,
   type PostJobRouteState,
 } from '../hooks/usePostJob';
+import '../../../shared/components/styles/conic-border-button.css';
 import { renderDescription } from '../utils/descriptionFormatter';
 
 const normalizePublishVisibility = (visibility: string): JobPostVisibility => {
@@ -571,8 +572,8 @@ export default function PostJobReviewScreen() {
                         </span>
                         <span
                           className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${question.isRequired
-                              ? 'bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20'
-                              : 'bg-muted text-muted-foreground border border-border/60'
+                            ? 'bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20'
+                            : 'bg-muted text-muted-foreground border border-border/60'
                             }`}
                         >
                           {t(question.isRequired ? 'postJob.required' : 'postJob.optional')}
@@ -606,73 +607,77 @@ export default function PostJobReviewScreen() {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2 pt-1">
-          {/* Card 1: AI Interviewer Toggle (With Magnetic Nudge Animation) */}
-          <div
-            onClick={handleToggleAiInterview}
-            className={`group relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-300 cursor-pointer shadow-2xs ${isAiInterviewEnabled
-                ? 'border-purple-500/50 bg-gradient-to-br from-purple-500/15 via-purple-500/10 to-card shadow-md shadow-purple-500/10 ring-1 ring-purple-500/20'
-                : 'border-purple-500/30 bg-gradient-to-br from-purple-500/8 via-card to-card hover:border-purple-500/50 hover:shadow-purple-500/10'
-              }`}
-          >
-            <style>{`
-              @keyframes cp-nudge-thumb-review {
-                0%, 100% {
-                  transform: translateX(0);
-                  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+          {/* Card 1: AI Interviewer Toggle (With Conic Running Border & Brand/Mint Theme) */}
+          <div className="conic-border-wrap conic-border-card rounded-2xl cursor-pointer">
+            <div
+              onClick={handleToggleAiInterview}
+              className={`conic-border-card-inner rounded-[calc(1rem-1.5px)] justify-between items-stretch p-5 space-y-2 text-left transition-all duration-300 ${isAiInterviewEnabled
+                  ? 'bg-[var(--brand,#494be7)]/10 dark:bg-[var(--brand,#494be7)]/20'
+                  : 'bg-card'
+                }`}
+            >
+              <style>{`
+                @keyframes cp-nudge-thumb-review {
+                  0%, 100% {
+                    transform: translateX(0);
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                  }
+                  30% {
+                    transform: translateX(7px);
+                    box-shadow: 0 0 10px rgba(73, 75, 231, 0.6);
+                  }
+                  50% {
+                    transform: translateX(2px);
+                  }
+                  70% {
+                    transform: translateX(9px);
+                    box-shadow: 0 0 12px rgba(73, 75, 231, 0.7);
+                  }
                 }
-                30% {
-                  transform: translateX(7px);
-                  box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
-                }
-                50% {
-                  transform: translateX(2px);
-                }
-                70% {
-                  transform: translateX(9px);
-                  box-shadow: 0 0 12px rgba(168, 85, 247, 0.7);
-                }
-              }
-            `}</style>
+              `}</style>
 
-            <div className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <strong className="font-black text-purple-600 dark:text-purple-400 flex items-center gap-1.5 text-sm">
-                    <Sparkles size={16} className="shrink-0 animate-pulse text-purple-500" />
-                    {t('postJobWizard.plan.aiTitleReview', 'AI Phỏng vấn tự động (Gói Premium ✦)')}
-                  </strong>
-                  <span
-                    className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider transition-all ${isAiInterviewEnabled
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30'
-                      }`}
-                  >
-                    {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
-                  </span>
-                </div>
-
-                {/* Toggle Switch */}
-                <div className="pt-0.5 shrink-0">
-                  <div
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-purple-500/30 transition-colors duration-300 ease-in-out focus:outline-none ${isAiInterviewEnabled ? 'bg-purple-600 shadow-sm shadow-purple-500/40 ring-2 ring-purple-500/20' : 'bg-purple-950/20 dark:bg-purple-900/30'
-                      }`}
-                  >
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <strong className="font-black text-[var(--brand,#494be7)] flex items-center gap-1.5 text-sm">
+                      <Sparkles size={16} className="shrink-0 animate-pulse text-[var(--brand,#494be7)]" />
+                      {t('postJobWizard.plan.aiTitleReview', 'AI Phỏng vấn tự động (Gói Premium ✦)')}
+                    </strong>
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${isAiInterviewEnabled ? 'translate-x-5' : 'translate-x-0'
+                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider transition-all ${isAiInterviewEnabled
+                          ? 'bg-[var(--brand,#494be7)] text-white shadow-xs'
+                          : 'bg-[var(--brand,#494be7)]/15 text-[var(--brand,#494be7)] border border-[var(--brand,#494be7)]/30'
                         }`}
-                      style={
-                        !isAiInterviewEnabled
-                          ? { animation: 'cp-nudge-thumb-review 2.8s infinite ease-in-out' }
-                          : undefined
-                      }
-                    />
+                    >
+                      {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
+                    </span>
+                  </div>
+
+                  {/* Toggle Switch */}
+                  <div className="pt-0.5 shrink-0">
+                    <div
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-all duration-300 ease-in-out focus:outline-none ${isAiInterviewEnabled
+                          ? 'bg-gradient-to-r from-[var(--brand,#494be7)] to-[#6366f1] border-[var(--brand,#494be7)] shadow-md shadow-[var(--brand,#494be7)]/30 ring-2 ring-[var(--brand,#494be7)]/20'
+                          : 'bg-muted border-border'
+                        }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${isAiInterviewEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        style={
+                          !isAiInterviewEnabled
+                            ? { animation: 'cp-nudge-thumb-review 2.8s infinite ease-in-out' }
+                            : undefined
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
-              </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -693,16 +698,32 @@ export default function PostJobReviewScreen() {
             </div>
 
             <div className="pt-2">
-              <CustomSelect
-                value={form.visibility}
-                options={[
-                  { value: String(JobPostVisibility.Public), label: t('postJob.public', 'Công khai (Public)') },
-                  { value: String(JobPostVisibility.Private), label: t('postJob.private', 'Riêng tư (Private)') },
-                  { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnly', 'Chỉ qua lời mời (Invite Only)') },
-                ]}
-                onChange={val => controller.setForm({ ...form, visibility: val })}
-                searchable={false}
-              />
+              {/* 3-Option Visibility Segment Toggle Group */}
+              <div className="p-1 rounded-xl bg-muted/40 border border-border/60 grid grid-cols-3 gap-1">
+                {[
+                  { value: String(JobPostVisibility.Public), label: t('postJob.publicShort', 'Công khai'), icon: Globe },
+                  { value: String(JobPostVisibility.Private), label: t('postJob.privateShort', 'Riêng tư'), icon: Lock },
+                  { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnlyShort', 'Lời mời'), icon: Mail },
+                ].map((item) => {
+                  const isSelected = String(form.visibility) === item.value;
+                  const IconComponent = item.icon;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => controller.setForm({ ...form, visibility: item.value })}
+                      className={`py-2.5 px-2 rounded-lg text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer border ${
+                        isSelected
+                          ? 'bg-[var(--brand,#494be7)] text-white border-[var(--brand,#494be7)] shadow-sm shadow-[var(--brand,#494be7)]/25'
+                          : 'bg-transparent text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      <IconComponent size={13} className={isSelected ? 'text-white' : 'text-muted-foreground'} />
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

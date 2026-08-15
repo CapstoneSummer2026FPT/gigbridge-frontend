@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   AlertTriangle,
-  Bot,
+  BotMessageSquare,
   Copy,
   Eraser,
   Send,
@@ -205,23 +205,24 @@ export default function AIAssistantWidget() {
     <div className="ai-widget">
 
       {/* FAB bubble */}
-      <button
-        type="button"
-        className={`ai-fab ${isOpen ? 'is-open' : ''}`}
-        onClick={() => { setIsOpen(p => !p); playSound('chime', soundEnabled); }}
-        aria-label="Toggle AI Assistant"
-      >
-        {isOpen
-          ? <X size={20} className="ai-fab-close" />
-          : (
-            <div className="ai-fab-icon-wrap">
-              <Bot size={20} />
-              <Sparkles size={11} className="ai-fab-sparkle animate-pulse" />
-            </div>
-          )
-        }
-        {unread > 0 && !isOpen && <span className="ai-unread-badge animate-bounce">{unread}</span>}
-      </button>
+      <div className="ai-fab-wrap">
+        <button
+          type="button"
+          className={`ai-fab ${isOpen ? 'is-open' : ''}`}
+          onClick={() => { setIsOpen(p => !p); playSound('chime', soundEnabled); }}
+          aria-label="Toggle AI Assistant"
+        >
+          {isOpen
+            ? <X size={20} className="ai-fab-close" />
+            : (
+              <div className="ai-fab-icon-wrap">
+                <Sparkles size={21} className="animate-pulse" />
+              </div>
+            )
+          }
+          {unread > 0 && !isOpen && <span className="ai-unread-badge animate-bounce">{unread}</span>}
+        </button>
+      </div>
 
       {/* Chat panel */}
       <div className={`ai-panel ${isOpen ? 'is-open' : ''}`}>

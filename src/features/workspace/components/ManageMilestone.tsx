@@ -158,9 +158,9 @@ export function ManageMilestone({
             <button
               type="button"
               onClick={() => setReviewDialogOpen(true)}
-              className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-extrabold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer border border-amber-600/20"
             >
-              <Star size={14} />
+              <Star size={14} className="fill-white text-white" />
               <span>{t(isClient ? 'reviews.leaveForFreelancer' : 'reviews.leaveForClient')}</span>
             </button>
           )}

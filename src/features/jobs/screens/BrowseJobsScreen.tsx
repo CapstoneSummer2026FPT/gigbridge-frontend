@@ -26,6 +26,7 @@ import {
   type BrowseJobsView,
 } from '../utils/browseJobsView';
 import { BrowseJobCategoryTags } from '../components/BrowseJobCategoryTags';
+import { ConicBorderButton } from '../../../shared/components/ConicBorderButton';
 
 const PAGE_SIZE = 20;
 const WORK_TYPES = ['All', 'fixed'];
@@ -626,15 +627,15 @@ export default function BrowseJobsScreen() {
                   <span>{t('jobs.filters')}</span>
                 </button>
                 {user && isFreelancer && (
-                  <button
-                    type="button"
+                  <ConicBorderButton
                     onClick={findMatchingJobs}
                     disabled={recommendedLoading}
-                    className={`browse-jobs-filter-btn ${isRecommendedView ? 'active' : ''} ${isAiMatchHighlighted ? 'ai-match-breathe' : ''}`}
+                    isActive={isRecommendedView}
+                    wrapperClassName="shrink-0"
                   >
-                    <Sparkles size={16} />
+                    <Sparkles size={15} className="text-brand shrink-0 animate-pulse" />
                     <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : isRecommendedView ? t('jobs.backToProfileMatches') : t('jobs.findMatchingJobs')}</span>
-                  </button>
+                  </ConicBorderButton>
                 )}
               </div>
 
@@ -716,7 +717,6 @@ export default function BrowseJobsScreen() {
                   </div>
                 ) : isProfileView ? (
                   <div className="flex items-center gap-2">
-                    <Sparkles size={15} className="text-[var(--brand,#494be7)]" />
                     <p className="text-sm browse-jobs-desc font-medium">
                       {t('jobs.profileMatchedJobsTitle')}
                       <span className="text-[var(--brand,#494be7)] font-bold"> · {totalResults}</span>

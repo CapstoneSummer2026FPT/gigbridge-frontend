@@ -412,11 +412,10 @@ export function NestedMilestonePlanEditor({
                       : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
                     }`}
                 >
-                  {isAutoBalanceActive ? <Zap size={14} /> : <ZapOff size={14} />}
                   <span>
                     {isAutoBalanceActive
-                      ? (uiCopy.autoBalanceOn || '⚡ Cân bằng tự động: BẬT')
-                      : (uiCopy.autoBalanceOff || '⚡ Cân bằng tự động: TẮT')}
+                      ? (uiCopy.autoBalanceOn || 'Cân bằng tự động: BẬT')
+                      : (uiCopy.autoBalanceOff || 'Cân bằng tự động: TẮT')}
                   </span>
                 </button>
                 <span className="text-[11px] text-muted-foreground font-medium hidden md:inline truncate">

@@ -175,7 +175,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
   return (
     <div
       role="presentation"
-      className="review-dialog-backdrop fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="review-dialog-backdrop fixed inset-0 z-[1200] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
       {/* Decorative blobs */}
@@ -187,56 +187,56 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
         aria-modal="true"
         aria-labelledby="project-review-title"
         onClick={e => e.stopPropagation()}
-        className="review-dialog relative z-10 w-full max-w-4xl rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
+        className="review-dialog relative z-10 w-full max-w-3xl max-h-[90vh] sm:max-h-[88vh] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto overflow-y-auto lg:overflow-hidden"
       >
         {/* ═══ LEFT COLUMN: Context ═══════════════════════════════════════ */}
-        <div className="review-dialog-left w-full lg:w-5/12 p-6 sm:p-8 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden">
+        <div className="review-dialog-left w-full lg:w-5/12 p-5 sm:p-6 lg:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           <div className="relative z-10">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[11px] font-black uppercase tracking-widest mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-4 sm:mb-6">
               <BadgeCheck size={13} />
               Project Completed
             </div>
 
-            <h1 id="project-review-title" className="text-2xl font-black text-text-primary mb-1">
+            <h1 id="project-review-title" className="text-xl sm:text-2xl font-black text-text-primary mb-1">
               {t('reviews.title')}
             </h1>
-            <p className="text-sm text-text-muted leading-relaxed">
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
               {t('reviews.subtitle')}
             </p>
           </div>
 
           {/* Avatar hero */}
-          <div className="relative z-10 flex flex-col items-center my-8">
-            <div className="relative w-32 h-32 mb-5 flex-shrink-0">
-              {/* Glow halo – sized relative to parent now */}
-              <div className="absolute -inset-4 rounded-full bg-brand/20 blur-2xl animate-pulse pointer-events-none" />
-              {/* Avatar wrapper – block element with fixed size */}
-              <div className="relative z-10 w-32 h-32 rounded-full overflow-hidden ring-4 ring-background shadow-2xl border-2 border-brand/20">
+          <div className="relative z-10 flex flex-col items-center my-4 sm:my-6">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex-shrink-0">
+              {/* Glow halo */}
+              <div className="absolute -inset-3 rounded-full bg-brand/20 blur-xl animate-pulse pointer-events-none" />
+              {/* Avatar wrapper */}
+              <div className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden ring-4 ring-background shadow-xl border-2 border-brand/20">
                 <UserAvatar
                   name={revieweeName ?? ''}
                   src={revieweeAvatarUrl}
                   size="xl"
-                  className="!w-full !h-full !text-4xl !rounded-none"
+                  className="!w-full !h-full !text-3xl sm:!text-4xl !rounded-none"
                 />
               </div>
             </div>
-            <h2 className="text-lg font-black text-text-primary">{revieweeName}</h2>
-            <span className="text-xs font-bold text-text-muted uppercase tracking-widest mt-0.5">{revieweeRole}</span>
+            <h2 className="text-base sm:text-lg font-black text-text-primary text-center">{revieweeName}</h2>
+            <span className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mt-0.5">{revieweeRole}</span>
           </div>
 
           {/* Project card */}
-          <div className="relative z-10 rounded-2xl border border-border/70 bg-surface-card p-5">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand mb-2">
+          <div className="relative z-10 rounded-xl sm:rounded-2xl border border-border/70 bg-surface-card p-3.5 sm:p-4">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand mb-1.5">
               <BriefcaseBusiness size={13} />
               Project Details
             </div>
-            <p className="text-sm font-bold text-text-primary leading-snug">{projectTitle}</p>
+            <p className="text-xs sm:text-sm font-bold text-text-primary leading-snug truncate">{projectTitle}</p>
             {contract.startDate && (
-              <div className="flex items-center gap-1.5 mt-3 text-xs text-text-muted font-medium">
-                <CalendarDays size={14} />
+              <div className="flex items-center gap-1.5 mt-2 text-[11px] sm:text-xs text-text-muted font-medium">
+                <CalendarDays size={13} />
                 <span>{contract.startDate}</span>
               </div>
             )}
@@ -247,27 +247,27 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
             type="button"
             onClick={onClose}
             aria-label={t('common.close')}
-            className="absolute top-5 right-5 lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer"
+            className="absolute top-4 right-4 lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer z-20"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* ═══ RIGHT COLUMN: Interactive Form ════════════════════════════ */}
-        <div className="review-dialog-right w-full lg:w-7/12 p-8 lg:p-10 bg-background relative">
+        <div className="review-dialog-right w-full lg:w-7/12 p-5 sm:p-6 lg:p-8 bg-background relative flex flex-col overflow-y-auto max-h-[75vh] lg:max-h-full">
           {/* Desktop close */}
           <button
             type="button"
             onClick={onClose}
             aria-label={t('common.close')}
-            className="hidden lg:flex absolute top-5 right-5 p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer"
+            className="hidden lg:flex absolute top-4 right-4 p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer z-20"
           >
             <X size={16} />
           </button>
 
-          <form className="flex flex-col h-full max-w-lg mx-auto gap-8" onSubmit={e => e.preventDefault()}>
+          <form className="flex flex-col h-full max-w-lg mx-auto gap-5 sm:gap-6" onSubmit={e => e.preventDefault()}>
             {/* Trust Dial */}
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-1.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
                 {t('reviews.overallScore')}
               </span>
@@ -275,12 +275,12 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
             </div>
 
             {/* Sliders */}
-            <div className="space-y-10 sm:space-y-12" role="group" aria-label="Rating criteria">
+            <div className="space-y-5 sm:space-y-6" role="group" aria-label="Rating criteria">
               <fieldset className="border-none p-0 m-0">
                 <legend className="sr-only">{t('reviews.communication')}</legend>
                 <SliderRow
                   label={t('reviews.communication')}
-                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
+                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
                   value={communicationRating}
                   ariaLabel={t('reviews.communication')}
                   onChange={setCommunicationRating}
@@ -291,7 +291,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
                 <legend className="sr-only">{t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}</legend>
                 <SliderRow
                   label={t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}
-                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
+                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
                   value={qualityRating}
                   ariaLabel={t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}
                   onChange={setQualityRating}
@@ -302,7 +302,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
                 <legend className="sr-only">{t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}</legend>
                 <SliderRow
                   label={t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}
-                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
                   value={timelinessRating}
                   ariaLabel={t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}
                   onChange={setTimelinessRating}
@@ -312,39 +312,39 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
 
             {/* Feedback textarea */}
             <div className="relative group">
-              <div className="relative bg-surface-card rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
+              <div className="relative bg-surface-card rounded-xl sm:rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <label htmlFor="review-feedback" className="sr-only">{t('reviews.comment')}</label>
                 <textarea
                   id="review-feedback"
                   value={comment}
                   maxLength={1000}
-                  rows={4}
+                  rows={3}
                   onChange={e => setComment(e.target.value)}
                   placeholder={t(isClient ? 'reviews.clientCommentPlaceholder' : 'reviews.freelancerCommentPlaceholder')}
-                  className="w-full bg-transparent border-none resize-none p-5 text-sm font-bold text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-0 font-sans"
+                  className="w-full bg-transparent border-none resize-none p-3.5 sm:p-4 text-xs sm:text-sm font-bold text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-0 font-sans"
                 />
-                <div className="flex items-center justify-between px-5 pb-3">
-                  <div className="flex items-center gap-1.5 text-[11px] text-text-muted font-semibold">
+                <div className="flex items-center justify-between px-3.5 sm:px-4 pb-2.5">
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-text-muted font-semibold">
                     <ShieldCheck size={13} className="text-brand" />
                     {t('reviews.identityNotice')}
                   </div>
-                  <span className="review-count text-[11px] text-text-muted font-bold">{comment.length}/1000</span>
+                  <span className="review-count text-[10px] sm:text-[11px] text-text-muted font-bold">{comment.length}/1000</span>
                 </div>
               </div>
             </div>
 
             {/* Error */}
             {error && (
-              <p className="review-error text-sm font-bold text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3" role="alert">
+              <p className="review-error text-xs sm:text-sm font-bold text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3.5 py-2.5" role="alert">
                 {error}
               </p>
             )}
 
             {/* Actions */}
-            <div className="review-form-actions flex items-center gap-3 mt-auto pt-2">
+            <div className="review-form-actions flex items-center gap-3 mt-auto pt-1">
               <button
                 type="button"
-                className="review-cancel px-6 py-3.5 rounded-xl text-xs font-black text-brand bg-brand/10 hover:bg-brand/15 border border-brand/20 transition-all duration-200 cursor-pointer w-1/3"
+                className="review-cancel px-5 py-3 rounded-xl text-xs font-black text-brand bg-brand/10 hover:bg-brand/15 border border-brand/20 transition-all duration-200 cursor-pointer w-1/3"
                 onClick={onClose}
                 disabled={isSubmitting}
               >
@@ -352,7 +352,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
               </button>
               <button
                 type="button"
-                className="review-submit flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black text-brand-foreground bg-brand hover:bg-brand-hover shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer w-2/3 group disabled:opacity-50"
+                className="review-submit flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-black text-brand-foreground bg-brand hover:bg-brand-hover shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer w-2/3 group disabled:opacity-50"
                 onClick={submitReview}
                 disabled={isSubmitting}
               >

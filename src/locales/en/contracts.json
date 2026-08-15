@@ -28,6 +28,13 @@
     "signContract": "Sign contract",
     "manageMilestones": "Go to workspace",
     "goToWorkspace": "Go to workspace",
+    "activeBanner": {
+      "badge": "Contract Activated",
+      "readyBadge": "Ready for collaboration",
+      "title": "Project is currently active",
+      "description": "The contract is officially active! You and your partner can access the Workspace right now to chat directly, share files, and track milestone progress.",
+      "ctaButton": "Enter Workspace Now"
+    },
     "fundEscrow": "Fund Escrow",
     "viewCompleted": "View Completed",
     "viewDispute": "View Dispute",
