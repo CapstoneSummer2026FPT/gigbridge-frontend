@@ -15,6 +15,8 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import { ClientDashboardOverview } from '../components/ClientDashboardOverview';
+import { ClientEloScoreCard } from '../components/ClientEloScoreCard';
 import '../styles/client-dashboard-screen.css';
 import '../../premium/styles/premium.css';
 
@@ -40,10 +42,12 @@ export default function ClientDashboardScreen() {
     chartPeriod,
     setChartPeriod,
     myJobs,
-    proposalsCount,
     pendingProposals,
-    shortlistedProposalsCount,
-    proposalJobScopeCount,
+    proposalStatusCounts,
+    eloSummary,
+    pendingMilestonesCount,
+    submittedMilestonesCount,
+    totalMilestonesCount,
     projects,
     completedContractsCount,
     spendChartData,
@@ -51,6 +55,7 @@ export default function ClientDashboardScreen() {
   const { role, theme } = useApp();
   const premiumStatus = usePremiumStatus(role);
   const openRolesCount = myJobs.filter(job => job.status === 'open').length;
+  const draftRolesCount = myJobs.filter(job => job.status === 'draft').length;
   const displayName = user?.full_name || user?.first_name || 'Client';
   const financialProgress = Math.min(
     100,
@@ -140,175 +145,30 @@ export default function ClientDashboardScreen() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            <div className="lg:col-span-8 space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div
-                  className="relative h-[360px] flex items-center justify-between p-8 overflow-hidden rounded-3xl glass-card group transition-all duration-500"
-                  onMouseMove={handleOverviewMouseMove}
-                  onMouseLeave={handleOverviewMouseLeave}
-                  style={overviewCardStyle}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
-                  <div className="relative flex-1 flex flex-col items-center justify-center z-10 text-center">
-                    <span className="font-label-md text-brand font-black uppercase tracking-[0.2em] text-[10px] block mb-4">
-                      Contract funds released
-                    </span>
-                    <div className="relative w-44 h-44 flex items-center justify-center">
-                      <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="88" cy="88" r="76" className="stroke-surface-muted fill-none" strokeWidth="8" />
-                        <circle
-                          cx="88"
-                          cy="88"
-                          r="76"
-                          className="stroke-brand fill-none client-dash-success-ring"
-                          strokeWidth="8"
-                          strokeDasharray={2 * Math.PI * 76}
-                          strokeDashoffset={2 * Math.PI * 76 * (1 - financialProgress / 100)}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute text-center">
-                        <span className="text-5xl font-black text-text-primary tracking-tighter">
-                          {isFinancialLoading ? '—' : `${financialProgress}%`}
-                        </span>
-                        <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5">
-                          {hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past month' : 'Past year') : 'No activity'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+          <ClientDashboardOverview
+            isLoading={isLoading}
+            proposalCounts={proposalStatusCounts}
+            pendingMilestonesCount={pendingMilestonesCount}
+            submittedMilestonesCount={submittedMilestonesCount}
+            totalMilestonesCount={totalMilestonesCount}
+            theme={theme}
+            onOpenProposals={() => navigate('/proposals')}
+            onOpenContracts={() => navigate('/contracts')}
+          />
 
-                  <div className="w-[1px] h-48 bg-border hidden sm:block" />
-                  <div className="flex-1 pl-6 space-y-5 z-10 hidden sm:block">
-                    <h4 className="text-[10px] font-black tracking-widest text-text-muted uppercase">
-                      Financial summary
-                    </h4>
-                    <div>
-                      <span className="block text-[9px] uppercase text-text-muted">Released</span>
-                      <GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-sm font-bold text-text-primary" />
-                    </div>
-                    <div>
-                      <span className="block text-[9px] uppercase text-text-muted">Contract value</span>
-                      <GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-sm font-bold text-text-primary" />
-                    </div>
-                    <div>
-                      <span className="block text-[9px] uppercase text-text-muted">Service fees</span>
-                      <GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-sm font-bold text-text-primary" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="glass-card p-6 rounded-3xl flex flex-col justify-between h-[360px]">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-text-primary font-bold text-base">
-                        {chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}
-                      </h2>
-                      <p className="text-xs text-text-secondary opacity-75">Confirmed contract releases</p>
-                    </div>
-                    <div className="chart-header-tabs flex">
-                      <button
-                        className={`chart-tab-btn ${chartPeriod === 'monthly' ? 'active' : ''}`}
-                        onClick={() => setChartPeriod('monthly')}
-                      >
-                        M
-                      </button>
-                      <button
-                        className={`chart-tab-btn ${chartPeriod === 'yearly' ? 'active' : ''}`}
-                        onClick={() => setChartPeriod('yearly')}
-                      >
-                        Y
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="w-full flex-1 flex items-center justify-center">
-                    {isFinancialLoading ? (
-                      <p className="text-sm text-text-muted animate-pulse">Loading financial data…</p>
-                    ) : financialError ? (
-                      <p className="text-sm text-warning text-center">{financialError}</p>
-                    ) : spendChartData.length === 0 || !hasFinancialActivity ? (
-                      <p className="text-sm text-text-muted text-center">No confirmed spend in this period.</p>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={spendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="clientSpendLineGrad" x1="0" y1="0" x2="1" y2="0">
-                              <stop offset="0%" stopColor="#9F4BFF" />
-                              <stop offset="100%" stopColor="#0077FF" />
-                            </linearGradient>
-                            <linearGradient id="clientSpendGrad2026" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#0077FF" stopOpacity={0.25} />
-                              <stop offset="95%" stopColor="#0077FF" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatAxisAmount} />
-                          <Tooltip
-                            contentStyle={{
-                              background: theme === 'black' ? 'rgba(13, 14, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-                              border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(73, 75, 231, 0.2)',
-                              borderRadius: 12,
-                              color: theme === 'black' ? '#f5f6f8' : '#19191b',
-                            }}
-                            formatter={(value: number) => [`${value.toLocaleString()} G-coin`, 'Released']}
-                          />
-                          <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3} fill="url(#clientSpendGrad2026)" isAnimationActive />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </div>
+          <section className="client-dash-flow-section" aria-labelledby="client-workflow-title">
+            <div className="client-dash-section-heading">
+              <div>
+                <span className="client-dash-section-kicker">{t('dashboard.currentWork', 'Current work')}</span>
+                <h2 id="client-workflow-title">{t('dashboard.workInProgress', 'Work in progress')}</h2>
               </div>
+              <p>{t('dashboard.workInProgressDescription', 'Manage open roles first, then continue the contracts already in delivery.')}</p>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="client-dash-wallet-card-container">
-                  <div
-                    className="glass-card cursor-pointer select-none p-8 rounded-3xl h-80 flex flex-col justify-between group transition-all duration-500 border-brand/20 relative overflow-hidden"
-                    onMouseMove={handleWalletMouseMove}
-                    onMouseLeave={handleWalletMouseLeave}
-                    style={walletCardStyle}
-                    onClick={() => navigate('/wallet/deposit')}
-                  >
-                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:scale-125 transition-transform" />
-                    <div className="flex items-start justify-between relative z-10">
-                      <div>
-                        <span className="block text-[8px] font-black text-brand uppercase tracking-widest">Wallet</span>
-                        <h4 className="text-sm font-black text-text-primary mt-1">GigBridge Pay</h4>
-                      </div>
-                      <div className="w-10 h-10 bg-brand/10 text-brand rounded-xl flex items-center justify-center">
-                        <Wallet size={20} />
-                      </div>
-                    </div>
-                    <div className="my-4 relative z-10">
-                      <span className="block text-[9px] uppercase text-text-muted tracking-wider font-semibold mb-1">
-                        Available funds
-                      </span>
-                      <GigCoinAmount
-                        amount={wallet?.totalSpendableGigCoin ?? 0}
-                        className="text-5xl font-black tracking-tight text-text-primary"
-                      />
-                      <span className="block text-xs text-text-secondary mt-3">
-                        Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between relative z-10">
-                      <div>
-                        <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">
-                          Account holder
-                        </span>
-                        <span className="text-xs font-bold text-text-secondary">{displayName}</span>
-                      </div>
-                      <button className="py-2.5 px-5 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-colors shadow-md border border-transparent">
-                        Deposit
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="glass-card p-8 rounded-3xl h-80 flex flex-col justify-between group">
-                  <div className="flex justify-between items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div className="lg:col-span-7 space-y-8">
+                <div className="glass-card p-8 rounded-3xl min-h-72 flex flex-col justify-between group">
+                  <div className="flex justify-between items-start gap-5">
                     <div className="w-14 h-14 bg-brand/10 rounded-full flex items-center justify-center text-brand shadow-sm">
                       <Briefcase size={22} />
                     </div>
@@ -318,41 +178,36 @@ export default function ClientDashboardScreen() {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <div>
-                      <span className="block text-[10px] font-black uppercase tracking-widest text-brand">
-                        Proposal pipeline
-                      </span>
-                      <span className="text-[9px] text-text-muted">
-                        Loaded from {proposalJobScopeCount} recent role{proposalJobScopeCount === 1 ? '' : 's'}
-                      </span>
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-brand">Hiring portfolio</span>
+                        <span className="text-[9px] text-text-muted">Roles and contracts at a glance</span>
+                      </div>
+                      <button className="client-dash-icon-link" onClick={() => navigate('/jobs/my-jobs')}>
+                        Manage roles <ChevronRight size={15} />
+                      </button>
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {[
-                        { value: proposalsCount, label: 'Received' },
-                        { value: pendingProposals.length, label: 'Pending' },
-                        { value: shortlistedProposalsCount, label: 'Shortlisted' },
+                        { value: myJobs.length, label: 'All roles' },
+                        { value: draftRolesCount, label: 'Drafts' },
                         { value: projects.length, label: 'Active contracts' },
+                        { value: completedContractsCount, label: 'Completed' },
                       ].map(item => (
                         <div key={item.label} className="text-center bg-surface-muted p-3 rounded-2xl border border-border">
                           <span className="block text-2xl font-black text-text-primary leading-none">{item.value}</span>
-                          <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-2">
-                            {item.label}
-                          </span>
+                          <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-2">{item.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="relative pt-10">
-                <h3 className="font-display-lg text-3xl font-black mb-6 pl-2 tracking-tight">TALENT MATCHES</h3>
                 <div className="glass-card p-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                   <div>
-                    <h4 className="text-lg font-black text-text-primary">No dashboard match data</h4>
-                    <p className="text-sm text-text-secondary mt-1">
-                      Open Talent Matching to run a current search. The dashboard does not invent candidate scores.
-                    </p>
+                    <span className="client-dash-card-eyebrow">Talent matching</span>
+                    <h4 className="text-lg font-black text-text-primary mt-2">Find the next freelancer</h4>
+                    <p className="text-sm text-text-secondary mt-1">Run a current search when an open role still needs candidates.</p>
                   </div>
                   <button
                     className="shrink-0 flex items-center gap-2 rounded-2xl border border-brand/30 px-5 py-3 text-xs font-black uppercase tracking-widest text-brand hover:bg-brand-soft"
@@ -362,40 +217,21 @@ export default function ClientDashboardScreen() {
                   </button>
                 </div>
               </div>
-            </div>
 
-            <div className="lg:col-span-4 space-y-10">
-              <div className="glass-card rounded-[2.5rem] p-8">
-                <h3 className="font-display-lg text-xl font-black tracking-tight uppercase mb-4">Activity</h3>
-                <p className="text-sm text-text-secondary">
-                  Activity events are not included in the dashboard API. Open notifications for persisted updates.
-                </p>
-                <button
-                  className="w-full mt-8 py-5 rounded-2xl border border-dashed border-border text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all bg-transparent"
-                  onClick={() => navigate('/notifications')}
-                >
-                  View notifications
-                </button>
-              </div>
-
-              <div className="space-y-6">
+              <div className="lg:col-span-5 space-y-6">
                 <div className="flex items-center justify-between px-4">
                   <h3 className="font-display-lg text-xl font-black tracking-tight uppercase">Active contracts</h3>
                   <span className="text-xs font-bold text-text-muted">{projects.length}</span>
                 </div>
-                {projects.length > 0 ? projects.map(project => (
+                {projects.length > 0 ? projects.slice(0, 2).map(project => (
                   <div key={project.id} className="glass-card rounded-[2.25rem] p-8 border border-brand/10 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-brand/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform" />
                     <div className="flex justify-between items-start mb-6 relative z-10">
-                      <span className="text-[9px] font-black bg-success/10 text-success px-3 py-1.5 rounded-lg tracking-widest uppercase border border-success/20">
-                        {project.status}
-                      </span>
+                      <span className="text-[9px] font-black bg-success/10 text-success px-3 py-1.5 rounded-lg tracking-widest uppercase border border-success/20">{project.status}</span>
                       <GigCoinAmount amount={project.totalBudget} className="text-xs font-bold text-text-primary" />
                     </div>
                     <h4 className="text-xl font-black mb-1 text-text-primary">{project.title}</h4>
-                    <p className="text-text-secondary text-xs mb-6 font-medium">
-                      Freelancer: {project.freelancerName}
-                    </p>
+                    <p className="text-text-secondary text-xs mb-6 font-medium">Freelancer: {project.freelancerName}</p>
                     <button
                       className="w-full py-4.5 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-widest uppercase rounded-2xl transition-colors"
                       onClick={() => navigate(`/workspace/${project.id}`)}
@@ -404,26 +240,134 @@ export default function ClientDashboardScreen() {
                     </button>
                   </div>
                 )) : (
-                  <div className="glass-card rounded-[2.25rem] p-8 border border-border text-center text-text-muted text-sm">
-                    No active contracts.
-                  </div>
+                  <div className="glass-card rounded-[2.25rem] p-8 border border-border text-center text-text-muted text-sm">No active contracts.</div>
                 )}
-
-                <div className="glass-card rounded-[2.25rem] p-8 border border-border flex items-center justify-between">
+                <div className="glass-card rounded-[2.25rem] p-6 border border-border flex items-center justify-between">
                   <div>
                     <span className="block text-[9px] uppercase tracking-widest text-text-muted">Completed contracts</span>
                     <span className="text-3xl font-black text-text-primary">{completedContractsCount}</span>
                   </div>
-                  <button
-                    className="text-xs font-black uppercase tracking-widest text-brand"
-                    onClick={() => navigate('/contracts')}
-                  >
-                    View all
-                  </button>
+                  <button className="text-xs font-black uppercase tracking-widest text-brand" onClick={() => navigate('/contracts')}>View all</button>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
+
+          <section className="client-dash-flow-section" aria-labelledby="client-finance-title">
+            <div className="client-dash-section-heading">
+              <div>
+                <span className="client-dash-section-kicker">{t('dashboard.financialControl', 'Financial control')}</span>
+                <h2 id="client-finance-title">{t('dashboard.moneyAndBudget', 'Money & budget')}</h2>
+              </div>
+              <p>{t('dashboard.moneyAndBudgetDescription', 'Review released funds and wallet balance after checking active delivery work.')}</p>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+              <div
+                className="xl:col-span-4 relative h-[360px] flex items-center justify-between p-8 overflow-hidden rounded-3xl glass-card group transition-all duration-500"
+                onMouseMove={handleOverviewMouseMove}
+                onMouseLeave={handleOverviewMouseLeave}
+                style={overviewCardStyle}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
+                <div className="relative flex-1 flex flex-col items-center justify-center z-10 text-center">
+                  <span className="font-label-md text-brand font-black uppercase tracking-[0.2em] text-[10px] block mb-4">Contract funds released</span>
+                  <div className="relative w-44 h-44 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="88" cy="88" r="76" className="stroke-surface-muted fill-none" strokeWidth="8" />
+                      <circle cx="88" cy="88" r="76" className="stroke-brand fill-none client-dash-success-ring" strokeWidth="8" strokeDasharray={2 * Math.PI * 76} strokeDashoffset={2 * Math.PI * 76 * (1 - financialProgress / 100)} strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute text-center">
+                      <span className="text-5xl font-black text-text-primary tracking-tighter">{isFinancialLoading ? '—' : `${financialProgress}%`}</span>
+                      <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5">{hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past month' : 'Past year') : 'No activity'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="w-[1px] h-48 bg-border hidden 2xl:block" />
+                <div className="flex-1 pl-6 space-y-5 z-10 hidden 2xl:block">
+                  <h4 className="text-[10px] font-black tracking-widest text-text-muted uppercase">Financial summary</h4>
+                  <div><span className="block text-[9px] uppercase text-text-muted">Released</span><GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-sm font-bold text-text-primary" /></div>
+                  <div><span className="block text-[9px] uppercase text-text-muted">Contract value</span><GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-sm font-bold text-text-primary" /></div>
+                  <div><span className="block text-[9px] uppercase text-text-muted">Service fees</span><GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-sm font-bold text-text-primary" /></div>
+                </div>
+              </div>
+
+              <div className="xl:col-span-5 glass-card p-6 rounded-3xl flex flex-col justify-between h-[360px]">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-text-primary font-bold text-base">{chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}</h2>
+                    <p className="text-xs text-text-secondary opacity-75">Confirmed contract releases</p>
+                  </div>
+                  <div className="chart-header-tabs flex">
+                    <button className={`chart-tab-btn ${chartPeriod === 'monthly' ? 'active' : ''}`} onClick={() => setChartPeriod('monthly')}>M</button>
+                    <button className={`chart-tab-btn ${chartPeriod === 'yearly' ? 'active' : ''}`} onClick={() => setChartPeriod('yearly')}>Y</button>
+                  </div>
+                </div>
+                <div className="w-full flex-1 flex items-center justify-center">
+                  {isFinancialLoading ? (
+                    <p className="text-sm text-text-muted animate-pulse">Loading financial data…</p>
+                  ) : financialError ? (
+                    <p className="text-sm text-warning text-center">{financialError}</p>
+                  ) : spendChartData.length === 0 || !hasFinancialActivity ? (
+                    <p className="text-sm text-text-muted text-center">No confirmed spend in this period.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={spendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="clientSpendLineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#9F4BFF" /><stop offset="100%" stopColor="#0077FF" /></linearGradient>
+                          <linearGradient id="clientSpendGrad2026" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0077FF" stopOpacity={0.25} /><stop offset="95%" stopColor="#0077FF" stopOpacity={0} /></linearGradient>
+                        </defs>
+                        <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatAxisAmount} />
+                        <Tooltip contentStyle={{ background: theme === 'black' ? 'rgba(13, 14, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)', border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(73, 75, 231, 0.2)', borderRadius: 12, color: theme === 'black' ? '#f5f6f8' : '#19191b' }} formatter={(value: number) => [`${value.toLocaleString()} G-coin`, 'Released']} />
+                        <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3} fill="url(#clientSpendGrad2026)" isAnimationActive />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+
+              <div className="xl:col-span-3 client-dash-wallet-card-container">
+                <div className="glass-card cursor-pointer select-none p-8 rounded-3xl h-[360px] flex flex-col justify-between group transition-all duration-500 border-brand/20 relative overflow-hidden" onMouseMove={handleWalletMouseMove} onMouseLeave={handleWalletMouseLeave} style={walletCardStyle} onClick={() => navigate('/wallet/deposit')}>
+                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:scale-125 transition-transform" />
+                  <div className="flex items-start justify-between relative z-10">
+                    <div><span className="block text-[8px] font-black text-brand uppercase tracking-widest">Wallet</span><h4 className="text-sm font-black text-text-primary mt-1">GigBridge Pay</h4></div>
+                    <div className="w-10 h-10 bg-brand/10 text-brand rounded-xl flex items-center justify-center"><Wallet size={20} /></div>
+                  </div>
+                  <div className="my-4 relative z-10">
+                    <span className="block text-[9px] uppercase text-text-muted tracking-wider font-semibold mb-1">Available funds</span>
+                    <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} className="text-4xl font-black tracking-tight text-text-primary" />
+                    <span className="block text-xs text-text-secondary mt-3">Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} /></span>
+                  </div>
+                  <div className="flex items-center justify-between relative z-10 gap-3">
+                    <div className="min-w-0"><span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">Account holder</span><span className="block truncate text-xs font-bold text-text-secondary">{displayName}</span></div>
+                    <button className="py-2.5 px-4 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-colors shadow-md border border-transparent">Deposit</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="client-dash-flow-section" aria-labelledby="client-account-health-title">
+            <div className="client-dash-section-heading">
+              <div>
+                <span className="client-dash-section-kicker">{t('dashboard.accountSignals', 'Account signals')}</span>
+                <h2 id="client-account-health-title">{t('dashboard.accountHealth', 'Account health')}</h2>
+              </div>
+              <p>{t('dashboard.accountHealthDescription', 'Lower-frequency signals for reputation and persisted account updates.')}</p>
+            </div>
+            <div className="client-dash-account-grid">
+              <ClientEloScoreCard isLoading={isLoading} summary={eloSummary} onOpenHistory={() => navigate('/elo')} />
+              <div className="glass-card client-dash-activity-card">
+                <div>
+                  <span className="client-dash-card-eyebrow">Notifications</span>
+                  <h3>Activity & account updates</h3>
+                  <p>Review persisted updates after handling proposals, milestones, contracts, and budget.</p>
+                </div>
+                <button onClick={() => navigate('/notifications')}>View notifications <ChevronRight size={16} /></button>
+              </div>
+            </div>
+          </section>
 
           <div className="glass-card p-6 md:p-8 rounded-[2.5rem] client-dash-ai-bg relative overflow-hidden">
             <div className="ai-radar-graphic">

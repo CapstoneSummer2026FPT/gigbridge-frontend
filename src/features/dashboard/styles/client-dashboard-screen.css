@@ -624,4 +624,622 @@
   filter: drop-shadow(0 0 8px var(--brand));
 }
 
+/* ── Client overview: proposal, Elo, and delivery signals ── */
+.client-dash-overview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.client-dash-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0 0.5rem;
+}
+
+.client-dash-section-kicker,
+.client-dash-card-eyebrow {
+  display: block;
+  color: var(--brand);
+  font-size: 0.625rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.client-dash-section-heading h2 {
+  margin-top: 0.45rem;
+  color: var(--text-primary);
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.client-dash-section-heading > p {
+  max-width: 31rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.client-dash-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(20rem, 5fr);
+  gap: 1.5rem;
+}
+
+.client-dash-proposal-chart-card {
+  min-height: 23rem;
+  padding: 2rem;
+}
+
+.client-dash-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.client-dash-card-heading h3 {
+  margin-top: 0.45rem;
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.client-dash-card-heading p {
+  margin-top: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.client-dash-icon-link,
+.client-dash-card-action,
+.client-dash-milestone-footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--brand);
+  font-size: 0.675rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.client-dash-icon-link:hover,
+.client-dash-card-action:hover,
+.client-dash-milestone-footer button:hover {
+  color: var(--brand-hover);
+}
+
+.client-dash-icon-link:focus-visible,
+.client-dash-card-action:focus-visible,
+.client-dash-milestone-footer button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: 0.35rem;
+}
+
+.client-dash-icon-link:hover svg,
+.client-dash-card-action:hover svg,
+.client-dash-milestone-footer button:hover svg {
+  transform: translate(2px, -2px);
+}
+
+.client-dash-icon-link svg,
+.client-dash-card-action svg,
+.client-dash-milestone-footer button svg {
+  transition: transform 180ms ease;
+}
+
+.client-dash-proposal-chart-content {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1fr) minmax(12rem, 0.85fr);
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 17rem;
+}
+
+.client-dash-donut-wrap {
+  position: relative;
+  width: 100%;
+  height: 15rem;
+}
+
+.client-dash-donut-total {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.client-dash-donut-total strong {
+  color: var(--text-primary);
+  font-size: 2.35rem;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.client-dash-donut-total span {
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.client-dash-chart-skeleton {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 11rem;
+  height: 11rem;
+  border: 1.6rem solid var(--surface-muted);
+  border-top-color: color-mix(in srgb, var(--brand) 35%, var(--surface-muted));
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  animation: clientDashChartPulse 1.35s ease-in-out infinite;
+}
+
+@keyframes clientDashChartPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+.client-dash-proposal-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.client-dash-proposal-legend-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface-muted) 70%, transparent);
+}
+
+.client-dash-proposal-legend-row > span:nth-child(2) {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.client-dash-proposal-legend-row strong {
+  color: var(--text-primary);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.client-dash-legend-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.client-dash-overview-side {
+  display: block;
+}
+
+.client-dash-milestone-card {
+  position: relative;
+  height: 100%;
+  min-height: 23rem;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.client-dash-card-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 1rem;
+}
+
+.client-dash-card-icon-cyan {
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+}
+
+.client-dash-metric-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.625rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.client-dash-milestone-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.client-dash-milestone-topline,
+.client-dash-milestone-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.client-dash-progress-label {
+  color: var(--brand);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.client-dash-milestone-value {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--text-primary);
+  font-size: clamp(3.25rem, 6vw, 5rem);
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.client-dash-milestone-progress {
+  width: 100%;
+  height: 0.35rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.client-dash-milestone-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand), var(--gb-purple));
+  transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.client-dash-milestone-footer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+/* ── Workflow grouping ── */
+.client-dash-flow-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.client-dash-account-grid {
+  display: grid;
+  grid-template-columns: minmax(20rem, 0.8fr) minmax(0, 1.2fr);
+  align-items: stretch;
+  gap: 1.5rem;
+}
+
+/* ── Elo card based on the provided profile-strength reference ── */
+.client-elo-score-card {
+  display: flex;
+  min-height: 25rem;
+  flex-direction: column;
+  padding: 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: 1.35rem;
+  background: color-mix(in srgb, var(--card) 94%, var(--background));
+  box-shadow: 0 18px 50px -35px rgba(73, 75, 231, 0.45);
+}
+
+.client-elo-score-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.client-elo-score-header > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--brand);
+}
+
+.client-elo-score-header h3 {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.client-elo-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, transparent);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  color: var(--brand);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.client-elo-gauge {
+  position: relative;
+  width: min(15.5rem, 100%);
+  aspect-ratio: 1;
+  margin: 1rem auto 0;
+}
+
+.client-elo-gauge svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.client-elo-gauge circle {
+  fill: none;
+  stroke-width: 12;
+  stroke-dasharray: 75 25;
+  stroke-linecap: round;
+}
+
+.client-elo-gauge-track {
+  stroke: color-mix(in srgb, var(--brand) 10%, var(--surface-muted));
+}
+
+.client-elo-gauge-value {
+  stroke: var(--brand);
+  filter: drop-shadow(0 8px 12px color-mix(in srgb, var(--brand) 22%, transparent));
+  animation: clientEloGaugeReveal 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes clientEloGaugeReveal {
+  from { stroke-dashoffset: 75; opacity: 0; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+
+.client-elo-gauge-copy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding-top: 0.2rem;
+  pointer-events: none;
+}
+
+.client-elo-gauge-copy strong {
+  color: var(--brand);
+  font-size: clamp(2.1rem, 4vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.client-elo-gauge-copy span {
+  margin-top: 0.45rem;
+  color: var(--brand);
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.client-elo-score-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: auto;
+}
+
+.client-elo-ledger-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-style: normal;
+}
+
+.client-elo-ledger-summary b:first-child {
+  color: var(--success);
+}
+
+.client-elo-ledger-summary b:last-child {
+  color: var(--destructive);
+}
+
+.client-elo-ledger-summary i {
+  width: 0.2rem;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: var(--text-muted);
+}
+
+.client-elo-score-footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem;
+  border-radius: 0.5rem;
+  color: var(--brand);
+  font-size: 0.72rem;
+  font-weight: 850;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.client-elo-score-footer button:hover {
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+  color: var(--brand-hover);
+}
+
+.client-elo-score-footer button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.client-dash-activity-card {
+  position: relative;
+  display: flex;
+  min-height: 25rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 2.5rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 88%, transparent), color-mix(in srgb, var(--brand) 7%, var(--card))) !important;
+}
+
+.client-dash-activity-card::after {
+  position: absolute;
+  right: -5rem;
+  bottom: -7rem;
+  width: 18rem;
+  height: 18rem;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3rem color-mix(in srgb, var(--brand) 3%, transparent), 0 0 0 6rem color-mix(in srgb, var(--brand) 2%, transparent);
+  content: '';
+}
+
+.client-dash-activity-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.client-dash-activity-card h3 {
+  margin-top: 0.75rem;
+  color: var(--text-primary);
+  font-size: clamp(1.6rem, 3vw, 2.5rem);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+}
+
+.client-dash-activity-card p {
+  max-width: 34rem;
+  margin-top: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.client-dash-activity-card button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, var(--border));
+  border-radius: 0.8rem;
+  color: var(--brand);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+@media (max-width: 1100px) {
+  .client-dash-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-dash-account-grid {
+    grid-template-columns: minmax(18rem, 0.8fr) minmax(0, 1.2fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .client-dash-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .client-dash-section-heading > p {
+    text-align: left;
+  }
+
+  .client-dash-proposal-chart-content {
+    grid-template-columns: 1fr;
+  }
+
+  .client-dash-account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-dash-proposal-chart-content {
+    gap: 0.5rem;
+  }
+
+  .client-dash-card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .client-dash-donut-wrap {
+    height: 13rem;
+  }
+
+  .client-dash-proposal-legend {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .client-dash-proposal-legend-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .client-dash-proposal-legend-row strong {
+    grid-column: 1 / -1;
+    padding-left: 1.2rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .client-dash-proposal-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .client-dash-proposal-legend-row {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .client-dash-proposal-legend-row strong {
+    grid-column: auto;
+    padding-left: 0;
+  }
+
+  .client-dash-milestone-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 
