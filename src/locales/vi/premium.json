@@ -280,6 +280,30 @@
     "standardTitle": "Standard Client",
     "standardSub": "Công cụ cơ bản. Hãy nâng cấp Premium để mở khóa phỏng vấn AI, ghim bài đăng và hỗ trợ VIP.",
     "subscriptionHistory": "Lịch sử đăng ký",
+    "fourCoreTools": "Four Core Superpower Tools",
+    "suiteEyebrow": "Recruiting Suite",
+    "tools": {
+      "aiGenerator": {
+        "title": "AI Job Post Generator",
+        "desc": "AI drafts descriptions, milestone breakdowns, and skill tags in seconds.",
+        "action": "Launch AI Generator"
+      },
+      "jobPromotion": {
+        "title": "Featured Job Promotion",
+        "desc": "Pin your job post to position #1 with a 3D Gold border to get 3.8× candidate responses.",
+        "action": "Open Studio"
+      },
+      "talentMatching": {
+        "title": "Smart Talent Matching",
+        "desc": "Auto-highlight the top 5% matched freelancers by Major, verified skills, and Elo rank.",
+        "action": "Match Candidates"
+      },
+      "interviews": {
+        "title": "AI Interview Screeners",
+        "desc": "Automated Q&A screening bot interviews applicants and provides scored transcript summaries.",
+        "action": "Manage Screeners"
+      }
+    },
     "tabs": {
       "overview": "Tổng quan",
       "aiBuilder": "Tạo bài đăng AI",

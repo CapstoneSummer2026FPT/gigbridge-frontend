@@ -50,8 +50,8 @@ export default function CreateProposalScreen() {
     setAssumptions,
     outOfScope,
     setOutOfScope,
-    expandedMilestone,
-    setExpandedMilestone,
+    expandedMilestones,
+    setExpandedMilestones,
     advancedMilestoneIndexes,
     setAdvancedMilestoneIndexes,
     milestoneErrors,
@@ -369,8 +369,35 @@ export default function CreateProposalScreen() {
             </section>
 
             {/* ══════ SECTION 2: MILESTONES & WBS ══════ */}
-            <section className="cps-glass-card rounded-2xl p-6 md:p-8 cps-gsap-section">
-              <h2 className="cps-section-title">{t('createProposal.section2Title')}</h2>
+            <section className="cps-glass-card rounded-2xl p-6 md:p-8 cps-gsap-section space-y-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-border/40">
+                <h2 className="cps-section-title !mb-0">{t('createProposal.section2Title')}</h2>
+                {nestedMilestones.length > 1 && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--gb-indigo,#6366f1)] hover:text-[var(--gb-indigo,#6366f1)]/80 cursor-pointer bg-[var(--gb-indigo,#6366f1)]/10 hover:bg-[var(--gb-indigo,#6366f1)]/18 px-3 py-1.5 rounded-lg transition-all"
+                    onClick={() => {
+                      if (expandedMilestones.length === nestedMilestones.length) {
+                        setExpandedMilestones([]);
+                      } else {
+                        setExpandedMilestones(nestedMilestones.map((_, i) => i));
+                      }
+                    }}
+                  >
+                    {expandedMilestones.length === nestedMilestones.length ? (
+                      <>
+                        <ChevronRight size={14} className="rotate-90" />
+                        {t('proposalMilestoneEditor.collapseAll', 'Thu gọn tất cả')}
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown size={14} />
+                        {t('proposalMilestoneEditor.expandAll', 'Mở rộng tất cả')}
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
 
               <NestedMilestonePlanEditor
                 value={nestedMilestones}
@@ -422,8 +449,8 @@ export default function CreateProposalScreen() {
                   autoBalanced: t('postJobWizard.plan.milestoneCopy.autoBalanced', 'Auto'),
                   autoBalancedTitle: t('postJobWizard.plan.milestoneCopy.autoBalancedTitle', 'Dynamically calculated. Click to lock amount.'),
                 }}
-                expandedIndex={expandedMilestone}
-                onExpandedChange={setExpandedMilestone}
+                expandedIndexes={expandedMilestones}
+                onExpandedIndexesChange={setExpandedMilestones}
                 advancedIndexes={advancedMilestoneIndexes}
                 onAdvancedIndexesChange={setAdvancedMilestoneIndexes}
                 errors={milestoneErrors}
