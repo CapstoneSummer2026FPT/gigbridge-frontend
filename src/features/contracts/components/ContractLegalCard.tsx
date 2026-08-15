@@ -13,6 +13,8 @@ import { ESignDocumentStatus, ESignerRole, SignatureStatus } from '../../../type
 import type { ContractESignDocumentState } from '../hooks/useContractESignDocument';
 import { useESignPdf } from '../hooks/useESignPdf';
 
+import '../styles/contract-legal-card.css';
+
 interface ContractLegalCardProps {
   contractId: string;
   documentState: ContractESignDocumentState;
@@ -69,15 +71,26 @@ export function ContractLegalCard({
     ? 'Đợi Freelancer ký'
     : 'Đợi Client ký';
 
+  const getBadgeStyle = () => {
+    if (isFinalized) return 'bg-emerald-600 text-white';
+    if (hasValidCurrentUserDraft) return 'bg-amber-500 text-white';
+    if (
+      document?.status === ESignDocumentStatus.Expired ||
+      document?.status === ESignDocumentStatus.Voided
+    )
+      return 'bg-rose-600 text-white';
+    return 'bg-blue-600 text-white';
+  };
+
   return (
     <section
-      className="glass-card p-6 md:p-8 space-y-5"
+      className="rounded-2xl border border-border bg-card p-6 md:p-8 space-y-5 shadow-md"
       aria-labelledby={`contract-legal-heading-${contractId}`}
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-            <ShieldCheck size={22} aria-hidden="true" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-border pb-4">
+        <div className="flex items-start gap-3.5">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand)] text-white shadow-xs">
+            <ShieldCheck size={24} aria-hidden="true" />
           </span>
           <div>
             <h2
@@ -86,15 +99,15 @@ export function ContractLegalCard({
             >
               {t('contracts.legal.title')}
             </h2>
-            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground font-medium">
               {t('contracts.legal.commercialTermsDescription')}
             </p>
           </div>
         </div>
 
         {document ? (
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
-            <FileCheck size={13} aria-hidden="true" />
+          <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-black uppercase tracking-wider shadow-xs ${getBadgeStyle()}`}>
+            <FileCheck size={14} aria-hidden="true" />
             {hasValidCurrentUserDraft && document.status !== ESignDocumentStatus.FullySigned
               ? waitingCounterpartLabel
               : t(`contracts.legal.status.${documentStatusKey[document.status]}`)}
@@ -102,36 +115,38 @@ export function ContractLegalCard({
         ) : null}
       </div>
 
-      <div className="rounded-2xl border border-border/40 bg-secondary/15 p-4 md:p-5">
-        {documentState.isLoading ? (
-          <div className="flex items-center gap-3 text-sm font-semibold text-muted-foreground" role="status">
-            <LoaderCircle size={18} className="animate-spin text-primary" aria-hidden="true" />
+      <div className="rounded-2xl border border-border bg-muted/40 p-5">
+        {documentState.isLoading && !document ? (
+          <div className="flex items-center gap-3 text-xs font-extrabold text-muted-foreground" role="status">
+            <LoaderCircle size={18} className="animate-spin text-[var(--brand)]" aria-hidden="true" />
             {t('contracts.legal.loadingDocument')}
           </div>
         ) : document ? (
           <div className="space-y-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-bold text-foreground">
+                <p className="text-sm font-black text-foreground">
                   {t('contracts.legal.esignDocument')}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs font-bold text-muted-foreground">
                   {document.documentCode || t('contracts.legal.contractDocument')}
                 </p>
               </div>
-              {signerCount > 0 ? (
-                <span className="text-xs font-bold text-muted-foreground">
-                  {t(isFinalized
-                    ? 'contracts.legal.signatureProgress'
-                    : 'contracts.legal.draftProgress', {
-                    signed: isFinalized ? signedCount : validDraftCount,
-                    total: signerCount,
-                  })}
-                </span>
-              ) : null}
+              <div className={`esign-poll-badge-wrapper ${documentState.isLoading ? 'is-polling' : ''}`}>
+                {signerCount > 0 ? (
+                  <span className="inline-flex items-center gap-1 px-3.5 py-1 rounded-full bg-[var(--brand)] text-white text-xs font-black shadow-xs">
+                    {t(isFinalized
+                      ? 'contracts.legal.signatureProgress'
+                      : 'contracts.legal.draftProgress', {
+                      signed: isFinalized ? signedCount : validDraftCount,
+                      total: signerCount,
+                    })}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
-            <p className="text-xs leading-relaxed text-muted-foreground">
+            <p className="text-xs font-semibold leading-relaxed text-muted-foreground">
               {document.status === ESignDocumentStatus.FullySigned
                 ? t('contracts.legal.signedDocumentDescription')
                 : document.status === ESignDocumentStatus.Expired ||
@@ -148,14 +163,14 @@ export function ContractLegalCard({
           </div>
         ) : documentState.error ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-2 text-sm text-destructive" role="alert">
+            <div className="flex items-start gap-2 text-xs font-black text-rose-600 dark:text-rose-400" role="alert">
               <AlertCircle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
               <span>{t('contracts.legal.loadError')}</span>
             </div>
             <button
               type="button"
               onClick={documentState.retry}
-              className="inline-flex w-fit items-center gap-2 rounded-xl border border-border/50 bg-secondary/60 px-4 py-2 text-xs font-bold text-foreground transition-colors hover:bg-secondary"
+              className="inline-flex w-fit items-center gap-2 rounded-xl bg-rose-600 text-white px-4 py-2 text-xs font-black hover:bg-rose-700 transition cursor-pointer border-none shadow-xs"
             >
               <RefreshCw size={14} aria-hidden="true" />
               {t('contracts.legal.retry')}
@@ -173,14 +188,14 @@ export function ContractLegalCard({
         )}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center pt-1">
         {document ? (
           canSign ? (
             <Link
               to={`/contracts/${contractId}/sign`}
-              className="btn-primary-custom inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white px-6 py-3 text-xs font-black shadow-md transition active:scale-[0.98]"
             >
-              <FileCheck size={17} aria-hidden="true" />
+              <FileCheck size={18} aria-hidden="true" />
               {hasValidCurrentUserDraft
                 ? t('contracts.legal.viewSignedDocument', { defaultValue: 'View Signed Contract' })
                 : t('contracts.legal.viewAndSign')}
@@ -188,9 +203,9 @@ export function ContractLegalCard({
           ) : (
             <Link
               to={archivePath}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white px-6 py-3 text-xs font-black shadow-md transition active:scale-[0.98]"
             >
-              <FileCheck size={17} aria-hidden="true" />
+              <FileCheck size={18} aria-hidden="true" />
               {document.status === ESignDocumentStatus.FullySigned || hasValidCurrentUserDraft
                 ? t('contracts.legal.viewSignedDocument', { defaultValue: 'View Signed Contract' })
                 : t('contracts.legal.viewDocument')}
@@ -203,38 +218,44 @@ export function ContractLegalCard({
             type="button"
             onClick={() => void pdf.download()}
             disabled={pdf.isPreparing}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-border/50 bg-secondary/60 px-5 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-5 py-3 text-xs font-black shadow-sm transition active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 border-none"
           >
             {pdf.isPreparing ? (
-              <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
+              <LoaderCircle size={16} className="animate-spin text-white" aria-hidden="true" />
             ) : (
               <Download size={16} aria-hidden="true" />
             )}
             {pdf.isPreparing ? 'Preparing PDF…' : 'Download PDF'}
           </button>
         ) : null}
+      </div>
+
+      {pdf.error ? (
+        <p className="text-xs font-bold text-rose-600 dark:text-rose-400" role="alert">
+          {pdf.error}{' '}
+          <button type="button" onClick={() => void pdf.retry()} className="underline font-black cursor-pointer">Retry</button>
+        </p>
+      ) : null}
+
+      {/* Policy & Operating Rules Footer Box */}
+      <div className="mt-4 pt-3 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/40 p-3.5 px-4 rounded-2xl border border-border/40">
+        <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+          <ShieldCheck size={18} className="text-[var(--brand)] shrink-0 mt-0.5 sm:mt-0" />
+          <p className="text-[11px] font-semibold text-muted-foreground leading-relaxed">
+            {t('contracts.legal.policyDisclaimer')}
+          </p>
+        </div>
 
         <a
           href="/policies"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold text-muted-foreground transition-colors hover:text-primary"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-background hover:bg-muted border border-border/80 text-foreground text-xs font-black shrink-0 transition shadow-2xs hover:text-[var(--brand)] hover:border-[var(--brand)]"
         >
-          {t('contracts.legal.viewPlatformPolicy')}
-          <ExternalLink size={14} aria-hidden="true" />
+          <span>{t('contracts.legal.viewPlatformPolicy')}</span>
+          <ExternalLink size={13} aria-hidden="true" />
         </a>
       </div>
-
-      {pdf.error ? (
-        <p className="text-xs font-semibold text-destructive" role="alert">
-          {pdf.error}{' '}
-          <button type="button" onClick={() => void pdf.retry()} className="underline">Retry</button>
-        </p>
-      ) : null}
-
-      <p className="border-t border-border/40 pt-4 text-[11px] leading-relaxed text-muted-foreground">
-        {t('contracts.legal.policyDisclaimer')}
-      </p>
     </section>
   );
 }
