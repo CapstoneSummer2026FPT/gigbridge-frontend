@@ -40,6 +40,48 @@ describe('SEO metadata registry', () => {
       .toBe('noindex, nofollow');
   });
 
+  it('keeps an opted-out freelancer accessible but marks the profile as noindex', () => {
+    const metadata = getSeoMetadata({
+      kind: 'freelancer',
+      freelancer: {
+        userId: 'c28da4fc-4cf2-418c-87b4-4de6126094c1',
+        userFullName: 'Nguyễn Freelancer',
+        title: 'Full-stack Developer',
+        rating: 5,
+        createdAt: '2026-08-14T00:00:00Z',
+        eloPoints: 100,
+        isIdentityVerified: true,
+        showProVerifiedBadge: false,
+        allowSearchEngineIndexing: false,
+      },
+    });
+
+    expect(metadata.robots).toBe('noindex, nofollow');
+    expect(metadata.canonicalPath).toBe('/freelancers/c28da4fc-4cf2-418c-87b4-4de6126094c1');
+    expect(metadata.jsonLd).toEqual([]);
+  });
+
+  it('indexes an opted-in freelancer profile', () => {
+    const metadata = getSeoMetadata({
+      kind: 'freelancer',
+      freelancer: {
+        userId: 'c28da4fc-4cf2-418c-87b4-4de6126094c1',
+        userFullName: 'Nguyễn Freelancer',
+        rating: 5,
+        createdAt: '2026-08-14T00:00:00Z',
+        eloPoints: 100,
+        isIdentityVerified: true,
+        showProVerifiedBadge: false,
+        allowSearchEngineIndexing: true,
+      },
+    });
+
+    expect(metadata.robots).toBe('index, follow');
+    expect(metadata.jsonLd).toEqual(expect.arrayContaining([
+      expect.objectContaining({ '@type': 'ProfilePage' }),
+    ]));
+  });
+
   it('never copies query parameters into a canonical URL', () => {
     const metadata = getSeoMetadata({ kind: 'jobs', jobs: [] });
 

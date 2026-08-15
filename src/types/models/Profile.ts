@@ -134,6 +134,7 @@ export interface PublicFreelancerProfileDto extends PublicFreelancerSummaryDto {
   isPremium: boolean;
   isIdentityVerified: boolean;
   showProVerifiedBadge: boolean;
+  allowSearchEngineIndexing: boolean;
   categories: FreelancerProfileCategoryDto[];
   portfolioItems: PortfolioItemDto[];
   workExperiences: WorkExperienceDto[];
