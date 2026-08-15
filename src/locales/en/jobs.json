@@ -341,6 +341,16 @@
       "savingInline": "Saving...",
       "removeSkill": "Remove {{name}}"
     },
+    "visibilityModal": {
+      "title": "Choose visibility",
+      "subtitle": "Select who can discover this Project Request before publishing.",
+      "publicDescription": "Visible to all freelancers. Content is locked after publishing.",
+      "privateDescription": "Kept private and remains editable after publishing.",
+      "inviteOnlyDescription": "Visible only through invitations. Content is locked after publishing.",
+      "warningTitle": "This choice affects editing access",
+      "warning": "After publishing, Public and Invite Only job posts cannot have their content edited or return to Private. Public and Invite Only can still be switched between each other.",
+      "confirm": "Publish Project Request"
+    },
     "validation": {
       "skillLimit": "You can select up to 10 skills in total.",
       "selectCategoryFirst": "Please select a category before adding skills.",
@@ -508,6 +518,12 @@
     "onSite": "On-site",
     "proposalsCount": "{{count}} proposals",
     "editPost": "Edit Post",
+    "editLocked": "Content locked after publishing",
+    "editLockedTitle": "This job post cannot be edited",
+    "editLockedDescription": "Published Public and Invite Only job posts cannot have their content edited and cannot return to Private.",
+    "adminLockedTitle": "This job post is locked by an admin",
+    "adminLockedDescription": "All updates are disabled. Contact support if you believe this is a mistake.",
+    "backToJobs": "Back to My Jobs",
     "proposals": "Proposals",
     "budgetRange": "Budget Range",
     "workType": "Work Type",
