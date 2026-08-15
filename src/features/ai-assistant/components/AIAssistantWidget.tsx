@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
   AlertTriangle,
-  BotMessageSquare,
+  Bot,
   Copy,
   Eraser,
   Send,
