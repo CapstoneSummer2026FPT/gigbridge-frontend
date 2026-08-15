@@ -1,26 +1,22 @@
-import { useCallback, useState } from 'react';
 import {
   AlertCircle,
   ArrowUpRight,
   Briefcase,
-  ChevronDown,
   ChevronRight,
   Crown,
-  FileText,
-  Megaphone,
-  Shield,
   Star,
   Wallet,
   Zap,
 } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useApp } from '../../../app/providers/AppProvider';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { GigCoinAmount, GigCoinBudget } from '../../../shared/components/GigCoinAmount';
-import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { useFreelancerDashboard } from '../hooks/useFreelancerDashboard';
 import { use3DTilt } from '../hooks/use3DTilt';
-import { premiumAPI } from '../../premium/api';
-import { usePremiumResource } from '../../premium/hooks';
+import { FreelancerDashboardOverview } from '../components/FreelancerDashboardOverview';
+import { usePremiumStatus } from '../../premium/hooks';
+import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
 import '../styles/freelancer-dashboard-screen.css';
 
 const formatAxisAmount = (value: number) => {
@@ -31,8 +27,8 @@ const formatAxisAmount = (value: number) => {
 };
 
 export default function FreelancerDashboardScreen() {
-  const premium = usePremiumResource(useCallback(premiumAPI.points, []));
-  const [premiumBarOpen, setPremiumBarOpen] = useState(false);
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
   const {
     user,
     theme,
@@ -49,9 +45,10 @@ export default function FreelancerDashboardScreen() {
     chartPeriod,
     setChartPeriod,
     earningsData,
-    pendingProposalsCount,
     activeProjects,
-    completedProjectsCount,
+    workStatusCounts,
+    eloSummary,
+    pendingMilestoneItems,
     projects,
     recommendedJobs,
     gaugeR,
@@ -63,6 +60,7 @@ export default function FreelancerDashboardScreen() {
     financialError,
     navigate,
   } = useFreelancerDashboard();
+
   const hasFinancialActivity = Boolean(
     financialOverview
     && (
@@ -93,12 +91,15 @@ export default function FreelancerDashboardScreen() {
           </div>
         </div>
 
-        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-10 space-y-20">
+        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-10 space-y-12 sm:space-y-14">
           <section className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 fl-stagger-up">
             <div className="flex-1 min-w-0">
-              <span className="inline-block text-brand font-bold tracking-[0.4em] uppercase text-xs mb-4">
-                Freelancer workspace
-              </span>
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <span className="inline-block text-brand font-bold tracking-[0.4em] uppercase text-xs">
+                  Freelancer workspace
+                </span>
+                {!premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} />}
+              </div>
               <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black freelancer-avant-heading freelancer-hero-text mb-6 uppercase tracking-tight leading-none whitespace-nowrap overflow-hidden text-ellipsis">
                 {userName || 'FREELANCER'}
               </h1>
@@ -116,13 +117,24 @@ export default function FreelancerDashboardScreen() {
                 )}
               </p>
             </div>
-            <button
-              className="group glass-card h-16 px-8 rounded-2xl flex items-center gap-3 hover:!border-brand hover:text-brand transition-all duration-300 shadow-sm"
-              onClick={() => navigate('/jobs/browse')}
-            >
-              <span className="font-bold text-xs uppercase tracking-widest">Browse jobs</span>
-              <Zap size={16} className="transition-transform group-hover:translate-x-1" />
-            </button>
+            <div className="flex flex-wrap gap-4 shrink-0">
+              <button
+                className="group glass-card h-16 px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm cursor-pointer"
+                onClick={() => navigate(premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing')}
+              >
+                <Crown size={17} className="text-purple" />
+                <span className="font-bold text-xs uppercase tracking-widest">
+                  {premiumStatus.isPremium ? 'Premium Hub' : 'Upgrade'}
+                </span>
+              </button>
+              <button
+                className="group glass-card h-16 px-8 rounded-2xl flex items-center gap-3 hover:!border-brand hover:text-brand transition-all duration-300 shadow-sm cursor-pointer"
+                onClick={() => navigate('/jobs/browse')}
+              >
+                <span className="font-bold text-xs uppercase tracking-widest">Browse jobs</span>
+                <Zap size={16} className="transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
           </section>
 
           {error && (
@@ -149,46 +161,16 @@ export default function FreelancerDashboardScreen() {
             </section>
           )}
 
-          {premium.data?.isPremium && (
-            <div className="glass-card w-full rounded-3xl overflow-hidden transition-all hover:!border-brand">
-              <button
-                type="button"
-                className="w-full p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 text-left"
-                onClick={() => setPremiumBarOpen(open => !open)}
-                aria-expanded={premiumBarOpen}
-              >
-                <div className="flex items-center gap-4">
-                  <Crown size={24} className="text-purple" />
-                  <div>
-                    <div className="font-black text-text-primary">Premium status</div>
-                    <div className="text-sm text-text-secondary">
-                      {premium.data.tierName || 'Premium'} · {premium.data.eloPoints} Elo
-                    </div>
-                  </div>
-                </div>
-                <span className="font-bold text-brand flex items-center gap-2">
-                  {premiumBarOpen ? 'Hide details' : 'Show details'}
-                  <ChevronDown size={18} className={`transition-transform ${premiumBarOpen ? 'rotate-180' : ''}`} />
-                </span>
-              </button>
-              {premiumBarOpen && (
-                <div className="border-t border-border px-6 py-4 flex flex-wrap items-center gap-3">
-                  <button className="premium-dashboard-link" onClick={() => navigate('/premium/freelancer/points')}>
-                    <Star size={16} /> Points & tier
-                  </button>
-                  <button className="premium-dashboard-link" onClick={() => navigate('/premium/freelancer/rank-protection')}>
-                    <Shield size={16} /> Rank protection
-                  </button>
-                  <button className="premium-dashboard-link" onClick={() => navigate('/premium/freelancer/promotions')}>
-                    <Megaphone size={16} /> Promotions
-                  </button>
-                  <button className="premium-dashboard-link ml-auto" onClick={() => navigate('/premium/freelancer')}>
-                    Open hub <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <FreelancerDashboardOverview
+            isLoading={isLoading}
+            workStatusCounts={workStatusCounts}
+            pendingMilestoneItems={pendingMilestoneItems}
+            eloSummary={eloSummary}
+            theme={theme}
+            onOpenProposals={() => navigate('/proposals')}
+            onOpenContracts={() => navigate('/contracts')}
+            onOpenEloHistory={() => navigate('/elo')}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
             <div className="lg:col-span-8 space-y-10">
@@ -318,58 +300,6 @@ export default function FreelancerDashboardScreen() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {[
-                  {
-                    label: 'Available balance',
-                    value: <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} />,
-                    icon: <GCoinIcon size={18} />,
-                    detail: 'Current wallet',
-                    color: 'text-success',
-                    bg: 'bg-success/10',
-                    border: 'border-success/20',
-                  },
-                  {
-                    label: 'Completed projects',
-                    value: completedProjectsCount,
-                    icon: <Briefcase size={18} />,
-                    detail: 'From contracts',
-                    color: 'text-brand',
-                    bg: 'bg-brand/10',
-                    border: 'border-brand/20',
-                  },
-                  {
-                    label: 'Pending proposals',
-                    value: pendingProposalsCount,
-                    icon: <FileText size={18} />,
-                    detail: 'Awaiting decision',
-                    color: 'text-info',
-                    bg: 'bg-info/10',
-                    border: 'border-info/20',
-                  },
-                  {
-                    label: 'Active contracts',
-                    value: activeProjects,
-                    icon: <Wallet size={18} />,
-                    detail: 'Current work',
-                    color: 'text-warning',
-                    bg: 'bg-warning/10',
-                    border: 'border-warning/20',
-                  },
-                ].map(stat => (
-                  <div key={stat.label} className={`glass-card freelancer-bento-stat p-6 rounded-3xl border ${stat.border}`}>
-                    <div className={`w-10 h-10 rounded-full ${stat.bg} ${stat.color} flex items-center justify-center mb-4`}>
-                      {stat.icon}
-                    </div>
-                    <span className="block text-3xl font-black text-text-primary tracking-tight leading-none mb-2">
-                      {isLoading ? '—' : stat.value}
-                    </span>
-                    <span className="block text-[9px] font-black text-text-muted uppercase tracking-widest mb-2">{stat.label}</span>
-                    <span className={`text-[10px] font-bold ${stat.color}`}>{stat.detail}</span>
-                  </div>
-                ))}
-              </div>
-
               <div className="relative pt-4">
                 <div className="flex items-center justify-between mb-6 pl-2">
                   <h3 className="text-3xl font-black tracking-tight uppercase">
@@ -443,17 +373,76 @@ export default function FreelancerDashboardScreen() {
             </div>
 
             <div className="lg:col-span-4 space-y-10">
-              <div className="glass-card rounded-[2.5rem] p-8">
-                <h3 className="text-xl font-black tracking-tight uppercase mb-4">Activity</h3>
-                <p className="text-sm text-text-secondary">
-                  Activity events are not included in the dashboard API. Open notifications for persisted updates.
-                </p>
-                <button
-                  className="w-full mt-8 py-5 rounded-2xl border border-dashed border-border text-[10px] font-black uppercase tracking-widest hover:border-brand hover:text-brand transition-all bg-transparent"
-                  onClick={() => navigate('/notifications')}
-                >
-                  View notifications
-                </button>
+              <div className="glass-card rounded-[2.25rem] p-6 border border-border h-[360px] flex flex-col justify-between relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-brand/10 text-brand flex items-center justify-center border border-brand/20">
+                      <Wallet size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black tracking-tight uppercase text-text-primary">Wallet & Balances</h3>
+                      <span className="block text-[9px] font-bold text-text-muted uppercase tracking-widest">Financial summary</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-brand/15 via-brand/5 to-success/10 rounded-2xl p-4 border border-brand/20 flex items-center justify-between my-1">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">Available balance</span>
+                    </div>
+                    <div className="text-2xl font-black text-text-primary tracking-tight leading-none">
+                      {isLoading ? '—' : <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} />}
+                    </div>
+                  </div>
+                  <button
+                    className="px-4 py-2.5 bg-brand/10 hover:bg-brand text-brand hover:text-primary-foreground font-bold text-xs tracking-widest uppercase rounded-xl border border-brand/30 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0 group"
+                    onClick={() => navigate('/wallet/withdrawals')}
+                  >
+                    <span>Details</span>
+                    <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5" aria-label="Wallet overview">
+                  {[
+                    {
+                      label: 'Deposited',
+                      value: <GigCoinAmount amount={wallet?.depositedGigCoin ?? 0} />,
+                      detail: 'Purchased',
+                      color: 'text-brand',
+                      bg: 'bg-brand/10',
+                      border: 'border-brand/20',
+                    },
+                    {
+                      label: 'On hold',
+                      value: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} />,
+                      detail: 'In workflow',
+                      color: 'text-warning',
+                      bg: 'bg-warning/10',
+                      border: 'border-warning/20',
+                    },
+                    {
+                      label: 'Pending',
+                      value: <GigCoinAmount amount={wallet?.pendingWithdrawalGigCoin ?? 0} />,
+                      detail: 'Processing',
+                      color: 'text-info',
+                      bg: 'bg-info/10',
+                      border: 'border-info/20',
+                    },
+                  ].map(stat => (
+                    <div key={stat.label} className={`glass-card p-3 rounded-2xl border ${stat.border} flex flex-col justify-between h-[90px]`}>
+                      <span className={`text-[8px] font-black uppercase tracking-wider truncate ${stat.color}`}>
+                        {stat.label}
+                      </span>
+                      <span className="block text-sm font-black text-text-primary tracking-tight leading-none my-1">
+                        {isLoading ? '—' : stat.value}
+                      </span>
+                      <span className="block text-[8px] font-medium text-text-muted opacity-80">{stat.detail}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-4">

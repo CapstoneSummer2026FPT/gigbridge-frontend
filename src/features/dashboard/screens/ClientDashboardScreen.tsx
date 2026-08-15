@@ -2,11 +2,13 @@ import {
   AlertCircle,
   Bot,
   Briefcase,
+  ChevronLeft,
   ChevronRight,
   Crown,
   PlusCircle,
   Wallet,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useClientDashboard } from '../hooks/useClientDashboard';
 import { use3DTilt } from '../hooks/use3DTilt';
@@ -57,6 +59,7 @@ export default function ClientDashboardScreen() {
   const openRolesCount = myJobs.filter(job => job.status === 'open').length;
   const draftRolesCount = myJobs.filter(job => job.status === 'draft').length;
   const displayName = user?.full_name || user?.first_name || 'Client';
+  const [financialSlide, setFinancialSlide] = useState<number>(0);
   const financialProgress = Math.min(
     100,
     Math.max(0, financialOverview?.progressPercentage ?? 0),
@@ -222,6 +225,219 @@ export default function ClientDashboardScreen() {
                     Find talent <ChevronRight size={16} />
                   </button>
                 </div>
+
+                {/* Money & Budget Section in Empty Space */}
+                <div className="pt-2 space-y-4" aria-labelledby="client-finance-title">
+                  <div className="px-1">
+                    <span className="client-dash-card-eyebrow">{t('dashboard.financialControl', 'Financial control')}</span>
+                    <h3 id="client-finance-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5">
+                      {t('dashboard.moneyAndBudget', 'Money & budget')}
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Financial Control Carousel Card (Funds Released & Wallet) */}
+                    <div className="glass-card p-6 rounded-3xl flex flex-col justify-between min-h-[300px] relative overflow-hidden group">
+                      {/* Carousel Header Controls */}
+                      <div className="flex items-center justify-between mb-3 relative z-10">
+                        <div className="flex items-center gap-1.5 bg-surface-muted/60 p-1 rounded-xl border border-border">
+                          <button
+                            className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${financialSlide === 0 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+                            onClick={() => setFinancialSlide(0)}
+                          >
+                            Funds Released
+                          </button>
+                          <button
+                            className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${financialSlide === 1 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+                            onClick={() => setFinancialSlide(1)}
+                          >
+                            Wallet
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all disabled:opacity-30"
+                            onClick={() => setFinancialSlide(prev => (prev === 0 ? 1 : 0))}
+                            title="Previous slide"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button
+                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all disabled:opacity-30"
+                            onClick={() => setFinancialSlide(prev => (prev === 0 ? 1 : 0))}
+                            title="Next slide"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Carousel Slide Content */}
+                      <div className="flex-1 flex flex-col justify-between relative z-10">
+                        {financialSlide === 0 ? (
+                          /* Slide 0: Contract funds released */
+                          <div
+                            className="flex flex-col justify-between h-full transition-opacity duration-300"
+                            onMouseMove={handleOverviewMouseMove}
+                            onMouseLeave={handleOverviewMouseLeave}
+                            style={overviewCardStyle}
+                          >
+                            <div className="relative flex flex-col items-center justify-center py-1">
+                              <div className="relative w-32 h-32 flex items-center justify-center">
+                                <svg className="w-full h-full transform -rotate-90">
+                                  <circle cx="64" cy="64" r="54" className="stroke-surface-muted fill-none" strokeWidth="8" />
+                                  <circle
+                                    cx="64"
+                                    cy="64"
+                                    r="54"
+                                    className="stroke-brand fill-none client-dash-success-ring"
+                                    strokeWidth="8"
+                                    strokeDasharray={2 * Math.PI * 54}
+                                    strokeDashoffset={2 * Math.PI * 54 * (1 - financialProgress / 100)}
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                                <div className="absolute text-center">
+                                  <span className="text-3xl font-black text-text-primary tracking-tighter">
+                                    {isFinancialLoading ? '—' : `${financialProgress}%`}
+                                  </span>
+                                  <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5">
+                                    {hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past month' : 'Past year') : 'No activity'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/60">
+                              <div className="text-center">
+                                <span className="block text-[8px] uppercase font-black text-text-muted">Released</span>
+                                <GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-xs font-bold text-text-primary" />
+                              </div>
+                              <div className="text-center">
+                                <span className="block text-[8px] uppercase font-black text-text-muted">Value</span>
+                                <GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-xs font-bold text-text-primary" />
+                              </div>
+                              <div className="text-center">
+                                <span className="block text-[8px] uppercase font-black text-text-muted">Fees</span>
+                                <GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-xs font-bold text-text-primary" />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Slide 1: Wallet Card */
+                          <div
+                            className="cursor-pointer select-none h-full flex flex-col justify-between transition-opacity duration-300 relative"
+                            onMouseMove={handleWalletMouseMove}
+                            onMouseLeave={handleWalletMouseLeave}
+                            style={walletCardStyle}
+                            onClick={() => navigate('/wallet/deposit')}
+                          >
+                            <div className="absolute -top-16 -right-16 w-36 h-36 bg-brand/10 blur-2xl rounded-full pointer-events-none group-hover:scale-125 transition-transform" />
+                            <div className="flex items-start justify-between relative z-10 pt-1">
+                              <div>
+                                <span className="block text-[8px] font-black text-brand uppercase tracking-widest">Wallet</span>
+                                <h4 className="text-sm font-black text-text-primary mt-0.5">GigBridge Pay</h4>
+                              </div>
+                              <div className="w-9 h-9 bg-brand/10 text-brand rounded-xl flex items-center justify-center">
+                                <Wallet size={18} />
+                              </div>
+                            </div>
+                            <div className="my-2 relative z-10">
+                              <span className="block text-[9px] uppercase text-text-muted tracking-wider font-semibold mb-0.5">Available funds</span>
+                              <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} className="text-3xl font-black tracking-tight text-text-primary" />
+                              <span className="block text-xs text-text-secondary mt-1">Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} /></span>
+                            </div>
+                            <div className="flex items-center justify-between relative z-10 gap-2 pt-2 border-t border-border/60">
+                              <div className="min-w-0">
+                                <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">Account holder</span>
+                                <span className="block truncate text-xs font-bold text-text-secondary">{displayName}</span>
+                              </div>
+                              <button className="py-2 px-3 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-colors shadow-md border border-transparent shrink-0">
+                                Deposit
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Pagination Dots */}
+                      <div className="flex items-center justify-center gap-1.5 mt-3 relative z-10">
+                        <button
+                          className={`h-1.5 rounded-full transition-all ${financialSlide === 0 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
+                          onClick={() => setFinancialSlide(0)}
+                          aria-label="Go to slide 1"
+                        />
+                        <button
+                          className={`h-1.5 rounded-full transition-all ${financialSlide === 1 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
+                          onClick={() => setFinancialSlide(1)}
+                          aria-label="Go to slide 2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Spend Chart Card */}
+                    <div className="glass-card p-6 rounded-3xl flex flex-col justify-between min-h-[300px]">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-text-primary font-bold text-base">
+                            {chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}
+                          </h4>
+                          <p className="text-xs text-text-secondary opacity-75">Confirmed contract releases</p>
+                        </div>
+                        <div className="chart-header-tabs flex">
+                          <button
+                            className={`chart-tab-btn ${chartPeriod === 'monthly' ? 'active' : ''}`}
+                            onClick={() => setChartPeriod('monthly')}
+                          >
+                            M
+                          </button>
+                          <button
+                            className={`chart-tab-btn ${chartPeriod === 'yearly' ? 'active' : ''}`}
+                            onClick={() => setChartPeriod('yearly')}
+                          >
+                            Y
+                          </button>
+                        </div>
+                      </div>
+                      <div className="w-full flex-1 flex items-center justify-center min-h-[180px]">
+                        {isFinancialLoading ? (
+                          <p className="text-sm text-text-muted animate-pulse">Loading financial data…</p>
+                        ) : financialError ? (
+                          <p className="text-sm text-warning text-center">{financialError}</p>
+                        ) : spendChartData.length === 0 || !hasFinancialActivity ? (
+                          <p className="text-sm text-text-muted text-center">No confirmed spend in this period.</p>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={180}>
+                            <AreaChart data={spendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="clientSpendLineGrad" x1="0" y1="0" x2="1" y2="0">
+                                  <stop offset="0%" stopColor="#9F4BFF" />
+                                  <stop offset="100%" stopColor="#0077FF" />
+                                </linearGradient>
+                                <linearGradient id="clientSpendGrad2026" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#0077FF" stopOpacity={0.25} />
+                                  <stop offset="95%" stopColor="#0077FF" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatAxisAmount} />
+                              <Tooltip
+                                contentStyle={{
+                                  background: theme === 'black' ? 'rgba(13, 14, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                                  border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(73, 75, 231, 0.2)',
+                                  borderRadius: 12,
+                                  color: theme === 'black' ? '#f5f6f8' : '#19191b',
+                                }}
+                                formatter={(value: number) => [`${value.toLocaleString()} G-coin`, 'Released']}
+                              />
+                              <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3} fill="url(#clientSpendGrad2026)" isAnimationActive />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Right Column (col-span-5) */}
@@ -294,101 +510,6 @@ export default function ClientDashboardScreen() {
               </div>
             </div>
           </section>
-
-          <section className="client-dash-flow-section" aria-labelledby="client-finance-title">
-            <div className="client-dash-section-heading">
-              <div>
-                <span className="client-dash-section-kicker">{t('dashboard.financialControl', 'Financial control')}</span>
-                <h2 id="client-finance-title">{t('dashboard.moneyAndBudget', 'Money & budget')}</h2>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-              <div
-                className="xl:col-span-4 relative h-[360px] flex items-center justify-between p-8 overflow-hidden rounded-3xl glass-card group transition-all duration-500"
-                onMouseMove={handleOverviewMouseMove}
-                onMouseLeave={handleOverviewMouseLeave}
-                style={overviewCardStyle}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
-                <div className="relative flex-1 flex flex-col items-center justify-center z-10 text-center">
-                  <span className="font-label-md text-brand font-black uppercase tracking-[0.2em] text-[10px] block mb-4">Contract funds released</span>
-                  <div className="relative w-44 h-44 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90">
-                      <circle cx="88" cy="88" r="76" className="stroke-surface-muted fill-none" strokeWidth="8" />
-                      <circle cx="88" cy="88" r="76" className="stroke-brand fill-none client-dash-success-ring" strokeWidth="8" strokeDasharray={2 * Math.PI * 76} strokeDashoffset={2 * Math.PI * 76 * (1 - financialProgress / 100)} strokeLinecap="round" />
-                    </svg>
-                    <div className="absolute text-center">
-                      <span className="text-5xl font-black text-text-primary tracking-tighter">{isFinancialLoading ? '—' : `${financialProgress}%`}</span>
-                      <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5">{hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past month' : 'Past year') : 'No activity'}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="w-[1px] h-48 bg-border hidden 2xl:block" />
-                <div className="flex-1 pl-6 space-y-5 z-10 hidden 2xl:block">
-                  <h4 className="text-[10px] font-black tracking-widest text-text-muted uppercase">Financial summary</h4>
-                  <div><span className="block text-[9px] uppercase text-text-muted">Released</span><GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-sm font-bold text-text-primary" /></div>
-                  <div><span className="block text-[9px] uppercase text-text-muted">Contract value</span><GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-sm font-bold text-text-primary" /></div>
-                  <div><span className="block text-[9px] uppercase text-text-muted">Service fees</span><GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-sm font-bold text-text-primary" /></div>
-                </div>
-              </div>
-
-              <div className="xl:col-span-5 glass-card p-6 rounded-3xl flex flex-col justify-between h-[360px]">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-text-primary font-bold text-base">{chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}</h2>
-                    <p className="text-xs text-text-secondary opacity-75">Confirmed contract releases</p>
-                  </div>
-                  <div className="chart-header-tabs flex">
-                    <button className={`chart-tab-btn ${chartPeriod === 'monthly' ? 'active' : ''}`} onClick={() => setChartPeriod('monthly')}>M</button>
-                    <button className={`chart-tab-btn ${chartPeriod === 'yearly' ? 'active' : ''}`} onClick={() => setChartPeriod('yearly')}>Y</button>
-                  </div>
-                </div>
-                <div className="w-full flex-1 flex items-center justify-center">
-                  {isFinancialLoading ? (
-                    <p className="text-sm text-text-muted animate-pulse">Loading financial data…</p>
-                  ) : financialError ? (
-                    <p className="text-sm text-warning text-center">{financialError}</p>
-                  ) : spendChartData.length === 0 || !hasFinancialActivity ? (
-                    <p className="text-sm text-text-muted text-center">No confirmed spend in this period.</p>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={200}>
-                      <AreaChart data={spendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="clientSpendLineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#9F4BFF" /><stop offset="100%" stopColor="#0077FF" /></linearGradient>
-                          <linearGradient id="clientSpendGrad2026" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0077FF" stopOpacity={0.25} /><stop offset="95%" stopColor="#0077FF" stopOpacity={0} /></linearGradient>
-                        </defs>
-                        <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatAxisAmount} />
-                        <Tooltip contentStyle={{ background: theme === 'black' ? 'rgba(13, 14, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)', border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(73, 75, 231, 0.2)', borderRadius: 12, color: theme === 'black' ? '#f5f6f8' : '#19191b' }} formatter={(value: number) => [`${value.toLocaleString()} G-coin`, 'Released']} />
-                        <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3} fill="url(#clientSpendGrad2026)" isAnimationActive />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </div>
-
-              <div className="xl:col-span-3 client-dash-wallet-card-container">
-                <div className="glass-card cursor-pointer select-none p-8 rounded-3xl h-[360px] flex flex-col justify-between group transition-all duration-500 border-brand/20 relative overflow-hidden" onMouseMove={handleWalletMouseMove} onMouseLeave={handleWalletMouseLeave} style={walletCardStyle} onClick={() => navigate('/wallet/deposit')}>
-                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:scale-125 transition-transform" />
-                  <div className="flex items-start justify-between relative z-10">
-                    <div><span className="block text-[8px] font-black text-brand uppercase tracking-widest">Wallet</span><h4 className="text-sm font-black text-text-primary mt-1">GigBridge Pay</h4></div>
-                    <div className="w-10 h-10 bg-brand/10 text-brand rounded-xl flex items-center justify-center"><Wallet size={20} /></div>
-                  </div>
-                  <div className="my-4 relative z-10">
-                    <span className="block text-[9px] uppercase text-text-muted tracking-wider font-semibold mb-1">Available funds</span>
-                    <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} className="text-4xl font-black tracking-tight text-text-primary" />
-                    <span className="block text-xs text-text-secondary mt-3">Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} /></span>
-                  </div>
-                  <div className="flex items-center justify-between relative z-10 gap-3">
-                    <div className="min-w-0"><span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">Account holder</span><span className="block truncate text-xs font-bold text-text-secondary">{displayName}</span></div>
-                    <button className="py-2.5 px-4 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-colors shadow-md border border-transparent">Deposit</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
         </div>
       </div>
     </AppLayout>
