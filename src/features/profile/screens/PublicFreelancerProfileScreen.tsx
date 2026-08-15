@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { profileGetAPI } from '../../../api/profileAPI';
 import type { PublicFreelancerProfileDto } from '../../../types/models/Profile';
@@ -28,7 +28,7 @@ export function PublicFreelancerProfileScreen() {
     <AppLayout showSidebar={false}>
       <article className="mx-auto max-w-4xl px-4 py-10">
         {loading ? <p>Loading...</p> : null}
-        {!loading && !profile ? <><h1 className="text-3xl font-black">Không tìm thấy hồ sơ</h1><a className="mt-5 inline-block text-brand" href="/freelancers">Xem danh sách freelancer</a></> : null}
+        {!loading && !profile ? <><h1 className="text-3xl font-black">Không tìm thấy hồ sơ</h1><Link className="mt-5 inline-block text-brand" to="/freelancers">Xem danh sách freelancer</Link></> : null}
         {profile ? <>
           <h1 className="text-4xl font-black text-text-primary">{profile.userFullName || 'Freelancer GigBridge'}</h1>
           <p className="mt-3 text-xl font-bold text-brand">{profile.title || profile.majorName || 'Freelancer chuyên nghiệp'}</p>
@@ -41,7 +41,7 @@ export function PublicFreelancerProfileScreen() {
             <h2 className="text-2xl font-black">Kỹ năng</h2>
             <p className="mt-4 font-semibold text-text-secondary">{profile.skills.map(skill => skill.skillName).join(' · ') || 'Đang cập nhật'}</p>
           </section>
-          <a className="mt-6 inline-block rounded-xl bg-brand px-5 py-3 font-bold text-white" href={`/auth/login?returnUrl=${encodeURIComponent(`/freelancers/${profile.userId}`)}`}>Đăng nhập để mời freelancer</a>
+          <Link className="mt-6 inline-block rounded-xl bg-brand px-5 py-3 font-bold text-white" to={`/auth/login?returnUrl=${encodeURIComponent(`/freelancers/${profile.userId}`)}`}>Đăng nhập để mời freelancer</Link>
         </> : null}
       </article>
     </AppLayout>

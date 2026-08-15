@@ -143,6 +143,39 @@ export interface UpdateContractDto {
   status?: ContractStatus;
 }
 
+export interface ContractWorkflowResponse {
+  contractId: string;
+  status: ContractStatus | number;
+  escrowId?: string | null;
+  esignDocumentId?: string | null;
+}
+
+export interface UpdateContractWorkItemRequest {
+  workItemId?: string | null;
+  title: string;
+  description?: string | null;
+  deliverables?: string | null;
+  estimatedDuration?: string | null;
+  orderIndex: number;
+}
+
+export interface UpdateContractMilestoneRequest {
+  milestoneId?: string | null;
+  title: string;
+  amount: number;
+  dueDate?: string | null;
+  sortOrder?: number | null;
+  description?: string | null;
+  estimatedDuration?: string | null;
+  deliverables?: string | null;
+  acceptanceCriteria?: string | null;
+  workItems: UpdateContractWorkItemRequest[];
+}
+
+export interface UpdateContractDetailsRequest {
+  milestones: UpdateContractMilestoneRequest[];
+}
+
 export interface GenerateContractPdfDto {
   includeTerms?: boolean;
   includeNda?: boolean;

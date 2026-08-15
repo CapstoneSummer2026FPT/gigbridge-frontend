@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractProductHandoffResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
+import type { ContractProductHandoffResponse, ContractWorkflowResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
 import { normalizeMilestone } from './GET';
 
 const contractsUrl = 'Contracts';
@@ -152,22 +152,22 @@ export const contractPostAPI = {
   /**
    * POST /api/contracts/{contractId}/details/submit
    */
-  submitDetails: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/submit`);
+  submitDetails: async (contractId: string): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.post<ContractWorkflowResponse>(`contracts/${contractId}/details/submit`);
   },
 
   /**
    * POST /api/contracts/{contractId}/details/confirm
    */
-  confirmDetails: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/confirm`);
+  confirmDetails: async (contractId: string): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.post<ContractWorkflowResponse>(`contracts/${contractId}/details/confirm`);
   },
 
   /**
    * POST /api/contracts/{contractId}/details/request-change
    */
-  requestChange: async (contractId: string, reason: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/request-change`, { reason });
+  requestChange: async (contractId: string, reason: string): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.post<ContractWorkflowResponse>(`contracts/${contractId}/details/request-change`, { reason });
   },
 
   /**

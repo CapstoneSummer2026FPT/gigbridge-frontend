@@ -76,6 +76,7 @@ export interface SeoFreelancerDetail extends SeoFreelancerSummary {
   readonly eloPoints: number;
   readonly isIdentityVerified: boolean;
   readonly showProVerifiedBadge: boolean;
+  readonly allowSearchEngineIndexing: boolean;
   readonly portfolioItems?: readonly SeoPortfolioItem[];
   readonly workExperiences?: readonly SeoWorkExperience[];
 }

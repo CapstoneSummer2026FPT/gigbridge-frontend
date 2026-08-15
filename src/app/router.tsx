@@ -3,7 +3,6 @@ import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-rou
 import { useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 import { RouteErrorScreen } from './components/RouteErrorScreen';
-import { LegacyFreelancerProfileRedirect } from './components/LegacyFreelancerProfileRedirect';
 import { RootLayout } from './layouts/RootLayout';
 
 const LandingScreen = lazy(() => import('../features/landing/screens/LandingPagePremium'));
@@ -27,6 +26,7 @@ const ManageJobPostQuestionsScreen = lazy(() => import('../features/jobs/screens
 const EditJobPostScreen = lazy(() => import('../features/jobs/screens/EditJobPostScreen'));
 const SavedJobsScreen = lazy(() => import('../features/jobs/screens/SavedJobsScreen'));
 const JobInvitationsScreen = lazy(() => import('../features/jobs/screens/JobInvitationsScreen'));
+const FreelancerProfileScreen = lazy(() => import('../features/profile/screens/FreelancerProfileScreen'));
 const FreelancerDirectoryScreen = lazy(() => import('../features/profile/screens/FreelancerDirectoryScreen').then(module => ({ default: module.FreelancerDirectoryScreen })));
 const PublicFreelancerProfileScreen = lazy(() => import('../features/profile/screens/PublicFreelancerProfileScreen').then(module => ({ default: module.PublicFreelancerProfileScreen })));
 const ClientProfileScreen = lazy(() => import('../features/profile/screens/ClientProfileScreen'));
@@ -232,13 +232,15 @@ export const router = createBrowserRouter([
       { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><EditJobPostScreen /></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><ManageJobPostQuestionsScreen /></ProtectedRoute> },
 
-      // Profiles - requires authentication
-      { path: 'profile/freelancer/:id', element: <LegacyFreelancerProfileRedirect /> },
-      { path: 'freelancers', element: <FreelancerDirectoryScreen /> },
-      { path: 'freelancers/:id', element: <PublicFreelancerProfileScreen /> },
+      // Authenticated application profiles
+      { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
       { path: 'profile/freelancer/:id/edit', element: <Navigate to="/settings" replace /> },
       { path: 'profile/client/:id/edit', element: <Navigate to="/settings" replace /> },
+
+      // Public marketplace and SEO-safe profile routes
+      { path: 'freelancers', element: <FreelancerDirectoryScreen /> },
+      { path: 'freelancers/:id', element: <PublicFreelancerProfileScreen /> },
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
