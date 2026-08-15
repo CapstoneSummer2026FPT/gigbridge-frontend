@@ -325,7 +325,17 @@
         "workItemTitle": "Work item title",
         "estimatedDuration": "Estimated duration",
         "taskDescription": "Task description",
-        "workItemDeliverables": "Work item deliverables"
+        "workItemDeliverables": "Work item deliverables",
+        "autoBalanceOn": "⚡ Auto-balance: ON",
+        "autoBalanceOff": "⚡ Auto-balance: OFF",
+        "autoBalanceOnDesc": "Edits auto-balance remaining unlocked milestones.",
+        "autoBalanceOffDesc": "Auto-balance is OFF. Values remain exact.",
+        "resetBalance": "↺ Reset & Split Budget",
+        "resetBalanceTooltip": "Clear all user locks and split budget equally across milestones",
+        "userLocked": "Fixed",
+        "userLockedTitle": "Fixed milestone (User-locked). Click to unlock auto-balancing.",
+        "autoBalanced": "Auto",
+        "autoBalancedTitle": "Dynamically calculated. Click to lock amount."
       }
     },
     "review": {

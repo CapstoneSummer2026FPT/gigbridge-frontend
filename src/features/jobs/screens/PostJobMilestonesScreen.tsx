@@ -137,6 +137,7 @@ export default function PostJobMilestonesScreen() {
                 setMilestonePlans(plans);
                 setMilestoneErrors({});
               }}
+              targetBudget={expectedBudget}
               optional
               showDueDate
               dueDateReadOnly
@@ -176,6 +177,16 @@ export default function PostJobMilestonesScreen() {
                 estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
                 taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
                 workItemDeliverables: t('postJobWizard.plan.milestoneCopy.workItemDeliverables'),
+                autoBalanceOn: t('postJobWizard.plan.milestoneCopy.autoBalanceOn', '⚡ Auto-balance: ON'),
+                autoBalanceOff: t('postJobWizard.plan.milestoneCopy.autoBalanceOff', '⚡ Auto-balance: OFF'),
+                autoBalanceOnDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOnDesc', 'Editing any milestone automatically rebalances the remaining budget across all unlocked milestones.'),
+                autoBalanceOffDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOffDesc', 'Auto-balance is OFF. Every milestone will keep the exact value you enter.'),
+                resetBalance: t('postJobWizard.plan.milestoneCopy.resetBalance', '↺ Reset & Split Budget'),
+                resetBalanceTooltip: t('postJobWizard.plan.milestoneCopy.resetBalanceTooltip', 'Clear all user locks and split budget equally across milestones'),
+                userLocked: t('postJobWizard.plan.milestoneCopy.userLocked', 'Fixed'),
+                userLockedTitle: t('postJobWizard.plan.milestoneCopy.userLockedTitle', 'Fixed milestone (User-locked). Click to unlock auto-balancing.'),
+                autoBalanced: t('postJobWizard.plan.milestoneCopy.autoBalanced', 'Auto'),
+                autoBalancedTitle: t('postJobWizard.plan.milestoneCopy.autoBalancedTitle', 'Dynamically calculated. Click to lock amount.'),
               }}
               fieldHints={{
                 fixedProjectBudget: t('postJob.baselineBudgetHint'),
