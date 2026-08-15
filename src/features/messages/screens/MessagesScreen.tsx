@@ -18,6 +18,7 @@ import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { CreateScheduleModal } from '../components/CreateScheduleModal';
+import { ChatSystemBanner } from '../components/ChatSystemBanner';
 import { useMessages } from '../hooks/useMessages';
 import { ConversationStatus, ConversationType } from '../../../types/models/Message';
 import { MESSAGE_ROOMS } from '../utils/messageRooms';
@@ -1081,11 +1082,13 @@ export default function MessagesScreen() {
                   }
 
                   return (
-                    <div key={msg.id ?? idx} className="flex justify-center">
-                      <div className="bg-muted/80 border border-border rounded-full px-4 py-1.5 text-xs text-muted-foreground font-medium text-center max-w-md">
-                        {msg.content}
-                      </div>
-                    </div>
+                    <ChatSystemBanner
+                      key={msg.id ?? idx}
+                      content={msg.content}
+                      contractId={activeConv.contractId}
+                      proposalId={activeConv.proposalId}
+                      onNavigateContract={id => navigate(`/contracts/${id}`)}
+                    />
                   );
                 }
 

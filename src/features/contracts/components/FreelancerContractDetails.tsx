@@ -365,14 +365,14 @@ export function FreelancerContractDetails({
               {/* Step 1B: PendingContractConfirmation */}
               {contract.status === ContractStatus.PendingContractConfirmation && (
                 <>
-                  <div className="glass-card p-6 md:p-8 space-y-6">
+                  <div className="rounded-2xl border border-border bg-card p-6 md:p-8 space-y-6 shadow-md">
                     <div className="flex items-center gap-2.5 border-b border-border pb-4">
                       <Shield size={20} className="text-brand" />
                       <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.reviewProjectPlan')}</h2>
                     </div>
 
-                    <div className="bg-background text-amber-600 dark:text-amber-400 border border-amber-500/40 p-4 rounded-2xl text-xs font-semibold leading-relaxed flex items-start gap-3 shadow-xs">
-                      <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+                    <div className="bg-amber-500 text-white p-4.5 rounded-2xl text-xs font-bold leading-relaxed flex items-start gap-3 shadow-md">
+                      <AlertCircle size={18} className="shrink-0 mt-0.5 text-white" />
                       <div>
                         {t('contracts.reviewProjectPlanDesc')}
                       </div>
@@ -384,45 +384,48 @@ export function FreelancerContractDetails({
                         type="button"
                         disabled={actionLoading}
                         onClick={handleConfirmDetails}
-                        className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold cursor-pointer transition shadow-xs flex items-center justify-center gap-2 border-none"
+                        className="flex-1 py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-black cursor-pointer transition shadow-md flex items-center justify-center gap-2 border-none"
                       >
-                        <CheckCircle size={16} />
+                        <CheckCircle size={18} />
                         {t('contracts.confirmProjectPlan')}
                       </button>
                       <button
                         type="button"
                         disabled={actionLoading}
                         onClick={() => setShowChangeRequestModal(true)}
-                        className="flex-1 py-3 bg-background hover:bg-surface-muted text-amber-600 dark:text-amber-400 border border-amber-500/50 rounded-xl text-xs font-extrabold cursor-pointer transition flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 px-5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white rounded-xl text-xs font-black cursor-pointer transition shadow-md flex items-center justify-center gap-2 border-none"
                       >
-                        <Edit3 size={16} />
+                        <Edit3 size={18} />
                         {t('contracts.requestChanges')}
                       </button>
                     </div>
                   </div>
 
                   {showChangeRequestModal && (
-                    <div className="glass-card p-6 space-y-4">
-                      <h3 className="text-xs font-black uppercase text-text-primary">Reason for change request</h3>
+                    <div className="rounded-2xl border border-amber-500/40 bg-card p-6 space-y-4 shadow-md">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                        <Edit3 size={15} />
+                        Reason for change request
+                      </h3>
                       <textarea
                         value={changeRequestReason}
                         onChange={(e) => setChangeRequestReason(e.target.value)}
-                        className="w-full p-3 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-brand"
-                        placeholder="Specify reason..."
+                        className="w-full p-3.5 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-amber-500"
+                        placeholder="Specify reason for requesting milestone/schedule changes..."
                         rows={3}
                       />
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2.5">
                         <button
                           type="button"
                           onClick={() => setShowChangeRequestModal(false)}
-                          className="px-4 py-2 bg-surface-muted border border-border rounded-xl text-xs font-extrabold text-text-primary"
+                          className="px-4 py-2.5 bg-surface-muted hover:bg-surface-muted/80 border border-border rounded-xl text-xs font-extrabold text-text-primary cursor-pointer transition"
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
                           onClick={handleRequestChanges}
-                          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-extrabold"
+                          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer border-none transition"
                         >
                           Submit Request
                         </button>
