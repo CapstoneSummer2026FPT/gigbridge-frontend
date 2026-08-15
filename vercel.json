@@ -13,7 +13,6 @@
       "destination": "/api/redirect?target=https://gigbridge.id.vn/:path*"
     },
     { "source": "/jobs/browse", "destination": "/api/redirect?target=/jobs" },
-    { "source": "/profile/freelancer/:id", "destination": "/api/redirect?target=/freelancers/:id" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/jobs", "destination": "/api/seo?path=/jobs" },
     { "source": "/jobs/:id", "destination": "/api/seo?path=/jobs/:id" },

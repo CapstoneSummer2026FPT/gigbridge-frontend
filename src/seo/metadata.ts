@@ -49,13 +49,22 @@ export const getSeoMetadata = (state: SeoRouteState): SeoMetadata => {
     return { title: `${state.job.title} | Việc làm freelance | GigBridge`, description: excerpt(state.job.description), canonicalPath: path, robots: 'index, follow', jsonLd: [breadcrumb(state.job.title, path), jobPosting] };
   }
   if (state.kind === 'freelancers') {
-    return { title: 'Tìm freelancer chuyên nghiệp | GigBridge', description: 'Khám phá hồ sơ freelancer đã chủ động công khai kỹ năng, kinh nghiệm và danh mục chuyên môn.', canonicalPath: '/freelancers', robots: 'index, follow', jsonLd: [breadcrumb('Freelancer', '/freelancers')] };
+    return { title: 'Tìm freelancer chuyên nghiệp | GigBridge', description: 'Khám phá kỹ năng, kinh nghiệm và danh mục chuyên môn của freelancer đang hoạt động trên GigBridge.', canonicalPath: '/freelancers', robots: 'index, follow', jsonLd: [breadcrumb('Freelancer', '/freelancers')] };
   }
   if (state.kind === 'freelancer') {
     const name = state.freelancer.userFullName ?? 'Freelancer';
     const specialty = state.freelancer.title ?? state.freelancer.majorName ?? 'Freelancer chuyên nghiệp';
     const path = `/freelancers/${encodeURIComponent(state.freelancer.userId)}`;
-    return { title: `${name} – ${specialty} | GigBridge`, description: excerpt(state.freelancer.bio ?? `${name} là ${specialty} trên GigBridge.`), canonicalPath: path, robots: 'index, follow', jsonLd: [breadcrumb(name, path), { '@context': 'https://schema.org', '@type': 'ProfilePage', mainEntity: { '@type': 'Person', name, jobTitle: specialty, image: state.freelancer.userAvatar ?? undefined } }] };
+    const allowIndexing = state.freelancer.allowSearchEngineIndexing === true;
+    return {
+      title: `${name} – ${specialty} | GigBridge`,
+      description: excerpt(state.freelancer.bio ?? `${name} là ${specialty} trên GigBridge.`),
+      canonicalPath: path,
+      robots: allowIndexing ? 'index, follow' : 'noindex, nofollow',
+      jsonLd: allowIndexing
+        ? [breadcrumb(name, path), { '@context': 'https://schema.org', '@type': 'ProfilePage', mainEntity: { '@type': 'Person', name, jobTitle: specialty, image: state.freelancer.userAvatar ?? undefined } }]
+        : [],
+    };
   }
   return { title: state.kind === 'unavailable' ? 'Dịch vụ tạm thời gián đoạn | GigBridge' : 'Không tìm thấy trang | GigBridge', description: 'Nội dung bạn yêu cầu hiện không khả dụng.', canonicalPath: state.path, robots: 'noindex, nofollow', jsonLd: [] };
 };

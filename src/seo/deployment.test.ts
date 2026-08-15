@@ -30,11 +30,13 @@ describe('SEO deployment rules', () => {
     expect(config.cleanUrls).not.toBe(true);
     expect(config.functions['api/seo.ts']?.includeFiles).toBe('.seo-build/**');
     expect(config.functions['api/sitemap.ts']?.includeFiles).toBe('.seo-build/**');
-    expect(config.rewrites.slice(0, 3)).toEqual([
+    expect(config.rewrites.slice(0, 2)).toEqual([
       expect.objectContaining({ source: '/:path*', destination: '/api/redirect?target=https://gigbridge.id.vn/:path*' }),
       { source: '/jobs/browse', destination: '/api/redirect?target=/jobs' },
-      { source: '/profile/freelancer/:id', destination: '/api/redirect?target=/freelancers/:id' },
     ]);
+    expect(config.rewrites).not.toContainEqual(
+      expect.objectContaining({ source: '/profile/freelancer/:id' }),
+    );
     expect(config.rewrites).toContainEqual({ source: '/jobs/:id', destination: '/api/seo?path=/jobs/:id' });
     expect(config.rewrites.at(-1)?.destination).toBe('/spa.html');
   });
