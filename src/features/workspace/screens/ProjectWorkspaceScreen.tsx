@@ -6,7 +6,7 @@ import {
   Paperclip, Smile, CheckCircle,
   FileText, CreditCard, MessageSquare,
   Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star,
-  FolderOpen, RefreshCw, Award, ShieldAlert, Layers
+  FolderOpen, RefreshCw, Award, ShieldAlert, Layers, Briefcase
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
@@ -23,6 +23,7 @@ import {
   ContractReportStatus,
 } from '../../../types/models/ReportContract';
 import '../styles/project-workspace-screen.css';
+import { ChatSystemBanner } from '../../messages/components/ChatSystemBanner';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { EarlyWithdrawalDialog } from '../../../shared/components/EarlyWithdrawalDialog';
@@ -967,62 +968,110 @@ export default function ProjectWorkspaceScreen() {
                   <p>{t('workspace.noProjectsInTab', { defaultValue: 'Không có dự án nào thuộc nhóm này.' })}</p>
                 </div>
               ) : (
-                filteredWorkspaceProjects.map((proj: typeof workspaceProjects[number]) => {
-                  const isActive = proj.id === activeProjectId;
-                  return (
-                    <div
-                      key={proj.id}
-                      onClick={() => {
-                        setActiveProjectId(proj.id);
-                        navigate(`/workspace/${proj.id}`);
-                      }}
-                      className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''
+                <div className="p-2 space-y-1">
+                  {filteredWorkspaceProjects.map((proj: typeof workspaceProjects[number]) => {
+                    const isActive = proj.id === activeProjectId;
+                    return (
+                      <div
+                        key={proj.id}
+                        onClick={() => {
+                          setActiveProjectId(proj.id);
+                          navigate(`/workspace/${proj.id}`);
+                        }}
+                        className={`relative rounded-xl p-3 border transition-all duration-150 cursor-pointer select-none mb-1.5 ${
+                          isActive
+                            ? 'bg-card border border-[var(--brand)]/80 shadow-2xs'
+                            : proj.unread
+                              ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border-l-4 border-l-emerald-500 border-y-emerald-500/20 border-r-emerald-500/20 hover:bg-emerald-500/15'
+                              : 'bg-card/40 hover:bg-muted/50 border-transparent hover:border-border/40'
                         }`}
-                    >
-                      <div className="flex gap-3">
-                        <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
-                          <UserAvatar name={proj.partnerName} src={proj.partnerAvatar} userId={proj.partnerUserId} size="md" />
-                          {proj.online && (
-                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full" />
-                          )}
-                        </UserProfileLink>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-baseline mb-0.5">
-                            <h3 className="font-headline-sm text-sm truncate font-semibold">
-                              <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>
-                                {proj.partnerName}
-                              </UserProfileLink>
-                            </h3>
-                            <span className="text-[10px] text-muted-foreground">{proj.time}</span>
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* UserAvatar Component directly */}
+                          <div className="shrink-0 mt-0.5">
+                            <UserAvatar
+                              name={proj.partnerName}
+                              src={proj.partnerAvatar}
+                              userId={proj.partnerUserId}
+                              size="md"
+                            />
                           </div>
-                          {proj.status === ContractStatus.Disputed ? (
-                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider">
-                              <LockKeyhole size={11} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
-                            </span>
-                          ) : proj.status === ContractStatus.Cancelled ? (
-                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground text-[10px] font-black uppercase tracking-wider">
-                              <LockKeyhole size={11} /> {t('workspace.disputeClosedBadge', { defaultValue: 'Đã đóng tranh chấp' })}
-                            </span>
-                          ) : proj.status === ContractStatus.Completed ? (
-                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[10px] font-black uppercase tracking-wider">
-                              <Award size={11} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
-                              <CheckCircle size={11} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
-                            </span>
-                          )}
-                          <p className={`text-xs truncate ${proj.unread ? 'text-foreground font-semibold animate-pulse' : 'text-muted-foreground'}`}>
-                            {proj.latestMessage}
-                          </p>
+
+                          {/* Info Column */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            {/* Top Row: Name + Unread Dot + Timestamp */}
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className={`text-xs md:text-sm truncate leading-tight ${
+                                  proj.unread
+                                    ? 'font-black text-foreground'
+                                    : isActive
+                                      ? 'font-extrabold text-[var(--brand)]'
+                                      : 'font-bold text-foreground/90'
+                                }`}>
+                                  {proj.partnerName}
+                                </span>
+                                {proj.unread && (
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Tin nhắn mới" />
+                                )}
+                              </div>
+
+                              <span className={`text-[10px] shrink-0 font-semibold ${
+                                proj.unread
+                                  ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                                  : isActive
+                                    ? 'text-[var(--brand)] font-bold'
+                                    : 'text-muted-foreground'
+                              }`}>
+                                {proj.time}
+                              </span>
+                            </div>
+
+                            {/* Job Title Tag Pill */}
+                            {proj.title && (
+                              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/80 border border-border/50 text-muted-foreground text-[10px] font-medium max-w-full truncate">
+                                <Briefcase size={10} className="shrink-0 text-muted-foreground/80" />
+                                <span className="truncate">{proj.title}</span>
+                              </div>
+                            )}
+
+                            {/* Message Snippet & Status Badge */}
+                            <div className="flex items-center justify-between gap-2 pt-0.5">
+                              <p className={`text-xs truncate leading-snug flex-1 ${
+                                proj.unread
+                                  ? 'font-black text-foreground'
+                                  : isActive
+                                    ? 'font-bold text-foreground'
+                                    : 'font-medium text-muted-foreground'
+                              }`}>
+                                {proj.latestMessage}
+                              </p>
+
+                              {/* Solid Full Dark Background Status Badges */}
+                              {proj.status === ContractStatus.Disputed ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                  <LockKeyhole size={9} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                                </span>
+                              ) : proj.status === ContractStatus.Cancelled ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-slate-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                  <LockKeyhole size={9} /> {t('workspace.disputeClosedBadge', { defaultValue: 'Đã đóng' })}
+                                </span>
+                              ) : proj.status === ContractStatus.Completed ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                  <Award size={9} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                  <CheckCircle size={9} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {proj.unread && (
-                          <span className="w-2 h-2 bg-[var(--gb-cyan)] rounded-full self-center" />
-                        )}
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
           </section>
@@ -1728,11 +1777,12 @@ export default function ProjectWorkspaceScreen() {
 
                       if (isSystemMessage) {
                         return (
-                          <div key={msg.id || index} className="flex justify-center self-stretch">
-                            <div className="max-w-md rounded-full border border-border bg-muted/80 px-4 py-1.5 text-center text-xs font-medium text-muted-foreground">
-                              {msg.content}
-                            </div>
-                          </div>
+                          <ChatSystemBanner
+                            key={msg.id || index}
+                            content={msg.content}
+                            contractId={contractId}
+                            onNavigateContract={id => navigate(`/contracts/${id}`)}
+                          />
                         );
                       }
 

@@ -28,8 +28,8 @@ import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
 import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
-import '../styles/signature-workflow-screen.css';
-import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
@@ -143,9 +143,6 @@ const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImag
     return fallback;
   }
 };
-
-const formatMoney = (value?: number): string =>
-  formatGigCoin(value ?? 0);
 
 const formatDate = (value?: string | null): string => {
   if (!value) return 'Chưa đặt';
@@ -803,23 +800,39 @@ export default function SignatureWorkflowScreen() {
 
                 {/* Bento Card: Milestones Schedule */}
                 <div className="p-6 rounded-3xl bg-card border border-border/80 shadow-lg space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
                     <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
                       <Layers size={15} className="text-brand" />
                       <span>{t('contracts.milestones')} ({milestones.length})</span>
                     </div>
-                    <span className="text-sm font-black text-brand">{formatMoney(milestonesTotal)}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 font-black text-[var(--brand)] text-base">
+                        <GCoinIcon size={18} />
+                        <span>{formatGigCoinNumber(milestonesTotal)} G-coin</span>
+                      </div>
+                      <span className="text-[11px] font-extrabold text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-lg border border-border/50">
+                        ≈ {formatGigCoinToVnd(milestonesTotal)}
+                      </span>
+                    </div>
                   </div>
 
                   {milestones.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3">
                       {milestones.map((m, idx) => (
-                        <div key={m.id || idx} className="p-4 rounded-2xl border border-border/70 bg-background hover:border-brand/30 transition-all flex items-center justify-between gap-4 text-xs shadow-xs">
+                        <div key={m.id || idx} className="p-4 rounded-2xl border border-border/70 bg-background hover:border-brand/40 transition-all flex items-center justify-between gap-4 text-xs shadow-xs">
                           <div className="space-y-1 min-w-0">
                             <span className="font-extrabold text-foreground block truncate">#{idx + 1}. {m.title}</span>
                             <span className="text-[10px] text-muted-foreground font-semibold block">{t('contracts.duePrefix')}: {formatDate(m.due_date)}</span>
                           </div>
-                          <span className="font-black text-brand shrink-0 text-sm">{formatMoney(m.amount)}</span>
+                          <div className="flex flex-col items-end shrink-0">
+                            <div className="flex items-center gap-1.5 font-black text-foreground text-sm">
+                              <GCoinIcon size={15} />
+                              <span>{formatGigCoinNumber(m.amount)} G-coin</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-muted-foreground mt-0.5">
+                              ≈ {formatGigCoinToVnd(m.amount)}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -844,7 +857,15 @@ export default function SignatureWorkflowScreen() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/30 border border-border/50 text-xs">
                       <span className="text-muted-foreground font-bold">{t('contracts.budget')}</span>
-                      <span className="font-black text-foreground text-sm">{formatMoney(contract.totalBudget)}</span>
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-1.5 font-black text-[var(--brand)] text-sm">
+                          <GCoinIcon size={16} />
+                          <span>{formatGigCoinNumber(contract.totalBudget)} G-coin</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-muted-foreground mt-0.5">
+                          ≈ {formatGigCoinToVnd(contract.totalBudget)}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/30 border border-border/50 text-xs">

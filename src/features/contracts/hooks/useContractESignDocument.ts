@@ -50,8 +50,10 @@ export function useContractESignDocument(
 
     const loadDocument = async (): Promise<void> => {
       setIsLoading(true);
-      setIsNotFound(false);
-      setError(null);
+      if (!document) {
+        setIsNotFound(false);
+        setError(null);
+      }
 
       const response = await esignGetAPI.getDocumentByContract(contractId);
       if (isCancelled) return;
@@ -59,17 +61,21 @@ export function useContractESignDocument(
       if (response.success && response.data) {
         setDocument(response.data);
         setIsLoading(false);
+        setError(null);
+        setIsNotFound(false);
         return;
       }
 
-      setDocument(null);
       setIsLoading(false);
-      if (response.statusCode === 404) {
-        setIsNotFound(true);
-        return;
-      }
+      if (!document) {
+        setDocument(null);
+        if (response.statusCode === 404) {
+          setIsNotFound(true);
+          return;
+        }
 
-      setError(response.message || 'Failed to load the E-sign contract document.');
+        setError(response.message || 'Failed to load the E-sign contract document.');
+      }
     };
 
     void loadDocument();

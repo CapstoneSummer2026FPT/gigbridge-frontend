@@ -254,7 +254,6 @@ export function useMessages() {
 
   // ── Room expand state ────────────────────────────────────────────────────
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({
-    room_invited: true,
     room_negotiation: true,
     room_workspace: true,
     room_dispute: true,

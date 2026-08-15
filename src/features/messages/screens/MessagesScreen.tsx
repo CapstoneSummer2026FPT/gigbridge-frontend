@@ -8,7 +8,8 @@ import {
   ShieldAlert, Lock, Award, LockKeyhole,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { ContractStatus } from '../../../types/models/Contract';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -18,6 +19,7 @@ import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { CreateScheduleModal } from '../components/CreateScheduleModal';
+import { ChatSystemBanner } from '../components/ChatSystemBanner';
 import { useMessages } from '../hooks/useMessages';
 import { ConversationStatus, ConversationType } from '../../../types/models/Message';
 import { MESSAGE_ROOMS } from '../utils/messageRooms';
@@ -27,6 +29,7 @@ import {
   ContractReportStatus,
 } from '../../../types/models/ReportContract';
 import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { FileTypeBadge, getFileCategory, toForceDownloadUrl } from '../../../shared/components/FileTypeBadge';
@@ -371,7 +374,8 @@ function ScheduleCard({ schedule, latest, onEdit, onCancel, onRetry, onLatest, o
 }
 
 export default function MessagesScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isVi = i18n.language === 'vi';
   const {
     user,
     isClient,
@@ -494,6 +498,14 @@ export default function MessagesScreen() {
   });
 
   const [workspaceFilterTab, setWorkspaceFilterTab] = useState<'active' | 'completed' | 'disputed' | 'all'>('active');
+  const [convSortOption, setConvSortOption] = useState('newest');
+  const [selectedJobFilter, setSelectedJobFilter] = useState('all');
+
+  const sortOptions: SelectOption[] = useMemo(() => [
+    { value: 'newest', label: isVi ? 'Mới nhất' : 'Newest' },
+    { value: 'unread', label: isVi ? 'Chưa đọc' : 'Unread' },
+    { value: 'name', label: isVi ? 'Tên (A-Z)' : 'Name (A-Z)' },
+  ], [isVi]);
 
   useEffect(() => {
     if (activeConv?.roomId && activeConv.roomId !== activeRoomId) {
@@ -571,23 +583,17 @@ export default function MessagesScreen() {
                 const convos = conversationsState.filter(c => isRoomConvo(c, room.id));
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isSelected = activeRoomId === room.id;
-                const RoomIcon = room.type === 'invited'
-                  ? Briefcase
-                  : room.type === 'workspace'
-                    ? CheckCircle
-                    : Layers;
+                const RoomIcon = room.type === 'workspace'
+                  ? CheckCircle
+                  : Layers;
 
-                const shortLabel = room.type === 'invited'
-                  ? t('messages.tabInvited', { defaultValue: 'Invited' })
-                  : room.type === 'negotiation'
-                    ? t('messages.tabNegotiation', { defaultValue: 'Negotiation' })
-                    : t('messages.tabWorkspace', { defaultValue: 'Workspace' });
+                const shortLabel = room.type === 'negotiation'
+                  ? t('messages.tabNegotiation', { defaultValue: 'Negotiation' })
+                  : t('messages.tabWorkspace', { defaultValue: 'Workspace' });
 
-                const activeThemeClass = room.type === 'invited'
-                  ? 'border-t-teal-500 text-teal-600 dark:text-teal-400'
-                  : room.type === 'workspace'
-                    ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
-                    : 'border-t-brand text-brand';
+                const activeThemeClass = room.type === 'workspace'
+                  ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
+                  : 'border-t-brand text-brand';
 
                 return (
                   <button
@@ -620,11 +626,6 @@ export default function MessagesScreen() {
             <div className="flex-1 overflow-y-auto messages-custom-scroll bg-card relative z-10">
               {(() => {
                 const currentRoom = MESSAGE_ROOMS.find(r => r.id === activeRoomId) || MESSAGE_ROOMS[0];
-                const CurrentRoomIcon = currentRoom.type === 'invited'
-                  ? Briefcase
-                  : currentRoom.type === 'workspace'
-                    ? CheckCircle
-                    : Layers;
 
                 const allRoomConvos = conversationsState.filter(c => isRoomConvo(c, currentRoom.id));
                 const allWorkspaceConvos = conversationsState.filter(c => isRoomConvo(c, 'room_workspace'));
@@ -653,6 +654,32 @@ export default function MessagesScreen() {
                     })
                   : allRoomConvos;
 
+                const clientJobOptions: SelectOption[] = (() => {
+                  if (!isClient) return [];
+                  const map = new Map<string, { id: string; title: string; count: number }>();
+                  convos.forEach(c => {
+                    if (c.job?.id && c.job?.title) {
+                      const existing = map.get(c.job.id);
+                      if (existing) {
+                        existing.count += 1;
+                      } else {
+                        map.set(c.job.id, { id: c.job.id, title: c.job.title, count: 1 });
+                      }
+                    }
+                  });
+
+                  const jobOpts: SelectOption[] = Array.from(map.values()).map(j => ({
+                    value: j.id,
+                    label: j.title,
+                    badge: `${j.count}`,
+                  }));
+
+                  return [
+                    { value: 'all', label: isVi ? 'Tất cả công việc' : 'All Jobs' },
+                    ...jobOpts,
+                  ];
+                })();
+
                 return (
                   <div>
                     {/* Active room description or Workspace 4-button filter */}
@@ -661,17 +688,21 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('active')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'active'
-                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-emerald-600 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabActive', { defaultValue: 'Đang làm' })}
                         >
                           <CheckCircle size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabActive', { defaultValue: 'Đang làm' })}</span>
                           {activeCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-emerald-500 text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'active'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {activeCount}
                             </span>
                           )}
@@ -680,17 +711,21 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('completed')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'completed'
-                              ? 'bg-brand/15 border border-brand/30 text-brand shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-blue-600 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}
                         >
                           <Award size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}</span>
                           {completedCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-brand text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'completed'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {completedCount}
                             </span>
                           )}
@@ -699,17 +734,21 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('disputed')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'disputed'
-                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-amber-600 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}
                         >
                           <LockKeyhole size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}</span>
                           {disputedCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-amber-500 text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'disputed'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {disputedCount}
                             </span>
                           )}
@@ -718,108 +757,185 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('all')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'all'
-                              ? 'bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-slate-700 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabAll', { defaultValue: 'Tất cả' })}
                         >
                           <Layers size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabAll', { defaultValue: 'Tất cả' })}</span>
                           {allCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-blue-500 text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'all'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {allCount}
                             </span>
                           )}
                         </button>
                       </div>
                     ) : (
-                      <div className="px-4 py-2.5 bg-muted/20 border-b border-border/40 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
-                            currentRoom.type === 'invited'
-                              ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
-                              : 'bg-brand/15 text-brand'
-                          }`}>
-                            <CurrentRoomIcon size={13} />
+                      <div className="p-2.5 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                        {isClient && clientJobOptions.length > 1 && (
+                          <div className="flex-1 min-w-0">
+                            <CustomSelect
+                              value={selectedJobFilter}
+                              onChange={setSelectedJobFilter}
+                              options={clientJobOptions}
+                              searchable={clientJobOptions.length > 5}
+                              placeholder={isVi ? 'Lọc công việc' : 'Filter by job'}
+                              searchPlaceholder={isVi ? 'Tìm công việc...' : 'Search job...'}
+                              className="text-xs"
+                            />
                           </div>
-                          <div>
-                            <span className="text-xs font-black text-foreground block leading-tight tracking-wide">
-                              {t(ROOM_COPY[currentRoom.type].label)}
-                            </span>
-                            <p className="text-[10px] text-muted-foreground leading-tight">
-                              {t(ROOM_COPY[currentRoom.type].description)}
-                            </p>
-                          </div>
+                        )}
+                        <div className={isClient && clientJobOptions.length > 1 ? 'w-32 shrink-0' : 'w-full'}>
+                          <CustomSelect
+                            value={convSortOption}
+                            onChange={setConvSortOption}
+                            options={sortOptions}
+                            searchable={false}
+                            className="text-xs"
+                          />
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40">
-                          {convos.length}
-                        </span>
                       </div>
                     )}
 
                     {/* Conversations */}
                     <div className="p-2 space-y-1">
-                      {convos.map(conv => (
-                        <div
-                          key={conv.id}
-                          id={`conv-item-${conv.id}`}
-                          className={`msg-conv-item ${conv.id === activeConvId ? 'active' : ''}`}
-                          onClick={() => handleSelectConv(conv.id)}
-                        >
-                          <div className="relative flex-shrink-0">
-                            <img
-                              src={conv.participantAvatar}
-                              alt={conv.participantName}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                            {conv.participantOnline && (
-                              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-baseline">
-                              <span className="text-sm font-semibold truncate text-foreground">
-                                {conv.participantName}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground ml-1 flex-shrink-0">
-                                {formatTime(conv.lastMessageAt)}
-                              </span>
+                      {(() => {
+                        let list = [...convos];
+
+                        // Filter by Client selected Job
+                        if (isClient && selectedJobFilter && selectedJobFilter !== 'all') {
+                          list = list.filter(c => c.job?.id === selectedJobFilter);
+                        }
+                        if (convSortOption === 'unread') {
+                          list.sort((a, b) => (b.unreadCount > 0 ? 1 : 0) - (a.unreadCount > 0 ? 1 : 0));
+                        } else if (convSortOption === 'name') {
+                          list.sort((a, b) =>
+                            (a.job?.title || a.participantName || '').localeCompare(
+                              b.job?.title || b.participantName || ''
+                            )
+                          );
+                        } else {
+                          list.sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime());
+                        }
+
+                        if (list.length === 0) {
+                          return (
+                            <div className="p-6 text-center text-xs font-semibold text-muted-foreground">
+                              {isVi ? 'Không tìm thấy cuộc hội thoại' : 'No conversations found'}
                             </div>
+                          );
+                        }
 
-                            {/* Status Tag Badge */}
-                            {conv.contractStatus === ContractStatus.Disputed ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider">
-                                <LockKeyhole size={10} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
-                              </span>
-                            ) : conv.contractStatus === ContractStatus.Cancelled ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground text-[9px] font-black uppercase tracking-wider">
-                                <Lock size={10} /> {t('workspace.disputeClosedBadge', { defaultValue: 'Đã đóng tranh chấp' })}
-                              </span>
-                            ) : conv.contractStatus === ContractStatus.Completed ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[9px] font-black uppercase tracking-wider">
-                                <Award size={10} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
-                              </span>
-                            ) : conv.roomId === 'room_workspace' ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
-                                <CheckCircle size={10} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
-                              </span>
-                            ) : null}
+                        return list.map(conv => {
+                          const isSelected = conv.id === activeConvId;
+                          const hasUnread = conv.unreadCount > 0;
 
-                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{conv.job.title}</p>
-                            <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                              {conv.lastMessage}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {convos.length === 0 && (
-                        <div className="p-8 text-center flex flex-col items-center justify-center text-muted-foreground my-4">
-                          <CurrentRoomIcon size={28} className="mb-2 opacity-30 text-muted-foreground" />
-                          <p className="text-xs font-medium">{t('messages.emptyRoom')}</p>
-                        </div>
-                      )}
+                          return (
+                            <div
+                              key={conv.id}
+                              id={`conv-item-${conv.id}`}
+                              onClick={() => handleSelectConv(conv.id)}
+                              className={`relative rounded-xl p-3 border transition-all duration-150 cursor-pointer select-none mb-1.5 ${
+                                isSelected
+                                  ? 'bg-card border border-[var(--brand)]/80 shadow-2xs'
+                                  : hasUnread
+                                    ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border-l-4 border-l-emerald-500 border-y-emerald-500/20 border-r-emerald-500/20 hover:bg-emerald-500/15'
+                                    : 'bg-card/40 hover:bg-muted/50 border-transparent hover:border-border/40'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                {/* UserAvatar Component */}
+                                <div className="shrink-0 mt-0.5">
+                                  <UserAvatar
+                                    name={conv.participantName}
+                                    src={conv.participantAvatar}
+                                    userId={conv.participantId}
+                                    size="md"
+                                  />
+                                </div>
+
+                                {/* Info Column */}
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  {/* Top Row: Name + Unread Dot + Timestamp */}
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className={`text-xs md:text-sm truncate leading-tight ${
+                                        hasUnread
+                                          ? 'font-black text-foreground'
+                                          : isSelected
+                                            ? 'font-extrabold text-[var(--brand)]'
+                                            : 'font-bold text-foreground/90'
+                                      }`}>
+                                        {conv.participantName}
+                                      </span>
+                                      {hasUnread && (
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Tin nhắn mới" />
+                                      )}
+                                    </div>
+
+                                    <span className={`text-[10px] shrink-0 font-semibold ${
+                                      hasUnread
+                                        ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                                        : isSelected
+                                          ? 'text-[var(--brand)] font-bold'
+                                          : 'text-muted-foreground'
+                                    }`}>
+                                      {formatTime(conv.lastMessageAt)}
+                                    </span>
+                                  </div>
+
+                                  {/* Job Title Tag Pill */}
+                                  {conv.job?.title && (
+                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/80 border border-border/50 text-muted-foreground text-[10px] font-medium max-w-full truncate">
+                                      <Briefcase size={10} className="shrink-0 text-muted-foreground/80" />
+                                      <span className="truncate">{conv.job.title}</span>
+                                    </div>
+                                  )}
+
+                                  {/* Message Snippet & Unread / Status Badge */}
+                                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                                    <p className={`text-xs truncate leading-snug flex-1 ${
+                                      hasUnread
+                                        ? 'font-black text-foreground'
+                                        : isSelected
+                                          ? 'font-bold text-foreground'
+                                          : 'font-medium text-muted-foreground'
+                                    }`}>
+                                      {conv.lastMessage}
+                                    </p>
+
+                                    {/* Unread Count Badge OR Room Badge */}
+                                    {hasUnread ? (
+                                      <span className="min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black bg-emerald-600 text-white rounded-full shrink-0 shadow-2xs">
+                                        {conv.unreadCount}
+                                      </span>
+                                    ) : conv.contractStatus === ContractStatus.Disputed ? (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                        <LockKeyhole size={9} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                                      </span>
+                                    ) : conv.contractStatus === ContractStatus.Completed ? (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                        <Award size={9} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
+                                      </span>
+                                    ) : conv.roomId === 'room_workspace' ? (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                        <CheckCircle size={9} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 );
@@ -1081,11 +1197,13 @@ export default function MessagesScreen() {
                   }
 
                   return (
-                    <div key={msg.id ?? idx} className="flex justify-center">
-                      <div className="bg-muted/80 border border-border rounded-full px-4 py-1.5 text-xs text-muted-foreground font-medium text-center max-w-md">
-                        {msg.content}
-                      </div>
-                    </div>
+                    <ChatSystemBanner
+                      key={msg.id ?? idx}
+                      content={msg.content}
+                      contractId={activeConv.contractId}
+                      proposalId={activeConv.proposalId}
+                      onNavigateContract={id => navigate(`/contracts/${id}`)}
+                    />
                   );
                 }
 
