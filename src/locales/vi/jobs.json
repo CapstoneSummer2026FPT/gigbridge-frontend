@@ -378,6 +378,7 @@
       "descriptionRequired": "Chi tiết yêu cầu là bắt buộc.",
       "budgetInvalid": "Ngân sách phải lớn hơn hoặc bằng 0.",
       "durationInvalid": "Thời lượng dự kiến phải là số nguyên dương.",
+      "deadlineRequired": "Ngày kết thúc nhận proposal là bắt buộc.",
       "deadlineInvalid": "Hạn nhận proposal phải ở tương lai.",
       "questionOrderUnique": "Thứ tự câu hỏi không được trùng nhau.",
       "questionTooLong": "Câu hỏi không được vượt quá 1000 ký tự.",

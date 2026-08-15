@@ -1048,11 +1048,13 @@ export function usePostJob() {
       return { message: t('postJobWizard.validation.durationInvalid'), section: 'terms', fieldSelector: '#job-duration' };
     }
 
-    if (form.deadline) {
-      const endDate = new Date(`${form.deadline}T23:59:59`);
-      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
-        return { message: t('postJobWizard.validation.deadlineInvalid'), section: 'terms', fieldSelector: '#job-deadline' };
-      }
+    if (!form.deadline) {
+      return { message: t('postJobWizard.validation.deadlineRequired', 'Proposal closing date is required.'), section: 'terms', fieldSelector: '#job-deadline' };
+    }
+
+    const endDate = new Date(`${form.deadline}T23:59:59`);
+    if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
+      return { message: t('postJobWizard.validation.deadlineInvalid', 'End date must be in the future'), section: 'terms', fieldSelector: '#job-deadline' };
     }
 
     return null;
