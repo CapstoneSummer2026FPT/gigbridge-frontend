@@ -619,8 +619,9 @@
 }
 
 .bam-badge-warning {
-  background: rgba(217, 119, 6, 0.15);
-  color: var(--warning, #d97706);
+  background: #d97706;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
 }
 
 .bam-account-actions {

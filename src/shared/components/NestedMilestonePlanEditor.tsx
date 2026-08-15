@@ -150,8 +150,8 @@ const parseStructuredDuration = (
   const rawUnit = match[2].trim().toLowerCase().replace(/s$/, '');
   const normalizedUnitKey =
     ['week', 'tuần', 'tuan'].includes(rawUnit) ? 'weeks' :
-    ['month', 'tháng', 'thang'].includes(rawUnit) ? 'months' :
-    ['year', 'năm', 'nam'].includes(rawUnit) ? 'years' : null;
+      ['month', 'tháng', 'thang'].includes(rawUnit) ? 'months' :
+        ['year', 'năm', 'nam'].includes(rawUnit) ? 'years' : null;
 
   const targetKey = normalizedUnitKey || rawUnit;
   const unit = units.find(option =>
@@ -406,11 +406,10 @@ export function NestedMilestonePlanEditor({
                 <button
                   type="button"
                   onClick={() => setIsAutoBalanceActive(!isAutoBalanceActive)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer shadow-2xs shrink-0 ${
-                    isAutoBalanceActive
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer shadow-2xs shrink-0 ${isAutoBalanceActive
                       ? 'bg-[var(--brand)]/15 text-[var(--brand)] border-[var(--brand)]/35'
                       : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
-                  }`}
+                    }`}
                 >
                   {isAutoBalanceActive ? <Zap size={14} /> : <ZapOff size={14} />}
                   <span>
@@ -469,9 +468,8 @@ export function NestedMilestonePlanEditor({
             key={milestone.id || index}
             onDragOver={readOnly ? undefined : handleDragOver}
             onDrop={readOnly ? undefined : (e) => handleDrop(e, index)}
-            className={`rounded-2xl border bg-card transition-all shadow-sm hover:shadow-md relative focus-within:z-20 ${
-              draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
-            } ${Object.keys(errors).some(key => key.startsWith(`${index}.`)) ? 'border-red-500/80 ring-2 ring-red-500/10' : 'border-border/80'}`}
+            className={`rounded-2xl border bg-card transition-all shadow-sm hover:shadow-md relative focus-within:z-20 ${draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
+              } ${Object.keys(errors).some(key => key.startsWith(`${index}.`)) ? 'border-red-500/80 ring-2 ring-red-500/10' : 'border-border/80'}`}
           >
             <div className="flex items-center gap-3 p-4">
               {!readOnly && (
@@ -556,42 +554,16 @@ export function NestedMilestonePlanEditor({
 
                 {/* Core Parameters Box: Amount, Duration, Deadline */}
                 <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 sm:p-4.5 space-y-3">
-                  <div className={`grid gap-4 items-start ${
-                    simplifiedMilestoneFields && showDueDate && !dueDateReadOnly
+                  <div className={`grid gap-4 items-start ${simplifiedMilestoneFields && showDueDate && !dueDateReadOnly
                       ? 'grid-cols-1 sm:grid-cols-2'
                       : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                  }`}>
+                    }`}>
                     {/* 1. AMOUNT */}
                     <div className="space-y-1.5 relative focus-within:z-20">
-                      <div className="flex items-center justify-between gap-1.5">
-                        <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                          <Coins size={14} className="text-[var(--brand)] flex-shrink-0" />
-                          <span>{uiCopy.amount || 'Ngân sách mốc'} *</span>
-                        </label>
-                        {!readOnly && activeTargetBudget !== null && (
-                          lockedIndices.has(index) ? (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleLock(index)}
-                              title={uiCopy.userLockedTitle || 'Mốc đang cố định (User-locked). Nhấp để mở khóa tự động cân bằng.'}
-                              className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30 hover:bg-amber-500/25 transition-all cursor-pointer shrink-0"
-                            >
-                              <Lock size={10} />
-                              <span>{uiCopy.userLocked || 'Cố định'}</span>
-                            </button>
-                          ) : isAutoBalanceActive ? (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleLock(index)}
-                              title={uiCopy.autoBalancedTitle || 'Mốc đang tự động cân bằng. Nhấp để khóa cố định.'}
-                              className="inline-flex items-center gap-1 text-[10px] font-extrabold text-cyan-700 dark:text-cyan-300 bg-cyan-500/15 px-2 py-0.5 rounded-full border border-cyan-500/30 hover:bg-cyan-500/25 transition-all cursor-pointer shrink-0"
-                            >
-                              <Zap size={10} />
-                              <span>{uiCopy.autoBalanced || 'Tự động'}</span>
-                            </button>
-                          ) : null
-                        )}
-                      </div>
+                      <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <Coins size={14} className="text-[var(--brand)] flex-shrink-0" />
+                        <span>{uiCopy.amount || 'Ngân sách mốc'} *</span>
+                      </label>
                       <div className="relative flex items-center h-11 rounded-xl border border-border/80 bg-background px-3 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all">
                         <input
                           data-milestone-field={`${index}.amount`}
@@ -610,13 +582,38 @@ export function NestedMilestonePlanEditor({
                           <span>G-coin</span>
                         </span>
                       </div>
-                      <div className="text-[11px] text-muted-foreground leading-snug space-y-0.5 pt-0.5">
-                        {Number(milestone.amount) > 0 && (
-                          <span className="block font-extrabold text-[var(--brand)]">
-                            ≈ {formatGigCoinToVnd(Number(milestone.amount))}
-                          </span>
+                      <div className="flex items-start justify-between gap-2 pt-0.5">
+                        <div className="text-[11px] text-muted-foreground leading-snug space-y-0.5">
+                          {Number(milestone.amount) > 0 && (
+                            <span className="block font-extrabold text-[var(--brand)]">
+                              ≈ {formatGigCoinToVnd(Number(milestone.amount))}
+                            </span>
+                          )}
+                          <span className="block">{fieldHints.amount || renderHint(`${index}-amount`, fieldHints.amount) || 'Số tiền thanh toán cho mốc này.'}</span>
+                        </div>
+                        {!readOnly && activeTargetBudget !== null && (
+                          lockedIndices.has(index) ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLock(index)}
+                              title={uiCopy.userLockedTitle || 'Mốc đang cố định (User-locked). Nhấp để mở khóa tự động cân bằng.'}
+                              className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-amber-600 dark:bg-amber-500 px-2 py-0.5 rounded-full border border-amber-600 dark:border-amber-500 hover:bg-amber-700 dark:hover:bg-amber-600 transition-all cursor-pointer shrink-0 shadow-sm mt-0.5"
+                            >
+                              <Lock size={10} />
+                              <span>{uiCopy.userLocked || 'Cố định'}</span>
+                            </button>
+                          ) : isAutoBalanceActive ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLock(index)}
+                              title={uiCopy.autoBalancedTitle || 'Mốc đang tự động cân bằng. Nhấp để khóa cố định.'}
+                              className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-cyan-600 dark:bg-cyan-500 px-2 py-0.5 rounded-full border border-cyan-600 dark:border-cyan-500 hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-all cursor-pointer shrink-0 shadow-sm mt-0.5"
+                            >
+                              <Zap size={10} />
+                              <span>{uiCopy.autoBalanced || 'Tự động'}</span>
+                            </button>
+                          ) : null
                         )}
-                        <span>{fieldHints.amount || renderHint(`${index}-amount`, fieldHints.amount) || 'Số tiền thanh toán cho mốc này.'}</span>
                       </div>
                       {errorFor('amount') && <span className="block text-xs text-red-500 font-medium">{errorFor('amount')}</span>}
                     </div>
@@ -699,9 +696,8 @@ export function NestedMilestonePlanEditor({
                 </div>
 
                 {/* Description, Deliverables & Acceptance Criteria */}
-                <div className={`grid gap-3 pt-1 ${
-                  simplifiedMilestoneFields ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
-                }`}>
+                <div className={`grid gap-3 pt-1 ${simplifiedMilestoneFields ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
+                  }`}>
                   {!simplifiedMilestoneFields && (
                     <label className="text-xs font-bold text-foreground md:col-span-2">
                       {uiCopy.description || 'Mô tả mốc công việc'}

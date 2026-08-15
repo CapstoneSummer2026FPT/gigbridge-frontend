@@ -30,6 +30,7 @@ import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESig
 import { UserRole } from '../../../types/models/User';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
@@ -1194,7 +1195,7 @@ export default function SignatureWorkflowScreen() {
 
                 <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 space-y-1">
                   <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">{t('contracts.status')}</span>
-                  <span className="text-xs font-extrabold text-brand block">{t('contracts.statusLabels.' + contract.status, { defaultValue: String(contract.status) })}</span>
+                  <span className="text-xs font-extrabold text-brand block">{t('contracts.statusLabels.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 space-y-1">
