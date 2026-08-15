@@ -220,72 +220,95 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
 
             {/* FREELANCER CORE TOOLS GRID */}
             <div style={{ padding: '36px 0' }}>
-              <p className="cp-section-eyebrow"><Sparkles size={13} /> {t('freelancerPremium.freelancerSuite', { defaultValue: 'Bộ Công Cụ Freelancer' })}</p>
-              <h2 className="cp-section-headline" style={{ marginBottom: 32 }}>{t('freelancerPremium.coreToolsTitle', { defaultValue: 'Bộ 4 Công Cụ Hiệu Suất Cốt Lõi' })}</h2>
+              <p className="cp-section-eyebrow"><Sparkles size={13} /> {t('freelancerPremium.freelancerSuite', { defaultValue: 'Freelancer Performance Suite' })}</p>
+              <h2 className="cp-section-headline" style={{ marginBottom: 28 }}>{t('freelancerPremium.coreToolsTitle', { defaultValue: '4 Core Performance Tools' })}</h2>
 
-              <div className="cp-card-grid">
+              <div className="cp-tools-grid-4">
                 {/* TOOL 1: AI JOB MATCHING */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><Target size={20} /></div>
-                    <h3 className="cp-card-title">{t('freelancerPremium.aiJobMatchingTitle', { defaultValue: 'AI Smart Job Matching' })}</h3>
+                <article className="cp-tool-card cp-tool-indigo" onClick={() => setTab('jobMatching')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-indigo"><Target size={20} /></div>
+                    <span className="cp-tool-badge badge-indigo">
+                      <Sparkles size={10} /> AI ENGINE
+                    </span>
                   </div>
-                  <p className="cp-card-body">
-                    {t('freelancerPremium.jobMatchingDesc', { defaultValue: 'Tìm kiếm các dự án phù hợp với kỹ năng và thứ hạng Elo của bạn.' })}
+                  <h3 className="cp-tool-title">{t('freelancerPremium.aiJobMatchingTitle', { defaultValue: 'AI Smart Job Matching Engine' })}</h3>
+                  <p className="cp-tool-desc">
+                    {t('freelancerPremium.jobMatchingDesc', { defaultValue: 'Find projects tailored to your skills and Elo rank.' })}
                   </p>
-                  <button className="cp-btn ghost" onClick={() => setTab('jobMatching')}>
-                    {t('freelancerPremium.exploreMatching', { defaultValue: 'Khám phá AI Matching' })} <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('jobMatching'); }}>
+                    <span>{t('freelancerPremium.exploreMatching', { defaultValue: 'Explore AI Matching' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
 
                 {/* TOOL 2: VACATION MODE */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><Shield size={20} /></div>
-                    <h3 className="cp-card-title">{t('freelancerPremium.vacationMode')}</h3>
+                <article className="cp-tool-card cp-tool-emerald" onClick={() => setTab('vacation')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-emerald"><Shield size={20} /></div>
+                    <span className={`cp-tool-badge ${vacation.data?.isEnabled ? 'badge-emerald' : 'badge-muted'}`}>
+                      <Shield size={10} /> {vacation.data?.isEnabled ? 'ACTIVE' : 'RANK SHIELD'}
+                    </span>
                   </div>
-                  <p className="cp-card-body">
+                  <h3 className="cp-tool-title">{t('freelancerPremium.vacationMode', { defaultValue: 'Vacation Mode' })}</h3>
+                  <p className="cp-tool-desc">
                     {vacation.data?.isEnabled
-                      ? t('freelancerPremium.protectedUntil', { date: formatDate(vacation.data.endsAt) })
-                      : t('freelancerPremium.rankProtectionOff')}
+                      ? t('freelancerPremium.protectedUntil', { date: formatDate(vacation.data.endsAt), defaultValue: `Protected until ${formatDate(vacation.data.endsAt)}` })
+                      : t('freelancerPremium.rankProtectionOff', { defaultValue: 'Rank protection is off' })}
                   </p>
-                  <button className="cp-btn ghost" onClick={() => setTab('vacation')}>
-                    {t('freelancerPremium.tabs.vacation')} <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('vacation'); }}>
+                    <span>{t('freelancerPremium.tabs.vacation', { defaultValue: 'Vacation Mode' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
 
                 {/* TOOL 3: ELO POINTS */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><Sparkles size={20} /></div>
-                    <h3 className="cp-card-title">
-                      {t('freelancerPremium.eloPointsCounter', { count: points.data?.eloPoints ?? 0, defaultValue: `${points.data?.eloPoints ?? 0} Elo Points` })}
-                    </h3>
+                <article className="cp-tool-card cp-tool-amber" onClick={() => setTab('points')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-amber"><Sparkles size={20} /></div>
+                    <span className="cp-tool-badge badge-amber">
+                      <Crown size={10} /> TIER SYSTEM
+                    </span>
                   </div>
-                  <p className="cp-card-body">
-                    {points.data?.tierName || t('freelancerPremium.tierUnlocks')}
-                  </p>
-                  <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', margin: '12px 0 18px' }}>
-                    <div style={{ height: '100%', width: `${Math.min(100, Number(points.data?.tierProgress || 0))}%`, background: 'var(--cp-accent)' }} />
+                  <h3 className="cp-tool-title">
+                    {t('freelancerPremium.eloPointsCounter', { count: points.data?.eloPoints ?? 100, defaultValue: `${points.data?.eloPoints ?? 100} Elo Points` })}
+                  </h3>
+                  <div className="cp-tool-desc" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 13, color: 'var(--cp-text)' }}>
+                      <span>{points.data?.tierName || 'Bronze'}</span>
+                      <span style={{ fontSize: 11, color: '#d97706', fontWeight: 800 }}>{Math.round(Number(points.data?.tierProgress || 0))}%</span>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 999, background: 'rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, Math.max(10, Number(points.data?.tierProgress || 0)))}%`, background: 'linear-gradient(90deg, #f59e0b, #ec4899)', borderRadius: 999 }} />
+                    </div>
                   </div>
-                  <button className="cp-btn ghost" onClick={() => setTab('points')}>
-                    {t('freelancerPremium.tabs.points')} <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('points'); }}>
+                    <span>{t('freelancerPremium.tabs.points', { defaultValue: 'Points & Tier' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
 
                 {/* TOOL 4: PROFILE PROMOTIONS */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><Megaphone size={20} /></div>
-                    <h3 className="cp-card-title">{t('freelancerPremium.profilePromotion')}</h3>
+                <article className="cp-tool-card cp-tool-rose" onClick={() => setTab('promotions')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-rose"><Megaphone size={20} /></div>
+                    <span className={`cp-tool-badge ${promotion.data ? 'badge-rose' : 'badge-muted'}`}>
+                      <Megaphone size={10} /> {promotion.data ? 'BOOSTING' : 'SPOTLIGHT'}
+                    </span>
                   </div>
-                  <p className="cp-card-body">
+                  <h3 className="cp-tool-title">{t('freelancerPremium.profilePromotion', { defaultValue: 'Profile promotion' })}</h3>
+                  <p className="cp-tool-desc">
                     {promotion.data
-                      ? t('freelancerPremium.campaignActiveUntil', { name: promotion.data.packageName, date: formatDate(promotion.data.endsAt) })
-                      : t('freelancerPremium.noActiveCampaign')}
+                      ? t('freelancerPremium.campaignActiveUntil', { name: promotion.data.packageName, date: formatDate(promotion.data.endsAt), defaultValue: `${promotion.data.packageName} active until ${formatDate(promotion.data.endsAt)}` })
+                      : t('freelancerPremium.noActiveCampaign', { defaultValue: 'No active campaign' })}
                   </p>
-                  <button className="cp-btn ghost" onClick={() => setTab('promotions')}>
-                    {t('freelancerPremium.activatePromotion')} <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('promotions'); }}>
+                    <span>{t('freelancerPremium.activatePromotion', { defaultValue: 'Activate promotion' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
               </div>

@@ -14,6 +14,9 @@ describe('SEO deployment rules', () => {
 
     expect(html).toContain('<html lang="vi">');
     expect(html).toContain('<meta name="robots" content="noindex, nofollow"');
+    expect(html).toContain('rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png"');
+    expect(html).not.toContain('/src/imports/');
+    expect(readFileSync('public/favicon-96x96.png').byteLength).toBeGreaterThan(0);
     expect(robots).toContain('Allow: /');
     expect(robots).not.toContain('Disallow:');
   });

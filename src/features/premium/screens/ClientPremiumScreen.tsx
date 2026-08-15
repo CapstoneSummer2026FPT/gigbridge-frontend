@@ -243,63 +243,83 @@ export default function ClientPremiumScreen() {
 
             {/* CORE RECRUITING SUPERPOWERS (4 TOOLS) */}
             <div style={{ padding: '36px 0' }}>
-              <p className="cp-section-eyebrow"><Sparkles size={13} /> Recruiting Suite</p>
-              <h2 className="cp-section-headline" style={{ marginBottom: 32 }}>Four Core Superpower Tools</h2>
+              <p className="cp-section-eyebrow"><Sparkles size={13} /> {t('clientPremium.suiteEyebrow', { defaultValue: 'Recruiting Suite' })}</p>
+              <h2 className="cp-section-headline" style={{ marginBottom: 28 }}>{t('clientPremium.fourCoreTools', { defaultValue: 'Four Core Superpower Tools' })}</h2>
 
-              <div className="cp-card-grid">
+              <div className="cp-tools-grid-4">
                 {/* TOOL 1: AI JOB BUILDER */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><WandSparkles size={20} /></div>
-                    <h3 className="cp-card-title">AI Job Post Generator</h3>
+                <article className="cp-tool-card cp-tool-indigo" onClick={() => setTab('aiBuilder')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-indigo"><WandSparkles size={20} /></div>
+                    <span className="cp-tool-badge badge-indigo">
+                      <Sparkles size={10} /> AI GENERATOR
+                    </span>
                   </div>
-                  <p className="cp-card-body">
-                    AI drafts descriptions, milestone breakdowns, and skill tags in seconds.
+                  <h3 className="cp-tool-title">{t('clientPremium.tools.aiGenerator.title', { defaultValue: 'AI Job Post Generator' })}</h3>
+                  <p className="cp-tool-desc">
+                    {t('clientPremium.tools.aiGenerator.desc', { defaultValue: 'AI drafts descriptions, milestone breakdowns, and skill tags in seconds.' })}
                   </p>
-                  <button className="cp-btn ghost" onClick={() => setTab('aiBuilder')}>
-                    Launch AI Generator <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('aiBuilder'); }}>
+                    <span>{t('clientPremium.tools.aiGenerator.action', { defaultValue: 'Launch AI Generator' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
 
                 {/* TOOL 2: FEATURED JOB PROMOTION */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><Megaphone size={20} /></div>
-                    <h3 className="cp-card-title">Featured Job Promotion</h3>
+                <article className="cp-tool-card cp-tool-amber" onClick={() => setTab('promotions')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-amber"><Megaphone size={20} /></div>
+                    <span className="cp-tool-badge badge-amber">
+                      <Crown size={10} /> TOP #1 BOOST
+                    </span>
                   </div>
-                  <p className="cp-card-body">
-                    Pin your job post to position #1 with a 3D Gold border to get 3.8× candidate responses.
+                  <h3 className="cp-tool-title">{t('clientPremium.tools.jobPromotion.title', { defaultValue: 'Featured Job Promotion' })}</h3>
+                  <p className="cp-tool-desc">
+                    {t('clientPremium.tools.jobPromotion.desc', { defaultValue: 'Pin your job post to position #1 with a 3D Gold border to get 3.8× candidate responses.' })}
                   </p>
-                  <button className="cp-btn ghost" onClick={() => setTab('promotions')}>
-                    Open Studio <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('promotions'); }}>
+                    <span>{t('clientPremium.tools.jobPromotion.action', { defaultValue: 'Open Studio' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
 
                 {/* TOOL 3: SMART TALENT MATCHING */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><Target size={20} /></div>
-                    <h3 className="cp-card-title">Smart Talent Matching</h3>
+                <article className="cp-tool-card cp-tool-emerald" onClick={() => setTab('talentMatching')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-emerald"><Target size={20} /></div>
+                    <span className="cp-tool-badge badge-emerald">
+                      <Sparkles size={10} /> 90%+ MATCH
+                    </span>
                   </div>
-                  <p className="cp-card-body">
-                    Auto-highlight the top 5% matched freelancers by Major, verified skills, and Elo rank.
+                  <h3 className="cp-tool-title">{t('clientPremium.tools.talentMatching.title', { defaultValue: 'Smart Talent Matching' })}</h3>
+                  <p className="cp-tool-desc">
+                    {t('clientPremium.tools.talentMatching.desc', { defaultValue: 'Auto-highlight the top 5% matched freelancers by Major, verified skills, and Elo rank.' })}
                   </p>
-                  <button className="cp-btn ghost" onClick={() => setTab('talentMatching')}>
-                    Match Candidates <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('talentMatching'); }}>
+                    <span>{t('clientPremium.tools.talentMatching.action', { defaultValue: 'Match Candidates' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
 
                 {/* TOOL 4: AI INTERVIEW SCREENERS */}
-                <article className="cp-card">
-                  <div className="cp-card-header">
-                    <div className="cp-card-icon"><Bot size={20} /></div>
-                    <h3 className="cp-card-title">AI Interview Screeners</h3>
+                <article className="cp-tool-card cp-tool-cyan" onClick={() => setTab('interviews')}>
+                  <div className="cp-tool-glow" />
+                  <div className="cp-tool-top">
+                    <div className="cp-tool-icon icon-cyan"><Bot size={20} /></div>
+                    <span className="cp-tool-badge badge-cyan">
+                      <Bot size={10} /> AUTO SCREEN
+                    </span>
                   </div>
-                  <p className="cp-card-body">
-                    Automated Q&amp;A screening bot interviews applicants and provides scored transcript summaries.
+                  <h3 className="cp-tool-title">{t('clientPremium.tools.interviews.title', { defaultValue: 'AI Interview Screeners' })}</h3>
+                  <p className="cp-tool-desc">
+                    {t('clientPremium.tools.interviews.desc', { defaultValue: 'Automated Q&A screening bot interviews applicants and provides scored transcript summaries.' })}
                   </p>
-                  <button className="cp-btn ghost" onClick={() => setTab('interviews')}>
-                    Manage Screeners <ArrowRight size={14} />
+                  <button className="cp-tool-action" onClick={(e) => { e.stopPropagation(); setTab('interviews'); }}>
+                    <span>{t('clientPremium.tools.interviews.action', { defaultValue: 'Manage Screeners' })}</span>
+                    <ArrowRight size={14} className="cp-tool-arrow" />
                   </button>
                 </article>
               </div>
