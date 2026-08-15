@@ -401,12 +401,12 @@ export function NestedMilestonePlanEditor({
           </div>
 
           {activeTargetBudget !== null && !readOnly && (
-            <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-border/50">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-3 border-t border-border/50 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <button
                   type="button"
                   onClick={() => setIsAutoBalanceActive(!isAutoBalanceActive)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer shadow-2xs ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer shadow-2xs shrink-0 ${
                     isAutoBalanceActive
                       ? 'bg-[var(--brand)]/15 text-[var(--brand)] border-[var(--brand)]/35'
                       : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
@@ -419,16 +419,16 @@ export function NestedMilestonePlanEditor({
                       : (uiCopy.autoBalanceOff || '⚡ Cân bằng tự động: TẮT')}
                   </span>
                 </button>
-                <span className="text-[11px] text-muted-foreground font-medium hidden md:inline">
+                <span className="text-[11px] text-muted-foreground font-medium hidden md:inline truncate">
                   {isAutoBalanceActive
-                    ? (uiCopy.autoBalanceOnDesc || 'Nhập ngân sách ở mốc bất kỳ, các mốc chưa cố định (kể cả trước hoặc sau) sẽ tự động cân bằng lại.')
-                    : (uiCopy.autoBalanceOffDesc || 'Cân bằng tự động đang tắt. Mọi mốc sẽ giữ nguyên giá trị bạn nhập.')}
+                    ? (uiCopy.autoBalanceOnDesc || 'Thay đổi mốc sẽ tự động cân bằng các mốc chưa cố định.')
+                    : (uiCopy.autoBalanceOffDesc || 'Tự động cân bằng đang tắt. Giữ nguyên giá trị nhập.')}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleResetBalance}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-card border border-border text-foreground hover:border-[var(--brand)] hover:text-[var(--brand)] hover:shadow-xs transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-card border border-border text-foreground hover:border-[var(--brand)] hover:text-[var(--brand)] hover:shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
                 title={uiCopy.resetBalanceTooltip || 'Xóa tất cả mốc cố định và chia đều tổng ngân sách'}
               >
                 <RotateCcw size={13} />
