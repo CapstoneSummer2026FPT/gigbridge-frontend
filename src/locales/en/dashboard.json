@@ -45,6 +45,10 @@
     "eloSyncing": "Syncing",
     "eloUnavailableBadge": "Unavailable",
     "eloScoreAria": "Current Elo score: {{score}}",
-    "profileStrength": "Profile strength"
+    "profileStrength": "Profile strength",
+    "deliveryPipeline": "Delivery pipeline",
+    "contractStatusBreakdown": "Contract status breakdown",
+    "pendingSignature": "Pending signature",
+    "pendingEscrow": "Pending escrow"
   }
 }

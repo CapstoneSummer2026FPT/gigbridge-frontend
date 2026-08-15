@@ -16,7 +16,6 @@ import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
 import { ClientDashboardOverview } from '../components/ClientDashboardOverview';
-import { ClientEloScoreCard } from '../components/ClientEloScoreCard';
 import '../styles/client-dashboard-screen.css';
 import '../../premium/styles/premium.css';
 
@@ -48,6 +47,7 @@ export default function ClientDashboardScreen() {
     pendingMilestonesCount,
     submittedMilestonesCount,
     totalMilestonesCount,
+    contractPipelineCounts,
     projects,
     completedContractsCount,
     spendChartData,
@@ -96,7 +96,7 @@ export default function ClientDashboardScreen() {
           </div>
         </div>
 
-        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-10 space-y-20">
+        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-8 sm:py-10 space-y-12 sm:space-y-14">
           <section className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 stagger-up">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -115,7 +115,6 @@ export default function ClientDashboardScreen() {
                   : `${openRolesCount} open role${openRolesCount === 1 ? '' : 's'}, ${pendingProposals.length} pending proposal${pendingProposals.length === 1 ? '' : 's'}, and ${projects.length} active contract${projects.length === 1 ? '' : 's'}.`}
               </p>
             </div>
-
             <div className="flex flex-wrap gap-4 shrink-0">
               <button
                 className="group glass-card h-16 px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm"
@@ -147,37 +146,43 @@ export default function ClientDashboardScreen() {
 
           <ClientDashboardOverview
             isLoading={isLoading}
+            eloSummary={eloSummary}
             proposalCounts={proposalStatusCounts}
             pendingMilestonesCount={pendingMilestonesCount}
             submittedMilestonesCount={submittedMilestonesCount}
             totalMilestonesCount={totalMilestonesCount}
+            contractPipelineCounts={contractPipelineCounts}
             theme={theme}
+            onOpenEloHistory={() => navigate('/elo')}
             onOpenProposals={() => navigate('/proposals')}
             onOpenContracts={() => navigate('/contracts')}
           />
 
-          <section className="client-dash-flow-section" aria-labelledby="client-workflow-title">
-            <div className="client-dash-section-heading">
-              <div>
-                <span className="client-dash-section-kicker">{t('dashboard.currentWork', 'Current work')}</span>
-                <h2 id="client-workflow-title">{t('dashboard.workInProgress', 'Work in progress')}</h2>
-              </div>
-              <p>{t('dashboard.workInProgressDescription', 'Manage open roles first, then continue the contracts already in delivery.')}</p>
-            </div>
-
+          <section className="space-y-6" aria-labelledby="client-workflow-title">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              <div className="lg:col-span-7 space-y-8">
-                <div className="glass-card p-8 rounded-3xl min-h-72 flex flex-col justify-between group">
+              {/* Left Column (col-span-7) */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Work In Progress / Hiring Portfolio Card */}
+                <div className="glass-card p-6 sm:p-8 rounded-3xl min-h-72 flex flex-col justify-between group">
                   <div className="flex justify-between items-start gap-5">
-                    <div className="w-14 h-14 bg-brand/10 rounded-full flex items-center justify-center text-brand shadow-sm">
-                      <Briefcase size={22} />
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-brand/10 rounded-2xl flex items-center justify-center text-brand shadow-sm shrink-0 border border-brand/20">
+                        <Briefcase size={22} />
+                      </div>
+                      <div>
+                        <span className="client-dash-card-eyebrow">{t('dashboard.currentWork', 'Current work')}</span>
+                        <h2 id="client-workflow-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5">
+                          {t('dashboard.workInProgress', 'Work in progress')}
+                        </h2>
+                      </div>
                     </div>
                     <div className="text-right">
-                      <span className="block text-5xl font-black text-text-primary">{openRolesCount}</span>
-                      <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">Open roles</span>
+                      <span className="block text-4xl sm:text-5xl font-black text-text-primary leading-none">{openRolesCount}</span>
+                      <span className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-1 block">Open roles</span>
                     </div>
                   </div>
-                  <div className="space-y-4">
+
+                  <div className="space-y-4 mt-6">
                     <div className="flex items-end justify-between gap-4">
                       <div>
                         <span className="block text-[10px] font-black uppercase tracking-widest text-brand">Hiring portfolio</span>
@@ -194,7 +199,7 @@ export default function ClientDashboardScreen() {
                         { value: projects.length, label: 'Active contracts' },
                         { value: completedContractsCount, label: 'Completed' },
                       ].map(item => (
-                        <div key={item.label} className="text-center bg-surface-muted p-3 rounded-2xl border border-border">
+                        <div key={item.label} className="text-center bg-surface-muted/60 p-3 rounded-2xl border border-border">
                           <span className="block text-2xl font-black text-text-primary leading-none">{item.value}</span>
                           <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-2">{item.label}</span>
                         </div>
@@ -203,14 +208,15 @@ export default function ClientDashboardScreen() {
                   </div>
                 </div>
 
-                <div className="glass-card p-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                {/* Talent Matching Card */}
+                <div className="glass-card p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                   <div>
                     <span className="client-dash-card-eyebrow">Talent matching</span>
-                    <h4 className="text-lg font-black text-text-primary mt-2">Find the next freelancer</h4>
+                    <h4 className="text-lg font-black text-text-primary mt-1">Find the next freelancer</h4>
                     <p className="text-sm text-text-secondary mt-1">Run a current search when an open role still needs candidates.</p>
                   </div>
                   <button
-                    className="shrink-0 flex items-center gap-2 rounded-2xl border border-brand/30 px-5 py-3 text-xs font-black uppercase tracking-widest text-brand hover:bg-brand-soft"
+                    className="shrink-0 flex items-center gap-2 rounded-2xl border border-brand/30 px-5 py-3 text-xs font-black uppercase tracking-widest text-brand hover:bg-brand-soft transition-all"
                     onClick={() => navigate('/talent-matching')}
                   >
                     Find talent <ChevronRight size={16} />
@@ -218,34 +224,70 @@ export default function ClientDashboardScreen() {
                 </div>
               </div>
 
+              {/* Right Column (col-span-5) */}
               <div className="lg:col-span-5 space-y-6">
-                <div className="flex items-center justify-between px-4">
-                  <h3 className="font-display-lg text-xl font-black tracking-tight uppercase">Active contracts</h3>
+                {/* AI-assisted Job Drafting placed on top of Active Contracts */}
+                <div className="glass-card p-6 rounded-3xl client-dash-ai-bg relative overflow-hidden">
+                  <div className="ai-radar-graphic">
+                    <div className="ai-radar-circle-1" />
+                    <div className="ai-radar-circle-2" />
+                    <div className="ai-radar-sweep-line" />
+                    <div className="ai-radar-pulse" />
+                  </div>
+                  <div className="relative z-10 flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-brand/20 flex items-center justify-center text-brand shrink-0 border border-brand/30">
+                          <Bot size={20} className="client-dash-ai-icon" />
+                        </div>
+                        <div>
+                          <span className="block text-[8px] font-black uppercase tracking-widest text-brand">AI Copilot</span>
+                          <h4 className="text-base font-bold text-text-primary">AI-assisted job drafting</h4>
+                        </div>
+                      </div>
+                      <button
+                        className="client-dash-ai-post-btn py-2 px-3.5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
+                        onClick={() => navigate('/jobs/post')}
+                      >
+                        Start draft
+                      </button>
+                    </div>
+                    <p className="text-xs client-dash-ai-desc text-text-secondary">
+                      Start the next hiring flow with a reviewed AI draft based on your real project requirements.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Active Contracts Header */}
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="font-display-lg text-lg font-black tracking-tight uppercase">Active contracts</h3>
                   <span className="text-xs font-bold text-text-muted">{projects.length}</span>
                 </div>
+
                 {projects.length > 0 ? projects.slice(0, 2).map(project => (
-                  <div key={project.id} className="glass-card rounded-[2.25rem] p-8 border border-brand/10 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+                  <div key={project.id} className="glass-card rounded-3xl p-6 sm:p-8 border border-brand/10 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-brand/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform" />
-                    <div className="flex justify-between items-start mb-6 relative z-10">
+                    <div className="flex justify-between items-start mb-5 relative z-10">
                       <span className="text-[9px] font-black bg-success/10 text-success px-3 py-1.5 rounded-lg tracking-widest uppercase border border-success/20">{project.status}</span>
                       <GigCoinAmount amount={project.totalBudget} className="text-xs font-bold text-text-primary" />
                     </div>
                     <h4 className="text-xl font-black mb-1 text-text-primary">{project.title}</h4>
-                    <p className="text-text-secondary text-xs mb-6 font-medium">Freelancer: {project.freelancerName}</p>
+                    <p className="text-text-secondary text-xs mb-5 font-medium">Freelancer: {project.freelancerName}</p>
                     <button
-                      className="w-full py-4.5 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-widest uppercase rounded-2xl transition-colors"
+                      className="w-full py-4 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-widest uppercase rounded-2xl transition-colors"
                       onClick={() => navigate(`/workspace/${project.id}`)}
                     >
                       Enter workspace
                     </button>
                   </div>
                 )) : (
-                  <div className="glass-card rounded-[2.25rem] p-8 border border-border text-center text-text-muted text-sm">No active contracts.</div>
+                  <div className="glass-card rounded-3xl p-6 border border-border text-center text-text-muted text-sm">No active contracts.</div>
                 )}
-                <div className="glass-card rounded-[2.25rem] p-6 border border-border flex items-center justify-between">
+
+                <div className="glass-card rounded-3xl p-5 border border-border flex items-center justify-between">
                   <div>
                     <span className="block text-[9px] uppercase tracking-widest text-text-muted">Completed contracts</span>
-                    <span className="text-3xl font-black text-text-primary">{completedContractsCount}</span>
+                    <span className="text-2xl font-black text-text-primary">{completedContractsCount}</span>
                   </div>
                   <button className="text-xs font-black uppercase tracking-widest text-brand" onClick={() => navigate('/contracts')}>View all</button>
                 </div>
@@ -259,7 +301,6 @@ export default function ClientDashboardScreen() {
                 <span className="client-dash-section-kicker">{t('dashboard.financialControl', 'Financial control')}</span>
                 <h2 id="client-finance-title">{t('dashboard.moneyAndBudget', 'Money & budget')}</h2>
               </div>
-              <p>{t('dashboard.moneyAndBudgetDescription', 'Review released funds and wallet balance after checking active delivery work.')}</p>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -348,52 +389,6 @@ export default function ClientDashboardScreen() {
             </div>
           </section>
 
-          <section className="client-dash-flow-section" aria-labelledby="client-account-health-title">
-            <div className="client-dash-section-heading">
-              <div>
-                <span className="client-dash-section-kicker">{t('dashboard.accountSignals', 'Account signals')}</span>
-                <h2 id="client-account-health-title">{t('dashboard.accountHealth', 'Account health')}</h2>
-              </div>
-              <p>{t('dashboard.accountHealthDescription', 'Lower-frequency signals for reputation and persisted account updates.')}</p>
-            </div>
-            <div className="client-dash-account-grid">
-              <ClientEloScoreCard isLoading={isLoading} summary={eloSummary} onOpenHistory={() => navigate('/elo')} />
-              <div className="glass-card client-dash-activity-card">
-                <div>
-                  <span className="client-dash-card-eyebrow">Notifications</span>
-                  <h3>Activity & account updates</h3>
-                  <p>Review persisted updates after handling proposals, milestones, contracts, and budget.</p>
-                </div>
-                <button onClick={() => navigate('/notifications')}>View notifications <ChevronRight size={16} /></button>
-              </div>
-            </div>
-          </section>
-
-          <div className="glass-card p-6 md:p-8 rounded-[2.5rem] client-dash-ai-bg relative overflow-hidden">
-            <div className="ai-radar-graphic">
-              <div className="ai-radar-circle-1" />
-              <div className="ai-radar-circle-2" />
-              <div className="ai-radar-sweep-line" />
-              <div className="ai-radar-pulse" />
-            </div>
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Bot size={20} className="client-dash-ai-icon" />
-                  <h2 className="text-text-primary font-bold text-lg">AI-assisted job drafting</h2>
-                </div>
-                <p className="text-sm client-dash-ai-desc text-text-secondary max-w-2xl">
-                  Enter your real project requirements first. GigBridge can then generate a draft for review; no market demand or match score is assumed here.
-                </p>
-              </div>
-              <button
-                className="client-dash-ai-post-btn py-3 px-5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
-                onClick={() => navigate('/jobs/post')}
-              >
-                Start a job post
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </AppLayout>

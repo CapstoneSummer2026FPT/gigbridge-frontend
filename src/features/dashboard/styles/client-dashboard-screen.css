@@ -942,6 +942,141 @@
   gap: 1.5rem;
 }
 
+/* ── Elo compact header widget ── */
+.client-elo-compact-card {
+  display: flex;
+  width: min(22rem, 100%);
+  align-items: stretch;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border-radius: 1.25rem !important;
+  transition: all 0.3s ease;
+}
+
+.client-elo-compact-card:hover {
+  border-color: rgba(73, 75, 231, 0.4) !important;
+  box-shadow: 0 10px 30px -10px rgba(73, 75, 231, 0.2) !important;
+}
+
+.client-elo-compact-header,
+.client-elo-compact-header > div,
+.client-elo-compact-body {
+  display: flex;
+  align-items: center;
+}
+
+.client-elo-compact-header {
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.client-elo-compact-header > div {
+  gap: 0.4rem;
+  color: var(--brand);
+}
+
+.client-elo-compact-header h3 {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: -0.015em;
+}
+
+.client-elo-compact-header > span {
+  padding: 0.22rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  color: var(--brand);
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.client-elo-compact-body {
+  gap: 0.8rem;
+}
+
+.client-elo-gauge-compact {
+  position: relative;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex-shrink: 0;
+}
+
+.client-elo-gauge-compact svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.client-elo-gauge-compact circle {
+  fill: none;
+  stroke-width: 13;
+  stroke-dasharray: 75 25;
+  stroke-linecap: round;
+}
+
+.client-elo-gauge-copy-compact {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.client-elo-gauge-copy-compact strong {
+  color: var(--brand);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.client-elo-compact-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.client-elo-strength-label {
+  color: var(--brand);
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.client-elo-compact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--brand);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0;
+  transition: color 180ms ease, transform 180ms ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.client-elo-compact-btn:hover {
+  color: var(--brand-hover);
+}
+
+.client-elo-compact-btn:hover svg {
+  transform: translateX(3px);
+}
+
+.client-elo-compact-btn svg {
+  transition: transform 180ms ease;
+}
+
 /* ── Elo card based on the provided profile-strength reference ── */
 .client-elo-score-card {
   display: flex;

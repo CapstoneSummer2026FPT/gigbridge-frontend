@@ -1,5 +1,7 @@
 import {
+  ContractStatus,
   MilestoneStatus,
+  type ContractDto,
   type Milestone,
 } from '../../../types/models/Contract';
 import {
@@ -11,6 +13,12 @@ export interface ProposalStatusCounts {
   pending: number;
   accepted: number;
   rejected: number;
+}
+
+export interface ContractPipelineCounts {
+  pendingSignature: number;
+  pendingEscrow: number;
+  active: number;
 }
 
 export const countProposalStatuses = (
@@ -39,3 +47,14 @@ export const isMilestoneAwaitingCompletion = (milestone: Milestone): boolean =>
 export const countMilestonesAwaitingCompletion = (milestones: Milestone[]): number =>
   milestones.filter(isMilestoneAwaitingCompletion).length;
 
+export const countContractPipelineStatuses = (
+  contracts: ContractDto[],
+): ContractPipelineCounts => contracts.reduce<ContractPipelineCounts>((counts, contract) => {
+  const status = Number(contract.status);
+
+  if (status === ContractStatus.PendingSignature) counts.pendingSignature += 1;
+  if (status === ContractStatus.PendingEscrow) counts.pendingEscrow += 1;
+  if (status === ContractStatus.Active) counts.active += 1;
+
+  return counts;
+}, { pendingSignature: 0, pendingEscrow: 0, active: 0 });

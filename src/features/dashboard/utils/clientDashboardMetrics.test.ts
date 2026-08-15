@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { MilestoneStatus, type Milestone } from '../../../types/models/Contract';
+import {
+  ContractStatus,
+  MilestoneStatus,
+  type ContractDto,
+  type Milestone,
+} from '../../../types/models/Contract';
 import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
 import {
   countMilestonesAwaitingCompletion,
+  countContractPipelineStatuses,
   countProposalStatuses,
 } from './clientDashboardMetrics';
 
@@ -30,6 +36,16 @@ const milestone = (status: MilestoneStatus): Milestone => ({
   workItems: [],
 });
 
+const contract = (status: ContractStatus): ContractDto => ({
+  contractsId: `contract-${status}`,
+  jobPostsId: 'job-1',
+  clientProfilesId: 'client-1',
+  title: 'Dashboard test',
+  totalBudget: 100,
+  status,
+  createdAt: '2026-08-15T00:00:00Z',
+});
+
 describe('client dashboard metrics', () => {
   it('counts only the proposal statuses represented by the chart', () => {
     const result = countProposalStatuses([
@@ -55,5 +71,17 @@ describe('client dashboard metrics', () => {
     ]);
 
     expect(result).toBe(4);
+  });
+
+  it('counts actionable contract stages in the delivery pipeline', () => {
+    const result = countContractPipelineStatuses([
+      contract(ContractStatus.PendingSignature),
+      contract(ContractStatus.PendingSignature),
+      contract(ContractStatus.PendingEscrow),
+      contract(ContractStatus.Active),
+      contract(ContractStatus.Completed),
+    ]);
+
+    expect(result).toEqual({ pendingSignature: 2, pendingEscrow: 1, active: 1 });
   });
 });

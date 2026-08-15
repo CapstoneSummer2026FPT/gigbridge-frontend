@@ -21,6 +21,7 @@ import {
   type Milestone,
 } from '../../../types/models/Contract';
 import {
+  countContractPipelineStatuses,
   countMilestonesAwaitingCompletion,
   countProposalStatuses,
 } from '../utils/clientDashboardMetrics';
@@ -227,6 +228,11 @@ export function useClientDashboard() {
     [milestones],
   );
 
+  const contractPipelineCounts = useMemo(
+    () => countContractPipelineStatuses(contracts),
+    [contracts],
+  );
+
   const spendChartData = useMemo(
     () => (financialOverview?.trendPoints ?? []).map(point => ({
       id: point.periodStartUtc,
@@ -259,6 +265,7 @@ export function useClientDashboard() {
     pendingMilestonesCount,
     submittedMilestonesCount,
     totalMilestonesCount: milestones.length,
+    contractPipelineCounts,
     projects,
     completedContractsCount,
     spendChartData,

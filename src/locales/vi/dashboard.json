@@ -45,6 +45,10 @@
     "eloSyncing": "Đang đồng bộ",
     "eloUnavailableBadge": "Chưa có dữ liệu",
     "eloScoreAria": "Điểm Elo hiện tại: {{score}}",
-    "profileStrength": "Sức mạnh hồ sơ"
+    "profileStrength": "Sức mạnh hồ sơ",
+    "deliveryPipeline": "Quy trình bàn giao",
+    "contractStatusBreakdown": "Phân bổ trạng thái hợp đồng",
+    "pendingSignature": "Chờ ký",
+    "pendingEscrow": "Chờ ký quỹ"
   }
 }

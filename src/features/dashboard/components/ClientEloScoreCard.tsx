@@ -17,13 +17,13 @@ export function ClientEloScoreCard({
   const score = summary?.currentPoints;
 
   return (
-    <article className="client-elo-score-card" aria-labelledby="client-elo-card-title">
-      <header className="client-elo-score-header">
+    <article className="glass-card client-elo-compact-card" aria-labelledby="client-elo-card-title">
+      <header className="client-elo-compact-header">
         <div>
-          <ShieldCheck size={19} aria-hidden="true" />
+          <ShieldCheck size={16} aria-hidden="true" />
           <h3 id="client-elo-card-title">{t('dashboard.eloPoint', 'Elo Point')}</h3>
         </div>
-        <span className="client-elo-verified-badge">
+        <span>
           {isLoading
             ? t('dashboard.eloSyncing', 'Syncing')
             : summary
@@ -32,50 +32,38 @@ export function ClientEloScoreCard({
         </span>
       </header>
 
-      <div
-        className="client-elo-gauge"
-        role="img"
-        aria-label={t('dashboard.eloScoreAria', {
-          defaultValue: 'Current Elo score: {{score}}',
-          score: score ?? 0,
-        })}
-      >
-        <svg viewBox="0 0 200 200" aria-hidden="true">
-          <circle
-            className="client-elo-gauge-track"
-            cx="100"
-            cy="100"
-            r="72"
-            pathLength="100"
-            transform="rotate(135 100 100)"
-          />
-          <circle
-            className="client-elo-gauge-value"
-            cx="100"
-            cy="100"
-            r="72"
-            pathLength="100"
-            transform="rotate(135 100 100)"
-          />
-        </svg>
-        <div className="client-elo-gauge-copy">
-          <strong>{isLoading || score == null ? '—' : score.toLocaleString()}</strong>
-          <span>{t('dashboard.profileStrength', 'Profile strength')}</span>
+      <div className="client-elo-compact-body">
+        <div
+          className="client-elo-gauge-compact"
+          role="img"
+          aria-label={t('dashboard.eloScoreAria', {
+            defaultValue: 'Current Elo score: {{score}}',
+            score: score ?? 0,
+          })}
+        >
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <circle className="client-elo-gauge-track" cx="100" cy="100" r="72" pathLength="100" transform="rotate(135 100 100)" />
+            <circle className="client-elo-gauge-value" cx="100" cy="100" r="72" pathLength="100" transform="rotate(135 100 100)" />
+          </svg>
+          <div className="client-elo-gauge-copy-compact">
+            <strong>{isLoading || score == null ? '—' : score.toLocaleString()}</strong>
+          </div>
         </div>
-      </div>
 
-      <div className="client-elo-score-footer">
-        {summary && (
-          <span className="client-elo-ledger-summary">
-            <b>+{summary.totalGained.toLocaleString()}</b>
-            <i aria-hidden="true" />
-            <b>−{summary.totalLost.toLocaleString()}</b>
-          </span>
-        )}
-        <button type="button" onClick={onOpenHistory}>
-          {t('dashboard.eloHistory', 'View Elo history')}
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
+        <div className="client-elo-compact-details">
+          <span className="client-elo-strength-label">{t('dashboard.profileStrength', 'Profile strength')}</span>
+          {summary && (
+            <div className="client-elo-ledger-summary">
+              <b>+{summary.totalGained.toLocaleString()}</b>
+              <i aria-hidden="true" />
+              <b>−{summary.totalLost.toLocaleString()}</b>
+            </div>
+          )}
+          <button type="button" className="client-elo-compact-btn" onClick={onOpenHistory}>
+            <span>{t('dashboard.eloHistory', 'View Elo history')}</span>
+            <ChevronRight size={14} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </article>
   );
