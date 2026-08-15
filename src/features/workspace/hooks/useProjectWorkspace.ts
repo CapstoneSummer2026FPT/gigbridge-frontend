@@ -6,7 +6,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
-import { messageGetAPI } from '../../../api/messageAPI/GET';
+import { messageGetAPI, type ConversationSummaryResponse } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { receiptAPI } from '../../../api/receiptAPI';
 import type { Message } from '../../../types';
@@ -56,6 +56,7 @@ interface WorkspaceProjectListItem {
   online: boolean;
   titleLong: string;
   status: ContractStatus;
+  lastMessageAtRaw?: number;
 }
 
 interface SubmitMilestoneDeliverablePayload {
@@ -252,6 +253,8 @@ export function useProjectWorkspace(initialContractId: string) {
   const { user, role } = useApp();
   const isClient = role === UserRole.Client;
 
+  const [isWorkspaceLoading, setIsWorkspaceLoading] = useState(true);
+  const [conversationsMap, setConversationsMap] = useState<Map<string, ConversationSummaryResponse>>(new Map());
   const [activeProjectId, setActiveProjectId] = useState(initialContractId);
   const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
   const [currentProductHandoff, setCurrentProductHandoff] = useState<ContractProductHandoffResponse | null>(null);
@@ -271,6 +274,35 @@ export function useProjectWorkspace(initialContractId: string) {
   const conversationIdRef = useRef<string | null>(null);
   const activeProjectIdRef = useRef(activeProjectId);
 
+  const workspaceCacheRef = useRef<Map<string, {
+    contract: ContractDto;
+    project: WorkspaceProject;
+    productHandoffs: ContractProductHandoffResponse[];
+    earlyStartRequests: MilestoneEarlyStartRequest[];
+    messages: Message[];
+  }>>(new Map());
+
+  const fetchConversationsSummary = useCallback(async (): Promise<void> => {
+    try {
+      const response = await messageGetAPI.getConversations();
+      if (response.success && response.data) {
+        const map = new Map<string, ConversationSummaryResponse>();
+        response.data.forEach(c => {
+          if (c.contractId) {
+            const isCurrentlyActive = c.contractId === activeProjectIdRef.current;
+            map.set(c.contractId, {
+              ...c,
+              unreadCount: isCurrentlyActive ? 0 : c.unreadCount,
+            });
+          }
+        });
+        setConversationsMap(map);
+      }
+    } catch (err) {
+      console.error('[useProjectWorkspace] failed to fetch conversations summary:', err);
+    }
+  }, []);
+
   useEffect(() => {
     setActiveProjectId(initialContractId);
   }, [initialContractId]);
@@ -279,67 +311,159 @@ export function useProjectWorkspace(initialContractId: string) {
     activeProjectIdRef.current = activeProjectId;
   }, [activeProjectId]);
 
+  // Mark active workspace as read locally & on backend when opened/viewed
+  useEffect(() => {
+    if (!activeProjectId) return;
+
+    setConversationsMap(prevMap => {
+      const existing = prevMap.get(activeProjectId);
+      if (existing && existing.unreadCount > 0) {
+        const nextMap = new Map(prevMap);
+        nextMap.set(activeProjectId, { ...existing, unreadCount: 0 });
+        return nextMap;
+      }
+      return prevMap;
+    });
+
+    if (project.conversationId && projectMessages.length > 0) {
+      const lastMsg = projectMessages[projectMessages.length - 1];
+      if (lastMsg?.id) {
+        void messagePostAPI.markAsRead(project.conversationId, lastMsg.id).catch(() => { });
+      }
+    }
+  }, [activeProjectId, project.conversationId, projectMessages]);
+
+  // Load global contracts & conversations list once on mount
+  useEffect(() => {
+    let isMounted = true;
+    const loadGlobalWorkspaceList = async () => {
+      try {
+        const [contractsRes, conversationsRes] = await Promise.all([
+          contractGetAPI.getMyContracts(),
+          messageGetAPI.getConversations(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (contractsRes.success && contractsRes.data) {
+          const validContracts = contractsRes.data.filter(contract =>
+            contract.status === ContractStatus.PendingEscrow ||
+            contract.status === ContractStatus.Active ||
+            contract.status === ContractStatus.Disputed ||
+            contract.status === ContractStatus.Completed
+          );
+          setWorkspaceContracts(validContracts);
+
+          if (!activeProjectIdRef.current && !initialContractId && validContracts.length > 0) {
+            const firstContractId = validContracts[0].contractsId;
+            setActiveProjectId(firstContractId);
+            activeProjectIdRef.current = firstContractId;
+          }
+        }
+
+        if (conversationsRes.success && conversationsRes.data) {
+          const map = new Map<string, ConversationSummaryResponse>();
+          conversationsRes.data.forEach(c => {
+            if (c.contractId) map.set(c.contractId, c);
+          });
+          setConversationsMap(map);
+        }
+      } catch (err) {
+        console.error('[useProjectWorkspace] failed to load global list:', err);
+      }
+    };
+
+    void loadGlobalWorkspaceList();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Optimized single workspace loader with instant in-memory caching
   useEffect(() => {
     let current = true;
 
     const loadWorkspace = async (): Promise<void> => {
       if (!activeProjectId) return;
 
+      // ⚡ INSTANT CACHE: If workspace was previously loaded, display cached data IMMEDIATELY (0ms delay!)
+      const cached = workspaceCacheRef.current.get(activeProjectId);
+      if (cached) {
+        setActiveContract(cached.contract);
+        setProject(cached.project);
+        setProductHandoffs(cached.productHandoffs);
+        setCurrentProductHandoff(getCurrentProductHandoffFromList(cached.productHandoffs));
+        setEarlyStartRequests(cached.earlyStartRequests);
+        setProjectMessages(cached.messages);
+        setIsWorkspaceLoading(false);
+      } else {
+        setIsWorkspaceLoading(true);
+      }
+
       try {
-        const [contractResponse, milestonesResponse, contractsResponse, productHandoffsResponse, earlyStartResponse] = await Promise.all([
+        // ⚡ OPTIMIZATION: Only fetch workspace-specific data (pruned unnecessary global calls)
+        const [contractResponse, milestonesResponse, productHandoffsResponse, earlyStartResponse] = await Promise.all([
           contractGetAPI.getContractById(activeProjectId),
           contractGetAPI.getMilestonesByContract(activeProjectId),
-          contractGetAPI.getMyContracts(),
           contractGetAPI.getProductHandoffs(activeProjectId),
           contractGetAPI.getEarlyStartRequests?.(activeProjectId) ?? Promise.resolve({ success: true, statusCode: 200, data: [] }),
         ]);
 
         if (!current) return;
 
-        if (contractsResponse.success && contractsResponse.data) {
-          setWorkspaceContracts(
-            contractsResponse.data.filter(contract =>
-              contract.status === ContractStatus.PendingEscrow ||
-              contract.status === ContractStatus.Active ||
-              contract.status === ContractStatus.Disputed ||
-              contract.status === ContractStatus.Completed
-            )
-          );
-        }
-
         if (!contractResponse.success || !contractResponse.data) {
-          setProject(emptyProject);
-          setActiveContract(null);
-          setCurrentProductHandoff(null);
-          setProductHandoffs([]);
+          if (!cached) {
+            setProject(emptyProject);
+            setActiveContract(null);
+            setCurrentProductHandoff(null);
+            setProductHandoffs([]);
+            setProjectMessages([]);
+          }
           return;
         }
 
         const nextContract = contractResponse.data;
         const nextProject = buildProject(nextContract, milestonesResponse.data ?? []);
         const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
-        setActiveContract(nextContract);
-        setProject(nextProject);
-        setProductHandoffs(nextProductHandoffs);
-        setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
-        setEarlyStartRequests(earlyStartResponse.data || []);
+        const nextEarlyStarts = earlyStartResponse.data || [];
 
+        let nextMessages: Message[] = cached ? cached.messages : [];
         if (nextContract.conversationId) {
           const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
           if (current && messagesResponse.success && messagesResponse.data) {
-            setProjectMessages(messagesResponse.data.map(mapWorkspaceMessage));
+            nextMessages = messagesResponse.data.map(mapWorkspaceMessage);
           }
-        } else {
-          setProjectMessages([]);
+        }
+
+        if (current) {
+          setActiveContract(nextContract);
+          setProject(nextProject);
+          setProductHandoffs(nextProductHandoffs);
+          setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
+          setEarlyStartRequests(nextEarlyStarts);
+          setProjectMessages(nextMessages);
+
+          // ⚡ Save to in-memory cache for instant switching next time
+          workspaceCacheRef.current.set(activeProjectId, {
+            contract: nextContract,
+            project: nextProject,
+            productHandoffs: nextProductHandoffs,
+            earlyStartRequests: nextEarlyStarts,
+            messages: nextMessages,
+          });
         }
       } catch (err) {
         console.error('Failed to load workspace:', err);
-        if (current) {
+        if (current && !cached) {
           setProject(emptyProject);
           setActiveContract(null);
           setCurrentProductHandoff(null);
           setProductHandoffs([]);
           setProjectMessages([]);
+        }
+      } finally {
+        if (current) {
+          setIsWorkspaceLoading(false);
         }
       }
     };
@@ -356,6 +480,53 @@ export function useProjectWorkspace(initialContractId: string) {
 
   const lastReloadTimeRef = useRef(0);
 
+  const reloadActiveMilestonesOnly = useCallback(async (targetContractId?: string): Promise<void> => {
+    const contractId = targetContractId || activeProjectIdRef.current;
+    if (!contractId || contractId !== activeProjectIdRef.current) return;
+
+    try {
+      const [milestonesRes, contractRes] = await Promise.all([
+        contractGetAPI.getMilestonesByContract(contractId),
+        contractGetAPI.getContractById(contractId),
+      ]);
+
+      if (milestonesRes.success && milestonesRes.data) {
+        const updatedMilestones = milestonesRes.data.map(mapMilestone);
+        const completedCount = updatedMilestones.filter(isMilestoneApproved).length;
+        const progress = updatedMilestones.length > 0
+          ? Math.round((completedCount / updatedMilestones.length) * 100)
+          : 0;
+
+        setProject(prev => ({
+          ...prev,
+          milestones: updatedMilestones,
+          progress,
+          paidAmount: updatedMilestones.reduce((sum, m) => sum + m.releasedAmount, 0),
+        }));
+
+        if (contractRes.success && contractRes.data) {
+          setActiveContract(contractRes.data);
+        }
+
+        const cached = workspaceCacheRef.current.get(contractId);
+        if (cached) {
+          workspaceCacheRef.current.set(contractId, {
+            ...cached,
+            contract: contractRes.data || cached.contract,
+            project: {
+              ...cached.project,
+              milestones: updatedMilestones,
+              progress,
+              paidAmount: updatedMilestones.reduce((sum, m) => sum + m.releasedAmount, 0),
+            },
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[useProjectWorkspace] failed to reload milestones:', err);
+    }
+  }, []);
+
   const debouncedReloadActiveWorkspace = useCallback(async (): Promise<void> => {
     const now = Date.now();
     if (now - lastReloadTimeRef.current < 300) return;
@@ -367,14 +538,14 @@ export function useProjectWorkspace(initialContractId: string) {
     const handleGlobalWorkspaceUpdated = (e: Event) => {
       const customEvent = e as CustomEvent<{ contractId?: string }>;
       if (customEvent.detail?.contractId && customEvent.detail.contractId !== activeProjectIdRef.current) return;
-      void debouncedReloadActiveWorkspace();
+      void reloadActiveMilestonesOnly(customEvent.detail?.contractId);
     };
 
     window.addEventListener('gigbridge-workspace-updated', handleGlobalWorkspaceUpdated);
     return () => {
       window.removeEventListener('gigbridge-workspace-updated', handleGlobalWorkspaceUpdated);
     };
-  }, [debouncedReloadActiveWorkspace]);
+  }, [reloadActiveMilestonesOnly]);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -409,28 +580,35 @@ export function useProjectWorkspace(initialContractId: string) {
         sendStatus: 'sent',
       };
 
-      if (!mappedMessage.conversationId || mappedMessage.conversationId !== conversationIdRef.current) return;
+      const isForCurrentConversation = Boolean(
+        mappedMessage.conversationId && mappedMessage.conversationId === conversationIdRef.current
+      );
 
-      setProjectMessages(previousMessages => {
-        const existingIndex = previousMessages.findIndex(existingMessage =>
-          existingMessage.id === mappedMessage.id ||
-          Boolean(mappedMessage.clientMessageId && (
-            existingMessage.id === mappedMessage.clientMessageId ||
-            existingMessage.clientMessageId === mappedMessage.clientMessageId
-          ))
-        );
+      if (isForCurrentConversation) {
+        setProjectMessages(previousMessages => {
+          const existingIndex = previousMessages.findIndex(existingMessage =>
+            existingMessage.id === mappedMessage.id ||
+            Boolean(mappedMessage.clientMessageId && (
+              existingMessage.id === mappedMessage.clientMessageId ||
+              existingMessage.clientMessageId === mappedMessage.clientMessageId
+            ))
+          );
 
-        if (existingIndex < 0) return [...previousMessages, mappedMessage];
+          if (existingIndex < 0) return [...previousMessages, mappedMessage];
 
-        const nextMessages = [...previousMessages];
-        nextMessages[existingIndex] = mappedMessage;
-        return nextMessages;
-      });
+          const nextMessages = [...previousMessages];
+          nextMessages[existingIndex] = mappedMessage;
+          return nextMessages;
+        });
 
-      // Synchronize workspace data when receiving system/event messages or messages from another user
-      if ((mappedMessage.messageType !== undefined && mappedMessage.messageType >= 3) || (user?.id && mappedMessage.senderId !== user.id)) {
-        void debouncedReloadActiveWorkspace();
+        // Synchronize active workspace data ONLY when receiving messages for the currently open conversation
+        if ((mappedMessage.messageType !== undefined && mappedMessage.messageType >= 3) || (user?.id && mappedMessage.senderId !== user.id)) {
+          void reloadActiveMilestonesOnly();
+        }
       }
+
+      // Re-fetch conversations summary so ListBar updates & pushes workspace with new message to top in realtime!
+      void fetchConversationsSummary();
     };
 
     const handleContractCompleted = (payload: Record<string, unknown>): void => {
@@ -454,7 +632,7 @@ export function useProjectWorkspace(initialContractId: string) {
     const handleRealtimeWorkspaceEvent = (payload?: Record<string, unknown>): void => {
       const eventContractId = payload ? String(payload.contractId ?? payload.ContractId ?? payload.contractsId ?? '') : '';
       if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
-      void debouncedReloadActiveWorkspace();
+      void reloadActiveMilestonesOnly(eventContractId);
     };
 
     const workspaceEvents = [
@@ -536,13 +714,54 @@ export function useProjectWorkspace(initialContractId: string) {
     };
   }, [project.conversationId]);
 
-  const workspaceProjects = useMemo(() => {
-    const projects = workspaceContracts.map(contract => mapContractListItem(contract, isClient));
-    if (activeContract && !projects.some(item => item.id === activeContract.contractsId)) {
-      projects.unshift(mapContractListItem(activeContract, isClient));
+  const getLatestMessageText = (conv?: ConversationSummaryResponse, contractStatus?: ContractStatus): string => {
+    if (!conv?.lastMessage) {
+      if (contractStatus === ContractStatus.Disputed) return 'Thảo luận tranh chấp đang mở.';
+      if (contractStatus === ContractStatus.PendingEscrow) return 'Bàn làm việc mở. Đang chờ nạp quỹ.';
+      return 'Bàn làm việc đã được mở.';
     }
-    return projects;
-  }, [activeContract, isClient, workspaceContracts]);
+    const msg = conv.lastMessage;
+    if (typeof msg === 'string') return msg;
+    const msgType = Number(msg.messageType ?? msg.MessageType ?? 0);
+    const content = String(msg.content ?? msg.Content ?? '');
+    if (msgType === 1) return '[Hình ảnh]';
+    if (msgType === 2) return `[Tệp đính kèm] ${msg.attachments?.[0]?.fileName || ''}`.trim();
+    if (content) return content;
+    return 'Tin nhắn mới';
+  };
+
+  const workspaceProjects = useMemo(() => {
+    const projects = workspaceContracts.map(contract => {
+      const item = mapContractListItem(contract, isClient);
+      const conv = conversationsMap.get(contract.contractsId);
+      const lastMessageTime = conv?.lastMessageAt || conv?.lastMessage?.sentAt || contract.updatedAt || contract.createdAt;
+
+      return {
+        ...item,
+        latestMessage: getLatestMessageText(conv, contract.status),
+        time: formatTime(lastMessageTime),
+        unread: Boolean(conv && conv.unreadCount > 0 && contract.contractsId !== activeProjectId),
+        lastMessageAtRaw: lastMessageTime ? new Date(lastMessageTime).getTime() : 0,
+      };
+    });
+
+    if (activeContract && !projects.some(item => item.id === activeContract.contractsId)) {
+      const item = mapContractListItem(activeContract, isClient);
+      const conv = conversationsMap.get(activeContract.contractsId);
+      const lastMessageTime = conv?.lastMessageAt || conv?.lastMessage?.sentAt || activeContract.updatedAt || activeContract.createdAt;
+
+      projects.unshift({
+        ...item,
+        latestMessage: getLatestMessageText(conv, activeContract.status),
+        time: formatTime(lastMessageTime),
+        unread: Boolean(conv && conv.unreadCount > 0 && activeContract.contractsId !== activeProjectId),
+        lastMessageAtRaw: lastMessageTime ? new Date(lastMessageTime).getTime() : 0,
+      });
+    }
+
+    // Sort workspace projects: newest lastMessageAt appears at the top!
+    return projects.sort((a, b) => (b.lastMessageAtRaw || 0) - (a.lastMessageAtRaw || 0));
+  }, [activeContract, isClient, workspaceContracts, conversationsMap, activeProjectId]);
 
   const currentProjData = workspaceProjects.find(item => item.id === activeProjectId) ?? {
     id: activeProjectId,
@@ -628,6 +847,7 @@ export function useProjectWorkspace(initialContractId: string) {
               : message
           )
         );
+        void fetchConversationsSummary();
         return;
       }
 
@@ -691,19 +911,31 @@ export function useProjectWorkspace(initialContractId: string) {
 
     if (contractResponse.success && contractResponse.data) {
       const nextContract = contractResponse.data;
+      const nextProject = buildProject(nextContract, milestonesResponse.data ?? []);
       const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
+      const nextEarlyStarts = earlyStartResponse.data || [];
       setActiveContract(nextContract);
-      setProject(buildProject(nextContract, milestonesResponse.data ?? []));
+      setProject(nextProject);
       setProductHandoffs(nextProductHandoffs);
       setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
-      setEarlyStartRequests(earlyStartResponse.data || []);
+      setEarlyStartRequests(nextEarlyStarts);
 
+      let nextMessages = projectMessages;
       if (nextContract.conversationId) {
         const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
         if (messagesResponse.success && messagesResponse.data) {
-          setProjectMessages(messagesResponse.data.map(mapWorkspaceMessage));
+          nextMessages = messagesResponse.data.map(mapWorkspaceMessage);
+          setProjectMessages(nextMessages);
         }
       }
+
+      workspaceCacheRef.current.set(activeProjectId, {
+        contract: nextContract,
+        project: nextProject,
+        productHandoffs: nextProductHandoffs,
+        earlyStartRequests: nextEarlyStarts,
+        messages: nextMessages,
+      });
     }
   };
 
@@ -854,6 +1086,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   return {
+    isWorkspaceLoading,
     user,
     isClient,
     activeProjectId,
