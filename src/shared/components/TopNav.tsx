@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -16,6 +16,12 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { usePremiumStatus } from '../../features/premium/hooks';
 import { UserAvatar } from './UserAvatar';
 import { getProfilePath } from '../hooks/useProfileNavigation';
+import { TopNavSearch } from './TopNavSearch';
+import {
+  getTopNavSearchPath,
+  TOP_NAV_SEARCH_SCOPE,
+  type TopNavSearchScope,
+} from '../utils/topNavSearch';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -36,9 +42,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [showSearchScopeMenu, setShowSearchScopeMenu] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [searchVal, setSearchVal] = useState('');
+  const [searchScope, setSearchScope] = useState<TopNavSearchScope>(TOP_NAV_SEARCH_SCOPE.Jobs);
 
   // Safely get app context - might be null for guest users
   let appContext;
@@ -56,6 +64,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const isAuthenticated = appContext?.isAuthenticated || false;
   const premiumStatus = usePremiumStatus(user ? role : null);
   const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
+
+  useEffect(() => {
+    if (role === 0) setSearchScope(TOP_NAV_SEARCH_SCOPE.Talent);
+    else if (role === 1) setSearchScope(TOP_NAV_SEARCH_SCOPE.Jobs);
+  }, [role]);
 
   const localizedNavItems = navItems.map(item => {
     if (item.label === 'Browse Jobs') return { ...item, label: t('nav.browseJobs') };
@@ -125,9 +138,23 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     };
   }, [location.pathname, user?.id]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchVal.trim()) navigate(`/jobs/browse?q=${encodeURIComponent(searchVal.trim())}`);
+  const handleSearch = (): void => {
+    setShowSearchScopeMenu(false);
+    navigate(getTopNavSearchPath(searchScope, searchVal));
+  };
+
+  const handleSearchScopeChange = (scope: TopNavSearchScope): void => {
+    setSearchScope(scope);
+    setShowSearchScopeMenu(false);
+  };
+
+  const handleSearchScopeMenuOpenChange = (isOpen: boolean): void => {
+    setShowSearchScopeMenu(isOpen);
+    if (isOpen) {
+      setShowUserMenu(false);
+      setShowNotifs(false);
+      setShowWalletMenu(false);
+    }
   };
 
   const isLanding = location.pathname === '/';
@@ -298,7 +325,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     );
   }
 
-  const isAnyDropdownOpen = showUserMenu || showNotifs || showWalletMenu;
+  const isAnyDropdownOpen = showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu;
 
   // ═══════════════════════════════════════════════════════════════
   // STANDARD APPLICATION TOP NAV
@@ -328,18 +355,16 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
       {/* Search Bar */}
       {!isLanding && (
-        <form onSubmit={handleSearch} className="flex-1 max-w-md hidden md:flex">
-          <div className="relative w-full">
-            <Search size={16} className="absolute top-1/2 -translate-y-1/2 text-muted nav-search-icon" />
-            <input
-              type="text"
-              value={searchVal}
-              onChange={e => setSearchVal(e.target.value)}
-              placeholder="Search jobs, freelancers, skills..."
-              className="input-gb nav-search-input w-full py-2 text-sm"
-            />
-          </div>
-        </form>
+        <TopNavSearch
+          value={searchVal}
+          scope={searchScope}
+          isScopeSelectorEnabled={Boolean(user && (role === 0 || role === 1))}
+          isScopeMenuOpen={showSearchScopeMenu}
+          onValueChange={setSearchVal}
+          onScopeChange={handleSearchScopeChange}
+          onScopeMenuOpenChange={handleSearchScopeMenuOpenChange}
+          onSubmit={handleSearch}
+        />
       )}
 
       {/* Nav Links (Guest) */}
@@ -404,7 +429,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         {user && role !== 2 && (
           <div className="relative">
             <button
-              onClick={() => { setShowWalletMenu(!showWalletMenu); setShowNotifs(false); setShowUserMenu(false); }}
+              onClick={() => { setShowWalletMenu(!showWalletMenu); setShowNotifs(false); setShowUserMenu(false); setShowSearchScopeMenu(false); }}
               className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all glass-button"
               title={t('wallet.depositedTooltip')}
               aria-label={t('wallet.depositedTooltip')}
@@ -469,6 +494,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             setShowNotifs(!showNotifs);
             setShowUserMenu(false);
             setShowWalletMenu(false);
+            setShowSearchScopeMenu(false);
           }}
           onClose={() => setShowNotifs(false)}
         />
@@ -476,7 +502,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         {/* Messages Icon (Positioned immediately to the right of Notifications Bell) */}
         {user ? (
           <button
-            onClick={() => { setShowNotifs(false); setShowUserMenu(false); setShowWalletMenu(false); navigate('/messages'); }}
+            onClick={() => { setShowNotifs(false); setShowUserMenu(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); navigate('/messages'); }}
             className="p-2 rounded-lg transition-all relative glass-button"
             title={t('nav.messages', { defaultValue: 'Messages' })}
             aria-label={t('nav.messages', { defaultValue: 'Messages' })}
@@ -496,7 +522,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         {user ? (
           <div className="relative">
             <button
-              onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); }}
+              onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-all glass-button"
             >
               <UserAvatar
@@ -609,8 +635,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       </div>
 
       {/* Click outside to close menus */}
-      {(showUserMenu || showNotifs || showWalletMenu) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); }} />
+      {(showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }} />
       )}
     </div>
   );

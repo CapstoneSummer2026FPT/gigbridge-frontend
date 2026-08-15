@@ -134,6 +134,12 @@ interface PostJobValidationIssue {
   fieldSelector?: string;
 }
 
+interface PostJobDraftOverrides {
+  questions?: QuestionInput[];
+  milestonePlans?: JobPostMilestonePlanDto[];
+  visibility?: JobPostVisibility;
+}
+
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
   JobPostId?: string;
 };
@@ -261,6 +267,7 @@ export function usePostJob() {
   const [submitMode, setSubmitMode] = useState<PostJobSubmitMode | null>(null);
   const [isBudgetExceededPromptOpen, setIsBudgetExceededPromptOpen] = useState(false);
   const [pendingBudgetSubmitMode, setPendingBudgetSubmitMode] = useState<PostJobSubmitMode | null>(null);
+  const [pendingPublishVisibility, setPendingPublishVisibility] = useState<JobPostVisibility | null>(null);
   const budgetOverrideRef = useRef<string | null>(null);
   const durationOverrideRef = useRef(false);
   const [leaveAction, setLeaveAction] = useState<LeaveAction>(null);
@@ -1125,10 +1132,7 @@ export function usePostJob() {
     });
   };
 
-  const buildDraftRequest = (overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): SaveDraftJobPostRequest => {
+  const buildDraftRequest = (overrides?: PostJobDraftOverrides): SaveDraftJobPostRequest => {
     // Confirmed overrides (milestone total / total duration) take precedence
     // over the current form values — the immediate post-confirm save runs in
     // the same tick as setForm, so the form fields would still hold the stale
@@ -1150,7 +1154,8 @@ export function usePostJob() {
       budgetMax: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       currency: form.currency.trim() || GIGCOIN_CURRENCY_CODE,
       estimatedDuration: formatJobDuration(durationValue, durationUnit),
-      visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,
+      visibility: overrides?.visibility
+        ?? (form.visibility ? Number(form.visibility) : JobPostVisibility.Public),
       endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
       isAigenerated: form.isAigenerated,
       skillIds: form.skillIds,
@@ -1171,10 +1176,7 @@ export function usePostJob() {
     };
   };
 
-  const buildRouteJobData = (overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): PostJobRouteJobData => ({
+  const buildRouteJobData = (overrides?: PostJobDraftOverrides): PostJobRouteJobData => ({
     ...buildDraftRequest(overrides),
     majorId: form.majorId,
     majorName: selectedMajorName,
@@ -1186,10 +1188,10 @@ export function usePostJob() {
     attachments,
   });
 
-  const buildNavigationState = (currentJobPostId: string | null = jobPostId, overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): PostJobRouteState => ({
+  const buildNavigationState = (
+    currentJobPostId: string | null = jobPostId,
+    overrides?: PostJobDraftOverrides,
+  ): PostJobRouteState => ({
     jobPostId: currentJobPostId,
     jobData: buildRouteJobData(overrides),
   });
@@ -1267,10 +1269,7 @@ export function usePostJob() {
     }
   };
 
-  const saveDraftPartial = async (overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): Promise<string> => {
+  const saveDraftPartial = async (overrides?: PostJobDraftOverrides): Promise<string> => {
     const payload = buildDraftRequest(overrides);
     const signature = JSON.stringify(payload);
     latestDraftSignatureRef.current = signature;
@@ -1362,7 +1361,16 @@ export function usePostJob() {
     }
   };
 
-  const submitDraftFlow = async (mode: PostJobSubmitMode): Promise<PostJobSubmitResult> => {
+  const submitDraftFlow = async (
+    mode: PostJobSubmitMode,
+    visibilityOverride?: JobPostVisibility,
+  ): Promise<PostJobSubmitResult> => {
+    const requestedPublishVisibility: JobPostVisibility | undefined = mode === 'publish'
+      ? visibilityOverride
+        ?? pendingPublishVisibility
+        ?? JobPostVisibility.Public
+      : undefined;
+
     if (mode === 'plan' || mode === 'review' || mode === 'publish') {
       const detailValidationIssue = validateForm();
       if (detailValidationIssue) {
@@ -1410,6 +1418,7 @@ export function usePostJob() {
       && !durationOverrideRef.current;
     if ((mode === 'review' || mode === 'publish') && (budgetNeedsConfirm || durationNeedsConfirm)) {
       setPendingBudgetSubmitMode(mode);
+      setPendingPublishVisibility(requestedPublishVisibility ?? null);
       setIsBudgetExceededPromptOpen(true);
       return { status: 'budget-exceeded' };
     }
@@ -1517,8 +1526,11 @@ export function usePostJob() {
         return { status: 'success' };
       }
 
-      const currentJobPostId = await saveDraftPartial();
-      const navigationState = buildNavigationState(currentJobPostId);
+      const publishOverrides = requestedPublishVisibility === undefined
+        ? undefined
+        : { visibility: requestedPublishVisibility };
+      const currentJobPostId = await saveDraftPartial(publishOverrides);
+      const navigationState = buildNavigationState(currentJobPostId, publishOverrides);
 
       if (mode === 'review') {
         allowNextNavigation();
@@ -1548,6 +1560,7 @@ export function usePostJob() {
       setSubmitMode(null);
       budgetOverrideRef.current = null;
       durationOverrideRef.current = false;
+      if (mode === 'publish') setPendingPublishVisibility(null);
     }
   };
 
@@ -1569,13 +1582,17 @@ export function usePostJob() {
     }
     setIsBudgetExceededPromptOpen(false);
     const mode = pendingBudgetSubmitMode;
+    const visibility = pendingPublishVisibility;
     setPendingBudgetSubmitMode(null);
-    return mode ? submitDraftFlow(mode) : Promise.resolve({ status: 'budget-exceeded' });
+    return mode
+      ? submitDraftFlow(mode, mode === 'publish' ? visibility ?? undefined : undefined)
+      : Promise.resolve({ status: 'budget-exceeded' });
   };
 
   const handleBudgetExceededCancel = (): void => {
     setIsBudgetExceededPromptOpen(false);
     setPendingBudgetSubmitMode(null);
+    setPendingPublishVisibility(null);
   };
 
   const continueBlockedNavigation = (): void => {

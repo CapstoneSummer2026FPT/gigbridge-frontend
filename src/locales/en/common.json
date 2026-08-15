@@ -142,6 +142,19 @@
     "systemTracking": "System Tracking",
     "platformAnalytics": "Platform Analytics"
   },
+  "topNavSearch": {
+    "placeholder": "Search GigBridge...",
+    "inputLabel": "Search GigBridge",
+    "scopeMenuLabel": "Choose what to search",
+    "talent": "Talent",
+    "talentDescription": "Find freelancers by name, title, or skill",
+    "jobs": "Jobs",
+    "jobsDescription": "View jobs posted by clients",
+    "resultsFor": "Results for “{{query}}”",
+    "noTalentResults": "No freelancers match this search.",
+    "noProjectResults": "No projects match this search.",
+    "tryAnotherSearch": "Try a different keyword."
+  },
   "footer": {
     "allRightsReserved": "All rights reserved",
     "termsOfService": "Terms of Service",
