@@ -15,7 +15,7 @@ import { PostJobAiInput } from '../components/PostJobAiInput';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
 import { usePostJob } from '../hooks/usePostJob';
-import { CustomSelect } from '../../../shared/components/CustomSelect';
+import CustomSelect from '../../../shared/components/CustomSelect';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
 import { AIGeneratedDetailsReviewModal } from '../components/AIGeneratedDetailsReviewModal';
 
@@ -340,11 +340,10 @@ export default function PostJobStepBasicInfo() {
                   type="button"
                   key={amount}
                   onClick={() => setForm({ ...form, budget: String(amount) })}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${
-                    form.budget === String(amount)
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${form.budget === String(amount)
                       ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
                       : 'bg-muted/40 text-muted-foreground border-border hover:border-[var(--brand)] hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   <span>{amount}</span>
                   <GCoinIcon size={12} />
@@ -389,11 +388,10 @@ export default function PostJobStepBasicInfo() {
                         type="button"
                         key={unit}
                         onClick={() => setForm({ ...form, estimatedDurationUnit: unit })}
-                        className={`px-3 py-1.5 text-xs font-extrabold rounded-md transition-all ${
-                          isSelected
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-md transition-all ${isSelected
                             ? 'bg-[var(--brand)] text-white shadow-sm'
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                        }`}
+                          }`}
                       >
                         {t(`postJob.durationUnits.${unit}`, unitLabel)}
                       </button>
@@ -425,7 +423,7 @@ export default function PostJobStepBasicInfo() {
                   <ImagePlus size={15} />
                 </div>
                 <span className="text-xs font-extrabold uppercase tracking-wider text-foreground">
-                  {t('postJob.advancedSettings', 'Cài đặt nâng cao (Hình ảnh & Phạm vi hiển thị)')}
+                  {t('postJob.advancedSettingsImagesOnly', 'Cài đặt nâng cao (Hình ảnh)')}
                 </span>
               </div>
               <ChevronDown size={18} className={`text-muted-foreground transition-transform duration-200 ${showAdvanced ? 'rotate-180 text-[var(--brand)]' : ''}`} />
@@ -483,21 +481,6 @@ export default function PostJobStepBasicInfo() {
                       ))}
                     </div>
                   )}
-                </div>
-
-                {/* Job Post Visibility */}
-                <div className="job-post-field">
-                  <label htmlFor="job-visibility" className="font-bold text-foreground">{t('postJob.visibility', 'Phạm vi hiển thị')}</label>
-                  <CustomSelect
-                    value={form.visibility}
-                    options={[
-                      { value: String(JobPostVisibility.Public), label: t('postJob.public', 'Công khai (Public)') },
-                      { value: String(JobPostVisibility.Private), label: t('postJob.private', 'Riêng tư (Private)') },
-                      { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnly', 'Chỉ qua lời mời (Invite Only)') },
-                    ]}
-                    onChange={val => setForm({ ...form, visibility: val })}
-                    searchable={false}
-                  />
                 </div>
               </div>
             )}

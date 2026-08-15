@@ -570,11 +570,10 @@ export default function PostJobReviewScreen() {
                           {index + 1}. {question.questionText}
                         </span>
                         <span
-                          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
-                            question.isRequired
+                          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${question.isRequired
                               ? 'bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20'
                               : 'bg-muted text-muted-foreground border border-border/60'
-                          }`}
+                            }`}
                         >
                           {t(question.isRequired ? 'postJob.required' : 'postJob.optional')}
                         </span>
@@ -610,11 +609,10 @@ export default function PostJobReviewScreen() {
           {/* Card 1: AI Interviewer Toggle (With Magnetic Nudge Animation) */}
           <div
             onClick={handleToggleAiInterview}
-            className={`group relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-300 cursor-pointer shadow-2xs ${
-              isAiInterviewEnabled
+            className={`group relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-300 cursor-pointer shadow-2xs ${isAiInterviewEnabled
                 ? 'border-purple-500/50 bg-gradient-to-br from-purple-500/15 via-purple-500/10 to-card shadow-md shadow-purple-500/10 ring-1 ring-purple-500/20'
                 : 'border-purple-500/30 bg-gradient-to-br from-purple-500/8 via-card to-card hover:border-purple-500/50 hover:shadow-purple-500/10'
-            }`}
+              }`}
           >
             <style>{`
               @keyframes cp-nudge-thumb-review {
@@ -644,11 +642,10 @@ export default function PostJobReviewScreen() {
                     {t('postJobWizard.plan.aiTitleReview', 'AI Phỏng vấn tự động (Gói Premium ✦)')}
                   </strong>
                   <span
-                    className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider transition-all ${
-                      isAiInterviewEnabled
+                    className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider transition-all ${isAiInterviewEnabled
                         ? 'bg-purple-600 text-white shadow-xs'
                         : 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30'
-                    }`}
+                      }`}
                   >
                     {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
                   </span>
@@ -657,14 +654,12 @@ export default function PostJobReviewScreen() {
                 {/* Toggle Switch */}
                 <div className="pt-0.5 shrink-0">
                   <div
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-purple-500/30 transition-colors duration-300 ease-in-out focus:outline-none ${
-                      isAiInterviewEnabled ? 'bg-purple-600 shadow-sm shadow-purple-500/40 ring-2 ring-purple-500/20' : 'bg-purple-950/20 dark:bg-purple-900/30'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-purple-500/30 transition-colors duration-300 ease-in-out focus:outline-none ${isAiInterviewEnabled ? 'bg-purple-600 shadow-sm shadow-purple-500/40 ring-2 ring-purple-500/20' : 'bg-purple-950/20 dark:bg-purple-900/30'
+                      }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
-                        isAiInterviewEnabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${isAiInterviewEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                       style={
                         !isAiInterviewEnabled
                           ? { animation: 'cp-nudge-thumb-review 2.8s infinite ease-in-out' }
