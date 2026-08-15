@@ -9,6 +9,7 @@
     "chatLoadFailed": "Unable to load the dispute conversation.",
     "chatSendFailed": "Unable to send the message.",
     "chatClosed": "This conversation was locked after the Administrator closed the dispute.",
+    "disputeOpenedNotice": "A dispute has been opened. Admin moderation is in progress.",
     "chatGuideTitle": "Direct Communication & Moderation Channel with GigBridge Admin",
     "chatGuideDesc": "All messages sent here are monitored directly by the GigBridge Moderation Team. Administrators will evaluate statements, evidence, and responses from both parties to issue an official dispute verdict.",
     "stepFiled": "1. Dispute Filed",

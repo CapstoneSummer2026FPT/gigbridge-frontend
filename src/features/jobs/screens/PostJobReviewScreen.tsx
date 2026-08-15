@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Tags } from 'lucide-react';
+import { toast } from 'sonner';
+import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Sparkles, Tags } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
+import { CustomSelect } from '../../../shared/components/CustomSelect';
 import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobVisibilityModal } from '../components/PostJobVisibilityModal';
@@ -14,6 +18,7 @@ import {
   PostJobTermsReviewEditor,
 } from '../components/PostJobReviewEditors';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
+import { BrandSweepBackButton } from '../components/BrandSweepBackButton';
 import {
   usePostJob,
   type PostJobReviewSection,
@@ -31,6 +36,8 @@ export default function PostJobReviewScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation('common');
+  const { role } = useApp();
+  const { isPremium } = usePremiumStatus(role);
   const routeState = location.state as PostJobRouteState | null;
   const controller = usePostJob();
   const {
@@ -49,6 +56,35 @@ export default function PostJobReviewScreen() {
   const [isFinishingEdit, setIsFinishingEdit] = useState(false);
   const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false);
   const [publishVisibility, setPublishVisibility] = useState<JobPostVisibility>(JobPostVisibility.Public);
+  const [isAiInterviewEnabled, setIsAiInterviewEnabled] = useState<boolean>(
+    Boolean(routeState?.jobData?.hasAiInterview)
+  );
+
+  const handleToggleAiInterview = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!isPremium) {
+      toast.info(
+        t('postJobWizard.plan.aiPremiumRequired', {
+          defaultValue: 'Tính năng AI Phỏng vấn tự động yêu cầu tài khoản Client Premium. Đang chuyển hướng đến trang nâng cấp...',
+        })
+      );
+      navigate('/premium/client/pricing');
+      return;
+    }
+
+    setIsAiInterviewEnabled(prev => {
+      const next = !prev;
+      toast.success(
+        next
+          ? t('postJobWizard.plan.aiEnabledToast', { defaultValue: 'Đã bật AI Phỏng vấn tự động cho bài đăng này!' })
+          : t('postJobWizard.plan.aiDisabledToast', { defaultValue: 'Đã tắt AI Phỏng vấn tự động.' })
+      );
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!routeState?.jobPostId && !routeState?.jobData) navigate('/jobs/post', { replace: true });
@@ -150,9 +186,9 @@ export default function PostJobReviewScreen() {
       isLoading={isDraftInitializing}
       onRetryAutosave={retryAutosave}
       backAction={(
-        <button type="button" className="job-post-button job-post-button--ghost" onClick={() => navigateWizard('/jobs/post/plan')}>
+        <BrandSweepBackButton onClick={() => navigateWizard('/jobs/post/plan')}>
           <ArrowLeft size={15} />{t('postJobWizard.backPlan')}
-        </button>
+        </BrandSweepBackButton>
       )}
       secondaryAction={(
         <button type="button" className="job-post-button job-post-button--secondary" disabled={isActionDisabled || isFinishingEdit} onClick={() => submitDraftFlow('draft')}>
@@ -534,11 +570,10 @@ export default function PostJobReviewScreen() {
                           {index + 1}. {question.questionText}
                         </span>
                         <span
-                          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
-                            question.isRequired
+                          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${question.isRequired
                               ? 'bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20'
                               : 'bg-muted text-muted-foreground border border-border/60'
-                          }`}
+                            }`}
                         >
                           {t(question.isRequired ? 'postJob.required' : 'postJob.optional')}
                         </span>
@@ -549,6 +584,127 @@ export default function PostJobReviewScreen() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* SECTION 4: AI INTERVIEWER & JOB VISIBILITY SETTINGS */}
+      <section className="job-post-section !rounded-3xl !border-border/80 !bg-card !p-6 sm:!p-7 shadow-sm hover:shadow-md transition-all space-y-5">
+        <div className="job-post-section__header flex items-center justify-between pb-4 border-b border-border/60">
+          <div className="job-post-section__heading flex items-center gap-3">
+            <span className="job-post-section__icon bg-gradient-to-br from-[var(--brand)]/15 to-purple-500/15 text-[var(--brand)] p-2.5 rounded-2xl">
+              <Sparkles size={18} />
+            </span>
+            <div>
+              <h2 className="text-base font-extrabold text-foreground">
+                {t('postJobWizard.review.aiAndVisibilityTitle', 'Cấu hình AI Phỏng vấn & Quyền riêng tư')}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {t('postJobWizard.review.aiAndVisibilityHint', 'Thiết lập công cụ phỏng vấn tự động và phạm vi hiển thị tìm kiếm cho bài đăng.')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2 pt-1">
+          {/* Card 1: AI Interviewer Toggle (With Magnetic Nudge Animation) */}
+          <div
+            onClick={handleToggleAiInterview}
+            className={`group relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-300 cursor-pointer shadow-2xs ${isAiInterviewEnabled
+                ? 'border-purple-500/50 bg-gradient-to-br from-purple-500/15 via-purple-500/10 to-card shadow-md shadow-purple-500/10 ring-1 ring-purple-500/20'
+                : 'border-purple-500/30 bg-gradient-to-br from-purple-500/8 via-card to-card hover:border-purple-500/50 hover:shadow-purple-500/10'
+              }`}
+          >
+            <style>{`
+              @keyframes cp-nudge-thumb-review {
+                0%, 100% {
+                  transform: translateX(0);
+                  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                }
+                30% {
+                  transform: translateX(7px);
+                  box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
+                }
+                50% {
+                  transform: translateX(2px);
+                }
+                70% {
+                  transform: translateX(9px);
+                  box-shadow: 0 0 12px rgba(168, 85, 247, 0.7);
+                }
+              }
+            `}</style>
+
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <strong className="font-black text-purple-600 dark:text-purple-400 flex items-center gap-1.5 text-sm">
+                    <Sparkles size={16} className="shrink-0 animate-pulse text-purple-500" />
+                    {t('postJobWizard.plan.aiTitleReview', 'AI Phỏng vấn tự động (Gói Premium ✦)')}
+                  </strong>
+                  <span
+                    className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider transition-all ${isAiInterviewEnabled
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30'
+                      }`}
+                  >
+                    {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
+                  </span>
+                </div>
+
+                {/* Toggle Switch */}
+                <div className="pt-0.5 shrink-0">
+                  <div
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-purple-500/30 transition-colors duration-300 ease-in-out focus:outline-none ${isAiInterviewEnabled ? 'bg-purple-600 shadow-sm shadow-purple-500/40 ring-2 ring-purple-500/20' : 'bg-purple-950/20 dark:bg-purple-900/30'
+                      }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${isAiInterviewEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      style={
+                        !isAiInterviewEnabled
+                          ? { animation: 'cp-nudge-thumb-review 2.8s infinite ease-in-out' }
+                          : undefined
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Job Post Visibility */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-2xs hover:border-[var(--brand)]/40 transition-all flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-[var(--brand)]/15 text-[var(--brand)]">
+                  <Globe size={16} />
+                </span>
+                <label className="text-sm font-black text-foreground">
+                  {t('postJob.visibility', 'Phạm vi hiển thị tin')}
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {t('postJobWizard.review.visibilityHint', 'Quyết định ai có thể tìm thấy và ứng tuyển vào dự án này của bạn trên sàn GigBridge.')}
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <CustomSelect
+                value={form.visibility}
+                options={[
+                  { value: String(JobPostVisibility.Public), label: t('postJob.public', 'Công khai (Public)') },
+                  { value: String(JobPostVisibility.Private), label: t('postJob.private', 'Riêng tư (Private)') },
+                  { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnly', 'Chỉ qua lời mời (Invite Only)') },
+                ]}
+                onChange={val => controller.setForm({ ...form, visibility: val })}
+                searchable={false}
+              />
+            </div>
+          </div>
         </div>
       </section>
     </PostJobWizardShell>
