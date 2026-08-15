@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
 import '../styles/PostJobScreen.css';
 
 export default function CreatePostJobContractScreen() {
@@ -29,7 +30,7 @@ export default function CreatePostJobContractScreen() {
       : jobData?.budgetMin !== undefined && jobData?.budgetMin !== null
         ? String(jobData.budgetMin)
         : '',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: currentLocalDate(),
     endDate: jobData?.deadline || '',
   });
 
