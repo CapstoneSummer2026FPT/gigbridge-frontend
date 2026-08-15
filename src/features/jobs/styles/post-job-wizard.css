@@ -210,7 +210,7 @@
 .job-post-wizard__footer {
   position: sticky;
   bottom: .75rem;
-  z-index: 20;
+  z-index: 90;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -315,14 +315,12 @@
   pointer-events: none;
   opacity: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--brand, #494be7) 35%, transparent) 25%,
-    var(--brand, #494be7) 50%,
-    color-mix(in srgb, var(--brand, #494be7) 35%, transparent) 75%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--brand, #494be7) 35%, transparent) 25%,
+      var(--brand, #494be7) 50%,
+      color-mix(in srgb, var(--brand, #494be7) 35%, transparent) 75%,
+      transparent 100%);
   box-shadow: 0 0 20px var(--brand, #494be7), 0 0 35px var(--brand, #494be7);
   mix-blend-mode: color-dodge;
   z-index: 5;
@@ -337,7 +335,7 @@
 .job-post-section:focus-within,
 .job-post-section:has(.cs-container.is-open),
 .job-post-section:has(.cs-popover) {
-  z-index: 50;
+  z-index: 10;
 }
 
 .job-post-section__header {
@@ -407,7 +405,7 @@
 .job-post-field:focus-within,
 .job-post-field:has(.cs-container.is-open),
 .job-post-field:has(.cs-popover) {
-  z-index: 55;
+  z-index: 15;
 }
 
 .job-post-field label,
@@ -1104,7 +1102,7 @@
   position: sticky;
   bottom: 2.25rem;
   /* Elevate the bar significantly so it floats above the screen edge */
-  z-index: 50;
+  z-index: 90;
 }
 
 .job-post-ai-bar-container {

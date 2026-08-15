@@ -40,7 +40,6 @@ export function BrowseJobCategoryTags({
           onClick={onResetProfile}
           className={`browse-category-pill ${view === BROWSE_JOBS_VIEW.Profile ? 'active' : ''}`}
         >
-          <Sparkles size={14} />
           {t('jobs.forYou')}
         </button>
       ) : null}

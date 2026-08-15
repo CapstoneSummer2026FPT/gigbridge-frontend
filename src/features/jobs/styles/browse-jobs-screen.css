@@ -613,3 +613,73 @@
   font-weight: 800 !important;
 }
 
+/* Animated Running Conic Border for "Find Jobs That Fit You" Button (Brand & Mint theme colors) */
+@keyframes border-conic-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-animated-border {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  box-shadow: 0 0 18px rgba(73, 75, 231, 0.35), 0 0 10px rgba(175, 219, 255, 0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.btn-animated-border:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 0 28px rgba(73, 75, 231, 0.55), 0 0 16px rgba(175, 219, 255, 0.6);
+}
+
+.btn-animated-border::before {
+  content: '';
+  position: absolute;
+  inset: -250%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--brand, #494be7) 90deg,
+    var(--mint, #AFDBFF) 180deg,
+    var(--brand, #494be7) 270deg,
+    var(--mint, #AFDBFF) 360deg
+  );
+  animation: border-conic-rotate 3.5s linear infinite;
+}
+
+.btn-animated-border-content {
+  position: relative;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.72rem;
+  background: var(--card, #1e1e2d);
+  color: var(--text-primary, #ffffff);
+  font-weight: 800;
+  font-size: 0.8rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.btn-animated-border-content:hover {
+  background: var(--card, #1e1e2d);
+  color: var(--brand, #494be7);
+}
+
+.btn-animated-border-content.is-active {
+  background: linear-gradient(135deg, var(--brand, #494be7) 0%, var(--brand-active, #3638b8) 100%);
+  color: #ffffff;
+}
+

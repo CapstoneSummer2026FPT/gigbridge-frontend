@@ -250,14 +250,14 @@
    ══════════════════════════════════════════════════════════════ */
 
 .landing-nav-container {
-  z-index: 45;
+  z-index: 100;
 }
 
-/* When avatar, notification, or wallet dropdown is open, TopNav floats above sticky headers (z-40) */
+/* When avatar, notification, or wallet dropdown is open, TopNav floats above sticky headers */
 .landing-nav-container.top-nav-menu-open,
 .landing-nav-container:has(.dropdown-menu),
 .landing-nav-container:has([role="menu"]) {
-  z-index: 100 !important;
+  z-index: 110 !important;
 }
 
 /* Modal Hierarchy: TopNav stays behind full-screen modals/popups when active */

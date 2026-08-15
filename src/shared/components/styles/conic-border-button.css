@@ -1,0 +1,128 @@
+/* =========================================================
+   Conic Border Animation System
+   Shared running conic-gradient border effect using Brand & Mint colors.
+   Designed for both inline Buttons and full-width Bento Cards.
+   ========================================================= */
+
+@keyframes conic-border-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 1. Shared Base Wrapper (Animation + Seam + Shadow) */
+.conic-border-wrap {
+  position: relative;
+  display: inline-flex;
+  padding: 1.5px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 0 4px rgba(73, 75, 231, 0.15);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.conic-border-wrap:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 8px rgba(73, 75, 231, 0.25);
+}
+
+.conic-border-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -250%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--brand, #494be7) 90deg,
+    var(--mint, #AFDBFF) 180deg,
+    var(--brand, #494be7) 270deg,
+    var(--mint, #AFDBFF) 360deg
+  );
+  animation: conic-border-rotate 3.5s linear infinite;
+}
+
+/* Color Variants */
+.conic-border-wrap.variant-emerald::before {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #10b981 90deg,
+    #a7f3d0 180deg,
+    #10b981 270deg,
+    #a7f3d0 360deg
+  );
+}
+
+.conic-border-wrap.variant-purple::before {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #8b5cf6 90deg,
+    #e9d5ff 180deg,
+    #8b5cf6 270deg,
+    #e9d5ff 360deg
+  );
+}
+
+/* 2. Button Specifier (.conic-border-btn) */
+.conic-border-btn {
+  position: relative;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: calc(0.75rem - 1.5px);
+  background: var(--card, #1e1e2d);
+  color: var(--text-primary, #ffffff);
+  font-weight: 800;
+  font-size: 0.8rem;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.25s ease;
+  width: 100%;
+  height: 100%;
+}
+
+/* 3. Card Specifier (.conic-border-card & .conic-border-card-inner) */
+.conic-border-wrap.conic-border-card {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.conic-border-card-inner {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(0.75rem - 1.5px);
+  background: var(--card, #1e1e2d);
+  color: var(--text-primary, #ffffff);
+  white-space: normal;
+  border: none;
+  transition: all 0.25s ease;
+}
+
+.conic-border-btn:hover {
+  background: var(--card, #1e1e2d);
+  color: var(--brand, #494be7);
+}
+
+.conic-border-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.conic-border-btn.is-active {
+  background: linear-gradient(135deg, var(--brand, #494be7) 0%, var(--brand-active, #3638b8) 100%);
+  color: #ffffff;
+}
