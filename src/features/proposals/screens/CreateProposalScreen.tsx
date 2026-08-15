@@ -375,12 +375,53 @@ export default function CreateProposalScreen() {
               <NestedMilestonePlanEditor
                 value={nestedMilestones}
                 onChange={updateNestedPlan}
+                targetBudget={jobPost?.budgetMax || jobPost?.budgetMin || null}
                 title={t('proposalMilestoneEditor.title')}
                 description={t('proposalMilestoneEditor.description')}
                 showDueDate
                 dueDateReadOnly
                 simplifiedMilestoneFields
                 durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`proposalMilestoneEditor.durationUnits.${unit}`) }))}
+                uiCopy={{
+                  optional: t('postJobWizard.plan.milestoneCopy.optional'),
+                  addMilestone: t('postJobWizard.plan.milestoneCopy.addMilestone'),
+                  fixedProjectBudget: t('postJobWizard.plan.milestoneCopy.fixedProjectBudget'),
+                  noBaselinePlan: t('postJobWizard.plan.milestoneCopy.noBaselinePlan'),
+                  noBaselinePlanDescription: t('postJobWizard.plan.milestoneCopy.noBaselinePlanDescription'),
+                  addFirstMilestone: t('postJobWizard.plan.milestoneCopy.addFirstMilestone'),
+                  untitledMilestone: t('postJobWizard.plan.milestoneCopy.untitledMilestone'),
+                  milestoneLabel: t('postJobWizard.plan.milestoneLabel', 'Mốc {{number}}'),
+                  workItems: t('postJobWizard.plan.milestoneCopy.workItems'),
+                  moveUp: t('postJobWizard.plan.milestoneCopy.moveUp'),
+                  moveDown: t('postJobWizard.plan.milestoneCopy.moveDown'),
+                  deleteMilestone: t('postJobWizard.plan.milestoneCopy.deleteMilestone'),
+                  milestoneTitle: t('postJobWizard.plan.milestoneCopy.milestoneTitle'),
+                  amount: t('postJobWizard.plan.milestoneCopy.amount'),
+                  duration: t('postJobWizard.plan.milestoneCopy.duration'),
+                  durationUnit: t('postJobWizard.plan.milestoneCopy.durationUnit'),
+                  deadline: t('postJobWizard.plan.milestoneCopy.deadline'),
+                  description: t('postJobWizard.plan.milestoneCopy.description'),
+                  deliverables: t('postJobWizard.plan.milestoneCopy.deliverables'),
+                  acceptanceCriteria: t('postJobWizard.plan.milestoneCopy.acceptanceCriteria'),
+                  workBreakdown: t('postJobWizard.plan.milestoneCopy.workBreakdown'),
+                  addWorkItem: t('postJobWizard.plan.milestoneCopy.addWorkItem'),
+                  workItem: t('postJobWizard.plan.milestoneCopy.workItem'),
+                  deleteWorkItem: t('postJobWizard.plan.milestoneCopy.deleteWorkItem'),
+                  workItemTitle: t('postJobWizard.plan.milestoneCopy.workItemTitle'),
+                  estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
+                  taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
+                  workItemDeliverables: t('postJobWizard.plan.milestoneCopy.workItemDeliverables'),
+                  autoBalanceOn: t('postJobWizard.plan.milestoneCopy.autoBalanceOn', '⚡ Auto-balance: ON'),
+                  autoBalanceOff: t('postJobWizard.plan.milestoneCopy.autoBalanceOff', '⚡ Auto-balance: OFF'),
+                  autoBalanceOnDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOnDesc', 'Editing any milestone automatically rebalances the remaining budget across all unlocked milestones.'),
+                  autoBalanceOffDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOffDesc', 'Auto-balance is OFF. Every milestone will keep the exact value you enter.'),
+                  resetBalance: t('postJobWizard.plan.milestoneCopy.resetBalance', '↺ Reset & Split Budget'),
+                  resetBalanceTooltip: t('postJobWizard.plan.milestoneCopy.resetBalanceTooltip', 'Clear all user locks and split budget equally across milestones'),
+                  userLocked: t('postJobWizard.plan.milestoneCopy.userLocked', 'Fixed'),
+                  userLockedTitle: t('postJobWizard.plan.milestoneCopy.userLockedTitle', 'Fixed milestone (User-locked). Click to unlock auto-balancing.'),
+                  autoBalanced: t('postJobWizard.plan.milestoneCopy.autoBalanced', 'Auto'),
+                  autoBalancedTitle: t('postJobWizard.plan.milestoneCopy.autoBalancedTitle', 'Dynamically calculated. Click to lock amount.'),
+                }}
                 expandedIndex={expandedMilestone}
                 onExpandedChange={setExpandedMilestone}
                 advancedIndexes={advancedMilestoneIndexes}

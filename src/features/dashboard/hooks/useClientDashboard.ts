@@ -4,14 +4,27 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { eloGetAPI } from '../../../api/eloAPI/GET';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
+import type { EloSummary } from '../../../types/elo';
 import type {
   FinancialOverviewResponse,
   WalletResponse,
 } from '../../../types/models/Financial';
 import type { Job } from '../../../types/models/Job';
 import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
-import { ContractStatus, type ContractDto } from '../../../types/models/Contract';
+import {
+  ContractStatus,
+  MilestoneStatus,
+  type ContractDto,
+  type Milestone,
+} from '../../../types/models/Contract';
+import {
+  countContractPipelineStatuses,
+  countMilestonesAwaitingCompletion,
+  countProposalStatuses,
+} from '../utils/clientDashboardMetrics';
 
 interface DashboardProject {
   id: string;
@@ -37,6 +50,8 @@ export function useClientDashboard() {
   const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [proposals, setProposals] = useState<ProposalDto[]>([]);
   const [contracts, setContracts] = useState<ContractDto[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [eloSummary, setEloSummary] = useState<EloSummary | null>(null);
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [financialOverview, setFinancialOverview] = useState<FinancialOverviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,23 +63,28 @@ export function useClientDashboard() {
     setIsLoading(true);
     setError(null);
 
-    const [jobsResult, contractsResult, walletResult] = await Promise.allSettled([
+    const [jobsResult, contractsResult, walletResult, eloResult] = await Promise.allSettled([
       jobGetAPI.getClientJobs({ pageSize: 100 }),
       contractGetAPI.getMyContracts({ pageSize: 100 }),
       walletGetAPI.getMyWallet(),
+      eloGetAPI.getEloSummary(),
     ]);
 
     let hasFailure = false;
+    let loadedJobs: Job[] = [];
+    let loadedContracts: ContractDto[] = [];
 
     if (jobsResult.status === 'fulfilled') {
-      setMyJobs(jobsResult.value);
+      loadedJobs = jobsResult.value;
+      setMyJobs(loadedJobs);
     } else {
       setMyJobs([]);
       hasFailure = true;
     }
 
     if (contractsResult.status === 'fulfilled' && contractsResult.value.success) {
-      setContracts(contractsResult.value.data ?? []);
+      loadedContracts = contractsResult.value.data ?? [];
+      setContracts(loadedContracts);
     } else {
       setContracts([]);
       hasFailure = true;
@@ -78,6 +98,52 @@ export function useClientDashboard() {
       setWallet(walletResult.value.data);
     } else {
       setWallet(null);
+      hasFailure = true;
+    }
+
+    if (
+      eloResult.status === 'fulfilled'
+      && eloResult.value.success
+      && eloResult.value.data
+    ) {
+      setEloSummary(eloResult.value.data);
+    } else {
+      setEloSummary(null);
+      hasFailure = true;
+    }
+
+    const jobsWithProposals = loadedJobs.filter(job => job.proposalCount > 0);
+    const activeContracts = loadedContracts.filter(
+      contract => Number(contract.status) === ContractStatus.Active,
+    );
+    const [proposalResults, milestoneResults] = await Promise.all([
+      Promise.allSettled(
+        jobsWithProposals.map(job => proposalGetAPI.getProposalsByJobPost(
+          job.id,
+          { pageSize: 100 },
+        )),
+      ),
+      Promise.allSettled(
+        activeContracts.map(contract => contractGetAPI.getMilestonesByContract(contract.contractsId)),
+      ),
+    ]);
+
+    const loadedProposals = proposalResults.flatMap(result => {
+      if (result.status !== 'fulfilled' || !result.value.success) return [];
+      return result.value.data ?? [];
+    });
+    const loadedMilestones = milestoneResults.flatMap(result => {
+      if (result.status !== 'fulfilled' || !result.value.success) return [];
+      return result.value.data ?? [];
+    });
+
+    setProposals(loadedProposals);
+    setMilestones(loadedMilestones);
+
+    if (
+      proposalResults.some(result => result.status === 'rejected' || !result.value.success)
+      || milestoneResults.some(result => result.status === 'rejected' || !result.value.success)
+    ) {
       hasFailure = true;
     }
 
@@ -116,41 +182,6 @@ export function useClientDashboard() {
     };
   }, [chartPeriod]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const jobsInScope = myJobs.slice(0, 5);
-
-    if (jobsInScope.length === 0) {
-      setProposals([]);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const loadProposals = async () => {
-      try {
-        const { proposalGetAPI } = await import('../../../api/proposalAPI/GET');
-        const results = await Promise.allSettled(
-          jobsInScope.map(job => proposalGetAPI.getProposalsByJobPost(job.id, { pageSize: 100 })),
-        );
-        if (cancelled) return;
-
-        const loadedProposals = results.flatMap(result => {
-          if (result.status !== 'fulfilled' || !result.value.success) return [];
-          return result.value.data ?? [];
-        });
-        setProposals(loadedProposals);
-      } catch {
-        if (!cancelled) setProposals([]);
-      }
-    };
-
-    void loadProposals();
-    return () => {
-      cancelled = true;
-    };
-  }, [myJobs]);
-
   const greeting = useMemo(() => {
     const hours = new Date().getHours();
     if (hours < 12) return t('dashboard.goodMorning', 'Good morning,');
@@ -180,6 +211,28 @@ export function useClientDashboard() {
     [proposals],
   );
 
+  const proposalStatusCounts = useMemo(
+    () => countProposalStatuses(proposals),
+    [proposals],
+  );
+
+  const pendingMilestonesCount = useMemo(
+    () => countMilestonesAwaitingCompletion(milestones),
+    [milestones],
+  );
+
+  const submittedMilestonesCount = useMemo(
+    () => milestones.filter(
+      milestone => Number(milestone.status) === MilestoneStatus.Submitted,
+    ).length,
+    [milestones],
+  );
+
+  const contractPipelineCounts = useMemo(
+    () => countContractPipelineStatuses(contracts),
+    [contracts],
+  );
+
   const spendChartData = useMemo(
     () => (financialOverview?.trendPoints ?? []).map(point => ({
       id: point.periodStartUtc,
@@ -207,7 +260,12 @@ export function useClientDashboard() {
     proposalsCount: proposals.length,
     pendingProposals,
     shortlistedProposalsCount,
-    proposalJobScopeCount: Math.min(myJobs.length, 5),
+    proposalStatusCounts,
+    eloSummary,
+    pendingMilestonesCount,
+    submittedMilestonesCount,
+    totalMilestonesCount: milestones.length,
+    contractPipelineCounts,
     projects,
     completedContractsCount,
     spendChartData,

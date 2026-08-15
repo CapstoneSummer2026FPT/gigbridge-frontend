@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Sparkles, Tags } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Pencil, Save, Sparkles, Tags } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
@@ -11,6 +11,7 @@ import { usePremiumStatus } from '../../premium/hooks';
 import { CustomSelect } from '../../../shared/components/CustomSelect';
 import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
+import { PostJobVisibilityModal } from '../components/PostJobVisibilityModal';
 import {
   PostJobHiringPlanReviewEditor,
   PostJobProjectReviewEditor,
@@ -24,6 +25,12 @@ import {
   type PostJobRouteState,
 } from '../hooks/usePostJob';
 import { renderDescription } from '../utils/descriptionFormatter';
+
+const normalizePublishVisibility = (visibility: string): JobPostVisibility => {
+  const value = Number(visibility);
+  if (value === JobPostVisibility.Private || value === JobPostVisibility.InviteOnly) return value;
+  return JobPostVisibility.Public;
+};
 
 export default function PostJobReviewScreen() {
   const navigate = useNavigate();
@@ -47,6 +54,8 @@ export default function PostJobReviewScreen() {
   } = controller;
   const [editingSection, setEditingSection] = useState<PostJobReviewSection | null>(null);
   const [isFinishingEdit, setIsFinishingEdit] = useState(false);
+  const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false);
+  const [publishVisibility, setPublishVisibility] = useState<JobPostVisibility>(JobPostVisibility.Public);
   const [isAiInterviewEnabled, setIsAiInterviewEnabled] = useState<boolean>(
     Boolean(routeState?.jobData?.hasAiInterview)
   );
@@ -89,12 +98,6 @@ export default function PostJobReviewScreen() {
     form.estimatedDurationValue, form.deadline,
   ].filter(Boolean).length / 6 * 100;
 
-  const visibilityLabel = form.visibility === String(JobPostVisibility.Private)
-    ? t('postJob.private')
-    : form.visibility === String(JobPostVisibility.InviteOnly)
-      ? t('postJob.inviteOnly')
-      : t('postJob.public');
-
   const finishCurrentEdit = async (nextSection: PostJobReviewSection | null): Promise<boolean> => {
     setIsFinishingEdit(true);
     try {
@@ -125,8 +128,28 @@ export default function PostJobReviewScreen() {
     }));
   };
 
-  const handlePublish = async (): Promise<void> => {
-    const result = await submitDraftFlow('publish');
+  const handlePublishClick = (): void => {
+    setPublishVisibility(normalizePublishVisibility(form.visibility));
+    setIsVisibilityModalOpen(true);
+  };
+
+  const handleVisibilityCancel = (): void => {
+    setIsVisibilityModalOpen(false);
+  };
+
+  const handleVisibilityChange = (value: JobPostVisibility): void => {
+    setPublishVisibility(value);
+  };
+
+  const handleVisibilityConfirm = async (): Promise<void> => {
+    controller.setForm(current => ({
+      ...current,
+      visibility: String(publishVisibility),
+    }));
+
+    const result = await submitDraftFlow('publish', publishVisibility);
+    setIsVisibilityModalOpen(false);
+
     if (result.status === 'validation-error') {
       setEditingSection(result.section);
       focusValidationField(result.fieldSelector);
@@ -173,12 +196,20 @@ export default function PostJobReviewScreen() {
         </button>
       )}
       primaryAction={(
-        <button type="button" className="job-post-button job-post-button--primary" disabled={isActionDisabled || isFinishingEdit} onClick={() => void handlePublish()}>
+        <button type="button" className="job-post-button job-post-button--primary" disabled={isActionDisabled || isFinishingEdit} onClick={handlePublishClick}>
           <Check size={15} />{renderSubmitLabel('publish', t('postJob.publishProjectRequest'))}
         </button>
       )}
       overlay={(
         <>
+          <PostJobVisibilityModal
+            isOpen={isVisibilityModalOpen}
+            value={publishVisibility}
+            isSubmitting={isActionDisabled}
+            onChange={handleVisibilityChange}
+            onCancel={handleVisibilityCancel}
+            onConfirm={handleVisibilityConfirm}
+          />
           <PostJobLeavePrompt
             isOpen={isLeavePromptOpen}
             leaveAction={leaveAction}
@@ -370,7 +401,7 @@ export default function PostJobReviewScreen() {
           {editingSection === 'terms' ? (
             <PostJobTermsReviewEditor controller={controller} />
           ) : (
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-3">
               {/* Stat 1: Budget */}
               <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-muted/40 to-muted/10 p-4.5 space-y-1.5 hover:border-[var(--brand)]/50 transition-all">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -413,17 +444,6 @@ export default function PostJobReviewScreen() {
                 <span className="block text-[11px] font-medium text-muted-foreground">Hạn nhận hồ sơ</span>
               </div>
 
-              {/* Stat 4: Visibility */}
-              <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-muted/40 to-muted/10 p-4.5 space-y-1.5 hover:border-[var(--brand)]/50 transition-all">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Globe size={15} className="text-[var(--brand)]" />
-                  {t('postJob.visibility')}
-                </span>
-                <strong className="block text-lg font-black text-foreground">
-                  {visibilityLabel}
-                </strong>
-                <span className="block text-[11px] font-medium text-muted-foreground">Phạm vi hiển thị</span>
-              </div>
             </div>
           )}
         </div>
