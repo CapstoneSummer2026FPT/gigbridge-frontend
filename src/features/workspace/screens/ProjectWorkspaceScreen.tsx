@@ -298,7 +298,7 @@ export default function ProjectWorkspaceScreen() {
       return;
     }
 
-    if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
       setProductFile(null);
       setProductError(t('workspace.fileSizeValidationError'));
       if (productFileInputRef.current) {

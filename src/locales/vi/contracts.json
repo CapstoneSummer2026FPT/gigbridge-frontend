@@ -533,7 +533,7 @@
     "clickOrDragUpload": "Nhấp để chọn tệp hoặc kéo thả vào đây",
     "filesSelected": "Đã chọn {{count}} tệp",
     "filesSelectedPlural": "Đã chọn {{count}} tệp",
-    "max100Mb": "Tối đa 100MB mỗi tệp (BR-55) • Hỗ trợ tài liệu, hình ảnh, mã nguồn, tệp nén",
+    "max10Mb": "Tối đa 10MB mỗi tệp (BR-55) • Hỗ trợ tài liệu, hình ảnh, mã nguồn, tệp nén",
     "attachedFiles": "Tệp đính kèm ({{count}})",
     "totalMb": "Tổng cộng {{count}} MB",
     "supportedFormats": "Định dạng tệp được hỗ trợ:",
