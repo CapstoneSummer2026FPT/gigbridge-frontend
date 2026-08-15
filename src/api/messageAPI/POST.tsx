@@ -1,4 +1,4 @@
-import { apiService } from '../../service/apiService';
+import { apiService, type UploadRequestOptions } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { MessageResponse } from './GET';
 import type { ContractStatus } from '../../types/models/Contract';
@@ -53,7 +53,8 @@ export const messagePostAPI = {
     conversationId: string,
     clientMessageId: string,
     content: string | undefined,
-    files: File[]
+    files: File[],
+    options?: UploadRequestOptions,
   ): Promise<ApiResponse<MessageResponse>> => {
     const formData = new FormData();
     formData.append('conversationId', conversationId);
@@ -61,7 +62,7 @@ export const messagePostAPI = {
     if (content) formData.append('content', content);
     files.forEach(file => formData.append('attachments', file));
 
-    return apiService.post<MessageResponse>('messages/attachments', formData);
+    return apiService.upload<MessageResponse>('messages/attachments', formData, options);
   },
 
   /**

@@ -9,10 +9,14 @@ import { messageGetAPI, type ConversationSummaryResponse } from '../../../api/me
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { receiptAPI } from '../../../api/receiptAPI';
 import type { Message } from '../../../types';
+import type { ApiTransportError } from '../../../types/common';
 import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Milestone, MilestoneEarlyStartRequest } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
-import { getChatHubUrl } from '../../../service/apiService';
+import {
+  getChatHubUrl,
+  type UploadTransferProgress,
+} from '../../../service/apiService';
 import {
   buildMilestoneSubmissionFormData,
   type MilestoneSubmissionPayload,
@@ -65,6 +69,8 @@ interface WorkspaceProjectListItem {
 interface SubmitMilestoneDeliverableResult {
   success: boolean;
   message?: string;
+  statusCode?: number;
+  transportError?: ApiTransportError;
 }
 
 interface WorkspaceActionResult {
@@ -78,6 +84,11 @@ interface SubmitProductHandoffPayload {
   note?: string;
   file?: File | null;
   externalUrl?: string;
+}
+
+interface WorkspaceUploadLifecycle {
+  onUploadProgress?: (progress: UploadTransferProgress) => void;
+  onRefreshing?: () => void;
 }
 
 const emptyProject: WorkspaceProject = {
@@ -894,7 +905,8 @@ export function useProjectWorkspace(initialContractId: string) {
 
   const handleSubmitMilestoneDeliverable = async (
     milestoneId: string,
-    payload: MilestoneSubmissionPayload
+    payload: MilestoneSubmissionPayload,
+    lifecycle: WorkspaceUploadLifecycle = {},
   ): Promise<SubmitMilestoneDeliverableResult> => {
     if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
@@ -906,12 +918,20 @@ export function useProjectWorkspace(initialContractId: string) {
 
     const formData = buildMilestoneSubmissionFormData(payload);
 
-    const response = await contractPostAPI.submitMilestone(activeProjectId, milestoneId, formData);
+    const response = await contractPostAPI.submitMilestone(activeProjectId, milestoneId, formData, {
+      onUploadProgress: lifecycle.onUploadProgress,
+    });
 
     if (!response.success) {
-      return { success: false, message: response.message || 'Failed to submit deliverable.' };
+      return {
+        success: false,
+        statusCode: response.statusCode,
+        transportError: response.transportError,
+        message: response.message || 'Failed to submit deliverable.',
+      };
     }
 
+    lifecycle.onRefreshing?.();
     await reloadActiveWorkspace();
     return { success: true, message: response.message };
   };
@@ -999,7 +1019,8 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleSubmitProductHandoff = async (
-    payload: SubmitProductHandoffPayload
+    payload: SubmitProductHandoffPayload,
+    lifecycle: WorkspaceUploadLifecycle = {},
   ): Promise<SubmitMilestoneDeliverableResult> => {
     if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
@@ -1021,12 +1042,20 @@ export function useProjectWorkspace(initialContractId: string) {
       formData.append('externalUrl', externalUrl);
     }
 
-    const response = await contractPostAPI.submitProductHandoff(activeProjectId, formData);
+    const response = await contractPostAPI.submitProductHandoff(activeProjectId, formData, {
+      onUploadProgress: lifecycle.onUploadProgress,
+    });
 
     if (!response.success) {
-      return { success: false, message: response.message || 'Failed to send work materials.' };
+      return {
+        success: false,
+        statusCode: response.statusCode,
+        transportError: response.transportError,
+        message: response.message || 'Failed to send work materials.',
+      };
     }
 
+    lifecycle.onRefreshing?.();
     await reloadActiveWorkspace();
     return { success: true, message: response.message };
   };

@@ -29,6 +29,20 @@
     "yes": "Yes",
     "no": "No"
   },
+  "fileUploadProgress": {
+    "uploading": "Uploading files...",
+    "uploadingPercent": "Uploading files... {{percent}}%",
+    "processing": "Checking and saving files...",
+    "processingMessage": "Checking and sending files...",
+    "refreshing": "Refreshing workspace data...",
+    "sent": "{{loaded}} sent",
+    "sentOfTotal": "{{loaded}} of {{total}} sent"
+  },
+  "fileUploadError": {
+    "network": "Unable to connect to the upload server. Check your connection and try again.",
+    "timeout": "The upload took too long to complete. Please try again.",
+    "requestTooLarge": "The upload request exceeds the allowed size."
+  },
   "app": {
     "name": "GigBridge",
     "tagline": "AI-Powered Freelance Marketplace"
