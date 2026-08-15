@@ -4,7 +4,6 @@ import {
   FileText,
   Ban,
   AlertTriangle,
-  Paperclip,
   Smile,
   Upload,
   Send,
@@ -72,13 +71,9 @@ export interface ChatAndInfoPanelProps {
   isBlocked: boolean;
   setIsBlocked: (val: boolean) => void;
   projectMessages: any[];
-  chatAttachments: File[];
-  chatFileInputRef: any;
   chatEndRef: any;
   messageInput: string;
   setMessageInput: React.Dispatch<React.SetStateAction<string>>;
-  handleSelectChatFiles: (files: FileList) => void;
-  handleRemoveChatFile: (idx: number) => void;
   handleSendMessage: () => void;
   isWorkspaceLocked: boolean;
   isContractDisputed: boolean;
@@ -122,13 +117,9 @@ export function ChatAndInfoPanel({
   isBlocked,
   setIsBlocked,
   projectMessages,
-  chatAttachments,
-  chatFileInputRef,
   chatEndRef,
   messageInput,
   setMessageInput,
-  handleSelectChatFiles,
-  handleRemoveChatFile,
   handleSendMessage,
   isWorkspaceLocked,
   isContractDisputed,
@@ -539,38 +530,6 @@ export function ChatAndInfoPanel({
               </div>
             ) : (
               <div className="p-3 bg-card border-t border-border flex-shrink-0">
-                <input
-                  ref={chatFileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={e => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      handleSelectChatFiles(e.target.files);
-                    }
-                    e.target.value = '';
-                  }}
-                />
-                {chatAttachments.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {chatAttachments.map((file, index) => (
-                      <span
-                        key={`${file.name}-${index}`}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted border border-border text-[10px] font-semibold text-foreground max-w-[180px]"
-                      >
-                        <span className="truncate">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveChatFile(index)}
-                          className="text-muted-foreground hover:text-rose-500 cursor-pointer flex-shrink-0"
-                          title={t('common.remove', { defaultValue: 'Remove' })}
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
                 <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
                   <textarea
                     className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
@@ -588,14 +547,6 @@ export function ChatAndInfoPanel({
 
                   <div className="flex justify-between items-center px-3 pb-2">
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => chatFileInputRef.current?.click()}
-                        className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                        title={t('workspace.attachFile')}
-                      >
-                        <Paperclip size={14} />
-                      </button>
                       <button
                         type="button"
                         onClick={() => setMessageInput(prev => `${prev ?? ''}😊`)}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import * as signalR from '@microsoft/signalr';
-import { toast } from 'sonner';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -14,6 +13,10 @@ import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Mil
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import { getChatHubUrl } from '../../../service/apiService';
+import {
+  buildMilestoneSubmissionFormData,
+  type MilestoneSubmissionPayload,
+} from '../utils/milestoneUpload';
 
 interface WorkspaceMilestone {
   id: string;
@@ -57,11 +60,6 @@ interface WorkspaceProjectListItem {
   titleLong: string;
   status: ContractStatus;
   lastMessageAtRaw?: number;
-}
-
-interface SubmitMilestoneDeliverablePayload {
-  description?: string;
-  file?: File | null;
 }
 
 interface SubmitMilestoneDeliverableResult {
@@ -267,7 +265,6 @@ export function useProjectWorkspace(initialContractId: string) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [projectMessages, setProjectMessages] = useState<Message[]>([]);
-  const [chatAttachments, setChatAttachments] = useState<File[]>([]);
   const [reviewPromptContractId, setReviewPromptContractId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
@@ -786,15 +783,11 @@ export function useProjectWorkspace(initialContractId: string) {
   const isPartnerOnline = currentProjData.online;
   const partnerUserId = currentProjData.partnerUserId ?? null;
 
-  const MAX_CHAT_FILES = 5;
-  const MAX_CHAT_FILE_SIZE = 100 * 1024 * 1024;
-
   const handleSendMessage = async (): Promise<void> => {
     const trimmedContent = messageInput.trim();
-    const filesToSend = chatAttachments;
     if (
       isContractLocked(activeContract?.status) ||
-      (!trimmedContent && filesToSend.length === 0) ||
+      !trimmedContent ||
       !project.conversationId
     ) {
       return;
@@ -807,37 +800,21 @@ export function useProjectWorkspace(initialContractId: string) {
       conversationId: project.conversationId,
       senderId: user?.id ?? '',
       content: trimmedContent,
-      type: filesToSend.length > 0 ? 'file' : 'text',
+      type: 'text',
       createdAt: new Date().toISOString(),
       isRead: true,
       sendStatus: 'pending',
-      attachments: filesToSend.map(file => ({
-        messageAttachmentId: crypto.randomUUID(),
-        fileName: file.name,
-        fileUrl: '',
-        mimeType: file.type,
-        fileSizeBytes: file.size,
-        createdAt: new Date().toISOString(),
-      })),
     };
 
     setProjectMessages(prev => [...prev, newMessage]);
     setMessageInput('');
-    setChatAttachments([]);
 
     try {
-      const response = filesToSend.length > 0
-        ? await messagePostAPI.sendMessageWithAttachments(
-            project.conversationId,
-            clientMessageId,
-            trimmedContent || undefined,
-            filesToSend
-          )
-        : await messagePostAPI.sendMessage({
-            conversationId: project.conversationId,
-            clientMessageId,
-            content: trimmedContent,
-          });
+      const response = await messagePostAPI.sendMessage({
+        conversationId: project.conversationId,
+        clientMessageId,
+        content: trimmedContent,
+      });
 
       if (response.success && response.data) {
         setProjectMessages(prev =>
@@ -868,30 +845,6 @@ export function useProjectWorkspace(initialContractId: string) {
         )
       );
     }
-  };
-
-  const handleSelectChatFiles = (files: FileList | File[]): void => {
-    const incoming = Array.from(files);
-    if (incoming.length === 0) return;
-
-    const oversized = incoming.find(file => file.size <= 0 || file.size > MAX_CHAT_FILE_SIZE);
-    if (oversized) {
-      toast.error(`"${oversized.name}" exceeds the 100MB attachment limit.`);
-      return;
-    }
-
-    setChatAttachments(prev => {
-      const combined = [...prev, ...incoming];
-      if (combined.length > MAX_CHAT_FILES) {
-        toast.error(`You can attach up to ${MAX_CHAT_FILES} files per message.`);
-        return prev;
-      }
-      return combined;
-    });
-  };
-
-  const handleRemoveChatFile = (index: number): void => {
-    setChatAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleOpenMilestoneEditor = (): void => {
@@ -941,24 +894,17 @@ export function useProjectWorkspace(initialContractId: string) {
 
   const handleSubmitMilestoneDeliverable = async (
     milestoneId: string,
-    payload: SubmitMilestoneDeliverablePayload
+    payload: MilestoneSubmissionPayload
   ): Promise<SubmitMilestoneDeliverableResult> => {
     if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
-    const formData = new FormData();
-    const description = payload.description?.trim();
-
-    if (description) {
-      formData.append('description', description);
+    if (payload.files.length === 0) {
+      return { success: false, message: 'At least one platform-hosted deliverable file is required.' };
     }
 
-    if (payload.file) {
-      formData.append('file', payload.file);
-    }
-
-    if (!payload.file) return { success: false, message: 'A platform-hosted deliverable file is required.' };
+    const formData = buildMilestoneSubmissionFormData(payload);
 
     const response = await contractPostAPI.submitMilestone(activeProjectId, milestoneId, formData);
 
@@ -1113,9 +1059,6 @@ export function useProjectWorkspace(initialContractId: string) {
     partnerUserId,
     isPartnerOnline,
     projectMessages,
-    chatAttachments,
-    handleSelectChatFiles,
-    handleRemoveChatFile,
     reviewPromptContractId,
     clearReviewPrompt: () => setReviewPromptContractId(null),
     refreshWorkspace: reloadActiveWorkspace,
