@@ -603,7 +603,13 @@ export default function ProjectWorkspaceScreen() {
           activeContractStatus={activeContract?.status}
           workspaceContractId={workspaceContractId}
           unreadReportCount={contractReports.filter((r) => r.status === 0).length}
-          onNavigateBack={() => navigate('/workspace')}
+          onNavigateBack={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/contracts');
+            }
+          }}
           onNavigateJobDetail={() => navigate(isClient ? `/jobs/my-jobs/${project.jobId}` : `/jobs/${project.jobId}`)}
           onRaiseIssue={() => setRaiseIssueModalOpen(true)}
           onOpenReportList={handleToggleReportList}
