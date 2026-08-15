@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight, Clock3, Coins, GripVertical, Lock, Plus, RotateCcw, Trash2, Zap, ZapOff } from 'lucide-react';
+import { AutoGrowTextarea } from './AutoGrowTextarea';
 import { CustomSelect } from './CustomSelect';
 import GCoinIcon from './GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
@@ -345,7 +346,7 @@ export function NestedMilestonePlanEditor({
   };
 
   return (
-    <section className="space-y-5 border-t border-border/80 pt-7">
+    <section className="min-w-0 max-w-full space-y-5 border-t border-border/80 pt-7">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
@@ -468,10 +469,10 @@ export function NestedMilestonePlanEditor({
             key={milestone.id || index}
             onDragOver={readOnly ? undefined : handleDragOver}
             onDrop={readOnly ? undefined : (e) => handleDrop(e, index)}
-            className={`rounded-2xl border bg-card transition-all shadow-sm hover:shadow-md relative focus-within:z-20 ${draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
+            className={`relative min-w-0 max-w-full rounded-2xl border bg-card shadow-sm transition-all hover:shadow-md focus-within:z-20 ${draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
               } ${Object.keys(errors).some(key => key.startsWith(`${index}.`)) ? 'border-red-500/80 ring-2 ring-red-500/10' : 'border-border/80'}`}
           >
-            <div className="flex items-center gap-3 p-4">
+            <div className="flex min-w-0 items-center gap-3 p-4">
               {!readOnly && (
                 <div
                   draggable
@@ -482,15 +483,15 @@ export function NestedMilestonePlanEditor({
                   <GripVertical size={18} />
                 </div>
               )}
-              <button type="button" onClick={() => toggleMilestone(index)} aria-expanded={isExpanded} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+              <button type="button" onClick={() => toggleMilestone(index)} aria-expanded={isExpanded} className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden text-left">
                 <ChevronDown size={18} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-0 text-[var(--brand)]' : '-rotate-90'}`} />
                 <span className="flex h-8 px-3 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-white text-xs font-black shadow-sm">
                   {uiCopy.milestoneLabel
                     ? uiCopy.milestoneLabel.replace('{{number}}', String(index + 1))
                     : `Mốc ${index + 1}`}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <strong className="block truncate text-sm font-bold text-foreground">
+                <span className="min-w-0 flex-1 overflow-hidden">
+                  <strong className="block min-w-0 whitespace-normal break-words text-sm font-bold leading-5 text-foreground [overflow-wrap:anywhere]">
                     {milestone.title?.trim() || `${uiCopy.untitledMilestone || 'Mốc chưa đặt tên'} ${index + 1}`}
                   </strong>
                   <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5 font-medium">
@@ -538,7 +539,7 @@ export function NestedMilestonePlanEditor({
                       </span>
                     )}
                   </label>
-                  <input
+                  <AutoGrowTextarea
                     data-milestone-field={`${index}.title`}
                     disabled={readOnly}
                     maxLength={milestoneTitleMaxLength}
@@ -546,7 +547,7 @@ export function NestedMilestonePlanEditor({
                     onChange={e => updateMilestone(index, { title: e.target.value })}
                     placeholder={fieldPlaceholders.milestoneTitle || 'Ví dụ: Mốc 1 - Giao diện UI/UX & Prototype'}
                     aria-describedby={describedBy(`${index}-title`, fieldHints.milestoneTitle)}
-                    className={`${fieldClass('title')} text-sm font-semibold`}
+                    className={`${fieldClass('title')} min-h-10 min-w-0 max-w-full resize-none overflow-hidden whitespace-pre-wrap break-words text-sm font-semibold leading-5 [overflow-wrap:anywhere]`}
                   />
                   {renderHint(`${index}-title`, fieldHints.milestoneTitle)}
                   {errorFor('title') && <span className="mt-1 block text-xs text-red-500 font-medium">{errorFor('title')}</span>}
