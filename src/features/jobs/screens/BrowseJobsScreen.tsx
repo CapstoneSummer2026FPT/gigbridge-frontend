@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Flame, Crown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,6 +18,11 @@ import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 import { premiumAPI } from '../../premium/api';
 import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
+import {
+  BROWSE_JOBS_VIEW,
+  shouldUseRecommendedJobsByDefault,
+  type BrowseJobsView,
+} from '../utils/browseJobsView';
 
 const PAGE_SIZE = 20;
 const WORK_TYPES = ['All', 'fixed'];
@@ -52,6 +57,8 @@ export default function BrowseJobsScreen() {
   }, [setParams]);
 
   const { user, role } = useApp();
+  const isFreelancer = role === UserRole.Freelancer;
+  const hasExplicitBrowseCriteria = Boolean(params.get('q')?.trim() || params.get('cat'));
   const [search, setSearch] = useState(sanitizeSearch(params.get('q') || ''));
   const [committedSearch, setCommittedSearch] = useState(sanitizeSearch(params.get('q') || ''));
   const [category, setCategory] = useState(params.get('cat') || 'All');
@@ -77,12 +84,39 @@ export default function BrowseJobsScreen() {
   const [page, setPage] = useState(() => Math.max(1, Number(params.get('page')) || 1));
   const [totalResults, setTotalResults] = useState(0);
   const [searchEventId, setSearchEventId] = useState<string | null>(null);
-  const [recommendedMode, setRecommendedMode] = useState(false);
+  const [recommendedMode, setRecommendedMode] = useState(() => (
+    shouldUseRecommendedJobsByDefault(
+      Boolean(user),
+      isFreelancer,
+      params.get('view'),
+      hasExplicitBrowseCriteria,
+    )
+  ));
   const [recommendedJobs, setRecommendedJobs] = useState<BrowseJob[]>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const isFreelancer = role === UserRole.Freelancer;
+  const defaultViewAppliedRef = useRef(Boolean(user && isFreelancer));
+
+  useEffect(() => {
+    const routeParams = new URLSearchParams(location.search);
+    const routeSearch = sanitizeSearch(routeParams.get('q') || '');
+    const routeCategory = routeParams.get('cat') || 'All';
+    const routePage = Math.max(1, Number(routeParams.get('page')) || 1);
+    const routeView = routeParams.get('view');
+
+    setSearch(routeSearch);
+    setCommittedSearch(routeSearch);
+    setCategory(routeCategory);
+    setPage(routePage);
+
+    if (routeView === BROWSE_JOBS_VIEW.All) {
+      setRecommendedMode(false);
+      setRecommendedJobs([]);
+    } else if (routeView === BROWSE_JOBS_VIEW.Recommended && user && isFreelancer) {
+      setRecommendedMode(true);
+    }
+  }, [isFreelancer, location.search, user]);
 
   // Reusable GSAP Entrance Hook
   usePageGSAP({
@@ -95,6 +129,53 @@ export default function BrowseJobsScreen() {
       { selector: '.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', x: 20, stagger: 0.05, duration: 0.35, clearProps: 'all' },
     ],
   });
+
+  useEffect(() => {
+    if (defaultViewAppliedRef.current || !user || !isFreelancer) return;
+
+    defaultViewAppliedRef.current = true;
+    setRecommendedMode(
+      shouldUseRecommendedJobsByDefault(
+        true,
+        true,
+        params.get('view'),
+        hasExplicitBrowseCriteria,
+      ),
+    );
+  }, [hasExplicitBrowseCriteria, isFreelancer, params, user]);
+
+  useEffect(() => {
+    if (!recommendedMode || !user || !isFreelancer) {
+      setRecommendedLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setRecommendedLoading(true);
+
+    jobGetAPI.getRecommendedJobs(PAGE_SIZE)
+      .then(jobs => {
+        if (!isMounted) return;
+        setRecommendedJobs(jobs.map(job => ({
+          ...job,
+          datePosted: job.createdAt || '',
+          isFeatured: Boolean(job.isFeatured),
+        })));
+      })
+      .catch(error => {
+        if (!isMounted) return;
+        console.error('Failed to fetch recommended jobs:', error);
+        toast.error(error instanceof Error ? error.message : t('jobs.recommendedError'));
+        setRecommendedJobs([]);
+      })
+      .finally(() => {
+        if (isMounted) setRecommendedLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFreelancer, recommendedMode, t, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -184,6 +265,11 @@ export default function BrowseJobsScreen() {
 
   useEffect(() => {
     const controller = new AbortController();
+    if (recommendedMode) {
+      setLoading(false);
+      return () => controller.abort();
+    }
+
     const fetchJobs = async () => {
       try {
         setLoading(true);
@@ -221,7 +307,7 @@ export default function BrowseJobsScreen() {
     };
     void fetchJobs();
     return () => controller.abort();
-  }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, page, sortBy, workType]);
+  }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, page, recommendedMode, sortBy, workType]);
 
   useEffect(() => {
     let isMounted = true;
@@ -272,17 +358,34 @@ export default function BrowseJobsScreen() {
     setSearchEventId(null);
   };
 
+  const setBrowseViewParam = (view: BrowseJobsView): void => {
+    setParamsRef.current(current => {
+      const next = new URLSearchParams(current);
+      next.set('view', view);
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
+  };
+
   const openJob = (job: BrowseJob) => {
     void jobGetAPI.recordJobOpen(job.id, searchEventId);
     navigate(`/jobs/${job.id}`, { state: { job, searchEventId } });
   };
 
-  const exitRecommendedMode = () => {
-    setRecommendedMode(false);
-    setRecommendedJobs([]);
+  const enterRecommendedMode = (): void => {
+    setRecommendedMode(true);
+    setBrowseViewParam(BROWSE_JOBS_VIEW.Recommended);
+    resetBrowsePage();
   };
 
-  const findMatchingJobs = async () => {
+  const exitRecommendedMode = (): void => {
+    setRecommendedMode(false);
+    setRecommendedJobs([]);
+    setBrowseViewParam(BROWSE_JOBS_VIEW.All);
+    resetBrowsePage();
+  };
+
+  const findMatchingJobs = (): void => {
     if (!user || !isFreelancer) {
       toast.error(t('jobs.onlyFreelancersCanSave'));
       return;
@@ -293,22 +396,40 @@ export default function BrowseJobsScreen() {
       return;
     }
 
-    setRecommendedMode(true);
-    setRecommendedLoading(true);
-    try {
-      const jobs = await jobGetAPI.getRecommendedJobs(20);
-      setRecommendedJobs(jobs.map(job => ({
-        ...job,
-        datePosted: job.createdAt || '',
-        isFeatured: Boolean(job.isFeatured),
-      })));
-    } catch (error) {
-      console.error('Failed to fetch recommended jobs:', error);
-      toast.error(error instanceof Error ? error.message : t('jobs.recommendedError'));
-      setRecommendedJobs([]);
-    } finally {
-      setRecommendedLoading(false);
-    }
+    enterRecommendedMode();
+  };
+
+  const selectCategory = (nextCategory: string): void => {
+    setRecommendedMode(false);
+    setRecommendedJobs([]);
+    setCategory(nextCategory);
+    resetBrowsePage();
+    setParamsRef.current(current => {
+      const next = new URLSearchParams(current);
+      next.set('view', BROWSE_JOBS_VIEW.All);
+      next.set('page', '1');
+      if (nextCategory === 'All') next.delete('cat');
+      else next.set('cat', nextCategory);
+      return next;
+    }, { replace: true });
+  };
+
+  const handleCategorySelectChange = (event: ChangeEvent<HTMLSelectElement>): void => {
+    selectCategory(event.target.value);
+  };
+
+  const handleCategoryPillClick = (event: MouseEvent<HTMLButtonElement>): void => {
+    selectCategory(event.currentTarget.value);
+  };
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    if (recommendedMode) exitRecommendedMode();
+    setSearch(sanitizeSearch(event.target.value));
+  };
+
+  const handleFilterToggle = (): void => {
+    if (recommendedMode) exitRecommendedMode();
+    setShowFilters(current => !current);
   };
 
   const toggleSave = async (id: string) => {
@@ -382,7 +503,7 @@ export default function BrowseJobsScreen() {
                   <input
                     type="text"
                     value={search}
-                    onChange={event => setSearch(sanitizeSearch(event.target.value))}
+                    onChange={handleSearchChange}
                     onKeyDown={event => event.key === 'Enter' && commitSearch()}
                     placeholder={t('jobs.searchPlaceholder')}
                     className="browse-jobs-search-input"
@@ -390,7 +511,7 @@ export default function BrowseJobsScreen() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowFilters(!showFilters)}
+                  onClick={handleFilterToggle}
                   className={`browse-jobs-filter-btn ${showFilters ? 'active' : ''}`}
                 >
                   <Filter size={16} />
@@ -410,12 +531,12 @@ export default function BrowseJobsScreen() {
               </div>
 
               {/* Filter Expansion Grid */}
-              {!recommendedMode && showFilters && (
+              {showFilters && (
                 <div className="mt-4 pt-4 border-t browse-jobs-divider">
                   <div className="browse-jobs-filter-grid">
                     <label>
                       {t('jobs.category')}
-                      <select value={category} onChange={event => { setCategory(event.target.value); resetBrowsePage(); }}>
+                      <select value={category} onChange={handleCategorySelectChange}>
                         {categoryOptions.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : item}</option>)}
                       </select>
                     </label>
@@ -450,20 +571,29 @@ export default function BrowseJobsScreen() {
             </div>
 
             {/* Category Filter Horizontal Smooth Scroll Pill Container */}
-            {!recommendedMode && (
-              <div className="browse-category-scroll-container">
-                {categoryOptions.map(cat => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => { setCategory(cat); resetBrowsePage(); }}
-                    className={`browse-category-pill ${category === cat ? 'active' : ''}`}
-                  >
-                    {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="browse-category-scroll-container">
+              {user && isFreelancer ? (
+                <button
+                  type="button"
+                  onClick={enterRecommendedMode}
+                  className={`browse-category-pill ${recommendedMode ? 'active' : ''}`}
+                >
+                  <Sparkles size={14} />
+                  {t('jobs.forYou')}
+                </button>
+              ) : null}
+              {categoryOptions.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  value={cat}
+                  onClick={handleCategoryPillClick}
+                  className={`browse-category-pill ${!recommendedMode && category === cat ? 'active' : ''}`}
+                >
+                  {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
+                </button>
+              ))}
+            </div>
 
             {/* Results Count & Sort Dropdown */}
             <div>

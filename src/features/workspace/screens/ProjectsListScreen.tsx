@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -28,11 +28,26 @@ const getStatusLabel = (status: ContractStatus, t: Translate): string => {
 
 export default function ProjectsListScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, role } = useApp();
   const { t } = useTranslation();
   const [projects, setProjects] = useState<ContractDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const searchQuery = searchParams.get('q')?.trim() ?? '';
+  const normalizedSearchQuery = searchQuery.toLocaleLowerCase();
+  const visibleProjects = normalizedSearchQuery
+    ? projects.filter(project => [
+      project.jobTitle,
+      project.title,
+      project.description,
+      project.jobDescription,
+      project.clientName,
+      project.freelancerName,
+      project.clientEmail,
+      project.freelancerEmail,
+    ].some(value => value?.toLocaleLowerCase().includes(normalizedSearchQuery)))
+    : projects;
 
   useEffect(() => {
     if (!user) {
@@ -112,6 +127,11 @@ export default function ProjectsListScreen() {
           <p className="text-secondary">
             {role === 0 ? t('projects.subtitleClient') : t('projects.subtitleFreelancer')}
           </p>
+          {searchQuery ? (
+            <p className="mt-3 text-sm font-semibold text-cyan">
+              {t('topNavSearch.resultsFor', { query: searchQuery })}
+            </p>
+          ) : null}
         </div>
 
         {loading ? (
@@ -144,9 +164,17 @@ export default function ProjectsListScreen() {
               {role === 0 ? t('jobs.postJob') : t('jobs.browseJobs')}
             </button>
           </div>
+        ) : visibleProjects.length === 0 ? (
+          <div className="glass-card p-12 text-center">
+            <Flag className="w-16 h-16 text-secondary mx-auto mb-4 opacity-30" />
+            <h2 className="text-xl font-bold text-primary mb-2">
+              {t('topNavSearch.noProjectResults')}
+            </h2>
+            <p className="text-secondary">{t('topNavSearch.tryAnotherSearch')}</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map(project => {
+            {visibleProjects.map(project => {
               const otherUserName = role === 0
                 ? project.freelancerName || project.freelancerEmail || t('projects.freelancer')
                 : project.clientName || project.clientEmail || t('projects.client');

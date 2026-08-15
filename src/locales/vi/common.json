@@ -142,6 +142,21 @@
     "systemTracking": "Theo Dõi Hệ Thống",
     "platformAnalytics": "Phân Tích Nền Tảng"
   },
+  "topNavSearch": {
+    "placeholder": "Tìm kiếm trên GigBridge...",
+    "inputLabel": "Tìm kiếm trên GigBridge",
+    "scopeMenuLabel": "Chọn phạm vi tìm kiếm",
+    "talent": "Nhân tài",
+    "talentDescription": "Tìm freelancer theo tên, chuyên môn hoặc kỹ năng",
+    "projects": "Dự án",
+    "projectsDescription": "Tìm trong các dự án đang hoạt động của bạn",
+    "jobs": "Công việc",
+    "jobsDescription": "Xem công việc do khách hàng đăng",
+    "resultsFor": "Kết quả cho “{{query}}”",
+    "noTalentResults": "Không có freelancer phù hợp với từ khóa này.",
+    "noProjectResults": "Không có dự án phù hợp với từ khóa này.",
+    "tryAnotherSearch": "Hãy thử một từ khóa khác."
+  },
   "footer": {
     "allRightsReserved": "Bản quyền được bảo lưu",
     "termsOfService": "Điều Khoản Dịch Vụ",
