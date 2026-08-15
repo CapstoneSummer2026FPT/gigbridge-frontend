@@ -142,13 +142,13 @@ export function PostJobVisibilityModal({
             })}
           </div>
 
-          <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-700 dark:text-amber-300">
-            <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-600 bg-amber-600 p-4 text-white shadow-sm">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-white" />
             <div>
-              <strong className="block text-sm font-extrabold">
+              <strong className="block text-sm font-extrabold text-white">
                 {t('postJobWizard.visibilityModal.warningTitle')}
               </strong>
-              <p className="mt-1 text-xs font-medium leading-relaxed">
+              <p className="mt-1 text-xs font-medium leading-relaxed text-white/90">
                 {t('postJobWizard.visibilityModal.warning')}
               </p>
             </div>
