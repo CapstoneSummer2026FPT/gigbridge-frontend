@@ -332,29 +332,6 @@ export default function FreelancerPricingScreen() {
           )}
         </section>
 
-        {/* ══════════════════════════════════════
-            CHAPTER 3 — THE REALITY CHECK
-        ══════════════════════════════════════ */}
-        <section className="fp-reality">
-          <p className="fp-reality-label">{t('freelancerPricing.realityLabel')}</p>
-          <div className="fp-reality-grid">
-            <div className="fp-reality-stat">
-              <div className="fp-reality-number">{t('freelancerPricing.realityStat1Num')}</div>
-              <p className="fp-reality-caption">{t('freelancerPricing.realityStat1Title')}</p>
-              <p className="fp-reality-sub">{t('freelancerPricing.realityStat1Sub')}</p>
-            </div>
-            <div className="fp-reality-stat">
-              <div className="fp-reality-number danger">{t('freelancerPricing.realityStat2Num')}</div>
-              <p className="fp-reality-caption">{t('freelancerPricing.realityStat2Title')}</p>
-              <p className="fp-reality-sub">{t('freelancerPricing.realityStat2Sub')}</p>
-            </div>
-            <div className="fp-reality-stat">
-              <div className="fp-reality-number">{t('freelancerPricing.realityStat3Num')}</div>
-              <p className="fp-reality-caption">{t('freelancerPricing.realityStat3Title')}</p>
-              <p className="fp-reality-sub">{t('freelancerPricing.realityStat3Sub')}</p>
-            </div>
-          </div>
-        </section>
 
         {/* ══════════════════════════════════════
             CHAPTER 4 — YOUR WEAPONS

@@ -131,26 +131,6 @@ export default function ClientPremiumScreen() {
         ══════════════════════════════════════ */}
         {tab === 'overview' && (
           <div>
-            {/* REALITY STATS STRIP */}
-            <section className="cp-reality" style={{ padding: '0 0 36px', borderBottom: '1px solid var(--cp-border)' }}>
-              <div className="cp-reality-grid">
-                <div className="cp-reality-stat">
-                  <div className="cp-reality-number">85%</div>
-                  <p className="cp-reality-caption">Faster time-to-hire</p>
-                  <p className="cp-reality-sub">AI job post generator &amp; featured promotions drive instant candidate applications.</p>
-                </div>
-                <div className="cp-reality-stat">
-                  <div className="cp-reality-number">3.8×</div>
-                  <p className="cp-reality-caption">Higher candidate response</p>
-                  <p className="cp-reality-sub">Smart talent matching pushes your post directly to verified candidates matching Major &amp; Skill badges.</p>
-                </div>
-                <div className="cp-reality-stat">
-                  <div className="cp-reality-number">100%</div>
-                  <p className="cp-reality-caption">Automated AI screening</p>
-                  <p className="cp-reality-sub">AI Screener bot interviews applicants upon submission and provides scored transcript summaries.</p>
-                </div>
-              </div>
-            </section>
 
             {/* SUBSCRIPTION CONTROL CARD (HIGH END EDITORIAL PLAN CARD) */}
             <div style={{ padding: '36px 0', borderBottom: '1px solid var(--cp-border)' }}>
