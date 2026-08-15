@@ -19,6 +19,7 @@ import {
   type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
+  addDaysToDateString,
   computeChainedDueDates,
   durationToWeeks,
   formatJobDuration,
@@ -885,11 +886,13 @@ export function usePostJob() {
     setBackgroundHiringPlanStatus('loading');
     setBackgroundHiringPlanError(null);
 
-    const duration = parseJobDuration(generatedData.estimatedDuration);
     const maxAiProposalDays = 21; // 3 weeks max for AI generated proposal end date
+    const maxAiDeadlineIso = new Date(Date.now() + maxAiProposalDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const duration = parseJobDuration(generatedData.estimatedDuration);
     const rawDays = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14;
     const durationDays = Math.min(rawDays, maxAiProposalDays);
-    const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const calculatedDeadline = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const computedDeadline = (form.deadline && form.deadline <= maxAiDeadlineIso) ? form.deadline : calculatedDeadline;
 
     const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
     const canonicalBudgetNum = canonicalBudgetStr ? Number(canonicalBudgetStr) : null;
