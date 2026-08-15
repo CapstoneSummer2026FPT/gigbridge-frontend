@@ -271,7 +271,6 @@
 
 .ai-ctrl-btn,
 .ai-action-btn,
-.ai-composer-mic,
 .ai-composer-send {
   display: inline-flex;
   align-items: center;
@@ -292,12 +291,6 @@
 .ai-ctrl-btn:hover {
   color: var(--ai-text);
   border-color: var(--ai-border-strong);
-}
-
-.ai-ctrl-btn.voice-on {
-  color: var(--ai-brand);
-  border-color: color-mix(in srgb, var(--ai-brand) 28%, transparent);
-  background: color-mix(in srgb, var(--ai-brand) 8%, transparent);
 }
 
 .ai-ctrl-btn.close-btn:hover {
@@ -649,27 +642,11 @@
   margin-top: 0.6rem;
 }
 
-.ai-composer-mic,
 .ai-composer-send {
   flex: 0 0 auto;
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
-}
-
-.ai-composer-mic {
-  color: var(--ai-muted);
-  background: transparent;
-}
-
-.ai-composer-mic:hover {
-  color: var(--ai-text);
-  background: color-mix(in srgb, var(--ai-muted) 10%, transparent);
-}
-
-.ai-composer-mic.listening {
-  color: var(--ai-danger);
-  background: color-mix(in srgb, var(--ai-danger) 10%, transparent);
 }
 
 .ai-composer-counter {
