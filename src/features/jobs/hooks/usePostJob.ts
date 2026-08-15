@@ -428,9 +428,12 @@ export function usePostJob() {
   // edits, add/remove/reorder, or form.deadline changing) since it's a plain memo over
   // the current milestonePlans/form.deadline, not a stateful effect.
   const milestonePlansWithDeadlines = useMemo<JobPostMilestonePlanDto[]>(() => {
-    const dueDates = computeChainedDueDates(form.deadline, milestonePlans.map(milestone => milestone.estimatedDuration));
+    // Milestone calculations start simply from current day (today)
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const anchorDate = addDaysToDateString(todayDateStr, -1);
+    const dueDates = computeChainedDueDates(anchorDate, milestonePlans.map(milestone => milestone.estimatedDuration));
     return milestonePlans.map((milestone, index) => ({ ...milestone, dueDate: dueDates[index] }));
-  }, [form.deadline, milestonePlans]);
+  }, [milestonePlans]);
 
   useEffect(() => {
     let isMounted = true;
@@ -883,7 +886,9 @@ export function usePostJob() {
     setBackgroundHiringPlanError(null);
 
     const duration = parseJobDuration(generatedData.estimatedDuration);
-    const durationDays = (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 2;
+    const maxAiProposalDays = 21; // 3 weeks max for AI generated proposal end date
+    const rawDays = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14;
+    const durationDays = Math.min(rawDays, maxAiProposalDays);
     const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
