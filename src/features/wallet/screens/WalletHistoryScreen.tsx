@@ -17,8 +17,6 @@ import {
   Copy,
   Check,
   X,
-  FileText,
-  Receipt,
   RotateCcw,
   ShieldCheck,
   Coins,
@@ -1065,10 +1063,10 @@ export default function WalletHistoryScreen() {
                   <div className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
                     {getAmountDisplay(viewTransaction)}
                   </div>
-                  {viewTransaction.amount ? (
+                  {viewTransaction.vndAmount > 0 ? (
                     <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--brand)]/10 border border-[var(--brand)]/20 text-xs font-black text-[var(--brand)] shadow-2xs">
                       <Coins size={12} />
-                      ≈ {formatGigCoinToVnd(Math.abs(viewTransaction.amount))} VNĐ
+                      ≈ {fmtNumber(Math.abs(viewTransaction.vndAmount))} VNĐ
                     </span>
                   ) : null}
                 </div>

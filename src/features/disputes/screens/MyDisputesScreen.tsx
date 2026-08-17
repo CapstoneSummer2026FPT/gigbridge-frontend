@@ -11,13 +11,11 @@ import {
   Copy,
   Check,
   Eye,
-  FileText,
   Loader2,
   RefreshCw,
   RotateCcw,
   Scale,
   Search,
-  SlidersHorizontal,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -59,7 +57,6 @@ export default function MyDisputesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const statusLabels: Record<DisputeStatus, string> = useMemo(() => ({
     [DisputeStatus.WaitingAdmin]: t('myDisputes.statusWaitingAdmin', 'Chờ Admin'),

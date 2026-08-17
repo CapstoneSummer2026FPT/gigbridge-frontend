@@ -79,7 +79,7 @@ export function PostJobDraftsModal({
       const major = (draft.majorName || '').toLowerCase();
       const category = (draft.categoryName || '').toLowerCase();
       const skillNames = [
-        ...(draft.skills || []).map(s => s.skillName.toLowerCase()),
+        ...(draft.skills || []).map(s => s.name.toLowerCase()),
         ...(draft.customSkillNames || []).map(s => s.toLowerCase()),
       ];
 
@@ -292,7 +292,7 @@ export function PostJobDraftsModal({
                 const isLatest = idx === 0 && !searchQuery;
                 const budgetText = formatBudget(draft);
                 const allSkills = [
-                  ...(draft.skills || []).map(s => s.skillName),
+                  ...(draft.skills || []).map(s => s.name),
                   ...(draft.customSkillNames || []),
                 ].filter(Boolean);
                 const displaySkills = allSkills.slice(0, 3);
