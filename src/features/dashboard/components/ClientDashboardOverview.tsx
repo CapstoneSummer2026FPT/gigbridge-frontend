@@ -1,5 +1,7 @@
 import {
   ArrowUpRight,
+  CheckCircle2,
+  Clock3,
   ListChecks,
   ShieldCheck,
 } from 'lucide-react';
@@ -43,6 +45,7 @@ export function ClientDashboardOverview({
   eloSummary,
   proposalCounts,
   pendingMilestonesCount,
+  submittedMilestonesCount,
   totalMilestonesCount,
   contractPipelineCounts,
   theme,

@@ -8,6 +8,7 @@ import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../..
 import { JobPostVisibility } from '../../../types/models/Job';
 import { useApp } from '../../../app/providers/AppProvider';
 import { usePremiumStatus } from '../../premium/hooks';
+import { CustomSelect } from '../../../shared/components/CustomSelect';
 import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobVisibilityModal } from '../components/PostJobVisibilityModal';
