@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router';
-import { User, FileText, Briefcase, Building2, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X, Image as ImageIcon, ShieldCheck } from 'lucide-react';
+import { User, FileText, Briefcase, Building2, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X, Image as ImageIcon, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -76,7 +76,7 @@ const initialProfileForm = (user: any): ProfileForm => ({
 
 export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const { user, role } = useApp();
-  const { t } = useTranslation(['settings', 'common']);
+  const { t, i18n } = useTranslation(['settings', 'common']);
   const [searchParams] = useSearchParams();
   const urlSubTab = searchParams.get('subtab') as SubTab | null;
   const [subTab, setSubTab] = useState<SubTab>(urlSubTab || defaultSubTab || 'basic');
@@ -111,6 +111,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItemDto[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const [savingPortfolio, setSavingPortfolio] = useState(false);
+  const [showPortfolioForm, setShowPortfolioForm] = useState(false);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
   const [portfolioForm, setPortfolioForm] = useState<{
     title: string;
@@ -155,6 +156,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
   const [loadingExperience, setLoadingExperience] = useState(false);
   const [savingExperience, setSavingExperience] = useState(false);
+  const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
   const [experienceForm, setExperienceForm] = useState({
     companyName: '',
@@ -245,6 +247,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         if (res.success) {
           toast.success('Portfolio item updated!');
           setEditingPortfolioId(null);
+          setShowPortfolioForm(false);
           setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
           void loadPortfolio();
         } else {
@@ -254,6 +257,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         const res = await portfolioAPI.createPortfolioItem(portfolioForm);
         if (res.success) {
           toast.success('Portfolio item created!');
+          setShowPortfolioForm(false);
           setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
           void loadPortfolio();
         } else {
@@ -291,6 +295,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       projectUrl: item.projectUrl || '',
       projectDate: item.projectDate || '',
     });
+    setShowPortfolioForm(true);
   };
 
   const handleSaveWorkExperience = async (e: React.FormEvent) => {
@@ -320,6 +325,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         if (res.success) {
           toast.success('Work experience updated!');
           setEditingExperienceId(null);
+          setShowExperienceForm(false);
           setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
           void loadWorkExperiences();
         } else {
@@ -329,6 +335,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         const res = await workExperienceAPI.createWorkExperience(experienceForm);
         if (res.success) {
           toast.success('Work experience created!');
+          setShowExperienceForm(false);
           setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
           void loadWorkExperiences();
         } else {
@@ -366,6 +373,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       endDate: item.endDate || '',
       description: item.description || '',
     });
+    setShowExperienceForm(true);
   };
 
   // GSAP Sub-Tab Transition Animation
