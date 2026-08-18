@@ -198,7 +198,20 @@
     "discardDraft": "Hủy Bản Nháp",
     "activateInstantFirst": "Vui lòng kích hoạt 'Tạo Chi Tiết Công Việc Tức Thì' trước khi xem hướng dẫn.",
     "aiGeneratingDetails": "AI đang tạo thông tin chi tiết công việc...",
-    "budgetCurrencyGuide": "Hướng dẫn Đơn vị Ngân sách"
+    "budgetCurrencyGuide": "Hướng dẫn Đơn vị Ngân sách",
+    "searchDraftsPlaceholder": "Tìm kiếm theo tiêu đề, kỹ năng, ngành nghề...",
+    "latestDraftBadge": "Mới nhất",
+    "draftBadge": "Bản nháp",
+    "aiGeneratedBadge": "AI tạo",
+    "noSearchResults": "Không tìm thấy bản nháp phù hợp",
+    "noSearchMatchDesc": "Không tìm thấy bản nháp nào khớp với từ khóa \"{{query}}\".",
+    "clearSearch": "Xóa bộ lọc",
+    "deleteDraft": "Xóa bản nháp",
+    "continueEditing": "Tiếp tục chỉnh sửa",
+    "autoSaveNote": "Bản nháp được lưu tự động trong quá trình soạn thảo.",
+    "noBudgetSet": "Chưa đặt ngân sách",
+    "refreshDrafts": "Làm mới danh sách",
+    "draftCount": "{{count}} bản nháp"
   },
   "postJobGuide": {
     "badge": "Hướng Dẫn & Chế Độ Đăng Tin",
