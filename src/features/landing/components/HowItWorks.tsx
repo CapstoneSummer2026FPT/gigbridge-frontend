@@ -353,10 +353,9 @@ export default function HowItWorks() {
 
             {/* Active Traveling Energy Light Beam */}
             <div
-              className="absolute top-[-1px] h-[4px] rounded-full bg-gradient-to-r from-transparent via-foreground to-transparent shadow-[0_0_20px_rgba(255,255,255,0.9)] dark:shadow-[0_0_20px_rgba(255,255,255,0.7)] transition-all duration-700 ease-in-out"
+              className="absolute top-[-1px] left-0 h-[4px] w-1/3 rounded-full bg-gradient-to-r from-transparent via-foreground to-transparent shadow-[0_0_20px_rgba(255,255,255,0.9)] dark:shadow-[0_0_20px_rgba(255,255,255,0.7)] transition-transform duration-700 ease-in-out will-change-transform"
               style={{
-                width: '33.33%',
-                left: activeStep === 0 ? '0%' : activeStep === 1 ? '33.33%' : '66.66%',
+                transform: `translate3d(${activeStep * 100}%, 0, 0)`,
               }}
             />
           </div>
