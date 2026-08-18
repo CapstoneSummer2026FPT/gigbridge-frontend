@@ -27,6 +27,7 @@ import {
 } from '../utils/browseJobsView';
 import { BrowseJobCategoryTags } from '../components/BrowseJobCategoryTags';
 import { ConicBorderButton } from '../../../shared/components/ConicBorderButton';
+import { AuthInviteModal } from '../../../shared/components/AuthInviteModal';
 
 const PAGE_SIZE = 20;
 const WORK_TYPES = ['All', 'fixed'];
@@ -60,6 +61,7 @@ export default function BrowseJobsScreen() {
   }, [setParams]);
 
   const { user, role } = useApp();
+  const [showAuthInvite, setShowAuthInvite] = useState(false);
   const isFreelancer = role === UserRole.Freelancer;
   const hasExplicitBrowseCriteria = Boolean(params.get('q')?.trim() || params.get('cat'));
   const [search, setSearch] = useState(sanitizeSearch(params.get('q') || ''));
@@ -458,6 +460,10 @@ export default function BrowseJobsScreen() {
   };
 
   const openJob = (job: BrowseJob) => {
+    if (!user) {
+      setShowAuthInvite(true);
+      return;
+    }
     void jobGetAPI.recordJobOpen(job.id, searchEventId);
     navigate(`/jobs/${job.id}`, { state: { job, searchEventId } });
   };
@@ -474,7 +480,11 @@ export default function BrowseJobsScreen() {
   };
 
   const findMatchingJobs = (): void => {
-    if (!user || !isFreelancer) {
+    if (!user) {
+      setShowAuthInvite(true);
+      return;
+    }
+    if (!isFreelancer) {
       toast.error(t('jobs.onlyFreelancersCanSave'));
       return;
     }
@@ -546,7 +556,11 @@ export default function BrowseJobsScreen() {
       return;
     }
 
-    if (!user || !isFreelancer) {
+    if (!user) {
+      setShowAuthInvite(true);
+      return;
+    }
+    if (!isFreelancer) {
       toast.error('Please log in as a freelancer to save jobs.');
       return;
     }
@@ -1034,6 +1048,10 @@ export default function BrowseJobsScreen() {
           </aside>
         </div>
       </div>
+      <AuthInviteModal
+        isOpen={showAuthInvite}
+        onClose={() => setShowAuthInvite(false)}
+      />
     </AppLayout>
   );
 }

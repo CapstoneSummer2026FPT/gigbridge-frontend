@@ -96,13 +96,11 @@ export default function Hero() {
   };
 
   const handleFindWork = () => {
-    localStorage.setItem('selected_role', '1');
-    navigate('/auth/signup');
+    navigate('/jobs');
   };
 
   const handleHireTalent = () => {
-    localStorage.setItem('selected_role', '0');
-    navigate('/auth/signup');
+    navigate('/talent-matching');
   };
 
   return (
@@ -173,9 +171,16 @@ export default function Hero() {
               GIGBR<b>I</b>DGE
             </h1>
 
-            <p className="mb-5 max-w-64 font-robert-regular text-blue-100">
-              {t('landing.hero.tagline')} <br /> {t('landing.hero.tagline2')}
-            </p>
+            <div className="mb-5 max-w-md font-robert-regular text-blue-100">
+              <p className="text-lg font-semibold sm:text-xl">
+                {t('landing.hero.tagline')} <br /> {t('landing.hero.tagline2')}
+              </p>
+              {t('landing.hero.subtext') && (
+                <p className="mt-2 text-sm sm:text-base opacity-90">
+                  {t('landing.hero.subtext')}
+                </p>
+              )}
+            </div>
 
             <div className="flex gap-3">
               <Button

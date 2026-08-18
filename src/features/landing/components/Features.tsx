@@ -182,11 +182,16 @@ export default function Features() {
 
           <BentoTilt className="bento-tilt_2 col-span-1 row-span-1">
             <div className="flex size-full flex-col justify-between bg-secondary p-5 text-secondary-foreground">
-              <h1
-                className="bento-title special-font max-w-64"
-                dangerouslySetInnerHTML={{ __html: t('landing.features.expandingTitle') }}
-              />
-              <TiLocationArrow className="m-5 scale-[5] self-end text-secondary-foreground" />
+              <div>
+                <h1
+                  className="bento-title special-font max-w-64"
+                  dangerouslySetInnerHTML={{ __html: t('landing.features.workspaceTitle') }}
+                />
+                <p className="mt-2 text-xs md:text-sm text-secondary-foreground/80 font-circular-web">
+                  {t('landing.features.workspaceDesc')}
+                </p>
+              </div>
+              <TiLocationArrow className="m-5 scale-[5] self-end text-secondary-foreground opacity-80" />
             </div>
           </BentoTilt>
 

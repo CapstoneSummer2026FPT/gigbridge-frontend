@@ -30,12 +30,13 @@ export interface InviteTarget {
 const savedProfileId = (item: SavedFreelancerDto) =>
   item.freelancerProfileId ?? item.freelancerProfilesId ?? '';
 
-const freelancerProfileId = (item: FreelancerSummaryDto) => item.freelancerProfilesId;
+const freelancerProfileId = (item: any) =>
+  item.freelancerProfilesId || item.freelancerProfileId || item.userId || '';
 
 export function useSmartTalentMatching() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { role } = useApp();
+  const { role, user } = useApp();
   const { t } = useTranslation();
   const premiumStatus = usePremiumStatus(role);
   const hasSmartMatchingAccess = canUseSmartMatching(role, premiumStatus.isPremium);
@@ -69,7 +70,7 @@ export function useSmartTalentMatching() {
   const categoryOptions = useMemo(() => {
     const options = new Map<string, string>();
     freelancers.forEach(freelancer => {
-      freelancer.categories.forEach(category => options.set(category.majorCategoryId, category.name));
+      (freelancer.categories || []).forEach(category => options.set(category.majorCategoryId, category.name));
     });
     jobs.forEach(job => {
       if (job.majorCategoryId) {
@@ -85,6 +86,34 @@ export function useSmartTalentMatching() {
     setLoadingInitial(true);
     setJobsError(null);
     setBrowseError(null);
+
+    if (!user) {
+      setJobs([]);
+      setSaved([]);
+      try {
+        const publicResponse = await profileGetAPI.getPublicFreelancers({ page: 1, pageSize: 50, sort: 'featured' });
+        if (publicResponse.success && publicResponse.data) {
+          const mapped = (publicResponse.data.items || []).map(item => ({
+            ...item,
+            freelancerProfilesId: item.userId,
+            categories: (item as any).categories || [],
+            skills: (item.skills || []).map(s => typeof s === 'string' ? { skillId: s, skillName: s } : { skillId: (s as any).skillName || s, skillName: (s as any).skillName || s }),
+            rating: item.rating ?? 0,
+            eloPoints: (item as any).eloPoints ?? 1000,
+          })) as unknown as FreelancerSummaryDto[];
+          setFreelancers(mapped);
+        } else {
+          setFreelancers([]);
+        }
+      } catch (err) {
+        console.error('Failed to load public freelancers:', err);
+        setFreelancers([]);
+      } finally {
+        setLoadingInitial(false);
+      }
+      return;
+    }
+
     const [jobsResponse, freelancersResponse, savedResult] = await Promise.allSettled([
       jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 }),
       profileGetAPI.getFreelancers({ page: 1, pageSize: 50, sort: 'featured' }),
@@ -128,7 +157,7 @@ export function useSmartTalentMatching() {
 
     setSaved(savedResult.status === 'fulfilled' ? savedResult.value : []);
     setLoadingInitial(false);
-  }, [t]);
+  }, [searchParams, t, user]);
 
   useEffect(() => {
     void loadInitialData();
@@ -200,6 +229,8 @@ export function useSmartTalentMatching() {
       if (activeStage === 'saved' && !savedIds.has(profileId)) return false;
       if (
         majorCategoryId &&
+        freelancer.categories &&
+        freelancer.categories.length > 0 &&
         !freelancer.categories.some(category => category.majorCategoryId === majorCategoryId)
       ) return false;
       if (!normalized) return true;
@@ -209,8 +240,8 @@ export function useSmartTalentMatching() {
         freelancer.bio,
         freelancer.location,
         freelancer.majorName,
-        ...freelancer.skills.map(skill => skill.skillName),
-        ...freelancer.categories.map(category => category.name),
+        ...(freelancer.skills || []).map(skill => typeof skill === 'string' ? skill : skill.skillName),
+        ...(freelancer.categories || []).map(category => category.name),
       ]
         .filter(Boolean)
         .join(' ')
