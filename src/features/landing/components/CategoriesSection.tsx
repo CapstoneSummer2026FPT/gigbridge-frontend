@@ -39,6 +39,15 @@ export default function CategoriesSection() {
     };
   }, []);
 
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const items: DriftWallItem[] = useMemo(() => {
     return categories.map((cat) => ({
       title: cat.name_vi || cat.name,
@@ -68,18 +77,18 @@ export default function CategoriesSection() {
       </div>
 
       {/* 3D Drifting Wall of System Categories */}
-      <div className="relative w-full h-[440px] md:h-[500px] border-y border-border/40 bg-secondary/10">
+      <div className="relative w-full h-[380px] sm:h-[440px] md:h-[500px] border-y border-border/40 bg-secondary/10">
         {!loading && items.length > 0 ? (
           <DriftWall
             items={items}
-            columns={5}
-            tileWidth={230}
-            tileHeight={64}
-            gap={16}
+            columns={isMobile ? 2 : 5}
+            tileWidth={isMobile ? 140 : 230}
+            tileHeight={isMobile ? 48 : 64}
+            gap={isMobile ? 10 : 16}
             radius={14}
-            tilt={14}
-            turn={-12}
-            depth={90}
+            tilt={isMobile ? 8 : 14}
+            turn={isMobile ? -6 : -12}
+            depth={isMobile ? 50 : 90}
             speed={35}
             pauseOnHover={false}
             fade={0.5}

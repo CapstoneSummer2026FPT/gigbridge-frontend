@@ -84,7 +84,7 @@ export default function Pathways() {
         {/* 2 Bento Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-7 w-full">
           {/* Card 1: Doanh nghiệp */}
-          <BentoTilt className="border-hsla relative h-[540px] md:h-[580px] w-full overflow-hidden rounded-md">
+          <BentoTilt className="border-hsla relative min-h-[500px] h-auto md:h-[580px] w-full overflow-hidden rounded-md @container">
             <div className="relative size-full">
               <img
                 src="/img/pathway-client.jpg"
@@ -137,7 +137,7 @@ export default function Pathways() {
           </BentoTilt>
 
           {/* Card 2: Freelancer */}
-          <BentoTilt className="border-hsla relative h-[540px] md:h-[580px] w-full overflow-hidden rounded-md">
+          <BentoTilt className="border-hsla relative min-h-[500px] h-auto md:h-[580px] w-full overflow-hidden rounded-md @container">
             <div className="relative size-full">
               <img
                 src="/img/pathway-freelancer.jpg"

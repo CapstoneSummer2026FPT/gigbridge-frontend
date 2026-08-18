@@ -42,6 +42,8 @@
     var(--mint, #AFDBFF) 360deg
   );
   animation: conic-border-rotate 3.5s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* Color Variants */
