@@ -81,6 +81,10 @@ export interface ConversationUpdatedEvent {
   unreadCount: number;
 }
 
+export interface ConversationUnreadCountResponse {
+  unreadCount: number;
+}
+
 export interface ConversationMessageResponse extends MessageResponse {}
 
 export const messageGetAPI = {
@@ -96,6 +100,13 @@ export const messageGetAPI = {
    */
   getMyConversations: async (): Promise<ApiResponse<ConversationSummaryResponse[]>> => {
     return apiService.get<ConversationSummaryResponse[]>('conversations');
+  },
+
+  /**
+   * GET /api/conversations/unread-count
+   */
+  getUnreadCount: async (): Promise<ApiResponse<ConversationUnreadCountResponse>> => {
+    return apiService.get<ConversationUnreadCountResponse>('conversations/unread-count');
   },
 
   /**

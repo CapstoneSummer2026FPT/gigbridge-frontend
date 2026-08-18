@@ -64,6 +64,7 @@ interface PreparedSignatureImage {
 
 const PDF_SIGNATURE_MAX_WIDTH = 220;
 const PDF_SIGNATURE_MAX_HEIGHT = 80;
+const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
 
 const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImage => {
   const fallbackScale = Math.min(
@@ -276,8 +277,10 @@ export default function SignatureWorkflowScreen() {
     if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
 
     const intervalId = window.setInterval(() => {
-      void refreshWorkflow();
-    }, 5000);
+      if (window.document.visibilityState === 'visible') {
+        void refreshWorkflow();
+      }
+    }, ESIGN_STATUS_FALLBACK_POLL_MS);
 
     return () => window.clearInterval(intervalId);
   }, [isWaitingForCounterpart, refreshWorkflow, signatureStep]);
@@ -521,22 +524,6 @@ export default function SignatureWorkflowScreen() {
 
     return nextStatus;
   }, [contractId, loadDocument]);
-
-  useEffect(() => {
-    if (
-      signatureStep !== 'complete' ||
-      !hasValidCurrentUserDraft ||
-      contract?.status !== ContractStatus.PendingSignature
-    ) {
-      return undefined;
-    }
-
-    const intervalId = window.setInterval(() => {
-      void refreshAfterSigning();
-    }, 5_000);
-
-    return () => window.clearInterval(intervalId);
-  }, [contract?.status, hasValidCurrentUserDraft, refreshAfterSigning, signatureStep]);
 
   const handleSubmitSignature = async () => {
     if (!contract || !hasSignatureForDraft) return;

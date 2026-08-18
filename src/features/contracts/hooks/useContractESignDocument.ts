@@ -11,6 +11,8 @@ export interface ContractESignDocumentState {
   retry: () => void;
 }
 
+const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
+
 export const contractStatusMayHaveESignDocument = (status: ContractStatus): boolean =>
   [
     ContractStatus.PendingSignature,
@@ -93,8 +95,10 @@ export function useContractESignDocument(
     }
 
     const pollTimer = window.setInterval(() => {
-      setRequestVersion(version => version + 1);
-    }, 5000);
+      if (window.document.visibilityState === 'visible') {
+        setRequestVersion(version => version + 1);
+      }
+    }, ESIGN_STATUS_FALLBACK_POLL_MS);
 
     return () => window.clearInterval(pollTimer);
   }, [contractId, document?.status, enabled]);

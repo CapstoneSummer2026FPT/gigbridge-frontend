@@ -28,6 +28,8 @@ interface TopNavProps {
   showMenuButton?: boolean;
 }
 
+const UNREAD_MESSAGES_FALLBACK_POLL_MS = 60_000;
+
 const navItems = [
   { label: 'Browse Jobs', path: '/jobs/browse' },
   { label: 'About', path: '/about' },
@@ -117,10 +119,9 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         return;
       }
       try {
-        const response = await messageGetAPI.getMyConversations();
-        if (isMounted && response.success && Array.isArray(response.data)) {
-          const totalUnread = response.data.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0);
-          setUnreadMessagesCount(totalUnread);
+        const response = await messageGetAPI.getUnreadCount();
+        if (isMounted && response.success && response.data) {
+          setUnreadMessagesCount(response.data.unreadCount || 0);
         }
       } catch (err) {
         // Safe fallback
@@ -128,7 +129,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     };
 
     void fetchUnreadMessages();
-    const intervalId = window.setInterval(fetchUnreadMessages, 15000);
+    const intervalId = window.setInterval(() => {
+      if (window.document.visibilityState === 'visible') {
+        void fetchUnreadMessages();
+      }
+    }, UNREAD_MESSAGES_FALLBACK_POLL_MS);
     window.addEventListener('gigbridge-messages-updated', fetchUnreadMessages);
 
     return () => {
