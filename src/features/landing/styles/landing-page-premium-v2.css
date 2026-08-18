@@ -219,8 +219,8 @@ body {
 }
 @media (min-width: 640px) {
   .animated-title {
-    padding-left: 8rem;
-    padding-right: 8rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
 }
 @media (min-width: 768px) {
@@ -237,6 +237,11 @@ body {
   transform: translate3d(10px, 51px, -60px) rotateY(60deg) rotateX(-40deg);
   transform-origin: 50% 50% -150px !important;
   will-change: opacity, transform;
+}
+
+.mix-blend-difference,
+.mix-blend-difference .animated-word {
+  color: #ffffff !important;
 }
 
 .bento-tilt_1 {

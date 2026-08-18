@@ -17,6 +17,7 @@ import { usePremiumStatus } from '../../features/premium/hooks';
 import { UserAvatar } from './UserAvatar';
 import { getProfilePath } from '../hooks/useProfileNavigation';
 import { TopNavSearch } from './TopNavSearch';
+import { AuthInviteModal } from './AuthInviteModal';
 import {
   getTopNavSearchPath,
   TOP_NAV_SEARCH_SCOPE,
@@ -29,10 +30,10 @@ interface TopNavProps {
 }
 
 const navItems = [
-  { label: 'Browse Jobs', path: '/jobs/browse' },
-  { label: 'About', path: '/about' },
-  { label: 'FAQ', path: '/faq' },
-  { label: 'Contact', path: '#contact' }
+  { label: 'Find Work', path: '/jobs' },
+  { label: 'Hire Talent', path: '/talent-matching' },
+  { label: 'How GigBridge works', path: '#how-it-works' },
+  { label: 'FAQ', path: '/faq' }
 ];
 
 export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}) {
@@ -43,6 +44,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showSearchScopeMenu, setShowSearchScopeMenu] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [searchVal, setSearchVal] = useState('');
@@ -71,10 +73,10 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   }, [role]);
 
   const localizedNavItems = navItems.map(item => {
-    if (item.label === 'Browse Jobs') return { ...item, label: t('nav.browseJobs') };
-    if (item.label === 'About') return { ...item, label: t('nav.about') };
+    if (item.label === 'Find Work') return { ...item, label: t('nav.findWork') };
+    if (item.label === 'Hire Talent') return { ...item, label: t('nav.hireTalent') };
+    if (item.label === 'How GigBridge works') return { ...item, label: t('nav.howItWorks') };
     if (item.label === 'FAQ') return { ...item, label: t('nav.faq') };
-    if (item.label === 'Contact') return { ...item, label: t('nav.contact') };
     return item;
   });
 
@@ -266,21 +268,23 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             <div className="flex h-full items-center">
               <div className="hidden md:block">
                 {localizedNavItems.map((item, index) => {
-                  if (item.path.startsWith('#')) {
-                    return (
-                      <a
-                        key={index}
-                        href={item.path}
-                        className="nav-hover-btn"
-                      >
-                        {item.label}
-                      </a>
-                    );
-                  }
+                  const handleClick = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    if (item.path.startsWith('#')) {
+                      const id = item.path.replace('#', '');
+                      const el = document.getElementById(id);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                      return;
+                    }
+                    navigate(item.path);
+                  };
+
                   return (
                     <span
                       key={index}
-                      onClick={() => navigate(item.path)}
+                      onClick={handleClick}
                       className="nav-hover-btn"
                     >
                       {item.label}
@@ -321,6 +325,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             </div>
           </nav>
         </header>
+
+        {/* Guest Auth Invitation Modal */}
+        <AuthInviteModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
       </div>
     );
   }
@@ -638,6 +648,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       {(showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu) && (
         <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }} />
       )}
+
+      {/* Guest Auth Invitation Modal */}
+      <AuthInviteModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 }

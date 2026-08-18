@@ -270,7 +270,7 @@ export const router = createBrowserRouter([
       { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },
       { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
       { path: 'ai-interview/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
-      { path: 'talent-matching', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><SmartTalentMatchingScreen /></ProtectedRoute> },
+      { path: 'talent-matching', element: <SmartTalentMatchingScreen /> },
 
       // Settings - requires authentication
       { path: 'settings', element: <ProtectedRoute requireAuth><SettingsScreen /></ProtectedRoute> },

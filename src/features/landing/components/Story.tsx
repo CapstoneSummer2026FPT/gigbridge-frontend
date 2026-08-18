@@ -58,7 +58,7 @@ export default function Story() {
         <div className="relative size-full">
           <AnimatedTitle
             title={t('landing.story.animatedTitle')}
-            containerClass="mt-5 pointer-events-none mix-blend-difference relative z-10"
+            containerClass="mt-5 pointer-events-none mix-blend-difference relative z-10 !text-white"
           />
 
           <div className="story-img-container">
