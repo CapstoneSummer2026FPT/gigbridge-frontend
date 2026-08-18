@@ -154,8 +154,7 @@ body {
   text-transform: uppercase;
   font-family: var(--font-zentry);
   font-weight: 900;
-  font-size: clamp(2.2rem, 8.5vw, 10rem);
-  line-height: 1.02;
+  font-size: clamp(2.5rem, 11vw, 12rem);
 }
 
 .about-subtext {
@@ -197,16 +196,16 @@ body {
 .animated-title {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  font-size: clamp(1.85rem, 5.5vw, 5.25rem);
+  gap: 0.25rem;
+  font-size: clamp(2rem, 6.5vw, 6rem);
   text-transform: uppercase;
-  line-height: 1.08;
+  line-height: 0.85;
   color: var(--foreground);
 }
 @media (min-width: 640px) {
   .animated-title {
-    padding-left: 8rem;
-    padding-right: 8rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
 }
 
@@ -237,10 +236,9 @@ body {
 
 .bento-title {
   text-transform: uppercase;
-  font-size: clamp(1.6rem, 4vw, 3.25rem);
+  font-size: clamp(1.75rem, 4.5vw, 3.75rem);
   font-weight: 900;
   font-family: var(--font-zentry);
-  line-height: 1.08;
 }
 
 .story-img-container {
@@ -275,13 +273,10 @@ body {
 .story-img-content {
   position: absolute;
   width: 100%;
-  height: 100%;
-  opacity: 1;
+  height: 50dvh;
+  opacity: 100;
   left: 0;
-  top: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: 1rem;
   transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) rotateZ(0) scale(1);
 }
 

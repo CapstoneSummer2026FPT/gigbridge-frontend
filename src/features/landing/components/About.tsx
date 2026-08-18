@@ -30,8 +30,8 @@ export default function About() {
 
   return (
     <div id="about" className="min-h-screen w-full">
-      <div className="relative mb-12 mt-28 md:mt-36 flex flex-col items-center gap-4 px-4 text-center">
-        <p className="font-general text-xs md:text-sm uppercase tracking-widest text-muted-foreground">
+      <div className="relative mb-8 mt-36 flex flex-col items-center gap-5">
+        <p className="font-general text-sm uppercase md:text-[10px]">
           {t('landing.about.welcome')}
         </p>
 
