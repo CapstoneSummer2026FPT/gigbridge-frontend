@@ -41,6 +41,36 @@ export default function LandingPagePremium() {
   return (
     <GuestLayout excludeMeshGradient>
       <main className="relative min-h-screen w-screen overflow-x-hidden bg-background text-foreground transition-colors duration-300">
+
+        {/* Floating Decorative 3D Glass Icon 2 - Near Features / Pathways */}
+        <div className="absolute top-[44%] left-[1.5vw] z-0 hidden lg:block w-56 h-56 lg:w-72 lg:h-72 pointer-events-none opacity-40 lg:opacity-60 drop-shadow-2xl">
+          <GlassIcon
+            background="transparent"
+            shape="Logo"
+            logo="/img/logo.png"
+            size={125}
+            depth={15}
+            speed={25}
+            direction="Counterclockwise"
+            backdrop={{ type: "None" }}
+            glass={{ chromatic: 75, frost: 25, tint: "#ffffff" }}
+          />
+        </div>
+
+        {/* Floating Decorative 3D Glass Icon 3 - Near Story / Contact / Footer */}
+        <div className="absolute top-[80%] right-[2.5vw] z-0 hidden md:block w-44 h-44 lg:w-56 lg:h-56 pointer-events-none opacity-40 lg:opacity-60 drop-shadow-xl">
+          <GlassIcon
+            background="transparent"
+            shape="Logo"
+            logo="/img/logo.png"
+            size={80}
+            depth={10}
+            speed={35}
+            backdrop={{ type: "None" }}
+            glass={{ chromatic: 50, frost: 15, tint: "#ffffff" }}
+          />
+        </div>
+
         <TopNav />
         <Hero />
         <About />

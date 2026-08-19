@@ -161,22 +161,22 @@ export default function Hero() {
           />
         </div>
 
-        <h1 className="special-font hero-heading absolute bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 text-blue-75 opacity-70 sm:opacity-100">
+        <h1 className="special-font hero-heading absolute bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 text-blue-75 opacity-70 sm:opacity-100 hidden sm:block pointer-events-none select-none">
           BU<b>I</b>LD
         </h1>
 
-        <div className="absolute left-0 top-0 z-40 size-full">
-          <div className="mt-20 sm:mt-24 px-4 sm:px-10">
-            <h1 className="special-font hero-heading text-blue-100">
+        <div className="absolute left-0 top-0 z-40 size-full pointer-events-none">
+          <div className="mt-16 sm:mt-24 px-4 sm:px-10 pointer-events-auto">
+            <h1 className="special-font hero-heading text-blue-100 drop-shadow-md">
               GIGBR<b>I</b>DGE
             </h1>
 
-            <div className="mb-5 max-w-md font-robert-regular text-blue-100">
-              <p className="text-base sm:text-xl font-semibold leading-tight">
+            <div className="mb-5 max-w-md font-robert-regular text-blue-100 drop-shadow-sm">
+              <p className="text-base sm:text-xl font-semibold leading-snug">
                 {t('landing.hero.tagline')} <br /> {t('landing.hero.tagline2')}
               </p>
               {t('landing.hero.subtext') && (
-                <p className="mt-2 text-xs sm:text-base opacity-90">
+                <p className="mt-2 text-xs sm:text-base opacity-90 leading-relaxed">
                   {t('landing.hero.subtext')}
                 </p>
               )}
@@ -188,20 +188,20 @@ export default function Hero() {
                 title={t('landing.hero.findWork')}
                 leftIcon={<TiLocationArrow />}
                 onClick={handleFindWork}
-                containerClass="bg-yellow-300 flex-center gap-1 min-h-[44px] min-w-[130px]"
+                containerClass="bg-yellow-300 flex-center gap-1 min-h-[44px] min-w-[130px] shadow-lg hover:shadow-xl transition-all"
               />
               <Button
                 id="hire-talent-btn"
                 title={t('landing.hero.hireTalent')}
                 onClick={handleHireTalent}
-                containerClass="bg-blue-50 flex-center gap-1 border border-white/10 min-h-[44px] min-w-[130px]"
+                containerClass="bg-blue-50 flex-center gap-1 border border-white/10 min-h-[44px] min-w-[130px] shadow-lg hover:shadow-xl transition-all"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <h1 className="special-font hero-heading absolute bottom-3 right-3 sm:bottom-5 sm:right-5 text-background opacity-70 sm:opacity-100">
+      <h1 className="special-font hero-heading absolute bottom-3 right-3 sm:bottom-5 sm:right-5 text-background opacity-70 sm:opacity-100 hidden sm:block pointer-events-none select-none">
         BU<b>I</b>LD
       </h1>
     </div>

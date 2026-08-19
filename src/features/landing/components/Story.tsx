@@ -108,9 +108,9 @@ export default function Story() {
           </div>
         </div>
 
-        <div className="-mt-80 flex w-full justify-center md:-mt-64 md:me-44 md:justify-end">
-          <div className="flex h-full w-fit flex-col items-center md:items-start">
-            <p className="mt-3 max-w-sm text-center font-circular-web text-muted-foreground md:text-start">
+        <div className="mt-8 flex w-full justify-center md:mt-10 md:me-36 md:justify-end px-4">
+          <div className="flex h-full w-fit flex-col items-center md:items-start max-w-md">
+            <p className="mt-2 text-center font-circular-web text-sm md:text-base text-muted-foreground md:text-start leading-relaxed">
               {t('landing.story.desc')}
             </p>
 
@@ -118,7 +118,7 @@ export default function Story() {
               id="realm-btn"
               title={t('landing.story.cta')}
               onClick={() => navigate('/guide')}
-              containerClass="mt-5"
+              containerClass="mt-5 shadow-lg hover:shadow-xl transition-all"
             />
           </div>
         </div>
