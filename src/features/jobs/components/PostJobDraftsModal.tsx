@@ -79,7 +79,7 @@ export function PostJobDraftsModal({
       const major = (draft.majorName || '').toLowerCase();
       const category = (draft.categoryName || '').toLowerCase();
       const skillNames = [
-        ...(draft.skills || []).map(s => s.name.toLowerCase()),
+        ...(draft.skills || []).map(s => (s.name || '').toLowerCase()),
         ...(draft.customSkillNames || []).map(s => s.toLowerCase()),
       ];
 
