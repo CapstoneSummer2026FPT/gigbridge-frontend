@@ -389,7 +389,7 @@ export default function SignupScreen() {
       {/* Left Panel - Premium Visual Brand with Full Image & Gradient */}
       <div className="hidden lg:flex flex-col flex-1 relative overflow-hidden p-12 auth-left-panel select-none"
         style={{
-          backgroundImage: "url('/img/entrance.png')",
+          backgroundImage: "url('/img/entrance.jpg')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}>

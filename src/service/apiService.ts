@@ -143,6 +143,11 @@ apiClient.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
+      const currentToken = localStorage.getItem('access_token');
+      if (!currentToken) {
+        return Promise.reject(error);
+      }
+
       try {
         const newAccessToken = await refreshAccessToken();
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
