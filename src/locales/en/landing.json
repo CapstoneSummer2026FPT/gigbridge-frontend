@@ -1,8 +1,9 @@
 {
   "landing": {
     "hero": {
-      "tagline": "Discover Skilled Freelancers",
-      "tagline2": "Connect Through Smart Matching",
+      "tagline": "Connect with the right freelancers.",
+      "tagline2": "Deliver better results.",
+      "subtext": "GigBridge helps businesses hire freelancers in Vietnam and connects specialists with ideal freelance opportunities in a transparent workflow.",
       "findWork": "Find Work",
       "hireTalent": "Hire Talent"
     },
@@ -23,15 +24,60 @@
       "contractsDesc": "Protect your collaboration with legally-binding, digital e-signed contract templates built directly into the workflow.",
       "aiPilotTitle": "ai cop<b>i</b>lot",
       "aiPilotDesc": "AI interview screening tools and assistants help screen candidates and draft detailed project scopes quickly.",
+      "workspaceTitle": "real<b>t</b>ime wo<b>r</b>kspace",
+      "workspaceDesc": "Unified workspace for real-time tracking, direct messaging, and milestone approval.",
       "expandingTitle": "Expa<b>n</b>ding the ec<b>o</b>system s<b>o</b>on.",
       "explore": "explore",
       "featureAlt": "Feature Illustration",
       "workspaceAlt": "Workspace Illustration"
     },
+    "howItWorks": {
+      "badge": "How It Works",
+      "stepBadge": "STEP",
+      "animatedTitle": "How GigBridge w<b>o</b>rks",
+      "subtitle": "From idea to result in three clear steps",
+      "tabClient": "For Clients",
+      "tabFreelancer": "For Freelancers",
+      "client": {
+        "cta": "Start hiring freelancers",
+        "step1": {
+          "title": "Post project needs",
+          "desc": "Describe goals, required skills, and estimated budget for your project."
+        },
+        "step2": {
+          "title": "Select the right match",
+          "desc": "Explore profiles, communicate, and select the ideal freelancer for the job."
+        },
+        "step3": {
+          "title": "Collaborate securely",
+          "desc": "Track milestones, contracts, and payments in one transparent workflow."
+        }
+      },
+      "freelancer": {
+        "cta": "Create freelancer profile",
+        "step1": {
+          "title": "Build your profile",
+          "desc": "Showcase your skills, experience, and highlight portfolio projects."
+        },
+        "step2": {
+          "title": "Find opportunities",
+          "desc": "Search for matching freelance jobs and submit direct proposals."
+        },
+        "step3": {
+          "title": "Work and grow",
+          "desc": "Complete milestones, receive payments, and build long-term reputation."
+        }
+      }
+    },
+    "categoriesWall": {
+      "badge": "Industry Ecosystem",
+      "animatedTitle": "Explore a<b>l</b>l spec<b>i</b>alized fields",
+      "subtitle": "Discover thousands of project opportunities and top talent categorized in depth."
+    },
     "story": {
       "label": "the secure connection bridge",
       "animatedTitle": "the st<b>o</b>ry of <br /> trust in f<b>l</b>ow",
-      "desc": "Where businesses and creators converge, lies Gigbridge. Discover the ease of secure milestone payments, legally-binding contracts, and smart matching, working together under one clear workflow.",
+      "desc": "Where clients and creators converge, lies Gigbridge. Discover the ease of secure milestone payments, legally-binding contracts, and smart matching, working together under one clear workflow.",
       "cta": "read user guides"
     },
     "contact": {
@@ -39,6 +85,33 @@
       "animatedTitle": "let&#39;s b<b>u</b>ild the <br /> new era of <br /> co<b>l</b>laboration t<b>o</b>gether.",
       "cta": "get started",
       "imageAlt": "collage asset"
+    },
+    "pathways": {
+      "label": "Start Your Way",
+      "animatedTitle": "one pl<b>a</b>tform, <br /> two p<b>a</b>ths to gr<b>o</b>wth",
+      "desc": "GigBridge creates a clear meeting point for client needs and freelancer career goals.",
+      "client": {
+        "badge": "For Clients",
+        "cardTitle": "cl<b>i</b>ent",
+        "title": "Turn needs into results with the right experts",
+        "bullets": [
+          "Discover public profiles by expertise",
+          "Manage proposals, contracts, and milestones",
+          "Track progress in a shared workspace"
+        ],
+        "cta": "Explore Freelancers"
+      },
+      "freelancer": {
+        "badge": "For Freelancers",
+        "cardTitle": "free<b>l</b>ancer",
+        "title": "Find matching projects and build a sustainable career",
+        "bullets": [
+          "Find jobs tailored to your skills and interests",
+          "Submit proposals and communicate directly",
+          "Build reputation with every completed project"
+        ],
+        "cta": "Browse New Jobs"
+      }
     }
   }
 }
