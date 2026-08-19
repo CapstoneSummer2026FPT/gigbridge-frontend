@@ -1,5 +1,4 @@
 import type { MouseEvent } from 'react';
-import { Sparkles } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import {
   BROWSE_JOBS_VIEW,
