@@ -185,25 +185,25 @@ export function ManageMilestone({
       </div>
 
       {showFreelancerPayoutCard && (
-        <div className="mx-6 mt-4 p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-xl flex flex-wrap items-center justify-between gap-4 relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center gap-3.5 relative z-10">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/35 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
-              <CreditCard size={22} />
+        <div className="mx-6 mt-5 p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex items-start sm:items-center gap-4 relative z-10 flex-1 min-w-0">
+            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+              <CreditCard size={26} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-xs font-black uppercase tracking-widest text-emerald-400">
                   {t('workspace.finalPayout', { defaultValue: 'Ví GigCoin Payout' })}
                 </span>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-2xs">
                   ĐÃ THANH TOÁN
                 </span>
               </div>
-              <h3 className="font-extrabold text-sm sm:text-base text-white mt-0.5">
+              <h3 className="font-extrabold text-base sm:text-lg text-white mt-1 tracking-tight">
                 {t('workspace.finalPayoutReconciliation', { defaultValue: 'Đối soát & Giải ngân dự án hoàn tất' })}
               </h3>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
                 {t('workspace.finalPayoutNotice', { defaultValue: 'Tiền thù lao đã được chuyển trực tiếp vào ví GigCoin của bạn.' })}
               </p>
             </div>
@@ -212,9 +212,9 @@ export function ManageMilestone({
           <button
             type="button"
             onClick={() => navigate('/wallet/history')}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-md shadow-emerald-500/20 transition cursor-pointer flex items-center gap-2 relative z-10 shrink-0 active:scale-95 border-none"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm py-3 px-5 rounded-2xl shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2.5 relative z-10 shrink-0 active:scale-95 border-none self-start md:self-center"
           >
-            <Wallet size={14} />
+            <Wallet size={16} />
             <span>{t('workspace.viewWalletHistory', { defaultValue: 'Xem lịch sử ví' })}</span>
           </button>
         </div>
