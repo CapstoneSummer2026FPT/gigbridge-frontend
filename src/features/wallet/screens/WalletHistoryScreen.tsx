@@ -29,6 +29,7 @@ import { walletPostAPI } from '../../../api/walletAPI/POST';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import '../../admin/styles/admin-users-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { toast } from 'sonner';
 
@@ -1063,10 +1064,10 @@ export default function WalletHistoryScreen() {
                   <div className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
                     {getAmountDisplay(viewTransaction)}
                   </div>
-                  {viewTransaction.vndAmount > 0 ? (
+                  {viewTransaction.tokenAmount ? (
                     <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--brand)]/10 border border-[var(--brand)]/20 text-xs font-black text-[var(--brand)] shadow-2xs">
                       <Coins size={12} />
-                      ≈ {fmtNumber(Math.abs(viewTransaction.vndAmount))} VNĐ
+                      ≈ {formatGigCoinToVnd(Math.abs(viewTransaction.tokenAmount))} VNĐ
                     </span>
                   ) : null}
                 </div>
