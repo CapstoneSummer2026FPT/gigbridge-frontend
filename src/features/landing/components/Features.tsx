@@ -86,6 +86,9 @@ function BentoCard({ src, title, description, isComingSoon, exploreLabel = 'expl
         <img
           src={src}
           alt="Feature Illustration"
+          width={800}
+          height={800}
+          loading="lazy"
           className="absolute left-0 top-0 size-full object-cover object-center"
         />
       )}
@@ -149,10 +152,10 @@ export default function Features() {
           />
         </BentoTilt>
 
-        <div className="grid h-[135vh] w-full grid-cols-2 grid-rows-3 gap-7">
+        <div className="grid w-full grid-cols-1 md:grid-cols-2 md:grid-rows-3 gap-5 md:gap-7 h-auto md:h-[135vh]">
           <BentoTilt className="bento-tilt_1 col-span-2 row-span-1 md:col-span-1 md:row-span-2">
             <BentoCard
-              src="/img/feature-2.png"
+              src="/img/feature-2.jpg"
               title={<span dangerouslySetInnerHTML={{ __html: t('landing.features.escrowTitle') }} />}
               description={t('landing.features.escrowDesc')}
               isComingSoon
@@ -160,9 +163,9 @@ export default function Features() {
             />
           </BentoTilt>
 
-          <BentoTilt className="bento-tilt_1 col-span-2 row-span-1 ms-32 md:col-span-1 md:ms-0">
+          <BentoTilt className="bento-tilt_1 col-span-1 row-span-1 ms-0 md:col-span-1 md:ms-32">
             <BentoCard
-              src="/img/feature-3.png"
+              src="/img/feature-3.jpg"
               title={<span dangerouslySetInnerHTML={{ __html: t('landing.features.contractsTitle') }} />}
               description={t('landing.features.contractsDesc')}
               isComingSoon
@@ -170,9 +173,9 @@ export default function Features() {
             />
           </BentoTilt>
 
-          <BentoTilt className="bento-tilt_1 col-span-2 row-span-1 me-14 md:col-span-1 md:me-0">
+          <BentoTilt className="bento-tilt_1 col-span-1 row-span-1 me-0 md:col-span-1 md:me-14">
             <BentoCard
-              src="/img/feature-4.png"
+              src="/img/feature-4.jpg"
               title={<span dangerouslySetInnerHTML={{ __html: t('landing.features.aiPilotTitle') }} />}
               description={t('landing.features.aiPilotDesc')}
               isComingSoon
@@ -192,8 +195,11 @@ export default function Features() {
 
           <BentoTilt className="bento-tilt_2 col-span-1 row-span-1">
             <img
-              src="/img/feature-5.png"
+              src="/img/feature-5.jpg"
               alt={t('landing.features.workspaceAlt')}
+              width={800}
+              height={800}
+              loading="lazy"
               className="size-full object-cover object-center"
             />
           </BentoTilt>

@@ -150,7 +150,7 @@ export default function ResetPasswordScreen() {
       {/* Left Panel - Premium Zentry Aesthetic with Full Image & Gradient */}
       <div className="hidden lg:flex flex-col flex-1 relative overflow-hidden p-12 auth-left-panel select-none"
         style={{
-          backgroundImage: "url('/img/about.png')",
+          backgroundImage: "url('/img/about.jpg')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}>
