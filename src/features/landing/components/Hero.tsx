@@ -96,19 +96,17 @@ export default function Hero() {
   };
 
   const handleFindWork = () => {
-    localStorage.setItem('selected_role', '1');
-    navigate('/auth/signup');
+    navigate('/public/job-posts');
   };
 
   const handleHireTalent = () => {
-    localStorage.setItem('selected_role', '0');
-    navigate('/auth/signup');
+    navigate('/public/freelancers');
   };
 
   return (
-    <div className="relative h-dvh w-screen overflow-x-hidden">
+    <div className="relative h-dvh w-full overflow-x-hidden">
       {loading && (
-        <div className="flex-center absolute z-[100] h-dvh w-screen overflow-hidden bg-violet-50">
+        <div className="flex-center absolute z-[100] h-dvh w-full overflow-hidden bg-violet-50">
           <div className="three-body">
             <div className="three-body__dot"></div>
             <div className="three-body__dot"></div>
@@ -119,10 +117,10 @@ export default function Hero() {
 
       <div
         id="video-frame"
-        className="relative z-10 h-dvh w-screen overflow-hidden rounded-lg bg-blue-75"
+        className="relative z-10 h-dvh w-full overflow-hidden rounded-lg bg-blue-75"
       >
         <div>
-          <div className="mask-clip-path absolute-center absolute z-50 size-64 cursor-pointer overflow-hidden rounded-lg">
+          <div className="mask-clip-path absolute-center absolute z-50 size-40 sm:size-64 cursor-pointer overflow-hidden rounded-lg">
             <VideoPreview>
               <div
                 onClick={handleMiniVdClick}
@@ -135,7 +133,7 @@ export default function Hero() {
                   muted
                   playsInline
                   id="current-video"
-                  className="size-64 origin-center scale-150 object-cover object-center"
+                  className="size-40 sm:size-64 origin-center scale-150 object-cover object-center"
                   onLoadedData={handleVideoLoad}
                 />
               </div>
@@ -149,7 +147,7 @@ export default function Hero() {
             muted
             playsInline
             id="next-video"
-            className="absolute-center invisible absolute z-20 size-64 object-cover object-center"
+            className="absolute-center invisible absolute z-20 size-40 sm:size-64 object-cover object-center"
             onLoadedData={handleVideoLoad}
           />
           <video
@@ -163,40 +161,47 @@ export default function Hero() {
           />
         </div>
 
-        <h1 className="special-font hero-heading absolute bottom-5 right-5 z-40 text-blue-75">
+        <h1 className="special-font hero-heading absolute bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 text-blue-75 opacity-70 sm:opacity-100 hidden sm:block pointer-events-none select-none">
           BU<b>I</b>LD
         </h1>
 
-        <div className="absolute left-0 top-0 z-40 size-full">
-          <div className="mt-24 px-5 sm:px-10">
-            <h1 className="special-font hero-heading text-blue-100">
+        <div className="absolute left-0 top-0 z-40 size-full pointer-events-none">
+          <div className="mt-16 sm:mt-24 px-4 sm:px-10 pointer-events-auto">
+            <h1 className="special-font hero-heading text-blue-100 drop-shadow-md">
               GIGBR<b>I</b>DGE
             </h1>
 
-            <p className="mb-5 max-w-64 font-robert-regular text-blue-100">
-              {t('landing.hero.tagline')} <br /> {t('landing.hero.tagline2')}
-            </p>
+            <div className="mb-5 max-w-md font-robert-regular text-blue-100 drop-shadow-sm">
+              <p className="text-base sm:text-xl font-semibold leading-snug">
+                {t('landing.hero.tagline')} <br /> {t('landing.hero.tagline2')}
+              </p>
+              {t('landing.hero.subtext') && (
+                <p className="mt-2 text-xs sm:text-base opacity-90 leading-relaxed">
+                  {t('landing.hero.subtext')}
+                </p>
+              )}
+            </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap sm:flex-nowrap gap-3">
               <Button
                 id="find-work-btn"
                 title={t('landing.hero.findWork')}
                 leftIcon={<TiLocationArrow />}
                 onClick={handleFindWork}
-                containerClass="bg-yellow-300 flex-center gap-1"
+                containerClass="bg-yellow-300 flex-center gap-1 min-h-[44px] min-w-[130px] shadow-lg hover:shadow-xl transition-all"
               />
               <Button
                 id="hire-talent-btn"
                 title={t('landing.hero.hireTalent')}
                 onClick={handleHireTalent}
-                containerClass="bg-blue-50 flex-center gap-1 border border-white/10"
+                containerClass="bg-blue-50 flex-center gap-1 border border-white/10 min-h-[44px] min-w-[130px] shadow-lg hover:shadow-xl transition-all"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <h1 className="special-font hero-heading absolute bottom-5 right-5 text-background">
+      <h1 className="special-font hero-heading absolute bottom-3 right-3 sm:bottom-5 sm:right-5 text-background opacity-70 sm:opacity-100 hidden sm:block pointer-events-none select-none">
         BU<b>I</b>LD
       </h1>
     </div>

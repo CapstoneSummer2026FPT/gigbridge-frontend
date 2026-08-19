@@ -29,6 +29,20 @@
     "yes": "Có",
     "no": "Không"
   },
+  "fileUploadProgress": {
+    "uploading": "Đang tải tệp lên...",
+    "uploadingPercent": "Đang tải tệp lên... {{percent}}%",
+    "processing": "Đang kiểm tra và lưu tệp...",
+    "processingMessage": "Đang kiểm tra và gửi tệp...",
+    "refreshing": "Đang cập nhật dữ liệu Workspace...",
+    "sent": "Đã gửi {{loaded}}",
+    "sentOfTotal": "Đã gửi {{loaded}} / {{total}}"
+  },
+  "fileUploadError": {
+    "network": "Không thể kết nối đến máy chủ tải lên. Vui lòng kiểm tra kết nối và thử lại.",
+    "timeout": "Quá trình tải lên mất quá nhiều thời gian. Vui lòng thử lại.",
+    "requestTooLarge": "Yêu cầu tải lên vượt quá dung lượng cho phép."
+  },
   "app": {
     "name": "GigBridge",
     "tagline": "Nền Tảng Freelance Được Hỗ Trợ Bởi AI"
@@ -141,6 +155,19 @@
     "systemFinance": "Tài Chính Hệ Thống",
     "systemTracking": "Theo Dõi Hệ Thống",
     "platformAnalytics": "Phân Tích Nền Tảng"
+  },
+  "topNavSearch": {
+    "placeholder": "Tìm kiếm trên GigBridge...",
+    "inputLabel": "Tìm kiếm trên GigBridge",
+    "scopeMenuLabel": "Chọn phạm vi tìm kiếm",
+    "talent": "Nhân tài",
+    "talentDescription": "Tìm freelancer theo tên, chuyên môn hoặc kỹ năng",
+    "jobs": "Công việc",
+    "jobsDescription": "Xem công việc do khách hàng đăng",
+    "resultsFor": "Kết quả cho “{{query}}”",
+    "noTalentResults": "Không có freelancer phù hợp với từ khóa này.",
+    "noProjectResults": "Không có dự án phù hợp với từ khóa này.",
+    "tryAnotherSearch": "Hãy thử một từ khóa khác."
   },
   "footer": {
     "allRightsReserved": "Bản quyền được bảo lưu",

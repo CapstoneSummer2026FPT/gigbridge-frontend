@@ -285,6 +285,9 @@ export interface GradedQuestionDto {
   candidateAnswer: string;
   score: number;
   feedback: string;
+  isAiGenerated?: boolean;
+  aiConfidenceScore?: number;
+  aiDetectionReason?: string;
 }
 
 export interface VettingEvaluationResponseDto {
@@ -296,4 +299,7 @@ export interface VettingEvaluationResponseDto {
   holisticAdjustment: number;
   holisticAdjustmentReason: string;
   gradedQuestions: GradedQuestionDto[];
+  isAiGenerated?: boolean;
+  aiConfidenceScore?: number;
+  aiDetectionSummary?: string;
 }

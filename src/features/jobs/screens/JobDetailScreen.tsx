@@ -22,6 +22,7 @@ import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { renderDescription } from '../utils/descriptionFormatter';
+import { canEditJobPostContent } from '../utils/jobPostEditing';
 
 export default function JobDetailScreen() {
   const { t } = useTranslation();
@@ -156,6 +157,7 @@ export default function JobDetailScreen() {
 
   // Client profile navigation path
   const clientProfileUserId = clientProfile?.userId || client?.id || job?.userId || job?.clientUserId || null;
+  const canEditContent = canEditJobPostContent(job.status, job.visibility);
   const clientProfilePath = getProfilePath(clientProfileUserId, 'client');
 
   return (
@@ -283,11 +285,15 @@ export default function JobDetailScreen() {
                   <span className="badge-red text-xs py-2 px-3 inline-flex items-center gap-1.5 font-bold rounded-xl border border-red-500/35 bg-red-500/10">
                     <Lock size={13} className="text-red-500" /> Locked by Admin
                   </span>
-                ) : (
+                ) : canEditContent ? (
                   <button className="jd-btn-edit" onClick={() => navigate(`/jobs/${job.id}/edit`)}>
                     <Edit3 size={14} />
                     {t('jobDetail.editPost')}
                   </button>
+                ) : (
+                  <span className="text-xs py-2 px-3 inline-flex items-center gap-1.5 font-bold rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Lock size={13} /> {t('jobDetail.editLocked')}
+                  </span>
                 )}
 
                 <button className="jd-btn-manage" onClick={() => navigate(`/proposals?job=${job.id}`)}>

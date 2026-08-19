@@ -85,6 +85,42 @@
   filter: drop-shadow(0 0 8px var(--brand));
 }
 
+/* ── High-frequency dashboard overview ── */
+.freelancer-dash-overview-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: var(--brand);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 180ms ease;
+}
+
+.freelancer-dash-overview-link:hover {
+  color: var(--brand-hover);
+}
+
+.freelancer-dash-overview-link svg {
+  transition: transform 180ms ease;
+}
+
+.freelancer-dash-overview-link:hover svg {
+  transform: translateX(2px);
+}
+
+.freelancer-dash-overview-link:focus-visible {
+  border-radius: 0.4rem;
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+.freelancer-elo-donut-ring {
+  filter: drop-shadow(0 5px 9px color-mix(in srgb, var(--brand) 28%, transparent));
+}
+
 /* ── Bento Stat Tiles ── */
 .freelancer-bento-stat {
   position: relative;

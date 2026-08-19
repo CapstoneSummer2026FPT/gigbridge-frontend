@@ -1,10 +1,11 @@
 import axios, {
   type AxiosError,
   type AxiosInstance,
+  type AxiosProgressEvent,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import type { ApiResponse } from '../types/common';
+import type { ApiResponse, ApiTransportError } from '../types/common';
 import type { LoginResponse } from '../types/models/Auth';
 import { secureStorage } from '../shared/utils/secureStorage';
 
@@ -12,6 +13,19 @@ type UnknownRecord = Record<string, unknown>;
 type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 type LegacyEnvelope<T> = ApiResponse<T> & { Data?: T };
 type LegacyLoginResponse = LoginResponse & { Token?: string };
+
+export interface UploadTransferProgress {
+  loadedBytes: number;
+  totalBytes?: number;
+  percent: number | null;
+}
+
+export interface UploadRequestOptions {
+  onUploadProgress?: (progress: UploadTransferProgress) => void;
+  timeout?: number;
+}
+
+export const DEFAULT_UPLOAD_TIMEOUT_MS = 300_000;
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '');
 
@@ -191,12 +205,37 @@ const handleFailure = <T>(error: unknown): ApiResponse<T> => {
 
   const payload = isRecord(error.response?.data) ? error.response.data : {};
   const errors = normalizeErrors(payload.errors ?? payload.Errors);
+  const transportError: ApiTransportError | undefined = error.response
+    ? undefined
+    : error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
+      ? 'timeout'
+      : 'network';
 
   return {
     success: false,
     statusCode: error.response?.status ?? 500,
     message: responseMessage(payload, error.message || 'An error occurred'),
     ...(errors ? { errors } : {}),
+    ...(transportError ? { transportError } : {}),
+  };
+};
+
+const mapUploadProgress = (event: AxiosProgressEvent): UploadTransferProgress => {
+  const totalBytes = typeof event.total === 'number' && event.total > 0
+    ? event.total
+    : undefined;
+  const loadedBytes = Math.max(0, event.loaded);
+
+  const percent = totalBytes === undefined
+    ? null
+    : loadedBytes >= totalBytes
+      ? 100
+      : Math.min(99, Math.max(0, Math.floor((loadedBytes / totalBytes) * 100)));
+
+  return {
+    loadedBytes,
+    ...(totalBytes === undefined ? {} : { totalBytes }),
+    percent,
   };
 };
 
@@ -258,6 +297,24 @@ export const apiService = {
   ): Promise<ApiResponse<T>> {
     try {
       const response = await apiClient.post<unknown>(normalizeEndpoint(endpoint), data, { headers, signal });
+      return handleResponse<T>(response);
+    } catch (error: unknown) {
+      return handleFailure<T>(error);
+    }
+  },
+
+  async upload<T>(
+    endpoint: string,
+    data: FormData,
+    options: UploadRequestOptions = {},
+  ): Promise<ApiResponse<T>> {
+    try {
+      const response = await apiClient.post<unknown>(normalizeEndpoint(endpoint), data, {
+        timeout: options.timeout ?? DEFAULT_UPLOAD_TIMEOUT_MS,
+        onUploadProgress: options.onUploadProgress
+          ? event => options.onUploadProgress?.(mapUploadProgress(event))
+          : undefined,
+      });
       return handleResponse<T>(response);
     } catch (error: unknown) {
       return handleFailure<T>(error);

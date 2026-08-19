@@ -692,6 +692,21 @@
   line-height: 1;
 }
 
+.cp-progress-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--border-subtle, rgba(0, 0, 0, 0.08));
+  overflow: hidden;
+  position: relative;
+}
+
+.cp-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+  transition: width 0.5s ease-in-out;
+}
+
 .cp-review-list {
   display: flex;
   flex-direction: column;

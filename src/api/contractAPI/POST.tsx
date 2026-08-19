@@ -1,4 +1,4 @@
-import { apiService } from '../../service/apiService';
+import { apiService, type UploadRequestOptions } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { ContractProductHandoffResponse, ContractWorkflowResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
 import { normalizeMilestone } from './GET';
@@ -56,11 +56,13 @@ export const contractPostAPI = {
   submitMilestone: async (
     contractId: string,
     milestoneId: string,
-    formData: FormData
+    formData: FormData,
+    options?: UploadRequestOptions,
   ): Promise<ApiResponse<Milestone>> => {
-    const response = await apiService.post<unknown>(
+    const response = await apiService.upload<unknown>(
       `contracts/${contractId}/milestones/${milestoneId}/submit`,
       formData,
+      options,
     );
     return {
       ...response,
@@ -141,11 +143,13 @@ export const contractPostAPI = {
    */
   submitProductHandoff: async (
     contractId: string,
-    formData: FormData
+    formData: FormData,
+    options?: UploadRequestOptions,
   ): Promise<ApiResponse<ContractProductHandoffResponse>> => {
-    return apiService.post<ContractProductHandoffResponse>(
+    return apiService.upload<ContractProductHandoffResponse>(
       `contracts/${contractId}/product-handoffs`,
-      formData
+      formData,
+      options,
     );
   },
 

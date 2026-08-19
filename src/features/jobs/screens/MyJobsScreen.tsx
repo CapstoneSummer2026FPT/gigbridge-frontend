@@ -45,6 +45,7 @@ import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge'
 import '../../premium/styles/premium.css';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import { ConfirmationModal } from '../../../shared/components/ConfirmationModal';
+import { getAllowedJobPostVisibilities } from '../utils/jobPostEditing';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
@@ -280,6 +281,11 @@ export default function MyJobsScreen() {
     [t]
   );
 
+  const getVisibilitySelectOptions = (job: GetMyJobPostDto): SelectOption[] => {
+    const allowed = new Set(getAllowedJobPostVisibilities(job.status, job.visibility));
+    return visibilitySelectOptions.filter(option => allowed.has(Number(option.value) as JobPostVisibility));
+  };
+
   const filteredJobs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -335,7 +341,7 @@ export default function MyJobsScreen() {
   const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
   const canClose = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open;
   const canCancel = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open || job.status === JobPostStatus.Draft;
-  const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined && job.visibility !== null;
+  const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined;
 
   return (
     <AppLayout>
@@ -828,9 +834,9 @@ export default function MyJobsScreen() {
                         {canChangeVisibility(job) && (
                           <div className="w-36 shrink-0">
                             <CustomSelect
-                              value={String(job.visibility)}
+                              value={String(job.visibility ?? JobPostVisibility.Public)}
                               onChange={val => void patchVisibility(job, Number(val) as JobPostVisibility)}
-                              options={visibilitySelectOptions}
+                              options={getVisibilitySelectOptions(job)}
                               disabled={isPending || job.visibility === 3}
                               searchable={false}
                               ariaLabel={t('myJobs.visibility.ariaLabel', { defaultValue: 'Quyền riêng tư' })}

@@ -26,6 +26,7 @@ import '../styles/edit-job-post-screen.css';
 import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
+import { canEditJobPostContent } from '../utils/jobPostEditing';
 
 interface FormErrors {
   title?: string;
@@ -165,6 +166,7 @@ export default function EditJobPostScreen() {
   const [successMessage, setSuccessMessage] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isDraftJob, setIsDraftJob] = useState(false);
+  const [jobStatus, setJobStatus] = useState<JobPostStatus | number>(JobPostStatus.Draft);
   const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
   const [leaveAction, setLeaveAction] = useState<'save' | 'discard' | null>(null);
 
@@ -182,6 +184,7 @@ export default function EditJobPostScreen() {
   );
 
   const isLocked = formData.visibility === '3';
+  const canEditContent = canEditJobPostContent(jobStatus, Number(formData.visibility));
 
   useEffect(() => {
     if (blocker.state === 'blocked') {
@@ -236,7 +239,9 @@ export default function EditJobPostScreen() {
 
         const job = response.data;
         const duration = parseJobDuration(job.estimatedDuration);
-        setIsDraftJob(Number(job.status) === JobPostStatus.Draft);
+        const currentStatus = Number(job.status);
+        setJobStatus(currentStatus);
+        setIsDraftJob(currentStatus === JobPostStatus.Draft);
         setFormData({
           title: job.title || '',
           description: job.description || '',
@@ -643,6 +648,31 @@ export default function EditJobPostScreen() {
     );
   }
 
+  if (!canEditContent) {
+    return (
+      <AppLayout>
+        <div className="edit-job-wrapper">
+          <div className="edit-job-form glass-card">
+            <div className="form-error flex items-start gap-2" role="alert">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div>
+                <strong className="block">
+                  {isLocked ? t('jobDetail.adminLockedTitle') : t('jobDetail.editLockedTitle')}
+                </strong>
+                <span>
+                  {isLocked ? t('jobDetail.adminLockedDescription') : t('jobDetail.editLockedDescription')}
+                </span>
+              </div>
+            </div>
+            <button onClick={() => navigate('/jobs/my-jobs')} className="btn-cancel">
+              {t('jobDetail.backToJobs')}
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="edit-job-wrapper">
@@ -657,18 +687,6 @@ export default function EditJobPostScreen() {
         </div>
 
         <form onSubmit={handleSubmit} className="edit-job-form">
-          {isLocked && (
-            <div className="mb-5 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-start gap-3">
-              <AlertCircle size={20} className="mt-0.5 flex-shrink-0 text-red-500" />
-              <div>
-                <p className="font-bold text-sm text-red-500">This job post is locked by an admin.</p>
-                <p className="text-xs text-red-500/80 mt-1">
-                  Updates, status changes, and visibility adjustments are disabled. Please contact support if you believe this is an error.
-                </p>
-              </div>
-            </div>
-          )}
-
           {errors.server && (
             <div className="form-error edit-job-server-error" role="alert">
               <AlertCircle size={16} />
@@ -947,7 +965,7 @@ export default function EditJobPostScreen() {
 
           <div className="form-actions">
             <button type="button" onClick={() => navigate(-1)} className="btn-cancel">Cancel</button>
-            <button type="submit" disabled={isSubmitting || successMessage || isLocked} className="btn-save">
+            <button type="submit" disabled={isSubmitting || successMessage} className="btn-save">
               {successMessage ? (
                 <>
                   <Check size={18} />

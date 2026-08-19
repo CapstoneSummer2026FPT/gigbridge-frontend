@@ -28,6 +28,13 @@
     "signContract": "Ký hợp đồng",
     "manageMilestones": "Đến không gian làm việc",
     "goToWorkspace": "Đến không gian làm việc",
+    "activeBanner": {
+      "badge": "Hợp đồng đã được kích hoạt",
+      "readyBadge": "Sẵn sàng cộng tác",
+      "title": "Dự án đang trong giai đoạn triển khai",
+      "description": "Hợp đồng đã chính thức có hiệu lực! Bạn và đối tác có thể truy cập Không gian làm việc (Workspace) ngay bây giờ để trao đổi trực tiếp, chia sẻ tài liệu và theo dõi tiến độ các cột mốc dự án.",
+      "ctaButton": "Vào Workspace ngay"
+    },
     "fundEscrow": "Ký quỹ Escrow",
     "viewCompleted": "Xem đã hoàn thành",
     "viewDispute": "Xem tranh chấp",
@@ -526,7 +533,7 @@
     "clickOrDragUpload": "Nhấp để chọn tệp hoặc kéo thả vào đây",
     "filesSelected": "Đã chọn {{count}} tệp",
     "filesSelectedPlural": "Đã chọn {{count}} tệp",
-    "max100Mb": "Tối đa 100MB mỗi tệp (BR-55) • Hỗ trợ tài liệu, hình ảnh, mã nguồn, tệp nén",
+    "max10Mb": "Tối đa 10MB mỗi tệp (BR-55) • Hỗ trợ tài liệu, hình ảnh, mã nguồn, tệp nén",
     "attachedFiles": "Tệp đính kèm ({{count}})",
     "totalMb": "Tổng cộng {{count}} MB",
     "supportedFormats": "Định dạng tệp được hỗ trợ:",

@@ -5,16 +5,26 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { normalizeProposalList, proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { eloGetAPI } from '../../../api/eloAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
+import type { EloSummary } from '../../../types/elo';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
-import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
+import type { ProposalDto } from '../../../types/models/Proposal';
 import type { JobPostSummaryDto } from '../../../types/models/Job';
 import {
   type FinancialOverviewResponse,
   type WalletResponse,
 } from '../../../types/models/Financial';
-import { ContractStatus, type ContractDto } from '../../../types/models/Contract';
+import {
+  ContractStatus,
+  type ContractDto,
+  type Milestone,
+} from '../../../types/models/Contract';
+import {
+  buildFreelancerMilestoneTable,
+  countFreelancerWorkStatuses,
+} from '../utils/freelancerDashboardMetrics';
 
 interface DashboardProject {
   id: string;
@@ -70,6 +80,8 @@ export function useFreelancerDashboard() {
   const [profile, setProfile] = useState<FreelancerProfileDetailDto | null>(null);
   const [proposals, setProposals] = useState<ProposalDto[]>([]);
   const [contracts, setContracts] = useState<ContractDto[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [eloSummary, setEloSummary] = useState<EloSummary | null>(null);
   const [recommendedJobs, setRecommendedJobs] = useState<DashboardRecommendedJob[]>([]);
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [financialOverview, setFinancialOverview] = useState<FinancialOverviewResponse | null>(null);
@@ -88,15 +100,18 @@ export function useFreelancerDashboard() {
       contractsResult,
       jobsResult,
       walletResult,
+      eloResult,
     ] = await Promise.allSettled([
       profileGetAPI.getMyFreelancerProfile(),
       proposalGetAPI.getMyProposals({ pageSize: 100 }),
       contractGetAPI.getMyContracts({ pageSize: 100 }),
       jobGetAPI.getPublicJobPosts({ pageSize: 6 }),
       walletGetAPI.getMyWallet(),
+      eloGetAPI.getEloSummary(),
     ]);
 
     let hasFailure = false;
+    let loadedContracts: ContractDto[] = [];
 
     if (
       profileResult.status === 'fulfilled'
@@ -118,9 +133,41 @@ export function useFreelancerDashboard() {
     }
 
     if (contractsResult.status === 'fulfilled' && contractsResult.value.success) {
-      setContracts(contractsResult.value.data ?? []);
+      loadedContracts = contractsResult.value.data ?? [];
+      setContracts(loadedContracts);
     } else {
       setContracts([]);
+      hasFailure = true;
+    }
+
+    if (
+      eloResult.status === 'fulfilled'
+      && eloResult.value.success
+      && eloResult.value.data
+    ) {
+      setEloSummary(eloResult.value.data);
+    } else {
+      setEloSummary(null);
+      hasFailure = true;
+    }
+
+    const activeContracts = loadedContracts.filter(
+      contract => Number(contract.status) === ContractStatus.Active,
+    );
+    const milestoneResults = await Promise.allSettled(
+      activeContracts.map(
+        contract => contractGetAPI.getMilestonesByContract(contract.contractsId),
+      ),
+    );
+    const loadedMilestones = milestoneResults.flatMap(result => {
+      if (result.status !== 'fulfilled' || !result.value.success) return [];
+      return result.value.data ?? [];
+    });
+    setMilestones(loadedMilestones);
+
+    if (milestoneResults.some(
+      result => result.status === 'rejected' || !result.value.success,
+    )) {
       hasFailure = true;
     }
 
@@ -189,9 +236,9 @@ export function useFreelancerDashboard() {
 
   const userName = user?.full_name || user?.first_name || profile?.userFullName || 'Freelancer';
 
-  const pendingProposalsCount = useMemo(
-    () => proposals.filter(proposal => Number(proposal.status) === ProposalStatus.Pending).length,
-    [proposals],
+  const workStatusCounts = useMemo(
+    () => countFreelancerWorkStatuses(proposals, contracts),
+    [contracts, proposals],
   );
 
   const projects = useMemo(
@@ -201,9 +248,9 @@ export function useFreelancerDashboard() {
     [contracts],
   );
 
-  const completedProjectsCount = useMemo(
-    () => contracts.filter(contract => Number(contract.status) === ContractStatus.Completed).length,
-    [contracts],
+  const pendingMilestoneItems = useMemo(
+    () => buildFreelancerMilestoneTable(contracts, milestones),
+    [contracts, milestones],
   );
 
   const profileTitle = profile?.title?.trim() || '';
@@ -252,9 +299,10 @@ export function useFreelancerDashboard() {
     chartPeriod,
     setChartPeriod,
     earningsData,
-    pendingProposalsCount,
     activeProjects: projects.length,
-    completedProjectsCount,
+    workStatusCounts,
+    eloSummary,
+    pendingMilestoneItems,
     projects,
     recommendedJobs,
     gaugeR,
