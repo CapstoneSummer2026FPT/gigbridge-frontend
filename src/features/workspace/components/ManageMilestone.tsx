@@ -184,48 +184,48 @@ export function ManageMilestone({
         </div>
       </div>
 
-      {showFreelancerPayoutCard && (
-        <div className="mx-6 mt-5 p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="flex items-start sm:items-center gap-4 relative z-10 flex-1 min-w-0">
-            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
-              <CreditCard size={26} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-xs font-black uppercase tracking-widest text-emerald-400">
-                  {t('workspace.finalPayout', { defaultValue: 'Ví GigCoin Payout' })}
-                </span>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-2xs">
-                  ĐÃ THANH TOÁN
-                </span>
+      {/* Milestones timeline & completion cards scrollable area */}
+      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative space-y-6">
+        {showFreelancerPayoutCard && (
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex items-start sm:items-center gap-4 relative z-10 flex-1 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+                <CreditCard size={24} />
               </div>
-              <h3 className="font-extrabold text-base sm:text-lg text-white mt-1 tracking-tight">
-                {t('workspace.finalPayoutReconciliation', { defaultValue: 'Đối soát & Giải ngân dự án hoàn tất' })}
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                {t('workspace.finalPayoutNotice', { defaultValue: 'Tiền thù lao đã được chuyển trực tiếp vào ví GigCoin của bạn.' })}
-              </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-xs font-black uppercase tracking-widest text-emerald-400">
+                    {t('workspace.finalPayout', { defaultValue: 'Ví GigCoin Payout' })}
+                  </span>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-2xs">
+                    ĐÃ THANH TOÁN
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-base sm:text-lg text-white mt-1 tracking-tight">
+                  {t('workspace.finalPayoutReconciliation', { defaultValue: 'Đối soát & Giải ngân dự án hoàn tất' })}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                  {t('workspace.finalPayoutNotice', { defaultValue: 'Tiền thù lao đã được chuyển trực tiếp vào ví GigCoin của bạn.' })}
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/wallet/history')}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm py-3 px-5 rounded-2xl shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2.5 relative z-10 shrink-0 active:scale-95 border-none self-start md:self-center"
+            >
+              <Wallet size={16} />
+              <span>{t('workspace.viewWalletHistory', { defaultValue: 'Xem lịch sử ví' })}</span>
+            </button>
           </div>
+        )}
 
-          <button
-            type="button"
-            onClick={() => navigate('/wallet/history')}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm py-3 px-5 rounded-2xl shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2.5 relative z-10 shrink-0 active:scale-95 border-none self-start md:self-center"
-          >
-            <Wallet size={16} />
-            <span>{t('workspace.viewWalletHistory', { defaultValue: 'Xem lịch sử ví' })}</span>
-          </button>
-        </div>
-      )}
+        {activeContract?.status === ContractStatus.Completed && activeProjectId && (
+          <ProjectReceiptCard contractId={activeProjectId} />
+        )}
 
-      {activeContract?.status === ContractStatus.Completed && activeProjectId && (
-        <ProjectReceiptCard contractId={activeProjectId} />
-      )}
-
-      {/* Milestones timeline/list */}
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative">
         {project.milestones.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-16">
             <p className="text-sm font-bold">{t('workspace.noMilestones')}</p>
