@@ -54,7 +54,6 @@ export default function BrowseJobsScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
-  const isAiMatchHighlighted = params.get('aiMatch') === 'true' || Boolean((location.state as { highlightAiMatch?: boolean })?.highlightAiMatch);
 
   const setParamsRef = useRef(setParams);
   useEffect(() => {
