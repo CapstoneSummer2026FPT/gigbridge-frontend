@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, Menu, X, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -29,10 +29,10 @@ interface TopNavProps {
 }
 
 const navItems = [
-  { label: 'Browse Jobs', path: '/jobs/browse' },
-  { label: 'About', path: '/about' },
-  { label: 'FAQ', path: '/faq' },
-  { label: 'Contact', path: '#contact' }
+  { label: 'Find Work', path: '/public/job-posts' },
+  { label: 'Hire Talent', path: '/public/freelancers' },
+  { label: 'How GigBridge works', path: '#how-it-works' },
+  { label: 'FAQ', path: '/faq' }
 ];
 
 export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}) {
@@ -47,6 +47,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [searchVal, setSearchVal] = useState('');
   const [searchScope, setSearchScope] = useState<TopNavSearchScope>(TOP_NAV_SEARCH_SCOPE.Jobs);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Safely get app context - might be null for guest users
   let appContext;
@@ -157,7 +158,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     }
   };
 
-  const isLanding = location.pathname === '/';
+  const isLandingMode = !isAuthenticated || location.pathname === '/';
 
   // Landing Page Audio & Scroll Visibility Logic
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -192,7 +193,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   }, [isAudioPlaying]);
 
   useEffect(() => {
-    if (!isLanding || !navContainerRef.current) return;
+    if (!isLandingMode || !navContainerRef.current) return;
 
     if (currentScrollY === 0) {
       setIsNavVisible(true);
@@ -206,16 +207,16 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     }
 
     setLastScrollY(currentScrollY);
-  }, [currentScrollY, lastScrollY, isLanding]);
+  }, [currentScrollY, lastScrollY, isLandingMode]);
 
   useEffect(() => {
-    if (!isLanding || !navContainerRef.current) return;
+    if (!isLandingMode || !navContainerRef.current) return;
     gsap.to(navContainerRef.current, {
       y: isNavVisible ? 0 : -100,
       opacity: isNavVisible ? 1 : 0,
       duration: 0.2,
     });
-  }, [isNavVisible, isLanding]);
+  }, [isNavVisible, isLandingMode]);
 
   const handleCtaClick = () => {
     if (isAuthenticated) {
@@ -227,9 +228,9 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   };
 
   // ═══════════════════════════════════════════════════════════════
-  // LANDING PAGE CUSTOM NAV BAR
+  // LANDING / UNAUTHENTICATED NAV BAR
   // ═══════════════════════════════════════════════════════════════
-  if (isLanding) {
+  if (isLandingMode) {
     return (
       <div
         ref={navContainerRef}
@@ -246,6 +247,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <img
                   src="/img/logo.png"
                   alt="GigBridge Logo"
+                  width={32}
+                  height={32}
                   className="w-8 h-8 rounded-lg object-cover"
                 />
                 <span className="text-xl font-bold tracking-tight logo-text hidden sm:block">
@@ -262,21 +265,25 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               />
             </div>
 
-            {/* Navigation Links and Audio Button */}
+            {/* Navigation Links, Hamburger & Audio Button */}
             <div className="flex h-full items-center">
-              <div className="hidden md:block">
+              <div className="hidden md:flex items-center">
                 {localizedNavItems.map((item, index) => {
-                  if (item.path.startsWith('#')) {
-                    return (
-                      <a
-                        key={index}
-                        href={item.path}
-                        className="nav-hover-btn"
-                      >
-                        {item.label}
-                      </a>
-                    );
-                  }
+                  const handleClick = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    if (item.path.startsWith('#')) {
+                      const id = item.path.replace('#', '');
+                      const el = document.getElementById(id);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth' });
+                      } else {
+                        navigate('/' + item.path);
+                      }
+                      return;
+                    }
+                    navigate(item.path);
+                  };
+
                   return (
                     <span
                       key={index}
@@ -292,12 +299,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               <CombinedThemeLanguageSwitcher
                 theme={theme}
                 setTheme={setTheme}
-                className="ml-3 sm:ml-10 flex"
+                className="ml-2 sm:ml-8 flex"
               />
 
               <button
                 onClick={toggleAudioIndicator}
-                className="ml-3 sm:ml-10 flex items-center space-x-0.5"
+                className="ml-2 sm:ml-8 flex items-center space-x-0.5"
               >
                 <audio
                   ref={audioElementRef}
@@ -318,9 +325,58 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   />
                 ))}
               </button>
+
+              {/* Mobile Navigation Drawer Toggle Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                className="ml-2.5 p-2 rounded-xl bg-secondary/80 border border-border text-foreground md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] shadow-sm active:scale-95 transition-all"
+                aria-label="Toggle Navigation Menu"
+              >
+                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
             </div>
           </nav>
         </header>
+
+        {/* Mobile Navigation Drawer */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 right-0 mt-2 p-5 rounded-2xl bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl z-50 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+            {localizedNavItems.map((item, index) => {
+              const handleClick = (e: React.MouseEvent) => {
+                e.preventDefault();
+                setIsMobileMenuOpen(false);
+                if (item.path.startsWith('#')) {
+                  const id = item.path.replace('#', '');
+                  const el = document.getElementById(id);
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    navigate('/' + item.path);
+                  }
+                  return;
+                }
+                navigate(item.path);
+              };
+
+              return (
+                <div
+                  key={index}
+                  onClick={handleClick}
+                  className="px-4 py-3 rounded-xl bg-secondary/50 border border-border/60 font-bold text-sm text-foreground flex items-center justify-between cursor-pointer min-h-[44px] active:bg-secondary transition-colors"
+                >
+                  <span>{item.label}</span>
+                  <ChevronRight size={16} className="text-muted-foreground" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Guest Auth Invitation Modal */}
+        <AuthInviteModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
       </div>
     );
   }
@@ -348,13 +404,15 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         <img
           src="/img/logo.png"
           alt="GigBridge Logo"
+          width={32}
+          height={32}
           className="w-8 h-8 rounded-lg object-cover"
         />
         <span className="text-primary font-bold text-lg hidden sm:block">GigBridge</span>
       </div>
 
       {/* Search Bar */}
-      {!isLanding && (
+      {!isLandingMode && (
         <TopNavSearch
           value={searchVal}
           scope={searchScope}
@@ -368,7 +426,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       )}
 
       {/* Nav Links (Guest) */}
-      {isLanding && (
+      {isLandingMode && (
         <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
           {[
             { label: 'How It Works', path: '/guide' },
