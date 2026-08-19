@@ -1,8 +1,9 @@
 {
   "landing": {
     "hero": {
-      "tagline": "Khám Phá Freelancer Tài Năng",
-      "tagline2": "Kết Nối Qua Hệ Thống Ghép Nối Thông Minh",
+      "tagline": "Kết nối đúng freelancer.",
+      "tagline2": "Hoàn thành công việc tốt hơn.",
+      "subtext": "GigBridge giúp doanh nghiệp thuê freelancer tại Việt Nam và giúp chuyên gia tiếp cận việc làm freelance phù hợp trong một quy trình minh bạch.",
       "findWork": "Tìm Việc Làm",
       "hireTalent": "Tuyển Nhân Tài"
     },
@@ -23,15 +24,60 @@
       "contractsDesc": "Bảo vệ sự hợp tác bằng các mẫu hợp đồng điện tử e-sign có giá trị pháp lý, tích hợp trực tiếp vào quy trình làm việc.",
       "aiPilotTitle": "trợ lý A<b>I</b>",
       "aiPilotDesc": "Công cụ phỏng vấn AI và trợ lý AI giúp sàng lọc ứng viên và xây dựng phạm vi dự án chi tiết một cách nhanh chóng.",
+      "workspaceTitle": "wo<b>r</b>kspace trực tiếp",
+      "workspaceDesc": "Không gian làm việc chung giúp trao đổi, theo dõi tiến độ và phê duyệt sản phẩm thời gian thực.",
       "expandingTitle": "Hệ sinh thái đang m<b>ở</b> rộng.",
       "explore": "khám phá",
       "featureAlt": "Minh Họa Tính Năng",
       "workspaceAlt": "Minh Họa Workspace"
     },
+    "howItWorks": {
+      "badge": "Quy Trình Hoạt Động",
+      "stepBadge": "BƯỚC",
+      "animatedTitle": "Cách GigBridge ho<b>ạ</b>t đ<b>ộ</b>ng",
+      "subtitle": "Từ ý tưởng đến kết quả chỉ với ba bước rõ ràng",
+      "tabClient": "Cho Khách hàng",
+      "tabFreelancer": "Cho freelancer",
+      "client": {
+        "cta": "Bắt đầu thuê freelancer",
+        "step1": {
+          "title": "Đăng nhu cầu",
+          "desc": "Mô tả mục tiêu, kỹ năng cần thiết và ngân sách dự kiến cho dự án."
+        },
+        "step2": {
+          "title": "Chọn người phù hợp",
+          "desc": "Khám phá hồ sơ, trao đổi và chọn freelancer phù hợp với công việc."
+        },
+        "step3": {
+          "title": "Cộng tác an toàn",
+          "desc": "Theo dõi milestone, hợp đồng và thanh toán trong một quy trình rõ ràng."
+        }
+      },
+      "freelancer": {
+        "cta": "Tạo hồ sơ freelancer",
+        "step1": {
+          "title": "Xây dựng hồ sơ",
+          "desc": "Giới thiệu kỹ năng, kinh nghiệm và các sản phẩm nổi bật của bạn."
+        },
+        "step2": {
+          "title": "Tìm cơ hội",
+          "desc": "Tìm kiếm việc làm freelance phù hợp và gửi đề xuất trực tiếp."
+        },
+        "step3": {
+          "title": "Làm việc và phát triển",
+          "desc": "Hoàn thành milestone, nhận thanh toán và xây dựng uy tín lâu dài."
+        }
+      }
+    },
+    "categoriesWall": {
+      "badge": "Hệ Sinh Thái Ngành Nghề",
+      "animatedTitle": "Tất cả l<b>ĩ</b>nh v<b>ự</b>c chuyên môn",
+      "subtitle": "Khám phá hàng ngàn cơ hội dự án và nhân tài hàng đầu được phân loại chuyên sâu."
+    },
     "story": {
       "label": "cầu nối an toàn",
       "animatedTitle": "câu ch<b>u</b>yện về <br /> sự tin t<b>ư</b>ởng",
-      "desc": "Nơi doanh nghiệp và người sáng tạo gặp nhau, đó là Gigbridge. Khám phá sự dễ dàng của thanh toán milestone an toàn, hợp đồng có hiệu lực pháp lý và ghép nối thông minh, cùng hoạt động trong một quy trình rõ ràng.",
+      "desc": "Nơi khách hàng và người sáng tạo gặp nhau, đó là Gigbridge. Khám phá sự dễ dàng của thanh toán milestone an toàn, hợp đồng có hiệu lực pháp lý và ghép nối thông minh, cùng hoạt động trong một quy trình rõ ràng.",
       "cta": "xem hướng dẫn sử dụng"
     },
     "contact": {
@@ -39,6 +85,33 @@
       "animatedTitle": "cùng nhau x<b>â</b>y dựng <br /> kỷ nguyên mới <br /> của hợp t<b>á</b>c.",
       "cta": "bắt đầu ngay",
       "imageAlt": "hình ảnh minh họa"
+    },
+    "pathways": {
+      "label": "Bắt đầu theo cách của bạn",
+      "animatedTitle": "một n<b>ề</b>n tảng, <br /> hai c<b>o</b>n đường để ph<b>á</b>t triển",
+      "desc": "GigBridge tạo một điểm gặp gỡ rõ ràng cho nhu cầu của khách hàng và mục tiêu nghề nghiệp của freelancer.",
+      "client": {
+        "badge": "Dành cho Khách hàng",
+        "cardTitle": "khá<b>c</b>h hàng",
+        "title": "Biến nhu cầu thành kết quả cùng chuyên gia phù hợp",
+        "bullets": [
+          "Khám phá hồ sơ công khai theo chuyên môn",
+          "Quản lý đề xuất, hợp đồng và milestone",
+          "Theo dõi tiến độ trong workspace chung"
+        ],
+        "cta": "Khám phá freelancer"
+      },
+      "freelancer": {
+        "badge": "Dành cho freelancer",
+        "cardTitle": "free<b>l</b>ancer",
+        "title": "Tìm dự án phù hợp và xây dựng sự nghiệp bền vững",
+        "bullets": [
+          "Tìm việc theo kỹ năng và lĩnh vực quan tâm",
+          "Gửi đề xuất và trao đổi trực tiếp",
+          "Xây dựng uy tín qua từng dự án hoàn thành"
+        ],
+        "cta": "Xem việc làm mới"
+      }
     }
   }
 }
