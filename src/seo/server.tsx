@@ -140,15 +140,14 @@ export const prerenderMarketingDocument = (path: MarketingRoute, template: strin
   if (path === '/') {
     const landingHead = `<link rel="preload" as="image" href="/img/landing-hero-640.avif" imagesrcset="/img/landing-hero-640.avif 640w, /img/landing-hero-960.avif 960w" imagesizes="(max-width: 900px) 92vw, 46vw" type="image/avif"><link rel="stylesheet" href="/assets/landing.css">${renderHead(state)}`;
     return template
-      .replace(/<title>[\s\S]*?<\/title>/i, '')
-      .replace(/\s*<meta name="description"[^>]*>/i, '')
-      .replace(/\s*<meta name="robots"[^>]*>/i, '')
-      .replace(/\s*<link rel="preconnect" href="https:\/\/fonts\.googleapis\.com"\s*\/?>/i, '')
-      .replace(/\s*<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com"[^>]*>/i, '')
-      .replace(/\s*<link href="https:\/\/fonts\.googleapis\.com\/css2[^>]*>/i, '')
-      .replace(/\s*<link rel="stylesheet"[^>]*href="\/assets\/index-[^"]+\.css"[^>]*>/i, '')
-      .replace(/\s*<script src="https:\/\/accounts\.google\.com\/gsi\/client"[^>]*><\/script>/i, '')
-      .replace(/\s*<script type="module"[^>]*src="\/assets\/index-[^"]+\.js"[^>]*><\/script>/i, '')
+      .replace(/<title>[\s\S]*?<\/title>/gi, '')
+      .replace(/\s*<meta name="description"[^>]*>/gi, '')
+      .replace(/\s*<meta name="robots"[^>]*>/gi, '')
+      .replace(/\s*<noscript>[\s\S]*?fonts\.(?:googleapis|gstatic)\.com[\s\S]*?<\/noscript>/gi, '')
+      .replace(/\s*<link[^>]*fonts\.(?:googleapis|gstatic|cdnfonts)\.com[^>]*>/gi, '')
+      .replace(/\s*<link rel="stylesheet"[^>]*href="\/assets\/index-[^"]+\.css"[^>]*>/gi, '')
+      .replace(/\s*<script src="https:\/\/accounts\.google\.com\/gsi\/client"[^>]*><\/script>/gi, '')
+      .replace(/\s*<script type="module"[^>]*src="\/assets\/index-[^"]+\.js"[^>]*><\/script>/gi, '')
       .replace('</head>', `${landingHead}</head>`)
       .replace('<div id="root"></div>', `<div id="landing-root">${body}</div>`)
       .replace('</body>', '<script type="module" src="/assets/landing-client.js"></script></body>');
