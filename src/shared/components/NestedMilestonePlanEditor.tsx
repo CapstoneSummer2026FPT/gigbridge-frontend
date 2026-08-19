@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { Calendar, ChevronDown, ChevronRight, Clock3, Coins, GripVertical, Lock, Plus, RotateCcw, Trash2, Zap, ZapOff } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronRight, Clock3, Coins, GripVertical, Lock, Plus, RotateCcw, Trash2, Zap } from 'lucide-react';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
 import { CustomSelect } from './CustomSelect';
 import GCoinIcon from './GCoinIcon';

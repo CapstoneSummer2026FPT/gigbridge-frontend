@@ -88,6 +88,7 @@ export interface PostJobRouteJobData {
   isAigenerated?: boolean | null;
   skillNameById?: Record<string, string>;
   skillNamesById?: Record<string, string>;
+  hasAiInterview?: boolean | null;
   interviewQuestions?: readonly PostJobRouteQuestion[] | null;
   milestonePlans?: JobPostMilestonePlanDto[] | null;
 }

@@ -184,13 +184,15 @@ export default function LandingPage() {
                   {...{ fetchpriority: 'high' }}
                 />
               </picture>
-              <div className="landing-visual-card landing-visual-card-top">
-                <span className="landing-status-dot" />
-                <div><strong>Ghép nối phù hợp</strong><small>Theo kỹ năng và chuyên môn</small></div>
-              </div>
-              <div className="landing-visual-card landing-visual-card-bottom">
-                <FeatureIcon name="shield" />
-                <div><strong>Milestone rõ ràng</strong><small>Cộng tác và thanh toán minh bạch</small></div>
+              <div className="landing-hero-visual-badges">
+                <div className="landing-visual-card landing-visual-card-top">
+                  <span className="landing-status-dot" />
+                  <div><strong>Ghép nối phù hợp</strong><small>Theo kỹ năng và chuyên môn</small></div>
+                </div>
+                <div className="landing-visual-card landing-visual-card-bottom">
+                  <FeatureIcon name="shield" />
+                  <div><strong>Milestone rõ ràng</strong><small>Cộng tác và thanh toán minh bạch</small></div>
+                </div>
               </div>
             </div>
           </div>
