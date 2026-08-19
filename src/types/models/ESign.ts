@@ -107,6 +107,7 @@ export interface ESignDocumentDto {
   hasFinalArtifact: boolean;
   finalizedDocumentFileName?: string | null;
   hasPdfArtifact?: boolean;
+  contentRevision?: number;
   createdAt: string;
   updatedAt?: string | null;
   signatures: ESignSignatureDto[];

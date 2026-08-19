@@ -83,6 +83,8 @@ interface BackendESignDocumentResponse {
   FinalizedDocumentFileName?: string | null;
   hasPdfArtifact?: boolean;
   HasPdfArtifact?: boolean;
+  contentRevision?: number;
+  ContentRevision?: number;
   createdAt?: string;
   CreatedAt?: string;
   updatedAt?: string | null;
@@ -214,6 +216,7 @@ export const normalizeESignDocument = (
       'FinalizedDocumentFileName'
     ) ?? null,
     hasPdfArtifact: Boolean(getValue<boolean>(source, 'hasPdfArtifact', 'HasPdfArtifact') ?? false),
+    contentRevision: Number(getValue(source, 'contentRevision', 'ContentRevision') ?? 0),
     createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
     updatedAt: getValue<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
     signatures: signatures.map(normalizeESignSignature),
