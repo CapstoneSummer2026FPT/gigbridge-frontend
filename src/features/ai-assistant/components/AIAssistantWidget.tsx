@@ -5,12 +5,8 @@ import {
   Bot,
   Copy,
   Eraser,
-  Mic,
-  MicOff,
   Send,
   Sparkles,
-  Volume2,
-  VolumeX,
   X,
   Minus,
 } from 'lucide-react';
@@ -62,7 +58,6 @@ export default function AIAssistantWidget() {
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'there';
 
   const chatEndRef         = useRef<HTMLDivElement>(null);
-  const recognitionRef     = useRef<any>(null);
   const textareaRef        = useRef<HTMLTextAreaElement>(null);
 
   /* ── State ── */
@@ -82,9 +77,7 @@ export default function AIAssistantWidget() {
   const [unread,            setUnread]          = useState(0);
   const [showIntro,         setShowIntro]       = useState(false);
   const [introClass,        setIntroClass]      = useState('active');
-  const [voiceEnabled,      setVoiceEnabled]    = useState(() => localStorage.getItem('gb_ai_voice') === 'true');
   const soundEnabled = localStorage.getItem('gb_ai_sound') !== 'false';
-  const [isListening,       setIsListening]     = useState(false);
 
   /* ── Auto-scroll ── */
   useEffect(() => {
@@ -104,26 +97,6 @@ export default function AIAssistantWidget() {
     }
   }, [isOpen, messages.length]);
 
-  /* ── Persistent storage enabled: conversation history persists across tab reloads ── */
-
-  /* ── Speech recognition ── */
-  useEffect(() => {
-    const SRClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SRClass) return;
-    const sr = new SRClass();
-    sr.continuous      = false;
-    sr.interimResults  = false;
-    sr.lang            = 'vi-VN';
-    sr.onstart  = () => setIsListening(true);
-    sr.onend    = () => setIsListening(false);
-    sr.onerror  = () => setIsListening(false);
-    sr.onresult = (e: any) => {
-      const txt = e.results[0][0].transcript;
-      if (txt) setInput(p => p ? `${p} ${txt}` : txt);
-    };
-    recognitionRef.current = sr;
-  }, []);
-
   /* ── Navigation-state trigger (from router redirect) ── */
   useEffect(() => {
     if ((location.state as any)?.openAIAssistant) {
@@ -131,7 +104,7 @@ export default function AIAssistantWidget() {
       playSound('chime', soundEnabled);
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, soundEnabled]);
 
   /* ── Global toggle event ── */
   useEffect(() => {
@@ -152,30 +125,7 @@ export default function AIAssistantWidget() {
   /* ── Clear unread when panel opened ── */
   useEffect(() => { if (isOpen) setUnread(0); }, [isOpen]);
 
-  /* ── Cleanup on unmount ── */
-  useEffect(() => () => {
-    window.speechSynthesis?.cancel();
-  }, []);
-
-
-
-  /* ── TTS ── */
-  const speak = (text: string) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const clean = text.replace(/```[\s\S]*?```/g, '[code]').replace(/Disclaimer:[\s\S]*$/i, '').replace(/[*_#`\-]/g, '');
-    const utt = new SpeechSynthesisUtterance(clean);
-    const vi = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('vi'));
-    if (vi) { utt.voice = vi; utt.lang = 'vi-VN'; } else { utt.lang = 'en-US'; }
-    utt.rate  = 1.05;
-    utt.pitch = 1.0;
-    window.speechSynthesis.speak(utt);
-  };
-
-  const stopSpeak = () => window.speechSynthesis?.cancel();
-
   const reset = () => {
-    stopSpeak();
     localStorage.removeItem(AI_SESSION_KEY);
     setMessages([]);
     setInput('');
@@ -187,11 +137,6 @@ export default function AIAssistantWidget() {
     await navigator.clipboard.writeText(msg.content);
     setCopiedId(msg.id);
     setTimeout(() => setCopiedId(null), 1200);
-  };
-
-  const toggleMic = () => {
-    if (!recognitionRef.current) { setError('Speech recognition not supported. Try Chrome.'); return; }
-    isListening ? recognitionRef.current.stop() : (setError(''), recognitionRef.current.start());
   };
 
   const send = async (override?: string) => {
@@ -247,14 +192,11 @@ export default function AIAssistantWidget() {
       setError('');
       playSound('receive', soundEnabled);
       if (!isOpen) setUnread(p => p + 1);
-      if (voiceEnabled) speak(answer);
     } catch (err: any) {
       setServiceState('unavailable');
       setError(err?.message || 'Failed to generate response. Please try again.');
     }
   };
-
-
 
   /* ────────────────────────────────
      RENDER
@@ -263,23 +205,24 @@ export default function AIAssistantWidget() {
     <div className="ai-widget">
 
       {/* FAB bubble */}
-      <button
-        type="button"
-        className={`ai-fab ${isOpen ? 'is-open' : ''}`}
-        onClick={() => { setIsOpen(p => !p); playSound('chime', soundEnabled); stopSpeak(); }}
-        aria-label="Toggle AI Assistant"
-      >
-        {isOpen
-          ? <X size={20} className="ai-fab-close" />
-          : (
-            <div className="ai-fab-icon-wrap">
-              <Bot size={20} />
-              <Sparkles size={11} className="ai-fab-sparkle animate-pulse" />
-            </div>
-          )
-        }
-        {unread > 0 && !isOpen && <span className="ai-unread-badge animate-bounce">{unread}</span>}
-      </button>
+      <div className="ai-fab-wrap">
+        <button
+          type="button"
+          className={`ai-fab ${isOpen ? 'is-open' : ''}`}
+          onClick={() => { setIsOpen(p => !p); playSound('chime', soundEnabled); }}
+          aria-label="Toggle AI Assistant"
+        >
+          {isOpen
+            ? <X size={20} className="ai-fab-close" />
+            : (
+              <div className="ai-fab-icon-wrap">
+                <Sparkles size={21} className="animate-pulse" />
+              </div>
+            )
+          }
+          {unread > 0 && !isOpen && <span className="ai-unread-badge animate-bounce">{unread}</span>}
+        </button>
+      </div>
 
       {/* Chat panel */}
       <div className={`ai-panel ${isOpen ? 'is-open' : ''}`}>
@@ -300,15 +243,6 @@ export default function AIAssistantWidget() {
           </div>
 
           <div className="ai-header-controls">
-            <button
-              type="button"
-              className={`ai-ctrl-btn ${voiceEnabled ? 'voice-on' : ''}`}
-              onClick={() => { setVoiceEnabled(p => !p); if (voiceEnabled) stopSpeak(); }}
-              title={voiceEnabled ? 'Voice feedback ON' : 'Voice feedback OFF'}
-            >
-              {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-            </button>
-
             <button type="button" className="ai-ctrl-btn" onClick={reset} title="Reset conversation">
               <Eraser size={14} />
             </button>
@@ -316,7 +250,7 @@ export default function AIAssistantWidget() {
             <button
               type="button"
               className="ai-ctrl-btn close-btn"
-              onClick={() => { setIsOpen(false); stopSpeak(); }}
+              onClick={() => setIsOpen(false)}
               title="Close"
             >
               <Minus size={14} />
@@ -364,10 +298,6 @@ export default function AIAssistantWidget() {
                         <Copy size={10} />
                         {copiedId === msg.id ? 'Copied!' : 'Copy'}
                       </button>
-                      <button className="ai-action-btn" type="button" onClick={() => speak(msg.content)}>
-                        <Volume2 size={10} />
-                        Speak
-                      </button>
                     </div>
                   )}
                 </div>
@@ -392,8 +322,6 @@ export default function AIAssistantWidget() {
           </div>
         </div>
 
-
-
         {/* ── Composer (input bar) ── */}
         <div className="ai-composer">
           <textarea
@@ -407,15 +335,6 @@ export default function AIAssistantWidget() {
             maxLength={5000}
           />
           <div className="ai-composer-toolbar">
-            <button
-              type="button"
-              className={`ai-composer-mic ${isListening ? 'listening' : ''}`}
-              onClick={toggleMic}
-              title={isListening ? 'Stop listening' : 'Voice input'}
-            >
-              {isListening ? <MicOff size={15} /> : <Mic size={15} />}
-            </button>
-
             <span className="ai-composer-counter">{input.length}/5000</span>
 
             <button

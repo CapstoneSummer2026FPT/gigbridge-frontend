@@ -618,11 +618,11 @@ export default function ScreenProposalAnswerQuestion() {
             </button>
             <div className="min-w-0">
               <p className="truncate text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--brand)' }}>
-                {isReviewMode ? 'Ôn tập · Review' : 'Phỏng vấn · Interview'}
+                {isReviewMode ? 'Kiểm tra lại · Review' : 'Phỏng vấn · Interview'}
               </p>
               <h1 className="truncate text-sm font-black" style={{ color: 'var(--text-primary)' }}>
                 {isReviewMode
-                  ? 'Xem lại câu trả lời'
+                  ? 'Kiểm tra lại câu trả lời'
                   : timerLoading
                     ? 'Đang chuẩn bị câu hỏi...'
                     : activeQuestion
@@ -689,7 +689,7 @@ export default function ScreenProposalAnswerQuestion() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-extrabold uppercase tracking-wider" style={{ color: 'var(--brand)' }}>
-                        Giai đoạn ôn tập
+                        Kiểm tra lại câu trả lời
                       </p>
                       <p className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         Xem lại và chỉnh sửa câu trả lời trước khi nộp
@@ -717,7 +717,7 @@ export default function ScreenProposalAnswerQuestion() {
                 {reviewableQuestions.length === 0 ? (
                   <div className="rounded-2xl border p-10 text-center" style={{ borderColor: 'var(--border)' }}>
                     <CheckCircle2 size={44} className="mx-auto text-emerald-500" />
-                    <p className="mt-3 text-lg font-black" style={{ color: 'var(--text-primary)' }}>Không có câu nào cần ôn tập</p>
+                    <p className="mt-3 text-lg font-black" style={{ color: 'var(--text-primary)' }}>Không có câu nào cần kiểm tra</p>
                     <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Bạn đã sẵn sàng nộp đề xuất.</p>
                   </div>
                 ) : (

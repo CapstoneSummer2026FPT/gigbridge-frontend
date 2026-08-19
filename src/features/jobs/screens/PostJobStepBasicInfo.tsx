@@ -7,15 +7,16 @@ import {
 } from 'lucide-react';
 import { jobAPI } from '../../../api/jobAPI';
 import { useApp } from '../../../app/providers/AppProvider';
-import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
+import type { GetMyJobPostDto } from '../../../types/models/Job';
 import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PostJobAiInput } from '../components/PostJobAiInput';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
+import { PostJobDraftsModal } from '../components/PostJobDraftsModal';
 import { usePostJob } from '../hooks/usePostJob';
-import { CustomSelect } from '../../../shared/components/CustomSelect';
+import CustomSelect from '../../../shared/components/CustomSelect';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
 import { AIGeneratedDetailsReviewModal } from '../components/AIGeneratedDetailsReviewModal';
 
@@ -83,50 +84,16 @@ export default function PostJobStepBasicInfo() {
 
   const overlay = (
     <>
-      {isDraftModalOpen && (
-        <div className="fixed inset-0 z-[90] grid place-items-center bg-black/55 p-4 backdrop-blur-sm" onClick={() => setIsDraftModalOpen(false)}>
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" onClick={event => event.stopPropagation()}>
-            <div className="flex items-start justify-between border-b border-border p-5">
-              <div>
-                <h2 className="text-lg font-extrabold">{t('postJob.continueDraftTitle')}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{t('postJob.continueDraftDesc', { count: drafts.length })}</p>
-              </div>
-              <button type="button" onClick={() => setIsDraftModalOpen(false)} aria-label={t('common.close')}><X size={18} /></button>
-            </div>
-            <div className="max-h-[55vh] overflow-y-auto p-5">
-              {isDraftsLoading && <p className="py-8 text-center text-sm text-muted-foreground">{t('postJob.checkingDrafts')}</p>}
-              {draftsError && <p className="rounded-xl bg-red-500/10 p-3 text-sm text-red-500">{draftsError}</p>}
-              {!isDraftsLoading && !draftsError && drafts.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border p-8 text-center">
-                  <FileText className="mx-auto mb-2 text-muted-foreground" />
-                  <strong>{t('postJob.noDrafts')}</strong>
-                  <p className="mt-1 text-xs text-muted-foreground">{t('postJob.noDraftsDesc')}</p>
-                </div>
-              )}
-              <div className="grid gap-2">
-                {drafts.map(draft => (
-                  <button
-                    type="button"
-                    key={draft.jobPostsId}
-                    onClick={() => continueDraft(draft)}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background p-4 text-left hover:border-[var(--brand)]"
-                  >
-                    <span className="min-w-0">
-                      <strong className="block truncate text-sm">{draft.title || t('postJob.untitledDraft')}</strong>
-                      <small className="text-muted-foreground">{new Date(draft.updatedAt || draft.createdAt).toLocaleString()}</small>
-                    </span>
-                    <span className="text-xs font-bold text-[var(--brand)]">{t('postJob.editDraft')}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-border p-4">
-              <button type="button" className="job-post-button job-post-button--secondary" onClick={() => setIsDraftModalOpen(false)}>{t('postJob.cancel')}</button>
-              <button type="button" className="job-post-button job-post-button--primary" onClick={createNewDraft}>{t('postJob.createNewJobPost2')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PostJobDraftsModal
+        isOpen={isDraftModalOpen}
+        drafts={drafts}
+        isLoading={isDraftsLoading}
+        error={draftsError}
+        onSelectDraft={continueDraft}
+        onCreateNew={createNewDraft}
+        onClose={() => setIsDraftModalOpen(false)}
+        onRefresh={loadDrafts}
+      />
 
       <PostJobLeavePrompt
         isOpen={isLeavePromptOpen}
@@ -340,11 +307,10 @@ export default function PostJobStepBasicInfo() {
                   type="button"
                   key={amount}
                   onClick={() => setForm({ ...form, budget: String(amount) })}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${
-                    form.budget === String(amount)
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${form.budget === String(amount)
                       ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
                       : 'bg-muted/40 text-muted-foreground border-border hover:border-[var(--brand)] hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   <span>{amount}</span>
                   <GCoinIcon size={12} />
@@ -389,11 +355,10 @@ export default function PostJobStepBasicInfo() {
                         type="button"
                         key={unit}
                         onClick={() => setForm({ ...form, estimatedDurationUnit: unit })}
-                        className={`px-3 py-1.5 text-xs font-extrabold rounded-md transition-all ${
-                          isSelected
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-md transition-all ${isSelected
                             ? 'bg-[var(--brand)] text-white shadow-sm'
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                        }`}
+                          }`}
                       >
                         {t(`postJob.durationUnits.${unit}`, unitLabel)}
                       </button>
@@ -425,7 +390,7 @@ export default function PostJobStepBasicInfo() {
                   <ImagePlus size={15} />
                 </div>
                 <span className="text-xs font-extrabold uppercase tracking-wider text-foreground">
-                  {t('postJob.advancedSettings', 'Cài đặt nâng cao (Hình ảnh & Phạm vi hiển thị)')}
+                  {t('postJob.advancedSettingsImagesOnly', 'Cài đặt nâng cao (Hình ảnh)')}
                 </span>
               </div>
               <ChevronDown size={18} className={`text-muted-foreground transition-transform duration-200 ${showAdvanced ? 'rotate-180 text-[var(--brand)]' : ''}`} />
@@ -483,21 +448,6 @@ export default function PostJobStepBasicInfo() {
                       ))}
                     </div>
                   )}
-                </div>
-
-                {/* Job Post Visibility */}
-                <div className="job-post-field">
-                  <label htmlFor="job-visibility" className="font-bold text-foreground">{t('postJob.visibility', 'Phạm vi hiển thị')}</label>
-                  <CustomSelect
-                    value={form.visibility}
-                    options={[
-                      { value: String(JobPostVisibility.Public), label: t('postJob.public', 'Công khai (Public)') },
-                      { value: String(JobPostVisibility.Private), label: t('postJob.private', 'Riêng tư (Private)') },
-                      { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnly', 'Chỉ qua lời mời (Invite Only)') },
-                    ]}
-                    onChange={val => setForm({ ...form, visibility: val })}
-                    searchable={false}
-                  />
                 </div>
               </div>
             )}

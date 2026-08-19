@@ -1,0 +1,32 @@
+/**
+ * Workspace List Bar Redesign Styles
+ * Features: Rounded-2xl, Thin Brand Stroke, Card BG, and Subtle Brand Gradient Fade Overlay
+ */
+
+.workspace-list-bar {
+  background: var(--card, #ffffff);
+  border: 1px solid rgba(73, 75, 231, 0.28);
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px -2px rgba(73, 75, 231, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+/* Subtle Brand Gradient Fade Overlay */
+.workspace-list-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(73, 75, 231, 0.06) 0%, transparent 35%, transparent 75%, rgba(73, 75, 231, 0.04) 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.dark .workspace-list-bar {
+  background: var(--card, #0f172a);
+  border: 1px solid rgba(73, 75, 231, 0.35);
+  box-shadow: 0 4px 24px -2px rgba(73, 75, 231, 0.15), 0 2px 8px -1px rgba(0, 0, 0, 0.2);
+}
+
+.dark .workspace-list-bar::before {
+  background: linear-gradient(180deg, rgba(73, 75, 231, 0.1) 0%, transparent 35%, transparent 75%, rgba(73, 75, 231, 0.06) 100%);
+}

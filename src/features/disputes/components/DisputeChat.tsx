@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, Info, LoaderCircle, Lock, MessageSquare, Paperclip, Send, ShieldCheck } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ChevronDown, ChevronUp, Info, LoaderCircle, Lock, MessageSquare, Paperclip, Send, ShieldCheck } from 'lucide-react';
 import { messageGetAPI, type ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -18,7 +18,7 @@ interface DisputeChatProps {
 }
 
 export function DisputeChat({ disputeId, disputeStatus }: DisputeChatProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['disputes', 'common']);
   const { user } = useApp();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationMessageResponse[]>([]);
@@ -208,11 +208,33 @@ export function DisputeChat({ disputeId, disputeStatus }: DisputeChatProps) {
             )}
 
             {messages.map((message, index) => {
-              const system = message.messageType === MessageType.System || message.messageType === MessageType.DisputeEvent;
+              const content = message.content ?? '';
+              const isOpeningText =
+                content === 'A dispute has been opened.' ||
+                /dispute.*open/i.test(content) ||
+                /mở.*tranh chấp/i.test(content) ||
+                /tranh chấp.*được mở/i.test(content) ||
+                (index === 0 && /dispute/i.test(content));
+
+              const system =
+                message.messageType === MessageType.System ||
+                message.messageType === MessageType.DisputeEvent ||
+                isOpeningText;
+
               if (system) {
+                const displayText = isOpeningText
+                  ? t('disputes.disputeOpenedNotice', { defaultValue: 'Hồ sơ tranh chấp đã được mở. Ban quản trị đang tham gia đối soát.' })
+                  : message.content;
+
                 return (
-                  <div className="dispute-chat-system" key={message.messageId}>
-                    <span>{message.content}</span>
+                  <div className="dispute-chat-system my-4 flex justify-center" key={message.messageId}>
+                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-600 text-white font-black text-xs shadow-xs">
+                      <AlertTriangle size={14} className="shrink-0" />
+                      <span>{displayText}</span>
+                      <span className="opacity-75 text-[10px] font-bold">
+                        • {new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </span>
                   </div>
                 );
               }

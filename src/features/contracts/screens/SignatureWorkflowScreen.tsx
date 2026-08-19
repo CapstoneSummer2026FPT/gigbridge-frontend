@@ -30,6 +30,7 @@ import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESig
 import { UserRole } from '../../../types/models/User';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
@@ -64,6 +65,7 @@ interface PreparedSignatureImage {
 
 const PDF_SIGNATURE_MAX_WIDTH = 220;
 const PDF_SIGNATURE_MAX_HEIGHT = 80;
+const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
 
 const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImage => {
   const fallbackScale = Math.min(
@@ -531,8 +533,8 @@ export default function SignatureWorkflowScreen() {
   useESignDocumentChangedEvent(
     contractId,
     signatureStep === 'complete' &&
-      (isWaitingForCounterpart ||
-        (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
+    (isWaitingForCounterpart ||
+      (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
     handleDocumentChangedDuringSigning,
   );
 
@@ -703,33 +705,30 @@ export default function SignatureWorkflowScreen() {
 
           {/* Stepper Card */}
           <div className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-2xl bg-muted/40 border border-border/60 shrink-0 self-start md:self-auto relative z-10 overflow-x-auto">
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'review'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'review'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
               <span>{t('contracts.reviewProposal')}</span>
             </div>
 
             <ChevronRight size={13} className="text-muted-foreground shrink-0" />
 
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'capture'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'capture'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
               <span>{t('contracts.proceedToSign')}</span>
             </div>
 
             <ChevronRight size={13} className="text-muted-foreground shrink-0" />
 
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'complete'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'complete'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
               <span>{hasValidCurrentUserDraft && !isContractFinalized ? 'Waiting' : t('contracts.completed')}</span>
             </div>
@@ -1193,7 +1192,7 @@ export default function SignatureWorkflowScreen() {
 
                 <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 space-y-1">
                   <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">{t('contracts.status')}</span>
-                  <span className="text-xs font-extrabold text-brand block">{t('contracts.statusLabels.' + contract.status, { defaultValue: String(contract.status) })}</span>
+                  <span className="text-xs font-extrabold text-brand block">{t('contracts.statusLabels.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 space-y-1">

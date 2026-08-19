@@ -2,7 +2,6 @@ import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
   CreditCard,
-  ShieldCheck,
   Sparkles,
   Lock,
   ArrowUpRight,
@@ -88,16 +87,12 @@ export function PaymentTab() {
                     defaultValue: 'Nạp tiền tiện lợi vào Ví qua PayOS và xem lịch sử giao dịch thanh toán dự án.',
                   })
                 : t('settings.paymentMethodsSubtitle', {
-                    defaultValue: 'Thêm và quản lý tài khoản ngân hàng để nạp/rút tiền dự án nhanh chóng, bảo mật tuyệt đối với mã hóa SSL 256-bit.',
+                    defaultValue: 'Thêm và quản lý tài khoản ngân hàng để nạp/rút tiền dự án nhanh chóng.',
                   })}
             </p>
           </div>
 
           <div className="flex items-center gap-3 self-start sm:self-center">
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold shadow-sm">
-              <ShieldCheck size={16} />
-              <span>{t('settings.security256bit', { defaultValue: 'Bảo mật 256-bit' })}</span>
-            </div>
             <div className="h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand,#494be7)] text-white shadow-lg shadow-[var(--brand-soft)] flex shrink-0">
               <CreditCard size={24} />
             </div>

@@ -33,6 +33,7 @@ import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { FileTypeBadge, getFileCategory, toForceDownloadUrl } from '../../../shared/components/FileTypeBadge';
+import { FileUploadProgress } from '../../../shared/components/FileUploadProgress';
 import '../styles/messages-screen.css';
 
 const ROOM_COPY = {
@@ -405,6 +406,7 @@ export default function MessagesScreen() {
     messageInput,
     setMessageInput,
     chatAttachments,
+    attachmentUploadsByClientMessageId,
     handleSelectChatFiles,
     handleRemoveChatFile,
     isFavorited,
@@ -1090,6 +1092,9 @@ export default function MessagesScreen() {
 
               {activeMessages.map((msg, idx) => {
                 const mine = isMe(msg.senderId);
+                const attachmentUpload = msg.clientMessageId
+                  ? attachmentUploadsByClientMessageId[msg.clientMessageId]
+                  : undefined;
                 const isSystem = msg.type === 'system' || msg.senderId === 'system';
                 const reportEvent = parseReportSystemMessageMetadata(msg.metadata);
                 const latestScheduleMessage = msg.schedule ? activeMessages.filter(m => m.schedule?.scheduleId === msg.schedule?.scheduleId).sort((a,b) => (b.schedule?.eventSequence || 0) - (a.schedule?.eventSequence || 0))[0] : undefined;
@@ -1284,6 +1289,18 @@ export default function MessagesScreen() {
                               />
                             );
                           })}
+                          {attachmentUpload && (
+                            <div className="mt-1 rounded-xl border border-border bg-card/80 p-2.5">
+                              <FileUploadProgress
+                                phase={attachmentUpload.phase}
+                                progress={attachmentUpload.progress}
+                                variant="compact"
+                                label={attachmentUpload.phase === 'processing'
+                                  ? t('fileUploadProgress.processingMessage')
+                                  : undefined}
+                              />
+                            </div>
+                          )}
                         </div>
 
                       ) : msg.type === 'deal' ? (

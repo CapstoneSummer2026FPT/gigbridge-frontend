@@ -9,6 +9,7 @@
     "chatLoadFailed": "Không thể tải cuộc trò chuyện tranh chấp.",
     "chatSendFailed": "Không thể gửi tin nhắn.",
     "chatClosed": "Hội thoại đã bị khóa sau khi Quản trị viên đóng phiếu tranh chấp.",
+    "disputeOpenedNotice": "Hồ sơ tranh chấp đã được mở. Ban quản trị đang tham gia đối soát.",
     "chatGuideTitle": "Kênh trao đổi & làm việc trực tiếp với Quản trị viên GigBridge",
     "chatGuideDesc": "Tất cả thông điệp tại đây đều có sự giám sát trực tiếp từ Ban quản trị GigBridge. Quản trị viên sẽ đánh giá lập luận, chứng cứ và phản hồi của hai bên để đưa ra phán quyết xử lý tranh chấp chính thức.",
     "stepFiled": "1. Đã nộp tranh chấp",
