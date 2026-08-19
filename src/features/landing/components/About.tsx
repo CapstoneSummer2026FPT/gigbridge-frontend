@@ -30,19 +30,19 @@ export default function About() {
 
   return (
     <div id="about" className="min-h-screen w-full">
-      <div className="relative mb-8 mt-36 flex flex-col items-center gap-5">
-        <p className="font-general text-sm uppercase md:text-[10px]">
+      <div className="relative mb-12 mt-28 md:mt-36 flex flex-col items-center gap-4 px-4 text-center">
+        <p className="font-general text-xs md:text-sm uppercase tracking-widest text-muted-foreground">
           {t('landing.about.welcome')}
         </p>
 
         <AnimatedTitle
           title={t('landing.about.animatedTitle')}
-          containerClass="mt-5 text-center"
+          containerClass="mt-2 text-center"
         />
 
         <div className="about-subtext">
-          <p>{t('landing.about.subtext1')}</p>
-          <p className="text-gray-500">
+          <p className="font-medium text-foreground">{t('landing.about.subtext1')}</p>
+          <p className="text-muted-foreground mt-1">
             {t('landing.about.subtext2')}
           </p>
         </div>
