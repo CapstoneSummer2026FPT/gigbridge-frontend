@@ -226,12 +226,14 @@ export function useJobDetail() {
             );
             const targetJobPostId = foundInv?.jobPostId || foundInv?.jobPostsId;
             if (targetJobPostId) {
-              const res = await jobGetAPI.getJobById(targetJobPostId);
-              setJob(res.job);
-              setClient(null);
-              setClientProfile(null);
-              setSimilarJobs([]);
-              return;
+              const invitedResponse = await jobGetAPI.getMyAppliedJobPostById(targetJobPostId);
+              if (invitedResponse.success && invitedResponse.data) {
+                setJob(toJobFromDetail(invitedResponse.data));
+                setClient(null);
+                setClientProfile(null);
+                setSimilarJobs([]);
+                return;
+              }
             }
           } catch (invErr) {
             console.error('Failed to resolve job invitation in useJobDetail:', invErr);
