@@ -41,9 +41,43 @@ async function collectTextFiles(directory) {
   return files;
 }
 
-await readFile(indexPath, 'utf8').catch((error) => {
+const homepageHtml = await readFile(indexPath, 'utf8').catch((error) => {
   throw new Error(`Production build is missing dist/index.html: ${error.message}`);
 });
+
+const homepageRequirements = [
+  { label: 'prerendered landing root', pattern: /<div id="landing-root">/ },
+  { label: 'homepage canonical', pattern: /<link rel="canonical" href="https:\/\/gigbridge\.id\.vn\/">/ },
+  { label: 'landing stylesheet', pattern: /\/assets\/landing\.css/ },
+  { label: 'landing hydration entry', pattern: /\/assets\/landing-client\.js/ },
+  { label: 'semantic homepage heading', pattern: /<h1[^>]*>Kết nối đúng freelancer\./ },
+];
+
+for (const requirement of homepageRequirements) {
+  if (!requirement.pattern.test(homepageHtml)) {
+    throw new Error(`Production homepage is missing ${requirement.label}.`);
+  }
+}
+
+if (/accounts\.google\.com\/gsi\/client/.test(homepageHtml)) {
+  throw new Error('Production homepage must not load the Google Login SDK.');
+}
+
+if (/fonts\.googleapis\.com|fonts\.gstatic\.com/.test(homepageHtml)) {
+  throw new Error('Production homepage must not load external font stylesheets.');
+}
+
+if (/<link rel="stylesheet"[^>]*href="\/assets\/index-[^"]+\.css"/.test(homepageHtml)) {
+  throw new Error('Production homepage must not load the main SPA stylesheet.');
+}
+
+if (/<script type="module"[^>]*src="\/assets\/index-[^"]+\.js"/.test(homepageHtml)) {
+  throw new Error('Production homepage must not load the main SPA entry.');
+}
+
+if ((homepageHtml.match(/<h1(?:\s|>)/g) ?? []).length !== 1) {
+  throw new Error('Production homepage must contain exactly one h1.');
+}
 
 const artifactFiles = await collectTextFiles(distDirectory);
 const violations = [];
