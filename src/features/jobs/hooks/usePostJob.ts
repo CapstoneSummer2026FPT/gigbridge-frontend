@@ -19,6 +19,7 @@ import {
   type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
+  addDaysToDateString,
   computeChainedDueDates,
   durationToWeeks,
   formatJobDuration,
@@ -27,6 +28,7 @@ import {
   type JobDurationUnit,
 } from '../utils/jobDuration';
 import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from '../utils/milestoneClamping';
+import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -86,6 +88,7 @@ export interface PostJobRouteJobData {
   isAigenerated?: boolean | null;
   skillNameById?: Record<string, string>;
   skillNamesById?: Record<string, string>;
+  hasAiInterview?: boolean | null;
   interviewQuestions?: readonly PostJobRouteQuestion[] | null;
   milestonePlans?: JobPostMilestonePlanDto[] | null;
 }
@@ -131,6 +134,12 @@ interface PostJobValidationIssue {
   message: string;
   section: PostJobReviewSection;
   fieldSelector?: string;
+}
+
+interface PostJobDraftOverrides {
+  questions?: QuestionInput[];
+  milestonePlans?: JobPostMilestonePlanDto[];
+  visibility?: JobPostVisibility;
 }
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
@@ -260,6 +269,7 @@ export function usePostJob() {
   const [submitMode, setSubmitMode] = useState<PostJobSubmitMode | null>(null);
   const [isBudgetExceededPromptOpen, setIsBudgetExceededPromptOpen] = useState(false);
   const [pendingBudgetSubmitMode, setPendingBudgetSubmitMode] = useState<PostJobSubmitMode | null>(null);
+  const [pendingPublishVisibility, setPendingPublishVisibility] = useState<JobPostVisibility | null>(null);
   const budgetOverrideRef = useRef<string | null>(null);
   const durationOverrideRef = useRef(false);
   const [leaveAction, setLeaveAction] = useState<LeaveAction>(null);
@@ -428,9 +438,11 @@ export function usePostJob() {
   // edits, add/remove/reorder, or form.deadline changing) since it's a plain memo over
   // the current milestonePlans/form.deadline, not a stateful effect.
   const milestonePlansWithDeadlines = useMemo<JobPostMilestonePlanDto[]>(() => {
-    const dueDates = computeChainedDueDates(form.deadline, milestonePlans.map(milestone => milestone.estimatedDuration));
+    // Milestone calculations start from the current local day (today)
+    const anchorDate = currentLocalDate();
+    const dueDates = computeChainedDueDates(anchorDate, milestonePlans.map(milestone => milestone.estimatedDuration));
     return milestonePlans.map((milestone, index) => ({ ...milestone, dueDate: dueDates[index] }));
-  }, [form.deadline, milestonePlans]);
+  }, [milestonePlans]);
 
   useEffect(() => {
     let isMounted = true;
@@ -882,9 +894,13 @@ export function usePostJob() {
     setBackgroundHiringPlanStatus('loading');
     setBackgroundHiringPlanError(null);
 
+    const maxAiProposalDays = 21; // 3 weeks max for AI generated proposal end date
+    const maxAiDeadlineIso = addDaysToDateString(currentLocalDate(), maxAiProposalDays);
     const duration = parseJobDuration(generatedData.estimatedDuration);
-    const durationDays = (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 2;
-    const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const rawDays = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14;
+    const durationDays = Math.min(rawDays, maxAiProposalDays);
+    const calculatedDeadline = addDaysToDateString(currentLocalDate(), durationDays);
+    const computedDeadline = (form.deadline && form.deadline <= maxAiDeadlineIso) ? form.deadline : calculatedDeadline;
 
     const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
     const canonicalBudgetNum = canonicalBudgetStr ? Number(canonicalBudgetStr) : null;
@@ -1033,11 +1049,13 @@ export function usePostJob() {
       return { message: t('postJobWizard.validation.durationInvalid'), section: 'terms', fieldSelector: '#job-duration' };
     }
 
-    if (form.deadline) {
-      const endDate = new Date(`${form.deadline}T23:59:59`);
-      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
-        return { message: t('postJobWizard.validation.deadlineInvalid'), section: 'terms', fieldSelector: '#job-deadline' };
-      }
+    if (!form.deadline) {
+      return { message: t('postJobWizard.validation.deadlineRequired', 'Proposal closing date is required.'), section: 'terms', fieldSelector: '#job-deadline' };
+    }
+
+    const endDate = new Date(`${form.deadline}T23:59:59`);
+    if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
+      return { message: t('postJobWizard.validation.deadlineInvalid', 'End date must be in the future'), section: 'terms', fieldSelector: '#job-deadline' };
     }
 
     return null;
@@ -1117,10 +1135,7 @@ export function usePostJob() {
     });
   };
 
-  const buildDraftRequest = (overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): SaveDraftJobPostRequest => {
+  const buildDraftRequest = (overrides?: PostJobDraftOverrides): SaveDraftJobPostRequest => {
     // Confirmed overrides (milestone total / total duration) take precedence
     // over the current form values — the immediate post-confirm save runs in
     // the same tick as setForm, so the form fields would still hold the stale
@@ -1142,7 +1157,8 @@ export function usePostJob() {
       budgetMax: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       currency: form.currency.trim() || GIGCOIN_CURRENCY_CODE,
       estimatedDuration: formatJobDuration(durationValue, durationUnit),
-      visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,
+      visibility: overrides?.visibility
+        ?? (form.visibility ? Number(form.visibility) : JobPostVisibility.Public),
       endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
       isAigenerated: form.isAigenerated,
       skillIds: form.skillIds,
@@ -1163,10 +1179,7 @@ export function usePostJob() {
     };
   };
 
-  const buildRouteJobData = (overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): PostJobRouteJobData => ({
+  const buildRouteJobData = (overrides?: PostJobDraftOverrides): PostJobRouteJobData => ({
     ...buildDraftRequest(overrides),
     majorId: form.majorId,
     majorName: selectedMajorName,
@@ -1178,10 +1191,10 @@ export function usePostJob() {
     attachments,
   });
 
-  const buildNavigationState = (currentJobPostId: string | null = jobPostId, overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): PostJobRouteState => ({
+  const buildNavigationState = (
+    currentJobPostId: string | null = jobPostId,
+    overrides?: PostJobDraftOverrides,
+  ): PostJobRouteState => ({
     jobPostId: currentJobPostId,
     jobData: buildRouteJobData(overrides),
   });
@@ -1259,10 +1272,7 @@ export function usePostJob() {
     }
   };
 
-  const saveDraftPartial = async (overrides?: {
-    questions?: QuestionInput[];
-    milestonePlans?: JobPostMilestonePlanDto[];
-  }): Promise<string> => {
+  const saveDraftPartial = async (overrides?: PostJobDraftOverrides): Promise<string> => {
     const payload = buildDraftRequest(overrides);
     const signature = JSON.stringify(payload);
     latestDraftSignatureRef.current = signature;
@@ -1354,7 +1364,16 @@ export function usePostJob() {
     }
   };
 
-  const submitDraftFlow = async (mode: PostJobSubmitMode): Promise<PostJobSubmitResult> => {
+  const submitDraftFlow = async (
+    mode: PostJobSubmitMode,
+    visibilityOverride?: JobPostVisibility,
+  ): Promise<PostJobSubmitResult> => {
+    const requestedPublishVisibility: JobPostVisibility | undefined = mode === 'publish'
+      ? visibilityOverride
+        ?? pendingPublishVisibility
+        ?? JobPostVisibility.Public
+      : undefined;
+
     if (mode === 'plan' || mode === 'review' || mode === 'publish') {
       const detailValidationIssue = validateForm();
       if (detailValidationIssue) {
@@ -1402,6 +1421,7 @@ export function usePostJob() {
       && !durationOverrideRef.current;
     if ((mode === 'review' || mode === 'publish') && (budgetNeedsConfirm || durationNeedsConfirm)) {
       setPendingBudgetSubmitMode(mode);
+      setPendingPublishVisibility(requestedPublishVisibility ?? null);
       setIsBudgetExceededPromptOpen(true);
       return { status: 'budget-exceeded' };
     }
@@ -1440,7 +1460,7 @@ export function usePostJob() {
             try {
               const durationWeeks = form.estimatedDurationValue ? Number(form.estimatedDurationValue) * (form.estimatedDurationUnit === 'months' ? 4.333 : form.estimatedDurationUnit === 'years' ? 52 : 1) : 2;
               const durationDays = Math.ceil(durationWeeks * 7) * 2;
-              const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+              const computedDeadline = form.deadline || addDaysToDateString(currentLocalDate(), durationDays);
 
               if (!form.deadline) {
                 setForm(prev => ({ ...prev, deadline: computedDeadline }));
@@ -1509,8 +1529,11 @@ export function usePostJob() {
         return { status: 'success' };
       }
 
-      const currentJobPostId = await saveDraftPartial();
-      const navigationState = buildNavigationState(currentJobPostId);
+      const publishOverrides = requestedPublishVisibility === undefined
+        ? undefined
+        : { visibility: requestedPublishVisibility };
+      const currentJobPostId = await saveDraftPartial(publishOverrides);
+      const navigationState = buildNavigationState(currentJobPostId, publishOverrides);
 
       if (mode === 'review') {
         allowNextNavigation();
@@ -1540,6 +1563,7 @@ export function usePostJob() {
       setSubmitMode(null);
       budgetOverrideRef.current = null;
       durationOverrideRef.current = false;
+      if (mode === 'publish') setPendingPublishVisibility(null);
     }
   };
 
@@ -1561,13 +1585,17 @@ export function usePostJob() {
     }
     setIsBudgetExceededPromptOpen(false);
     const mode = pendingBudgetSubmitMode;
+    const visibility = pendingPublishVisibility;
     setPendingBudgetSubmitMode(null);
-    return mode ? submitDraftFlow(mode) : Promise.resolve({ status: 'budget-exceeded' });
+    return mode
+      ? submitDraftFlow(mode, mode === 'publish' ? visibility ?? undefined : undefined)
+      : Promise.resolve({ status: 'budget-exceeded' });
   };
 
   const handleBudgetExceededCancel = (): void => {
     setIsBudgetExceededPromptOpen(false);
     setPendingBudgetSubmitMode(null);
+    setPendingPublishVisibility(null);
   };
 
   const continueBlockedNavigation = (): void => {

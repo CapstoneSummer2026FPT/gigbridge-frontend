@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { AuthInviteModal } from '../../../shared/components/AuthInviteModal';
+import { useApp } from '../../../app/providers/AppProvider';
 import { InviteFreelancerToJobModal } from '../../profile/components/InviteFreelancerToJobModal';
 
 import { BrowseFreelancersTab } from '../components/BrowseFreelancersTab';
@@ -65,6 +68,38 @@ export default function SmartTalentMatchingScreen() {
     hasActiveFilters,
   } = useSmartTalentMatching();
 
+  const { user } = useApp();
+  const [showAuthInvite, setShowAuthInvite] = useState(false);
+
+  const handleToggleSavedWithAuth = (id: string) => {
+    if (!user) {
+      setShowAuthInvite(true);
+      return;
+    }
+    toggleSaved(id);
+  };
+
+  const handleInviteWithAuth = (profileId: string, displayName: string, jobId?: string, matchRunIdParam?: string) => {
+    if (!user) {
+      setShowAuthInvite(true);
+      return;
+    }
+    setInviteTarget({
+      profileId,
+      displayName,
+      initialJobId: jobId,
+      matchRunId: matchRunIdParam,
+    });
+  };
+
+  const handleOpenProfileWithAuth = (match: any) => {
+    if (!user) {
+      setShowAuthInvite(true);
+      return;
+    }
+    openMatchedProfile(match);
+  };
+
   const resultTitle = activeStage === 'smart'
     ? t('talentMatching.smartRecommendationsTitle')
     : activeStage === 'saved'
@@ -84,8 +119,20 @@ export default function SmartTalentMatchingScreen() {
         {/* Header */}
         <TalentMatchingHeader
           activeStage={activeStage}
-          changeStage={changeStage}
-          requestSmartMatching={requestSmartMatching}
+          changeStage={(stage) => {
+            if (!user && (stage === 'smart' || stage === 'saved')) {
+              setShowAuthInvite(true);
+              return;
+            }
+            changeStage(stage);
+          }}
+          requestSmartMatching={() => {
+            if (!user) {
+              setShowAuthInvite(true);
+              return;
+            }
+            requestSmartMatching();
+          }}
           savedCount={saved.length}
           hasSmartMatchingAccess={hasSmartMatchingAccess}
           premiumLoading={premiumStatus.loading}
@@ -125,7 +172,13 @@ export default function SmartTalentMatchingScreen() {
               setSelectedJobId={setSelectedJobId}
               selectedJob={selectedJob}
               loadingInitial={loadingInitial}
-              onCreateJob={() => navigate('/jobs/post')}
+              onCreateJob={() => {
+                if (!user) {
+                  setShowAuthInvite(true);
+                  return;
+                }
+                navigate('/jobs/post');
+              }}
               majorCategoryId={majorCategoryId}
               setMajorCategoryId={setMajorCategoryId}
               categoryOptions={categoryOptions}
@@ -155,8 +208,8 @@ export default function SmartTalentMatchingScreen() {
                 onRetry={() => void loadInitialData()}
                 onResetFilters={resetFilters}
                 onChangeStage={changeStage}
-                onToggleSaved={toggleSaved}
-                onInvite={(profileId, displayName) => setInviteTarget({ profileId, displayName })}
+                onToggleSaved={handleToggleSavedWithAuth}
+                onInvite={(profileId, displayName) => handleInviteWithAuth(profileId, displayName)}
               />
             ) : (
               <SmartMatchingTab
@@ -170,15 +223,10 @@ export default function SmartTalentMatchingScreen() {
                 savingIds={savingIds}
                 invitedIds={invitedIds}
                 onRetry={() => void loadMatches()}
-                onOpenProfile={openMatchedProfile}
-                onToggleSaved={toggleSaved}
+                onOpenProfile={handleOpenProfileWithAuth}
+                onToggleSaved={handleToggleSavedWithAuth}
                 onInvite={(profileId, displayName, jobId, matchRunIdParam) =>
-                  setInviteTarget({
-                    profileId,
-                    displayName,
-                    initialJobId: jobId,
-                    matchRunId: matchRunIdParam,
-                  })
+                  handleInviteWithAuth(profileId, displayName, jobId, matchRunIdParam)
                 }
               />
             )}
@@ -202,6 +250,12 @@ export default function SmartTalentMatchingScreen() {
             }}
           />
         )}
+
+        {/* Auth Invitation Modal for Guest Users */}
+        <AuthInviteModal
+          isOpen={showAuthInvite}
+          onClose={() => setShowAuthInvite(false)}
+        />
       </div>
     </AppLayout>
   );

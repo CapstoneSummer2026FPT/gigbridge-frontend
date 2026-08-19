@@ -116,3 +116,120 @@ export function clampMilestonesToExpectedTargets(
 
   return result;
 }
+
+export interface MilestoneAmountItem {
+  amount: number;
+}
+
+/**
+ * Dynamically recalculates milestone amounts in any direction (upstream/downstream) when a user edits an amount.
+ * The edited milestone index is marked as locked (fixed).
+ * Remaining target budget (targetBudget - sum of locked amounts) is distributed across all unlocked milestones.
+ * Decimal remainders are assigned to the last unlocked milestone to ensure exact integer total sum.
+ */
+export function recalculateMilestonesBidirectional<T extends MilestoneAmountItem>(
+  milestones: T[],
+  editedIndex: number,
+  newAmount: number,
+  targetBudget: number | null,
+  lockedIndices: Iterable<number> = []
+): { updatedMilestones: T[]; updatedLockedIndices: number[] } {
+  if (!milestones || milestones.length === 0) {
+    return { updatedMilestones: milestones, updatedLockedIndices: [] };
+  }
+
+  const updatedLockedIndices = new Set<number>(lockedIndices);
+  updatedLockedIndices.add(editedIndex);
+
+  const updatedMilestones = milestones.map(m => ({ ...m }));
+  const clampedNewAmount = Math.max(0, Math.round(newAmount));
+  updatedMilestones[editedIndex].amount = clampedNewAmount;
+
+  if (targetBudget === null || targetBudget <= 0) {
+    return {
+      updatedMilestones,
+      updatedLockedIndices: Array.from(updatedLockedIndices),
+    };
+  }
+
+  const allIndices = Array.from({ length: milestones.length }, (_, i) => i);
+  const unlockedIndices = allIndices.filter(i => !updatedLockedIndices.has(i));
+
+  if (unlockedIndices.length === 0) {
+    return {
+      updatedMilestones,
+      updatedLockedIndices: Array.from(updatedLockedIndices),
+    };
+  }
+
+  let lockedSum = 0;
+  updatedLockedIndices.forEach(idx => {
+    if (idx >= 0 && idx < updatedMilestones.length) {
+      lockedSum += Number(updatedMilestones[idx].amount) || 0;
+    }
+  });
+
+  const remainingBudget = Math.max(0, targetBudget - lockedSum);
+
+  const unlockedSum = unlockedIndices.reduce((sum, idx) => sum + (Number(updatedMilestones[idx].amount) || 0), 0);
+
+  if (unlockedSum > 0) {
+    let distributedSum = 0;
+    for (let i = 0; i < unlockedIndices.length - 1; i++) {
+      const idx = unlockedIndices[i];
+      const fraction = (Number(updatedMilestones[idx].amount) || 0) / unlockedSum;
+      const allocated = Math.round(remainingBudget * fraction);
+      updatedMilestones[idx].amount = allocated;
+      distributedSum += allocated;
+    }
+    const lastUnlockedIdx = unlockedIndices[unlockedIndices.length - 1];
+    updatedMilestones[lastUnlockedIdx].amount = Math.max(0, remainingBudget - distributedSum);
+  } else {
+    const perItem = Math.floor(remainingBudget / unlockedIndices.length);
+    let distributedSum = 0;
+
+    for (let i = 0; i < unlockedIndices.length - 1; i++) {
+      const idx = unlockedIndices[i];
+      updatedMilestones[idx].amount = perItem;
+      distributedSum += perItem;
+    }
+    const lastUnlockedIdx = unlockedIndices[unlockedIndices.length - 1];
+    updatedMilestones[lastUnlockedIdx].amount = Math.max(0, remainingBudget - distributedSum);
+  }
+
+  return {
+    updatedMilestones,
+    updatedLockedIndices: Array.from(updatedLockedIndices),
+  };
+}
+
+/**
+ * Resets all user locks and splits targetBudget equally among all milestones.
+ */
+export function resetAndEqualizeMilestones<T extends MilestoneAmountItem>(
+  milestones: T[],
+  targetBudget: number | null
+): { updatedMilestones: T[]; updatedLockedIndices: number[] } {
+  if (!milestones || milestones.length === 0) {
+    return { updatedMilestones: milestones, updatedLockedIndices: [] };
+  }
+
+  const updatedMilestones = milestones.map(m => ({ ...m }));
+
+  if (targetBudget !== null && targetBudget > 0) {
+    const perItem = Math.floor(targetBudget / milestones.length);
+    let sumSoFar = 0;
+
+    for (let i = 0; i < milestones.length - 1; i++) {
+      updatedMilestones[i].amount = perItem;
+      sumSoFar += perItem;
+    }
+    updatedMilestones[milestones.length - 1].amount = Math.max(0, targetBudget - sumSoFar);
+  }
+
+  return {
+    updatedMilestones,
+    updatedLockedIndices: [],
+  };
+}
+

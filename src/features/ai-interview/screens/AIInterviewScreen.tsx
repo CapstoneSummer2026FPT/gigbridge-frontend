@@ -81,7 +81,7 @@ export default function AIInterviewScreen() {
                 {t('aiInterview.intro.title', 'Phỏng vấn thoại tự động cùng GigBridge AI')}
               </h1>
               <p className="ai-bento-sub">
-                {t('aiInterview.intro.description', 'Đánh giá năng lực chuyên sâu, nhận diện giọng nói tức thì và nâng cao 3.5× cơ hội nhận dự án từ Nhà tuyển dụng.')}
+                {t('aiInterview.intro.description', 'Đánh giá năng lực chuyên sâu, nhận diện giọng nói tức thì và nâng cao cơ hội nhận dự án từ Nhà tuyển dụng.')}
               </p>
             </header>
 
@@ -144,17 +144,8 @@ export default function AIInterviewScreen() {
                 </div>
               </div>
 
-              {/* CARD 2: STAT HIGHLIGHT (1 COL) */}
-              <div className="ai-bento-card stat-card">
-                <div className="ai-stat-number">3.5×</div>
-                <h3 className="ai-stat-title">{t('aiInterview.stats.title', 'Tỷ lệ nhận dự án cao hơn')}</h3>
-                <p className="ai-stat-desc">
-                  {t('aiInterview.stats.desc', 'Đề xuất có đính kèm Verified by GigBridge AI được ưu tiên xếp đầu trong danh sách của Khách hàng.')}
-                </p>
-              </div>
-
-              {/* CARD 3: VOICE RECOGNITION (1 COL) */}
-              <div className="ai-bento-card">
+              {/* CARD 2: VOICE RECOGNITION (1 COL, SPANS 2 ROWS) */}
+              <div className="ai-bento-card" style={{ gridRow: 'span 2', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div className="ai-card-icon">
                   <Volume2 size={22} />
                 </div>

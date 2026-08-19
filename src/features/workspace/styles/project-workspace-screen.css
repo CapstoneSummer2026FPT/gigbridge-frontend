@@ -15,7 +15,7 @@
   --workspace-message-received-bg: rgba(255, 255, 255, 0.06);
   --workspace-ai-panel-bg: rgba(10, 15, 28, 0.86);
   --workspace-ai-border: rgba(159, 75, 255, 0.2);
-  background: var(--gb-bg-primary, #0a0f1c);
+  background: transparent;
 }
 
 .white .project-workspace-page {
@@ -31,7 +31,7 @@
   --workspace-message-received-bg: #ffffff;
   --workspace-ai-panel-bg: #ffffff;
   --workspace-ai-border: rgba(84, 112, 235, 0.16);
-  background: #f7f8fc;
+  background: transparent;
 }
 
 .white .project-workspace-page .border-primary {

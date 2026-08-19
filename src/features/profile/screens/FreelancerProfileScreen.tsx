@@ -30,6 +30,7 @@ import { AnimatePresence } from 'motion/react';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
@@ -781,14 +782,17 @@ export default function FreelancerProfileScreen() {
                   <div className="w-full space-y-2 pt-2">
                     {distribution.map(({ star, count, percentage }) => (
                       <div key={star} className="flex items-center gap-2 text-xs">
-                        <span className="w-3 font-bold text-[var(--text-secondary)]">{star}</span>
+                        <div className="flex items-center gap-0.5 min-w-[24px] font-bold text-[var(--text-secondary)]">
+                          <span>{star}</span>
+                          <Star size={11} className="fill-amber-400 text-amber-400 shrink-0" />
+                        </div>
                         <div className="flex-1 cp-progress-track">
                           <div
-                            className="cp-progress-fill h-full transition-all duration-500"
+                            className="cp-progress-fill transition-all duration-500"
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
-                        <span className="w-4 font-bold text-[var(--text-secondary)] text-right">{count}</span>
+                        <span className="min-w-[18px] font-bold text-[var(--text-secondary)] text-right">{count}</span>
                       </div>
                     ))}
                   </div>
@@ -805,9 +809,12 @@ export default function FreelancerProfileScreen() {
                           disabled={review.isAnonymous}
                           className="flex items-center gap-3"
                         >
-                          <div className="cp-reviewer-avatar">
-                            {review.isAnonymous ? 'A' : review.reviewerName.charAt(0)}
-                          </div>
+                          <UserAvatar
+                            name={review.isAnonymous ? t('reviews.anonymousReviewer') : review.reviewerName}
+                            userId={review.isAnonymous ? undefined : review.reviewerId}
+                            size="md"
+                            className="shrink-0"
+                          />
                           <div>
                             <h4 className="cp-reviewer-name">
                               {review.isAnonymous ? t('reviews.anonymousReviewer') : review.reviewerName}

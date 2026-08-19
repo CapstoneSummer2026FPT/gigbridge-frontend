@@ -60,7 +60,7 @@ export function useCreateProposal() {
   const [outOfScope, setOutOfScope] = useState('');
   const [workItems, setWorkItems] = useState<ProposalWorkBreakdownItemDto[]>([]);
   const [milestones, setMilestones] = useState<ProposalMilestonePlanDto[]>([emptyMilestone(0)]);
-  const [expandedMilestone, setExpandedMilestone] = useState<number | null>(0);
+  const [expandedMilestones, setExpandedMilestones] = useState<number[]>([0]);
   const [advancedMilestoneIndexes, setAdvancedMilestoneIndexes] = useState<number[]>([]);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
   const [narrativeErrors, setNarrativeErrors] = useState<{ coverLetter?: string; proposalApproach?: string }>({});
@@ -118,7 +118,7 @@ export function useCreateProposal() {
     setWorkItems(editableItems.customWorkItems);
     setAdvancedMilestoneIndexes(editableItems.customMilestoneIndexes);
     setMilestones(loadedMilestones);
-    setExpandedMilestone(editableItems.customMilestoneIndexes[0] ?? 0);
+    setExpandedMilestones(loadedMilestones.map((_, i) => i));
   };
 
   useEffect(() => {
@@ -151,7 +151,7 @@ export function useCreateProposal() {
           setMilestones(baseline);
           setWorkItems([]);
           setAdvancedMilestoneIndexes([]);
-          setExpandedMilestone(0);
+          setExpandedMilestones(baseline.map((_, i) => i));
           setNotice(tRef.current('createProposal.baselineCopiedNotice'));
         }
       } finally {
@@ -201,7 +201,9 @@ export function useCreateProposal() {
     const invalidWorkItem = workItems.find(item => !item.title?.trim() || !item.description?.trim());
     if (invalidWorkItem) {
       const milestoneIndex = invalidWorkItem.milestoneOrderIndex ?? 0;
-      setExpandedMilestone(milestoneIndex);
+      setExpandedMilestones(indexes => indexes.includes(milestoneIndex)
+        ? indexes
+        : [...indexes, milestoneIndex].sort((left, right) => left - right));
       setAdvancedMilestoneIndexes(indexes => indexes.includes(milestoneIndex)
         ? indexes
         : [...indexes, milestoneIndex].sort((left, right) => left - right));
@@ -221,8 +223,11 @@ export function useCreateProposal() {
     const firstErrorKey = Object.keys(errors)[0];
     if (firstErrorKey) {
       const [index, field] = firstErrorKey.split('.');
+      const numIndex = Number(index);
       setMilestoneErrors(errors);
-      setExpandedMilestone(Number(index));
+      setExpandedMilestones(indexes => indexes.includes(numIndex)
+        ? indexes
+        : [...indexes, numIndex].sort((left, right) => left - right));
       requestAnimationFrame(() => {
         const target = document.querySelector<HTMLElement>(`[data-milestone-field="${index}.${field}"]`);
         target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -362,8 +367,10 @@ export function useCreateProposal() {
     setAssumptions,
     outOfScope,
     setOutOfScope,
-    expandedMilestone,
-    setExpandedMilestone,
+    expandedMilestones,
+    setExpandedMilestones,
+    expandedMilestone: expandedMilestones[0] ?? null,
+    setExpandedMilestone: (index: number | null) => setExpandedMilestones(index !== null ? [index] : []),
     advancedMilestoneIndexes,
     setAdvancedMilestoneIndexes,
     milestoneErrors,

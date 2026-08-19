@@ -214,19 +214,50 @@
   pointer-events: none;
 }
 
+.top-nav-search-input-with-scope {
+  border-bottom-right-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.top-nav-search-scope-button {
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-glass-border);
+  border-left: 0;
+  border-bottom-right-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.top-nav-search-scope-button:hover,
+.top-nav-search-scope-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.white .top-nav-search-scope-button,
+[data-theme="light"] .top-nav-search-scope-button {
+  background: rgba(84, 112, 235, 0.05);
+  border-color: rgba(84, 112, 235, 0.18);
+}
+
+.white .top-nav-search-scope-button:hover,
+.white .top-nav-search-scope-button[aria-expanded="true"],
+[data-theme="light"] .top-nav-search-scope-button:hover,
+[data-theme="light"] .top-nav-search-scope-button[aria-expanded="true"] {
+  background: rgba(84, 112, 235, 0.12);
+}
+
 /* ══════════════════════════════════════════════════════════════
    TopNav Hierarchy & Z-Index Rules
    ══════════════════════════════════════════════════════════════ */
 
 .landing-nav-container {
-  z-index: 45;
+  z-index: 100;
 }
 
-/* When avatar, notification, or wallet dropdown is open, TopNav floats above sticky headers (z-40) */
+/* When avatar, notification, or wallet dropdown is open, TopNav floats above sticky headers */
 .landing-nav-container.top-nav-menu-open,
 .landing-nav-container:has(.dropdown-menu),
 .landing-nav-container:has([role="menu"]) {
-  z-index: 100 !important;
+  z-index: 110 !important;
 }
 
 /* Modal Hierarchy: TopNav stays behind full-screen modals/popups when active */

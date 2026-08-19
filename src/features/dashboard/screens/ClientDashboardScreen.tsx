@@ -2,11 +2,13 @@ import {
   AlertCircle,
   Bot,
   Briefcase,
+  ChevronLeft,
   ChevronRight,
   Crown,
   PlusCircle,
   Wallet,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useClientDashboard } from '../hooks/useClientDashboard';
 import { use3DTilt } from '../hooks/use3DTilt';
@@ -15,6 +17,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import { ClientDashboardOverview } from '../components/ClientDashboardOverview';
 import '../styles/client-dashboard-screen.css';
 import '../../premium/styles/premium.css';
 
@@ -40,10 +43,13 @@ export default function ClientDashboardScreen() {
     chartPeriod,
     setChartPeriod,
     myJobs,
-    proposalsCount,
     pendingProposals,
-    shortlistedProposalsCount,
-    proposalJobScopeCount,
+    proposalStatusCounts,
+    eloSummary,
+    pendingMilestonesCount,
+    submittedMilestonesCount,
+    totalMilestonesCount,
+    contractPipelineCounts,
     projects,
     completedContractsCount,
     spendChartData,
@@ -51,7 +57,9 @@ export default function ClientDashboardScreen() {
   const { role, theme } = useApp();
   const premiumStatus = usePremiumStatus(role);
   const openRolesCount = myJobs.filter(job => job.status === 'open').length;
+  const draftRolesCount = myJobs.filter(job => job.status === 'draft').length;
   const displayName = user?.full_name || user?.first_name || 'Client';
+  const [financialSlide, setFinancialSlide] = useState<number>(0);
   const financialProgress = Math.min(
     100,
     Math.max(0, financialOverview?.progressPercentage ?? 0),
@@ -91,7 +99,7 @@ export default function ClientDashboardScreen() {
           </div>
         </div>
 
-        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-10 space-y-20">
+        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-8 sm:py-10 space-y-12 sm:space-y-14">
           <section className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 stagger-up">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -110,7 +118,6 @@ export default function ClientDashboardScreen() {
                   : `${openRolesCount} open role${openRolesCount === 1 ? '' : 's'}, ${pendingProposals.length} pending proposal${pendingProposals.length === 1 ? '' : 's'}, and ${projects.length} active contract${projects.length === 1 ? '' : 's'}.`}
               </p>
             </div>
-
             <div className="flex flex-wrap gap-4 shrink-0">
               <button
                 className="group glass-card h-16 px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm"
@@ -140,316 +147,369 @@ export default function ClientDashboardScreen() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            <div className="lg:col-span-8 space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div
-                  className="relative h-[360px] flex items-center justify-between p-8 overflow-hidden rounded-3xl glass-card group transition-all duration-500"
-                  onMouseMove={handleOverviewMouseMove}
-                  onMouseLeave={handleOverviewMouseLeave}
-                  style={overviewCardStyle}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
-                  <div className="relative flex-1 flex flex-col items-center justify-center z-10 text-center">
-                    <span className="font-label-md text-brand font-black uppercase tracking-[0.2em] text-[10px] block mb-4">
-                      Contract funds released
-                    </span>
-                    <div className="relative w-44 h-44 flex items-center justify-center">
-                      <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="88" cy="88" r="76" className="stroke-surface-muted fill-none" strokeWidth="8" />
-                        <circle
-                          cx="88"
-                          cy="88"
-                          r="76"
-                          className="stroke-brand fill-none client-dash-success-ring"
-                          strokeWidth="8"
-                          strokeDasharray={2 * Math.PI * 76}
-                          strokeDashoffset={2 * Math.PI * 76 * (1 - financialProgress / 100)}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute text-center">
-                        <span className="text-5xl font-black text-text-primary tracking-tighter">
-                          {isFinancialLoading ? '—' : `${financialProgress}%`}
-                        </span>
-                        <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5">
-                          {hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past month' : 'Past year') : 'No activity'}
-                        </span>
+          <ClientDashboardOverview
+            isLoading={isLoading}
+            eloSummary={eloSummary}
+            proposalCounts={proposalStatusCounts}
+            pendingMilestonesCount={pendingMilestonesCount}
+            submittedMilestonesCount={submittedMilestonesCount}
+            totalMilestonesCount={totalMilestonesCount}
+            contractPipelineCounts={contractPipelineCounts}
+            theme={theme}
+            onOpenEloHistory={() => navigate('/elo')}
+            onOpenProposals={() => navigate('/proposals')}
+            onOpenContracts={() => navigate('/contracts')}
+          />
+
+          <section className="space-y-6" aria-labelledby="client-workflow-title">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column (col-span-7) */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Work In Progress / Hiring Portfolio Card */}
+                <div className="glass-card p-6 sm:p-8 rounded-3xl min-h-72 flex flex-col justify-between group">
+                  <div className="flex justify-between items-start gap-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-brand/10 rounded-2xl flex items-center justify-center text-brand shadow-sm shrink-0 border border-brand/20">
+                        <Briefcase size={22} />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="w-[1px] h-48 bg-border hidden sm:block" />
-                  <div className="flex-1 pl-6 space-y-5 z-10 hidden sm:block">
-                    <h4 className="text-[10px] font-black tracking-widest text-text-muted uppercase">
-                      Financial summary
-                    </h4>
-                    <div>
-                      <span className="block text-[9px] uppercase text-text-muted">Released</span>
-                      <GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-sm font-bold text-text-primary" />
-                    </div>
-                    <div>
-                      <span className="block text-[9px] uppercase text-text-muted">Contract value</span>
-                      <GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-sm font-bold text-text-primary" />
-                    </div>
-                    <div>
-                      <span className="block text-[9px] uppercase text-text-muted">Service fees</span>
-                      <GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-sm font-bold text-text-primary" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="glass-card p-6 rounded-3xl flex flex-col justify-between h-[360px]">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-text-primary font-bold text-base">
-                        {chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}
-                      </h2>
-                      <p className="text-xs text-text-secondary opacity-75">Confirmed contract releases</p>
-                    </div>
-                    <div className="chart-header-tabs flex">
-                      <button
-                        className={`chart-tab-btn ${chartPeriod === 'monthly' ? 'active' : ''}`}
-                        onClick={() => setChartPeriod('monthly')}
-                      >
-                        M
-                      </button>
-                      <button
-                        className={`chart-tab-btn ${chartPeriod === 'yearly' ? 'active' : ''}`}
-                        onClick={() => setChartPeriod('yearly')}
-                      >
-                        Y
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="w-full flex-1 flex items-center justify-center">
-                    {isFinancialLoading ? (
-                      <p className="text-sm text-text-muted animate-pulse">Loading financial data…</p>
-                    ) : financialError ? (
-                      <p className="text-sm text-warning text-center">{financialError}</p>
-                    ) : spendChartData.length === 0 || !hasFinancialActivity ? (
-                      <p className="text-sm text-text-muted text-center">No confirmed spend in this period.</p>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={spendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="clientSpendLineGrad" x1="0" y1="0" x2="1" y2="0">
-                              <stop offset="0%" stopColor="#9F4BFF" />
-                              <stop offset="100%" stopColor="#0077FF" />
-                            </linearGradient>
-                            <linearGradient id="clientSpendGrad2026" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#0077FF" stopOpacity={0.25} />
-                              <stop offset="95%" stopColor="#0077FF" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatAxisAmount} />
-                          <Tooltip
-                            contentStyle={{
-                              background: theme === 'black' ? 'rgba(13, 14, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-                              border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(73, 75, 231, 0.2)',
-                              borderRadius: 12,
-                              color: theme === 'black' ? '#f5f6f8' : '#19191b',
-                            }}
-                            formatter={(value: number) => [`${value.toLocaleString()} G-coin`, 'Released']}
-                          />
-                          <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3} fill="url(#clientSpendGrad2026)" isAnimationActive />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="client-dash-wallet-card-container">
-                  <div
-                    className="glass-card cursor-pointer select-none p-8 rounded-3xl h-80 flex flex-col justify-between group transition-all duration-500 border-brand/20 relative overflow-hidden"
-                    onMouseMove={handleWalletMouseMove}
-                    onMouseLeave={handleWalletMouseLeave}
-                    style={walletCardStyle}
-                    onClick={() => navigate('/wallet/deposit')}
-                  >
-                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:scale-125 transition-transform" />
-                    <div className="flex items-start justify-between relative z-10">
                       <div>
-                        <span className="block text-[8px] font-black text-brand uppercase tracking-widest">Wallet</span>
-                        <h4 className="text-sm font-black text-text-primary mt-1">GigBridge Pay</h4>
+                        <span className="client-dash-card-eyebrow">{t('dashboard.currentWork', 'Current work')}</span>
+                        <h2 id="client-workflow-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5">
+                          {t('dashboard.workInProgress', 'Work in progress')}
+                        </h2>
                       </div>
-                      <div className="w-10 h-10 bg-brand/10 text-brand rounded-xl flex items-center justify-center">
-                        <Wallet size={20} />
-                      </div>
-                    </div>
-                    <div className="my-4 relative z-10">
-                      <span className="block text-[9px] uppercase text-text-muted tracking-wider font-semibold mb-1">
-                        Available funds
-                      </span>
-                      <GigCoinAmount
-                        amount={wallet?.totalSpendableGigCoin ?? 0}
-                        className="text-5xl font-black tracking-tight text-text-primary"
-                      />
-                      <span className="block text-xs text-text-secondary mt-3">
-                        Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between relative z-10">
-                      <div>
-                        <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">
-                          Account holder
-                        </span>
-                        <span className="text-xs font-bold text-text-secondary">{displayName}</span>
-                      </div>
-                      <button className="py-2.5 px-5 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-colors shadow-md border border-transparent">
-                        Deposit
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="glass-card p-8 rounded-3xl h-80 flex flex-col justify-between group">
-                  <div className="flex justify-between items-start">
-                    <div className="w-14 h-14 bg-brand/10 rounded-full flex items-center justify-center text-brand shadow-sm">
-                      <Briefcase size={22} />
                     </div>
                     <div className="text-right">
-                      <span className="block text-5xl font-black text-text-primary">{openRolesCount}</span>
-                      <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">Open roles</span>
+                      <span className="block text-4xl sm:text-5xl font-black text-text-primary leading-none">{openRolesCount}</span>
+                      <span className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-1 block">Open roles</span>
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <span className="block text-[10px] font-black uppercase tracking-widest text-brand">
-                        Proposal pipeline
-                      </span>
-                      <span className="text-[9px] text-text-muted">
-                        Loaded from {proposalJobScopeCount} recent role{proposalJobScopeCount === 1 ? '' : 's'}
-                      </span>
+
+                  <div className="space-y-4 mt-6">
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-brand">Hiring portfolio</span>
+                        <span className="text-[9px] text-text-muted">Roles and contracts at a glance</span>
+                      </div>
+                      <button className="client-dash-icon-link" onClick={() => navigate('/jobs/my-jobs')}>
+                        Manage roles <ChevronRight size={15} />
+                      </button>
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {[
-                        { value: proposalsCount, label: 'Received' },
-                        { value: pendingProposals.length, label: 'Pending' },
-                        { value: shortlistedProposalsCount, label: 'Shortlisted' },
+                        { value: myJobs.length, label: 'All roles' },
+                        { value: draftRolesCount, label: 'Drafts' },
                         { value: projects.length, label: 'Active contracts' },
+                        { value: completedContractsCount, label: 'Completed' },
                       ].map(item => (
-                        <div key={item.label} className="text-center bg-surface-muted p-3 rounded-2xl border border-border">
+                        <div key={item.label} className="text-center bg-surface-muted/60 p-3 rounded-2xl border border-border">
                           <span className="block text-2xl font-black text-text-primary leading-none">{item.value}</span>
-                          <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-2">
-                            {item.label}
-                          </span>
+                          <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-2">{item.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="relative pt-10">
-                <h3 className="font-display-lg text-3xl font-black mb-6 pl-2 tracking-tight">TALENT MATCHES</h3>
-                <div className="glass-card p-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                {/* Talent Matching Card */}
+                <div className="glass-card p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                   <div>
-                    <h4 className="text-lg font-black text-text-primary">No dashboard match data</h4>
-                    <p className="text-sm text-text-secondary mt-1">
-                      Open Talent Matching to run a current search. The dashboard does not invent candidate scores.
-                    </p>
+                    <span className="client-dash-card-eyebrow">Talent matching</span>
+                    <h4 className="text-lg font-black text-text-primary mt-1">Find the next freelancer</h4>
+                    <p className="text-sm text-text-secondary mt-1">Run a current search when an open role still needs candidates.</p>
                   </div>
                   <button
-                    className="shrink-0 flex items-center gap-2 rounded-2xl border border-brand/30 px-5 py-3 text-xs font-black uppercase tracking-widest text-brand hover:bg-brand-soft"
+                    className="shrink-0 flex items-center gap-2 rounded-2xl border border-brand/30 px-5 py-3 text-xs font-black uppercase tracking-widest text-brand hover:bg-brand-soft transition-all"
                     onClick={() => navigate('/talent-matching')}
                   >
                     Find talent <ChevronRight size={16} />
                   </button>
                 </div>
-              </div>
-            </div>
 
-            <div className="lg:col-span-4 space-y-10">
-              <div className="glass-card rounded-[2.5rem] p-8">
-                <h3 className="font-display-lg text-xl font-black tracking-tight uppercase mb-4">Activity</h3>
-                <p className="text-sm text-text-secondary">
-                  Activity events are not included in the dashboard API. Open notifications for persisted updates.
-                </p>
-                <button
-                  className="w-full mt-8 py-5 rounded-2xl border border-dashed border-border text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all bg-transparent"
-                  onClick={() => navigate('/notifications')}
-                >
-                  View notifications
-                </button>
+                {/* Money & Budget Section in Empty Space */}
+                <div className="pt-2 space-y-4" aria-labelledby="client-finance-title">
+                  <div className="px-1">
+                    <span className="client-dash-card-eyebrow">{t('dashboard.financialControl', 'Financial control')}</span>
+                    <h3 id="client-finance-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5">
+                      {t('dashboard.moneyAndBudget', 'Money & budget')}
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Financial Control Carousel Card (Funds Released & Wallet) */}
+                    <div className="glass-card p-6 rounded-3xl flex flex-col justify-between min-h-[300px] relative overflow-hidden group">
+                      {/* Carousel Header Controls */}
+                      <div className="flex items-center justify-between mb-3 relative z-10">
+                        <div className="flex items-center gap-1.5 bg-surface-muted/60 p-1 rounded-xl border border-border">
+                          <button
+                            className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${financialSlide === 0 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+                            onClick={() => setFinancialSlide(0)}
+                          >
+                            Funds Released
+                          </button>
+                          <button
+                            className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${financialSlide === 1 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+                            onClick={() => setFinancialSlide(1)}
+                          >
+                            Wallet
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all disabled:opacity-30"
+                            onClick={() => setFinancialSlide(prev => (prev === 0 ? 1 : 0))}
+                            title="Previous slide"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button
+                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all disabled:opacity-30"
+                            onClick={() => setFinancialSlide(prev => (prev === 0 ? 1 : 0))}
+                            title="Next slide"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Carousel Slide Content */}
+                      <div className="flex-1 flex flex-col justify-between relative z-10">
+                        {financialSlide === 0 ? (
+                          /* Slide 0: Contract funds released */
+                          <div
+                            className="flex flex-col justify-between h-full transition-opacity duration-300"
+                            onMouseMove={handleOverviewMouseMove}
+                            onMouseLeave={handleOverviewMouseLeave}
+                            style={overviewCardStyle}
+                          >
+                            <div className="relative flex flex-col items-center justify-center py-1">
+                              <div className="relative w-32 h-32 flex items-center justify-center">
+                                <svg className="w-full h-full transform -rotate-90">
+                                  <circle cx="64" cy="64" r="54" className="stroke-surface-muted fill-none" strokeWidth="8" />
+                                  <circle
+                                    cx="64"
+                                    cy="64"
+                                    r="54"
+                                    className="stroke-brand fill-none client-dash-success-ring"
+                                    strokeWidth="8"
+                                    strokeDasharray={2 * Math.PI * 54}
+                                    strokeDashoffset={2 * Math.PI * 54 * (1 - financialProgress / 100)}
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                                <div className="absolute text-center">
+                                  <span className="text-3xl font-black text-text-primary tracking-tighter">
+                                    {isFinancialLoading ? '—' : `${financialProgress}%`}
+                                  </span>
+                                  <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5">
+                                    {hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past month' : 'Past year') : 'No activity'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/60">
+                              <div className="text-center">
+                                <span className="block text-[8px] uppercase font-black text-text-muted">Released</span>
+                                <GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-xs font-bold text-text-primary" />
+                              </div>
+                              <div className="text-center">
+                                <span className="block text-[8px] uppercase font-black text-text-muted">Value</span>
+                                <GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-xs font-bold text-text-primary" />
+                              </div>
+                              <div className="text-center">
+                                <span className="block text-[8px] uppercase font-black text-text-muted">Fees</span>
+                                <GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-xs font-bold text-text-primary" />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Slide 1: Wallet Card */
+                          <div
+                            className="cursor-pointer select-none h-full flex flex-col justify-between transition-opacity duration-300 relative"
+                            onMouseMove={handleWalletMouseMove}
+                            onMouseLeave={handleWalletMouseLeave}
+                            style={walletCardStyle}
+                            onClick={() => navigate('/wallet/deposit')}
+                          >
+                            <div className="absolute -top-16 -right-16 w-36 h-36 bg-brand/10 blur-2xl rounded-full pointer-events-none group-hover:scale-125 transition-transform" />
+                            <div className="flex items-start justify-between relative z-10 pt-1">
+                              <div>
+                                <span className="block text-[8px] font-black text-brand uppercase tracking-widest">Wallet</span>
+                                <h4 className="text-sm font-black text-text-primary mt-0.5">GigBridge Pay</h4>
+                              </div>
+                              <div className="w-9 h-9 bg-brand/10 text-brand rounded-xl flex items-center justify-center">
+                                <Wallet size={18} />
+                              </div>
+                            </div>
+                            <div className="my-2 relative z-10">
+                              <span className="block text-[9px] uppercase text-text-muted tracking-wider font-semibold mb-0.5">Available funds</span>
+                              <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} className="text-3xl font-black tracking-tight text-text-primary" />
+                              <span className="block text-xs text-text-secondary mt-1">Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} /></span>
+                            </div>
+                            <div className="flex items-center justify-between relative z-10 gap-2 pt-2 border-t border-border/60">
+                              <div className="min-w-0">
+                                <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">Account holder</span>
+                                <span className="block truncate text-xs font-bold text-text-secondary">{displayName}</span>
+                              </div>
+                              <button className="py-2 px-3 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-colors shadow-md border border-transparent shrink-0">
+                                Deposit
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Pagination Dots */}
+                      <div className="flex items-center justify-center gap-1.5 mt-3 relative z-10">
+                        <button
+                          className={`h-1.5 rounded-full transition-all ${financialSlide === 0 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
+                          onClick={() => setFinancialSlide(0)}
+                          aria-label="Go to slide 1"
+                        />
+                        <button
+                          className={`h-1.5 rounded-full transition-all ${financialSlide === 1 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
+                          onClick={() => setFinancialSlide(1)}
+                          aria-label="Go to slide 2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Spend Chart Card */}
+                    <div className="glass-card p-6 rounded-3xl flex flex-col justify-between min-h-[300px]">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-text-primary font-bold text-base">
+                            {chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}
+                          </h4>
+                          <p className="text-xs text-text-secondary opacity-75">Confirmed contract releases</p>
+                        </div>
+                        <div className="chart-header-tabs flex">
+                          <button
+                            className={`chart-tab-btn ${chartPeriod === 'monthly' ? 'active' : ''}`}
+                            onClick={() => setChartPeriod('monthly')}
+                          >
+                            M
+                          </button>
+                          <button
+                            className={`chart-tab-btn ${chartPeriod === 'yearly' ? 'active' : ''}`}
+                            onClick={() => setChartPeriod('yearly')}
+                          >
+                            Y
+                          </button>
+                        </div>
+                      </div>
+                      <div className="w-full flex-1 flex items-center justify-center min-h-[180px]">
+                        {isFinancialLoading ? (
+                          <p className="text-sm text-text-muted animate-pulse">Loading financial data…</p>
+                        ) : financialError ? (
+                          <p className="text-sm text-warning text-center">{financialError}</p>
+                        ) : spendChartData.length === 0 || !hasFinancialActivity ? (
+                          <p className="text-sm text-text-muted text-center">No confirmed spend in this period.</p>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={180}>
+                            <AreaChart data={spendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="clientSpendLineGrad" x1="0" y1="0" x2="1" y2="0">
+                                  <stop offset="0%" stopColor="#9F4BFF" />
+                                  <stop offset="100%" stopColor="#0077FF" />
+                                </linearGradient>
+                                <linearGradient id="clientSpendGrad2026" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#0077FF" stopOpacity={0.25} />
+                                  <stop offset="95%" stopColor="#0077FF" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatAxisAmount} />
+                              <Tooltip
+                                contentStyle={{
+                                  background: theme === 'black' ? 'rgba(13, 14, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                                  border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(73, 75, 231, 0.2)',
+                                  borderRadius: 12,
+                                  color: theme === 'black' ? '#f5f6f8' : '#19191b',
+                                }}
+                                formatter={(value: number) => [`${value.toLocaleString()} G-coin`, 'Released']}
+                              />
+                              <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3} fill="url(#clientSpendGrad2026)" isAnimationActive />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="flex items-center justify-between px-4">
-                  <h3 className="font-display-lg text-xl font-black tracking-tight uppercase">Active contracts</h3>
+              {/* Right Column (col-span-5) */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* AI-assisted Job Drafting placed on top of Active Contracts */}
+                <div className="glass-card p-6 rounded-3xl client-dash-ai-bg relative overflow-hidden">
+                  <div className="ai-radar-graphic">
+                    <div className="ai-radar-circle-1" />
+                    <div className="ai-radar-circle-2" />
+                    <div className="ai-radar-sweep-line" />
+                    <div className="ai-radar-pulse" />
+                  </div>
+                  <div className="relative z-10 flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-brand/20 flex items-center justify-center text-brand shrink-0 border border-brand/30">
+                          <Bot size={20} className="client-dash-ai-icon" />
+                        </div>
+                        <div>
+                          <span className="block text-[8px] font-black uppercase tracking-widest text-brand">AI Copilot</span>
+                          <h4 className="text-base font-bold text-text-primary">AI-assisted job drafting</h4>
+                        </div>
+                      </div>
+                      <button
+                        className="client-dash-ai-post-btn py-2 px-3.5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
+                        onClick={() => navigate('/jobs/post')}
+                      >
+                        Start draft
+                      </button>
+                    </div>
+                    <p className="text-xs client-dash-ai-desc text-text-secondary">
+                      Start the next hiring flow with a reviewed AI draft based on your real project requirements.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Active Contracts Header */}
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="font-display-lg text-lg font-black tracking-tight uppercase">Active contracts</h3>
                   <span className="text-xs font-bold text-text-muted">{projects.length}</span>
                 </div>
-                {projects.length > 0 ? projects.map(project => (
-                  <div key={project.id} className="glass-card rounded-[2.25rem] p-8 border border-brand/10 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+
+                {projects.length > 0 ? projects.slice(0, 2).map(project => (
+                  <div key={project.id} className="glass-card rounded-3xl p-6 sm:p-8 border border-brand/10 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-brand/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform" />
-                    <div className="flex justify-between items-start mb-6 relative z-10">
-                      <span className="text-[9px] font-black bg-success/10 text-success px-3 py-1.5 rounded-lg tracking-widest uppercase border border-success/20">
-                        {project.status}
-                      </span>
+                    <div className="flex justify-between items-start mb-5 relative z-10">
+                      <span className="text-[9px] font-black bg-success/10 text-success px-3 py-1.5 rounded-lg tracking-widest uppercase border border-success/20">{project.status}</span>
                       <GigCoinAmount amount={project.totalBudget} className="text-xs font-bold text-text-primary" />
                     </div>
                     <h4 className="text-xl font-black mb-1 text-text-primary">{project.title}</h4>
-                    <p className="text-text-secondary text-xs mb-6 font-medium">
-                      Freelancer: {project.freelancerName}
-                    </p>
+                    <p className="text-text-secondary text-xs mb-5 font-medium">Freelancer: {project.freelancerName}</p>
                     <button
-                      className="w-full py-4.5 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-widest uppercase rounded-2xl transition-colors"
+                      className="w-full py-4 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-widest uppercase rounded-2xl transition-colors"
                       onClick={() => navigate(`/workspace/${project.id}`)}
                     >
                       Enter workspace
                     </button>
                   </div>
                 )) : (
-                  <div className="glass-card rounded-[2.25rem] p-8 border border-border text-center text-text-muted text-sm">
-                    No active contracts.
-                  </div>
+                  <div className="glass-card rounded-3xl p-6 border border-border text-center text-text-muted text-sm">No active contracts.</div>
                 )}
 
-                <div className="glass-card rounded-[2.25rem] p-8 border border-border flex items-center justify-between">
+                <div className="glass-card rounded-3xl p-5 border border-border flex items-center justify-between">
                   <div>
                     <span className="block text-[9px] uppercase tracking-widest text-text-muted">Completed contracts</span>
-                    <span className="text-3xl font-black text-text-primary">{completedContractsCount}</span>
+                    <span className="text-2xl font-black text-text-primary">{completedContractsCount}</span>
                   </div>
-                  <button
-                    className="text-xs font-black uppercase tracking-widest text-brand"
-                    onClick={() => navigate('/contracts')}
-                  >
-                    View all
-                  </button>
+                  <button className="text-xs font-black uppercase tracking-widest text-brand" onClick={() => navigate('/contracts')}>View all</button>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="glass-card p-6 md:p-8 rounded-[2.5rem] client-dash-ai-bg relative overflow-hidden">
-            <div className="ai-radar-graphic">
-              <div className="ai-radar-circle-1" />
-              <div className="ai-radar-circle-2" />
-              <div className="ai-radar-sweep-line" />
-              <div className="ai-radar-pulse" />
-            </div>
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Bot size={20} className="client-dash-ai-icon" />
-                  <h2 className="text-text-primary font-bold text-lg">AI-assisted job drafting</h2>
-                </div>
-                <p className="text-sm client-dash-ai-desc text-text-secondary max-w-2xl">
-                  Enter your real project requirements first. GigBridge can then generate a draft for review; no market demand or match score is assumed here.
-                </p>
-              </div>
-              <button
-                className="client-dash-ai-post-btn py-3 px-5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
-                onClick={() => navigate('/jobs/post')}
-              >
-                Start a job post
-              </button>
-            </div>
-          </div>
+          </section>
         </div>
       </div>
     </AppLayout>
