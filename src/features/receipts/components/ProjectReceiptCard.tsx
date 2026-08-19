@@ -99,20 +99,40 @@ export function ProjectReceiptCard({ contractId }: ProjectReceiptCardProps) {
 
   return (
     <>
-      <section className="mx-6 mt-5 rounded-2xl border border-brand/20 bg-gradient-to-r from-brand/10 via-card to-emerald-500/5 p-4 shadow-sm" aria-live="polite">
+      <section className="mx-6 mt-5 rounded-3xl border border-brand/20 bg-gradient-to-r from-brand/10 via-card to-emerald-500/5 p-5 sm:p-6 shadow-sm" aria-live="polite">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand text-brand-foreground shadow-sm"><FileCheck2 size={22} /></span>
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-brand">{t('receipts.projectReceipt')}</p>
-              <h3 className="truncate text-base font-black text-foreground">{receipt?.receiptNumber || t('receipts.preparingTitle')}</h3>
-              <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+          <div className="flex min-w-0 items-start gap-3.5 flex-1">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand text-brand-foreground shadow-sm">
+              <FileCheck2 size={24} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-brand">
+                  {t('receipts.projectReceipt', { defaultValue: 'Biên nhận dự án' })}
+                </p>
+                {receipt?.receiptNumber && (
+                  <span
+                    className="inline-flex items-center font-mono text-[11px] font-bold text-muted-foreground bg-muted/70 px-2 py-0.5 rounded-md border border-border/60"
+                    title={receipt.receiptNumber}
+                  >
+                    #{receipt.receiptNumber.length > 26 ? `${receipt.receiptNumber.slice(0, 16)}...${receipt.receiptNumber.slice(-4)}` : receipt.receiptNumber}
+                  </span>
+                )}
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-foreground mt-0.5 leading-snug">
+                {receipt
+                  ? (receipt.projectTitle
+                    ? `${t('receipts.settlementReceipt', { defaultValue: 'Biên nhận quyết toán dự án' })}: ${receipt.projectTitle}`
+                    : t('receipts.completedProjectReceipt', { defaultValue: 'Chứng từ quyết toán hoàn tất dự án' }))
+                  : t('receipts.preparingTitle', { defaultValue: 'Đang chuẩn bị biên nhận' })}
+              </h3>
+              <p className="mt-1 max-w-2xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 {error || (receipt?.emailStatus === 'Delivered'
                   ? t('receipts.emailedDescription')
                   : t('receipts.automaticEmailDescription'))}
               </p>
               {receipt && (
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-2">
                   <ReceiptStatusBadge receipt={receipt} kind="document" />
                   <ReceiptStatusBadge receipt={receipt} kind="email" />
                 </div>
