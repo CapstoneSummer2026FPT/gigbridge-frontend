@@ -829,7 +829,6 @@
     },
     "visibility": {
       "public": "Public",
-      "private": "Private",
       "inviteOnly": "Invite only",
       "lockedByAdmin": "Locked by Admin",
       "unknown": "Other",

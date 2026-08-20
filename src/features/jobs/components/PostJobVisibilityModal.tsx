@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import { AlertTriangle, Check, Globe, LoaderCircle, Lock, UserRoundCheck, X } from 'lucide-react';
+import { AlertTriangle, Check, Globe, LoaderCircle, UserRoundCheck, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { JobPostVisibility } from '../../../types/models/Job';
 
@@ -38,12 +38,6 @@ export function PostJobVisibilityModal({
       label: t('postJob.public'),
       description: t('postJobWizard.visibilityModal.publicDescription'),
       icon: <Globe size={18} />,
-    },
-    {
-      value: JobPostVisibility.Private,
-      label: t('postJob.private'),
-      description: t('postJobWizard.visibilityModal.privateDescription'),
-      icon: <Lock size={18} />,
     },
     {
       value: JobPostVisibility.InviteOnly,
