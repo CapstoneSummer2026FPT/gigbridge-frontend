@@ -43,6 +43,7 @@ export function ClientDashboardOverview({
   eloSummary,
   proposalCounts,
   pendingMilestonesCount,
+  submittedMilestonesCount: _submittedMilestonesCount,
   totalMilestonesCount,
   contractPipelineCounts,
   theme,

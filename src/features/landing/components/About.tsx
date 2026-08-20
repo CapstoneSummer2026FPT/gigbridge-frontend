@@ -37,12 +37,12 @@ export default function About() {
 
         <AnimatedTitle
           title={t('landing.about.animatedTitle')}
-          containerClass="mt-5 text-center"
+          containerClass="mt-2 text-center"
         />
 
         <div className="about-subtext">
-          <p>{t('landing.about.subtext1')}</p>
-          <p className="text-gray-500">
+          <p className="font-medium text-foreground">{t('landing.about.subtext1')}</p>
+          <p className="text-muted-foreground mt-1">
             {t('landing.about.subtext2')}
           </p>
         </div>
