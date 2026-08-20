@@ -17,6 +17,7 @@ import { usePremiumStatus } from '../../features/premium/hooks';
 import { UserAvatar } from './UserAvatar';
 import { getProfilePath } from '../hooks/useProfileNavigation';
 import { TopNavSearch } from './TopNavSearch';
+import { AuthInviteModal } from './AuthInviteModal';
 import {
   getTopNavSearchPath,
   TOP_NAV_SEARCH_SCOPE,
@@ -43,6 +44,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showSearchScopeMenu, setShowSearchScopeMenu] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [searchVal, setSearchVal] = useState('');
@@ -287,7 +289,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   return (
                     <span
                       key={index}
-                      onClick={() => navigate(item.path)}
+                      onClick={handleClick}
                       className="nav-hover-btn"
                     >
                       {item.label}
@@ -696,6 +698,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       {(showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu) && (
         <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }} />
       )}
+
+      {/* Guest Auth Invitation Modal */}
+      <AuthInviteModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 }

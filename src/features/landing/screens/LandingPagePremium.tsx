@@ -5,6 +5,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 
 // Import components
 import { TopNav } from '../../../shared/components/TopNav';
+import GlassIcon from '../components/GlassIcon';
 import Hero from '../components/Hero';
 import About from '../components/About';
 import Features from '../components/Features';
