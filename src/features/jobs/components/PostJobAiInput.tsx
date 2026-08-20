@@ -239,7 +239,8 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                     ))}
 
                     <span className="text-[10px] bg-[var(--brand)]/10 text-[var(--brand)] font-bold px-2 py-0.5 rounded">
-                      Total: {combinedDocs.charCount.toLocaleString()} / 15,000 chars {combinedDocs.isTruncated && '(capped at 15k)'}
+                      {t('postJobWizard.ai.totalChars', { count: combinedDocs.charCount.toLocaleString(), defaultValue: `Total: ${combinedDocs.charCount.toLocaleString()} / 15,000 chars` })}{' '}
+                      {combinedDocs.isTruncated && t('postJobWizard.ai.cappedAt15k', '(capped at 15k)')}
                     </span>
 
                     {attachedFiles.length > 1 && (
@@ -248,7 +249,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                         onClick={clearAllAttachments}
                         className="text-[10px] text-muted-foreground hover:text-destructive underline ml-1"
                       >
-                        Remove all
+                        {t('postJobWizard.ai.removeAll', 'Remove all')}
                       </button>
                     )}
                   </div>
@@ -331,7 +332,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                   className="text-xs text-muted-foreground hover:text-foreground font-bold px-2.5 py-1 rounded-md hover:bg-[var(--surface-muted)] transition-colors"
                   onClick={onClose}
                 >
-                  Cancel
+                  {t('postJobWizard.cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"

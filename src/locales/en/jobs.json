@@ -448,7 +448,11 @@
       "trimNoticeTitle": "Document Trim Notice",
       "trimNoticeDesc": "Your attached specification documents contain a total of {{total}} characters. To ensure optimal AI processing, the content will be automatically trimmed to the first 15,000 characters.",
       "trimNoticeAgree": "Agree & Continue",
-      "trimNoticeCancel": "Cancel & Edit Files"
+      "trimNoticeCancel": "Cancel & Edit Files",
+      "totalChars": "Total: {{count}} / 15,000 chars",
+      "cappedAt15k": "(capped at 15k)",
+      "removeAll": "Remove all",
+      "placeholderWithDoc": "Add additional requirements or instructions..."
     }
   },
   "postJobAI": {
