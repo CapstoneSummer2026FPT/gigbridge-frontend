@@ -208,13 +208,13 @@ export function DisputeChat({ disputeId, disputeStatus }: DisputeChatProps) {
             )}
 
             {messages.map((message, index) => {
-              const messageContent = message.content ?? '';
+              const content = message.content ?? '';
               const isOpeningText =
-                messageContent === 'A dispute has been opened.' ||
-                /dispute.*open/i.test(messageContent) ||
-                /mở.*tranh chấp/i.test(messageContent) ||
-                /tranh chấp.*được mở/i.test(messageContent) ||
-                (index === 0 && /dispute/i.test(messageContent));
+                content === 'A dispute has been opened.' ||
+                /dispute.*open/i.test(content) ||
+                /mở.*tranh chấp/i.test(content) ||
+                /tranh chấp.*được mở/i.test(content) ||
+                (index === 0 && /dispute/i.test(content));
 
               const system =
                 message.messageType === MessageType.System ||

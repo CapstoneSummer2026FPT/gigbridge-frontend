@@ -29,6 +29,8 @@ const JobInvitationsScreen = lazy(() => import('../features/jobs/screens/JobInvi
 const FreelancerProfileScreen = lazy(() => import('../features/profile/screens/FreelancerProfileScreen'));
 const FreelancerDirectoryScreen = lazy(() => import('../features/profile/screens/FreelancerDirectoryScreen').then(module => ({ default: module.FreelancerDirectoryScreen })));
 const PublicFreelancerProfileScreen = lazy(() => import('../features/profile/screens/PublicFreelancerProfileScreen').then(module => ({ default: module.PublicFreelancerProfileScreen })));
+const PublicFreelancersScreen = lazy(() => import('../features/talent-matching/screens/PublicFreelancersScreen'));
+const PublicJobPostsScreen = lazy(() => import('../features/jobs/screens/PublicJobPostsScreen'));
 const ClientProfileScreen = lazy(() => import('../features/profile/screens/ClientProfileScreen'));
 const ProposalsInboxScreen = lazy(() => import('../features/proposals/screens/ProposalsInboxScreen'));
 const CreateProposalScreen = lazy(() => import('../features/proposals/screens/CreateProposalScreen'));
@@ -271,6 +273,8 @@ export const router = createBrowserRouter([
       { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
       { path: 'ai-interview/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
       { path: 'talent-matching', element: <SmartTalentMatchingScreen /> },
+      { path: 'public/freelancers', element: <PublicFreelancersScreen /> },
+      { path: 'public/job-posts', element: <PublicJobPostsScreen /> },
 
       // Settings - requires authentication
       { path: 'settings', element: <ProtectedRoute requireAuth><SettingsScreen /></ProtectedRoute> },

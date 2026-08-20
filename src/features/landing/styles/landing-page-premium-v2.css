@@ -154,39 +154,24 @@ body {
   text-transform: uppercase;
   font-family: var(--font-zentry);
   font-weight: 900;
-  font-size: 3rem;
-}
-@media (min-width: 640px) {
-  .hero-heading {
-    right: 2.5rem;
-    font-size: 4.5rem;
-  }
-}
-@media (min-width: 768px) {
-  .hero-heading {
-    font-size: 8rem;
-  }
-}
-@media (min-width: 1024px) {
-  .hero-heading {
-    font-size: 12rem;
-  }
+  font-size: clamp(2.5rem, 11vw, 12rem);
 }
 
 .about-subtext {
-  position: absolute;
-  bottom: -80dvh;
-  left: 50%;
+  position: relative;
   width: 100%;
-  max-width: 24rem;
-  transform: translateX(-50%);
+  max-width: 38rem;
+  margin: 1.5rem auto 0;
   text-align: center;
   font-family: var(--font-circular-web), sans-serif;
-  font-size: 1.125rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  z-index: 10;
 }
 @media (min-width: 768px) {
   .about-subtext {
-    max-width: 34rem;
+    max-width: 40rem;
+    font-size: 1.125rem;
   }
 }
 
@@ -194,9 +179,9 @@ body {
   position: absolute;
   left: 50%;
   top: 0;
-  z-index: 20;
+  z-index: 10;
   height: 60vh;
-  width: 24rem;
+  width: min(85vw, 24rem);
   transform-origin: center;
   transform: translateX(-50%);
   overflow: hidden;
@@ -212,9 +197,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  font-size: 4.5rem;
+  font-size: clamp(2rem, 6.5vw, 6rem);
   text-transform: uppercase;
-  line-height: 0.8;
+  line-height: 0.85;
   color: var(--foreground);
 }
 @media (min-width: 640px) {
@@ -261,24 +246,19 @@ body {
 
 .bento-title {
   text-transform: uppercase;
-  font-size: 2.25rem;
+  font-size: clamp(1.75rem, 4.5vw, 3.75rem);
   font-weight: 900;
   font-family: var(--font-zentry);
-}
-@media (min-width: 768px) {
-  .bento-title {
-    font-size: 3.75rem;
-  }
 }
 
 .story-img-container {
   position: relative;
-  height: 90vh;
+  height: clamp(340px, 55vh, 600px);
   width: 100%;
 }
 @media (min-width: 768px) {
   .story-img-container {
-    height: 100dvh;
+    height: clamp(420px, 65vh, 700px);
   }
 }
 
@@ -293,10 +273,10 @@ body {
 }
 @media (min-width: 768px) {
   .story-img-mask {
-    left: 20%;
-    top: -10%;
+    left: 10%;
+    top: 0;
     width: 80%;
-    height: 80%;
+    height: 100%;
   }
 }
 
@@ -305,22 +285,9 @@ body {
   width: 100%;
   height: 50dvh;
   opacity: 100;
-  left: 2.5rem;
-  top: 4rem;
+  left: 0;
+  top: 1rem;
   transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) rotateZ(0) scale(1);
-}
-@media (min-width: 768px) {
-  .story-img-content {
-    left: 0;
-    top: 2.5rem;
-    height: 100dvh;
-  }
-}
-@media (min-width: 1024px) {
-  .story-img-content {
-    left: -300px;
-    top: -100px;
-  }
 }
 
 .gallery-img-container {

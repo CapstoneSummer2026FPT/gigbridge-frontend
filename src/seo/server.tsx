@@ -136,9 +136,11 @@ export const prerenderMarketingDocument = (path: MarketingRoute, template: strin
   const state: SeoRouteState = { kind: 'marketing', route: path };
   const body = renderToString(<SeoPublicApp state={state} />);
   let document = template
-    .replace(/<title>[\s\S]*?<\/title>/i, '')
-    .replace(/\s*<meta name="description"[^>]*>/i, '')
-    .replace(/\s*<meta name="robots"[^>]*>/i, '')
+    .replace(/<title>[\s\S]*?<\/title>/gi, '')
+    .replace(/\s*<meta name="description"[^>]*>/gi, '')
+    .replace(/\s*<meta name="robots"[^>]*>/gi, '')
+    .replace(/\s*<noscript>[\s\S]*?fonts\.(?:googleapis|gstatic)\.com[\s\S]*?<\/noscript>/gi, '')
+    .replace(/\s*<link[^>]*fonts\.(?:googleapis|gstatic|cdnfonts)\.com[^>]*>/gi, '')
     .replace('</head>', `${renderHead(state)}</head>`);
   document = document.replace('<div id="root"></div>', `<div id="root">${body}</div>`);
   return document;
