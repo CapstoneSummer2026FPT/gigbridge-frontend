@@ -1,13 +1,15 @@
 import {
-  Send, Paperclip, Smile, Info, X, Download as DownloadIcon,
+  Send, Paperclip, Smile, X, Download as DownloadIcon,
   ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, ArrowRightLeft,
   Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
   ShieldAlert, Lock, Award, LockKeyhole,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { ContractStatus } from '../../../types/models/Contract';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -17,6 +19,7 @@ import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { CreateScheduleModal } from '../components/CreateScheduleModal';
+import { ChatSystemBanner } from '../components/ChatSystemBanner';
 import { useMessages } from '../hooks/useMessages';
 import { ConversationStatus, ConversationType } from '../../../types/models/Message';
 import { MESSAGE_ROOMS } from '../utils/messageRooms';
@@ -26,9 +29,11 @@ import {
   ContractReportStatus,
 } from '../../../types/models/ReportContract';
 import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { FileTypeBadge, getFileCategory, toForceDownloadUrl } from '../../../shared/components/FileTypeBadge';
+import { FileUploadProgress } from '../../../shared/components/FileUploadProgress';
 import '../styles/messages-screen.css';
 
 const ROOM_COPY = {
@@ -142,45 +147,236 @@ function ScheduleCard({ schedule, latest, onEdit, onCancel, onRetry, onLatest, o
         'Schedule change awaiting client response',
         'Schedule change rejected — original date remains confirmed',
       ][schedule.agreementStatus] || 'Schedule updated';
+
   return (
-    <div className={`w-[min(420px,75vw)] rounded-2xl border p-4 shadow-sm ${cancelled ? 'border-red-500/30 bg-red-500/5' : 'border-[var(--gb-cyan)]/30 bg-card'}`}>
-      <div className="flex justify-between gap-3">
-        <div className="flex gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] flex items-center justify-center shrink-0"><CalendarDays size={19} /></div>
-          <div className="min-w-0"><p className="font-bold text-sm truncate">{schedule.title}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">{eventLabel} by {schedule.actorName}</p></div>
+    <div className={`w-[min(440px,85vw)] rounded-2xl border bg-card p-4.5 shadow-md overflow-hidden transition-all ${
+      cancelled ? 'border-rose-500/40' : confirmed ? 'border-emerald-500/40' : 'border-amber-500/40'
+    }`}>
+      {/* Header Row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+            cancelled ? 'bg-rose-600 text-white' : confirmed ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+          }`}>
+            <CalendarDays size={22} />
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-extrabold text-sm text-foreground truncate">{schedule.title}</h4>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
+              {eventLabel} by {schedule.actorName}
+            </p>
+          </div>
         </div>
-        {!latest && <button onClick={onLatest} className="text-[10px] text-[var(--gb-cyan)] border-none bg-transparent cursor-pointer">{t('schedule.superseded')}</button>}
+        {!latest && (
+          <button onClick={onLatest} className="text-[10px] font-extrabold text-[var(--gb-cyan)] hover:underline border-none bg-transparent cursor-pointer shrink-0">
+            {t('schedule.superseded')}
+          </button>
+        )}
       </div>
-      <div className="mt-3 rounded-xl bg-muted/60 p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{reschedulePending ? 'Currently confirmed' : 'Meeting time'}</p>
-        <p className="text-xs font-semibold">{vietnamDate(schedule.scheduledAtUtc)}</p>
-        {reschedulePending && schedule.proposedScheduledAtUtc && <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2"><p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Requested new date</p><p className="mt-1 text-xs font-bold text-amber-700">{vietnamDate(schedule.proposedScheduledAtUtc)}</p></div>}
-        {latest && !cancelled && hasConfirmedTime && (!started || !meetingReady) && <p className="text-xs text-[var(--gb-cyan)] font-bold mt-1" aria-live="off">{countdown(schedule.scheduledAtUtc, now)}</p>}
-        {latest && !cancelled && hasConfirmedTime && started && meetingReady && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white no-underline transition-colors hover:bg-emerald-700"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
-        <p className="text-[10px] text-muted-foreground mt-1">Cancellation cutoff: {vietnamDate(schedule.cutoffUtc)}</p>
-        {startLocalHour < 2 && <p className="text-[10px] text-amber-600 mt-2 font-semibold">Short cancellation window: this event begins close to Vietnam midnight.</p>}
+
+      {/* Meeting Details Box */}
+      <div className="mt-3.5 rounded-xl bg-muted/50 p-3.5 border border-border/40 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            {reschedulePending ? 'Currently confirmed' : 'Meeting time'}
+          </span>
+          {latest && !cancelled && hasConfirmedTime && (!started || !meetingReady) && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[11px] font-black" aria-live="off">
+              <Clock3 size={12} />
+              {countdown(schedule.scheduledAtUtc, now)}
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs font-black text-foreground flex items-center gap-1.5">
+          <CalendarPlus size={14} className="text-muted-foreground shrink-0" />
+          <span>{vietnamDate(schedule.scheduledAtUtc)}</span>
+        </p>
+
+        {reschedulePending && schedule.proposedScheduledAtUtc && (
+          <div className="rounded-xl bg-amber-500 text-white p-3 shadow-xs">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider opacity-90">Requested new date</p>
+            <p className="mt-1 text-xs font-black">{vietnamDate(schedule.proposedScheduledAtUtc)}</p>
+          </div>
+        )}
+
+        {latest && !cancelled && hasConfirmedTime && started && meetingReady && (
+          <a
+            href={schedule.meeting!.joinUri!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white no-underline shadow-sm transition hover:bg-emerald-700 cursor-pointer"
+          >
+            <Video size={16} />
+            <span>{t('schedule.meetingJoin')}</span>
+            <ExternalLink size={13} />
+          </a>
+        )}
+
+        <div className="pt-1 flex flex-col gap-1 border-t border-border/40 text-[10px] text-muted-foreground font-medium">
+          <span>Cancellation cutoff: <strong>{vietnamDate(schedule.cutoffUtc)}</strong></span>
+          {startLocalHour < 2 && (
+            <span className="text-amber-600 font-bold flex items-center gap-1 mt-0.5">
+              <AlertCircle size={12} /> Short cancellation window: event begins close to Vietnam midnight.
+            </span>
+          )}
+        </div>
       </div>
-      {latest && <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-black border ${cancelled ? 'bg-red-600 text-white border-red-500' : confirmed ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-amber-500 text-slate-950 border-amber-400'}`}>{agreementLabel}</div>}
-      {latest && (schedule.agreementStatus === 3 || reschedulePending) && schedule.counterProposalEditExpiresAtUtc && <p className="mt-2 text-[10px] text-muted-foreground">Freelancer may edit this request until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.</p>}
-      {latest && !cancelled && hasConfirmedTime && schedule.meeting?.status === 1 && <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700"><Loader2 size={14} className="animate-spin" />{t('schedule.meetingPending')}</div>}
-      {latest && !cancelled && hasConfirmedTime && meetingReady && !started && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 no-underline transition-colors hover:bg-emerald-500/20"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
-      {latest && !cancelled && schedule.meeting?.status === 3 && <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600"><span className="flex items-center gap-2"><AlertCircle size={14} />{t('schedule.meetingFailed')}</span>{schedule.meeting.canRetry && <button type="button" disabled={retryingMeet} onClick={async () => { setRetryingMeet(true); try { await onRetry(); } finally { setRetryingMeet(false); } }} className="rounded-lg border-none bg-red-600 px-3 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-50">{retryingMeet ? t('schedule.meetingPending') : t('schedule.meetingRetry')}</button>}</div>}
-      {schedule.details && <><button onClick={() => setExpanded(x => !x)} className="mt-2 flex items-center gap-1 text-xs text-muted-foreground border-none bg-transparent cursor-pointer">{expanded ? <ChevronUp size={13}/> : <ChevronDown size={13}/>} Details</button>{expanded && <p className="text-xs whitespace-pre-wrap mt-2">{schedule.details}</p>}</>}
-      {cancelled && schedule.cancellationReason && <p className="mt-3 text-xs text-red-600"><strong>Reason:</strong> {schedule.cancellationReason}</p>}
-      {latest && !cancelled && <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-        {canEdit && <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> {t('schedule.edit')}</button>}
-        {canEditCounter && <button onClick={() => onCounterProposal(true)} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> Edit proposed time</button>}
-        {schedule.canProposeTime && <button onClick={() => onCounterProposal(false)} className="px-3 py-1.5 rounded-lg text-xs bg-[var(--gb-cyan)] text-white border-none cursor-pointer">{schedule.agreementStatus === 2 ? 'Choose new time' : `Request date change (${remainingRescheduleRequests} left)`}</button>}
-        {canRespond && schedule.canAccept && <button disabled={actionBusy} onClick={onAccept} className="px-3 py-1.5 rounded-lg text-xs bg-emerald-600 text-white border-none cursor-pointer disabled:opacity-50">Accept</button>}
-        {canRespond && schedule.canReject && <button disabled={actionBusy} onClick={onReject} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer disabled:opacity-50">Reject</button>}
-        {canCancel && <button onClick={onCancel} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer">{t('schedule.cancel')}</button>}
-      </div>}
+
+      {/* Agreement Status Banner */}
+      {latest && (
+        <div className={`mt-3 rounded-xl px-3.5 py-2.5 text-xs font-black text-white shadow-xs flex items-center gap-2 ${
+          cancelled ? 'bg-rose-600' : confirmed ? 'bg-emerald-600' : 'bg-amber-500'
+        }`}>
+          {cancelled ? <AlertCircle size={16} className="shrink-0" /> : confirmed ? <CheckCircle size={16} className="shrink-0" /> : <Clock3 size={16} className="shrink-0" />}
+          <span>{agreementLabel}</span>
+        </div>
+      )}
+
+      {latest && (schedule.agreementStatus === 3 || reschedulePending) && schedule.counterProposalEditExpiresAtUtc && (
+        <p className="mt-2 text-[10px] text-muted-foreground font-semibold">
+          Freelancer may edit this request until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.
+        </p>
+      )}
+
+      {/* Meeting Status Indicators */}
+      {latest && !cancelled && hasConfirmedTime && schedule.meeting?.status === 1 && (
+        <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-amber-500 text-white px-3.5 py-2.5 text-xs font-black shadow-xs">
+          <Loader2 size={16} className="animate-spin shrink-0" />
+          <span>{t('schedule.meetingPending')}</span>
+        </div>
+      )}
+
+      {latest && !cancelled && hasConfirmedTime && meetingReady && !started && (
+        <a
+          href={schedule.meeting!.joinUri!}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white no-underline shadow-md transition hover:bg-emerald-700 cursor-pointer"
+        >
+          <Video size={16} />
+          <span>{t('schedule.meetingJoin')}</span>
+          <ExternalLink size={13} />
+        </a>
+      )}
+
+      {latest && !cancelled && schedule.meeting?.status === 3 && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-rose-600 text-white px-3.5 py-2.5 text-xs font-black shadow-xs">
+          <span className="flex items-center gap-2">
+            <AlertCircle size={16} />
+            {t('schedule.meetingFailed')}
+          </span>
+          {schedule.meeting.canRetry && (
+            <button
+              type="button"
+              disabled={retryingMeet}
+              onClick={async () => {
+                setRetryingMeet(true);
+                try { await onRetry(); } finally { setRetryingMeet(false); }
+              }}
+              className="rounded-lg bg-white text-rose-600 px-3 py-1.5 text-xs font-black cursor-pointer disabled:opacity-50 hover:bg-slate-100 transition"
+            >
+              {retryingMeet ? t('schedule.meetingPending') : t('schedule.meetingRetry')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Details Collapse */}
+      {schedule.details && (
+        <div className="mt-2.5">
+          <button
+            type="button"
+            onClick={() => setExpanded(x => !x)}
+            className="flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground border-none bg-transparent cursor-pointer transition"
+          >
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <span>Details</span>
+          </button>
+          {expanded && (
+            <p className="text-xs font-medium whitespace-pre-wrap mt-2 p-2.5 rounded-xl bg-muted/40 text-foreground border border-border/30">
+              {schedule.details}
+            </p>
+          )}
+        </div>
+      )}
+
+      {cancelled && schedule.cancellationReason && (
+        <div className="mt-3 p-2.5 rounded-xl bg-rose-600 text-white text-xs font-semibold shadow-xs">
+          <strong>Reason:</strong> {schedule.cancellationReason}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      {latest && !cancelled && (
+        <div className="mt-3.5 flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/40">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 border border-border text-foreground cursor-pointer flex items-center gap-1.5 transition"
+            >
+              <Pencil size={13} />
+              <span>{t('schedule.edit')}</span>
+            </button>
+          )}
+          {canEditCounter && (
+            <button
+              type="button"
+              onClick={() => onCounterProposal(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 border border-border text-foreground cursor-pointer flex items-center gap-1.5 transition"
+            >
+              <Pencil size={13} />
+              <span>Edit proposed time</span>
+            </button>
+          )}
+          {schedule.canProposeTime && (
+            <button
+              type="button"
+              onClick={() => onCounterProposal(false)}
+              className="px-3 py-1.5 rounded-xl text-xs font-black bg-[var(--gb-cyan)] text-white hover:opacity-90 border-none cursor-pointer shadow-xs transition"
+            >
+              {schedule.agreementStatus === 2 ? 'Choose new time' : `Request date change (${remainingRescheduleRequests} left)`}
+            </button>
+          )}
+          {canRespond && schedule.canAccept && (
+            <button
+              type="button"
+              disabled={actionBusy}
+              onClick={onAccept}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 border-none cursor-pointer shadow-xs transition disabled:opacity-50"
+            >
+              Accept
+            </button>
+          )}
+          {canRespond && schedule.canReject && (
+            <button
+              type="button"
+              disabled={actionBusy}
+              onClick={onReject}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-rose-600 text-white hover:bg-rose-700 border-none cursor-pointer shadow-xs transition disabled:opacity-50"
+            >
+              Reject
+            </button>
+          )}
+          {canCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-rose-600 text-white hover:bg-rose-700 border-none cursor-pointer shadow-xs transition"
+            >
+              {t('schedule.cancel')}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function MessagesScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isVi = i18n.language === 'vi';
   const {
     user,
     isClient,
@@ -210,6 +406,7 @@ export default function MessagesScreen() {
     messageInput,
     setMessageInput,
     chatAttachments,
+    attachmentUploadsByClientMessageId,
     handleSelectChatFiles,
     handleRemoveChatFile,
     isFavorited,
@@ -246,8 +443,11 @@ export default function MessagesScreen() {
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
   const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const conversationPanelRef = useRef<HTMLElement>(null);
+  const contextPanelRef = useRef<HTMLElement>(null);
   const [viewReportId, setViewReportId] = useState<string | null>(null);
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
+  const [showConversationList, setShowConversationList] = useState(true);
   const {
     reports: contractReports,
     isLoading: isLoadingReports,
@@ -263,6 +463,20 @@ export default function MessagesScreen() {
     isEscalatingReport,
     clearSelectedReport,
   } = useReportContract();
+
+  useEffect(() => {
+    const updatePanelInteractivity = (panel: HTMLElement | null, isVisible: boolean): void => {
+      if (!panel) return;
+      if (isVisible) {
+        panel.removeAttribute('inert');
+        return;
+      }
+      panel.setAttribute('inert', '');
+    };
+
+    updatePanelInteractivity(conversationPanelRef.current, showConversationList);
+    updatePanelInteractivity(contextPanelRef.current, showInfo);
+  }, [showConversationList, showInfo]);
 
   const openReportDetail = async (contractId: string, reportId: string) => {
     setViewReportId(reportId);
@@ -286,6 +500,14 @@ export default function MessagesScreen() {
   });
 
   const [workspaceFilterTab, setWorkspaceFilterTab] = useState<'active' | 'completed' | 'disputed' | 'all'>('active');
+  const [convSortOption, setConvSortOption] = useState('newest');
+  const [selectedJobFilter, setSelectedJobFilter] = useState('all');
+
+  const sortOptions: SelectOption[] = useMemo(() => [
+    { value: 'newest', label: isVi ? 'Mới nhất' : 'Newest' },
+    { value: 'unread', label: isVi ? 'Chưa đọc' : 'Unread' },
+    { value: 'name', label: isVi ? 'Tên (A-Z)' : 'Name (A-Z)' },
+  ], [isVi]);
 
   useEffect(() => {
     if (activeConv?.roomId && activeConv.roomId !== activeRoomId) {
@@ -316,6 +538,20 @@ export default function MessagesScreen() {
       .flatMap(message => (message.attachments || []).map(attachment => ({ ...attachment, senderName: message.senderName })))
       .map(attachment => [attachment.messageAttachmentId, attachment])
   ).values());
+  const conversationPanelToggleLabel = t(
+    showConversationList ? 'messages.collapseConversations' : 'messages.expandConversations'
+  );
+  const projectInfoPanelToggleLabel = t(
+    showInfo ? 'messages.collapseProjectInfo' : 'messages.expandProjectInfo'
+  );
+
+  const handleToggleConversationList = (): void => {
+    setShowConversationList(current => !current);
+  };
+
+  const handleToggleProjectInfo = (): void => {
+    setShowInfo(current => !current);
+  };
 
   if (loading) {
     return (
@@ -334,7 +570,12 @@ export default function MessagesScreen() {
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 
           {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
-          <section className="messages-conversation-list w-96 lg:w-[390px] shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
+          <section
+            ref={conversationPanelRef}
+            id="messages-conversation-panel"
+            className={`messages-conversation-list w-96 lg:w-[390px] shrink-0 border-r border-border flex flex-col bg-card overflow-hidden ${showConversationList ? 'is-expanded' : 'is-collapsed'}`}
+            aria-hidden={!showConversationList}
+          >
             {/* ── Document Folder Index Tabs ── */}
             <div className="pt-2.5 px-2 bg-muted/30 flex items-end gap-1 relative shrink-0">
               {/* Bottom 1px divider line for inactive tabs only */}
@@ -344,23 +585,17 @@ export default function MessagesScreen() {
                 const convos = conversationsState.filter(c => isRoomConvo(c, room.id));
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isSelected = activeRoomId === room.id;
-                const RoomIcon = room.type === 'invited'
-                  ? Briefcase
-                  : room.type === 'workspace'
-                    ? CheckCircle
-                    : Layers;
+                const RoomIcon = room.type === 'workspace'
+                  ? CheckCircle
+                  : Layers;
 
-                const shortLabel = room.type === 'invited'
-                  ? t('messages.tabInvited', { defaultValue: 'Invited' })
-                  : room.type === 'negotiation'
-                    ? t('messages.tabNegotiation', { defaultValue: 'Negotiation' })
-                    : t('messages.tabWorkspace', { defaultValue: 'Workspace' });
+                const shortLabel = room.type === 'negotiation'
+                  ? t('messages.tabNegotiation', { defaultValue: 'Negotiation' })
+                  : t('messages.tabWorkspace', { defaultValue: 'Workspace' });
 
-                const activeThemeClass = room.type === 'invited'
-                  ? 'border-t-teal-500 text-teal-600 dark:text-teal-400'
-                  : room.type === 'workspace'
-                    ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
-                    : 'border-t-brand text-brand';
+                const activeThemeClass = room.type === 'workspace'
+                  ? 'border-t-emerald-500 text-emerald-600 dark:text-emerald-400'
+                  : 'border-t-brand text-brand';
 
                 return (
                   <button
@@ -393,11 +628,6 @@ export default function MessagesScreen() {
             <div className="flex-1 overflow-y-auto messages-custom-scroll bg-card relative z-10">
               {(() => {
                 const currentRoom = MESSAGE_ROOMS.find(r => r.id === activeRoomId) || MESSAGE_ROOMS[0];
-                const CurrentRoomIcon = currentRoom.type === 'invited'
-                  ? Briefcase
-                  : currentRoom.type === 'workspace'
-                    ? CheckCircle
-                    : Layers;
 
                 const allRoomConvos = conversationsState.filter(c => isRoomConvo(c, currentRoom.id));
                 const allWorkspaceConvos = conversationsState.filter(c => isRoomConvo(c, 'room_workspace'));
@@ -426,6 +656,32 @@ export default function MessagesScreen() {
                     })
                   : allRoomConvos;
 
+                const clientJobOptions: SelectOption[] = (() => {
+                  if (!isClient) return [];
+                  const map = new Map<string, { id: string; title: string; count: number }>();
+                  convos.forEach(c => {
+                    if (c.job?.id && c.job?.title) {
+                      const existing = map.get(c.job.id);
+                      if (existing) {
+                        existing.count += 1;
+                      } else {
+                        map.set(c.job.id, { id: c.job.id, title: c.job.title, count: 1 });
+                      }
+                    }
+                  });
+
+                  const jobOpts: SelectOption[] = Array.from(map.values()).map(j => ({
+                    value: j.id,
+                    label: j.title,
+                    badge: `${j.count}`,
+                  }));
+
+                  return [
+                    { value: 'all', label: isVi ? 'Tất cả công việc' : 'All Jobs' },
+                    ...jobOpts,
+                  ];
+                })();
+
                 return (
                   <div>
                     {/* Active room description or Workspace 4-button filter */}
@@ -434,17 +690,21 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('active')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'active'
-                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-emerald-600 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabActive', { defaultValue: 'Đang làm' })}
                         >
                           <CheckCircle size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabActive', { defaultValue: 'Đang làm' })}</span>
                           {activeCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-emerald-500 text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'active'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {activeCount}
                             </span>
                           )}
@@ -453,17 +713,21 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('completed')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'completed'
-                              ? 'bg-brand/15 border border-brand/30 text-brand shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-blue-600 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}
                         >
                           <Award size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabCompleted', { defaultValue: 'Hoàn thành' })}</span>
                           {completedCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-brand text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'completed'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {completedCount}
                             </span>
                           )}
@@ -472,17 +736,21 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('disputed')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'disputed'
-                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-amber-600 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}
                         >
                           <LockKeyhole size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabDisputed', { defaultValue: 'Tranh chấp' })}</span>
                           {disputedCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-amber-500 text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'disputed'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {disputedCount}
                             </span>
                           )}
@@ -491,108 +759,185 @@ export default function MessagesScreen() {
                         <button
                           type="button"
                           onClick={() => setWorkspaceFilterTab('all')}
-                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer select-none ${
+                          className={`flex-1 min-w-0 py-1.5 px-1.5 rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer select-none ${
                             workspaceFilterTab === 'all'
-                              ? 'bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-2xs'
-                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                              ? 'bg-slate-700 text-white font-black shadow-xs'
+                              : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 border border-transparent font-bold'
                           }`}
                           title={t('workspace.tabAll', { defaultValue: 'Tất cả' })}
                         >
                           <Layers size={11} className="shrink-0" />
                           <span className="truncate">{t('workspace.tabAll', { defaultValue: 'Tất cả' })}</span>
                           {allCount > 0 && (
-                            <span className="min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black bg-blue-500 text-white rounded-full leading-none shrink-0">
+                            <span className={`min-w-[14px] h-3.5 px-1 flex items-center justify-center text-[9px] font-black rounded-full leading-none shrink-0 ${
+                              workspaceFilterTab === 'all'
+                                ? 'bg-white/25 text-white'
+                                : 'bg-muted-foreground/20 text-muted-foreground'
+                            }`}>
                               {allCount}
                             </span>
                           )}
                         </button>
                       </div>
                     ) : (
-                      <div className="px-4 py-2.5 bg-muted/20 border-b border-border/40 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
-                            currentRoom.type === 'invited'
-                              ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
-                              : 'bg-brand/15 text-brand'
-                          }`}>
-                            <CurrentRoomIcon size={13} />
+                      <div className="p-2.5 bg-muted/20 border-b border-border/40 flex items-center gap-2">
+                        {isClient && clientJobOptions.length > 1 && (
+                          <div className="flex-1 min-w-0">
+                            <CustomSelect
+                              value={selectedJobFilter}
+                              onChange={setSelectedJobFilter}
+                              options={clientJobOptions}
+                              searchable={clientJobOptions.length > 5}
+                              placeholder={isVi ? 'Lọc công việc' : 'Filter by job'}
+                              searchPlaceholder={isVi ? 'Tìm công việc...' : 'Search job...'}
+                              className="text-xs"
+                            />
                           </div>
-                          <div>
-                            <span className="text-xs font-black text-foreground block leading-tight tracking-wide">
-                              {t(ROOM_COPY[currentRoom.type].label)}
-                            </span>
-                            <p className="text-[10px] text-muted-foreground leading-tight">
-                              {t(ROOM_COPY[currentRoom.type].description)}
-                            </p>
-                          </div>
+                        )}
+                        <div className={isClient && clientJobOptions.length > 1 ? 'w-32 shrink-0' : 'w-full'}>
+                          <CustomSelect
+                            value={convSortOption}
+                            onChange={setConvSortOption}
+                            options={sortOptions}
+                            searchable={false}
+                            className="text-xs"
+                          />
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/40">
-                          {convos.length}
-                        </span>
                       </div>
                     )}
 
                     {/* Conversations */}
                     <div className="p-2 space-y-1">
-                      {convos.map(conv => (
-                        <div
-                          key={conv.id}
-                          id={`conv-item-${conv.id}`}
-                          className={`msg-conv-item ${conv.id === activeConvId ? 'active' : ''}`}
-                          onClick={() => handleSelectConv(conv.id)}
-                        >
-                          <div className="relative flex-shrink-0">
-                            <img
-                              src={conv.participantAvatar}
-                              alt={conv.participantName}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                            {conv.participantOnline && (
-                              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-baseline">
-                              <span className="text-sm font-semibold truncate text-foreground">
-                                {conv.participantName}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground ml-1 flex-shrink-0">
-                                {formatTime(conv.lastMessageAt)}
-                              </span>
+                      {(() => {
+                        let list = [...convos];
+
+                        // Filter by Client selected Job
+                        if (isClient && selectedJobFilter && selectedJobFilter !== 'all') {
+                          list = list.filter(c => c.job?.id === selectedJobFilter);
+                        }
+                        if (convSortOption === 'unread') {
+                          list.sort((a, b) => (b.unreadCount > 0 ? 1 : 0) - (a.unreadCount > 0 ? 1 : 0));
+                        } else if (convSortOption === 'name') {
+                          list.sort((a, b) =>
+                            (a.job?.title || a.participantName || '').localeCompare(
+                              b.job?.title || b.participantName || ''
+                            )
+                          );
+                        } else {
+                          list.sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime());
+                        }
+
+                        if (list.length === 0) {
+                          return (
+                            <div className="p-6 text-center text-xs font-semibold text-muted-foreground">
+                              {isVi ? 'Không tìm thấy cuộc hội thoại' : 'No conversations found'}
                             </div>
+                          );
+                        }
 
-                            {/* Status Tag Badge */}
-                            {conv.contractStatus === ContractStatus.Disputed ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider">
-                                <LockKeyhole size={10} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
-                              </span>
-                            ) : conv.contractStatus === ContractStatus.Cancelled ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground text-[9px] font-black uppercase tracking-wider">
-                                <Lock size={10} /> {t('workspace.disputeClosedBadge', { defaultValue: 'Đã đóng tranh chấp' })}
-                              </span>
-                            ) : conv.contractStatus === ContractStatus.Completed ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand text-[9px] font-black uppercase tracking-wider">
-                                <Award size={10} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
-                              </span>
-                            ) : conv.roomId === 'room_workspace' ? (
-                              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
-                                <CheckCircle size={10} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
-                              </span>
-                            ) : null}
+                        return list.map(conv => {
+                          const isSelected = conv.id === activeConvId;
+                          const hasUnread = conv.unreadCount > 0;
 
-                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{conv.job.title}</p>
-                            <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                              {conv.lastMessage}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {convos.length === 0 && (
-                        <div className="p-8 text-center flex flex-col items-center justify-center text-muted-foreground my-4">
-                          <CurrentRoomIcon size={28} className="mb-2 opacity-30 text-muted-foreground" />
-                          <p className="text-xs font-medium">{t('messages.emptyRoom')}</p>
-                        </div>
-                      )}
+                          return (
+                            <div
+                              key={conv.id}
+                              id={`conv-item-${conv.id}`}
+                              onClick={() => handleSelectConv(conv.id)}
+                              className={`relative rounded-xl p-3 border transition-all duration-150 cursor-pointer select-none mb-1.5 ${
+                                isSelected
+                                  ? 'bg-card border border-[var(--brand)]/80 shadow-2xs'
+                                  : hasUnread
+                                    ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border-l-4 border-l-emerald-500 border-y-emerald-500/20 border-r-emerald-500/20 hover:bg-emerald-500/15'
+                                    : 'bg-card/40 hover:bg-muted/50 border-transparent hover:border-border/40'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                {/* UserAvatar Component */}
+                                <div className="shrink-0 mt-0.5">
+                                  <UserAvatar
+                                    name={conv.participantName}
+                                    src={conv.participantAvatar}
+                                    userId={conv.participantId}
+                                    size="md"
+                                  />
+                                </div>
+
+                                {/* Info Column */}
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  {/* Top Row: Name + Unread Dot + Timestamp */}
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className={`text-xs md:text-sm truncate leading-tight ${
+                                        hasUnread
+                                          ? 'font-black text-foreground'
+                                          : isSelected
+                                            ? 'font-extrabold text-[var(--brand)]'
+                                            : 'font-bold text-foreground/90'
+                                      }`}>
+                                        {conv.participantName}
+                                      </span>
+                                      {hasUnread && (
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Tin nhắn mới" />
+                                      )}
+                                    </div>
+
+                                    <span className={`text-[10px] shrink-0 font-semibold ${
+                                      hasUnread
+                                        ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                                        : isSelected
+                                          ? 'text-[var(--brand)] font-bold'
+                                          : 'text-muted-foreground'
+                                    }`}>
+                                      {formatTime(conv.lastMessageAt)}
+                                    </span>
+                                  </div>
+
+                                  {/* Job Title Tag Pill */}
+                                  {conv.job?.title && (
+                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/80 border border-border/50 text-muted-foreground text-[10px] font-medium max-w-full truncate">
+                                      <Briefcase size={10} className="shrink-0 text-muted-foreground/80" />
+                                      <span className="truncate">{conv.job.title}</span>
+                                    </div>
+                                  )}
+
+                                  {/* Message Snippet & Unread / Status Badge */}
+                                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                                    <p className={`text-xs truncate leading-snug flex-1 ${
+                                      hasUnread
+                                        ? 'font-black text-foreground'
+                                        : isSelected
+                                          ? 'font-bold text-foreground'
+                                          : 'font-medium text-muted-foreground'
+                                    }`}>
+                                      {conv.lastMessage}
+                                    </p>
+
+                                    {/* Unread Count Badge OR Room Badge */}
+                                    {hasUnread ? (
+                                      <span className="min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black bg-emerald-600 text-white rounded-full shrink-0 shadow-2xs">
+                                        {conv.unreadCount}
+                                      </span>
+                                    ) : conv.contractStatus === ContractStatus.Disputed ? (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                        <LockKeyhole size={9} /> {t('workspace.disputedBadge', { defaultValue: 'Tranh chấp' })}
+                                      </span>
+                                    ) : conv.contractStatus === ContractStatus.Completed ? (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                        <Award size={9} /> {t('workspace.completedBadge', { defaultValue: 'Hoàn thành' })}
+                                      </span>
+                                    ) : conv.roomId === 'room_workspace' ? (
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[9px] font-black shrink-0 shadow-2xs">
+                                        <CheckCircle size={9} /> {t('workspace.activeBadge', { defaultValue: 'Đang làm' })}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 );
@@ -622,7 +967,18 @@ export default function MessagesScreen() {
               <>
                 {/* Header info / Context of Job */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-card shadow-sm z-10 animate-in fade-in duration-200">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleToggleConversationList}
+                  className="messages-pane-toggle shrink-0"
+                  title={conversationPanelToggleLabel}
+                  aria-label={conversationPanelToggleLabel}
+                  aria-controls="messages-conversation-panel"
+                  aria-expanded={showConversationList}
+                >
+                  {showConversationList ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+                </button>
                 <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative">
                   <img
                     src={activeConv.participantAvatar}
@@ -663,15 +1019,19 @@ export default function MessagesScreen() {
                   {creatingGoogleMeet ? <Loader2 size={18} className="animate-spin" /> : <Video size={18} />}
                 </button>
                 <button
-                  onClick={() => setShowInfo(!showInfo)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                  type="button"
+                  onClick={handleToggleProjectInfo}
+                  className={`messages-pane-toggle ${
                     showInfo
-                      ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'is-active'
+                      : ''
                   }`}
-                  title={t('messages.toggleProjectInfo')}
+                  title={projectInfoPanelToggleLabel}
+                  aria-label={projectInfoPanelToggleLabel}
+                  aria-controls="messages-context-panel"
+                  aria-expanded={showInfo}
                 >
-                  <Info size={18} />
+                  {showInfo ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
                 </button>
               </div>
             </div>
@@ -732,6 +1092,9 @@ export default function MessagesScreen() {
 
               {activeMessages.map((msg, idx) => {
                 const mine = isMe(msg.senderId);
+                const attachmentUpload = msg.clientMessageId
+                  ? attachmentUploadsByClientMessageId[msg.clientMessageId]
+                  : undefined;
                 const isSystem = msg.type === 'system' || msg.senderId === 'system';
                 const reportEvent = parseReportSystemMessageMetadata(msg.metadata);
                 const latestScheduleMessage = msg.schedule ? activeMessages.filter(m => m.schedule?.scheduleId === msg.schedule?.scheduleId).sort((a,b) => (b.schedule?.eventSequence || 0) - (a.schedule?.eventSequence || 0))[0] : undefined;
@@ -839,11 +1202,13 @@ export default function MessagesScreen() {
                   }
 
                   return (
-                    <div key={msg.id ?? idx} className="flex justify-center">
-                      <div className="bg-muted/80 border border-border rounded-full px-4 py-1.5 text-xs text-muted-foreground font-medium text-center max-w-md">
-                        {msg.content}
-                      </div>
-                    </div>
+                    <ChatSystemBanner
+                      key={msg.id ?? idx}
+                      content={msg.content}
+                      contractId={activeConv.contractId}
+                      proposalId={activeConv.proposalId}
+                      onNavigateContract={id => navigate(`/contracts/${id}`)}
+                    />
                   );
                 }
 
@@ -924,6 +1289,18 @@ export default function MessagesScreen() {
                               />
                             );
                           })}
+                          {attachmentUpload && (
+                            <div className="mt-1 rounded-xl border border-border bg-card/80 p-2.5">
+                              <FileUploadProgress
+                                phase={attachmentUpload.phase}
+                                progress={attachmentUpload.progress}
+                                variant="compact"
+                                label={attachmentUpload.phase === 'processing'
+                                  ? t('fileUploadProgress.processingMessage')
+                                  : undefined}
+                              />
+                            </div>
+                          )}
                         </div>
 
                       ) : msg.type === 'deal' ? (
@@ -1160,7 +1537,18 @@ export default function MessagesScreen() {
             )}
             </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-card">
+              <div className="relative flex-1 flex flex-col items-center justify-center p-8 text-center bg-card">
+                <button
+                  type="button"
+                  onClick={handleToggleConversationList}
+                  className="messages-pane-toggle absolute left-4 top-4"
+                  title={conversationPanelToggleLabel}
+                  aria-label={conversationPanelToggleLabel}
+                  aria-controls="messages-conversation-panel"
+                  aria-expanded={showConversationList}
+                >
+                  {showConversationList ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+                </button>
                 <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground mb-4">
                   <MessageSquare size={32} />
                 </div>
@@ -1175,7 +1563,10 @@ export default function MessagesScreen() {
           {/* ── Column 3: Contextual Info (Right Pane – Collapsible) ─────── */}
           {activeConv && (
             <aside
-              className={`flex flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
+              ref={contextPanelRef}
+              id="messages-context-panel"
+              className={`flex shrink-0 flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
+              aria-hidden={!showInfo}
             >
             {/* Profile */}
             <div className="p-6 text-center border-b border-border">

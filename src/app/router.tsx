@@ -2,6 +2,7 @@ import { lazy, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-router';
 import { useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
+import { RouteErrorScreen } from './components/RouteErrorScreen';
 import { RootLayout } from './layouts/RootLayout';
 
 const LandingScreen = lazy(() => import('../features/landing/screens/LandingPagePremium'));
@@ -26,6 +27,10 @@ const EditJobPostScreen = lazy(() => import('../features/jobs/screens/EditJobPos
 const SavedJobsScreen = lazy(() => import('../features/jobs/screens/SavedJobsScreen'));
 const JobInvitationsScreen = lazy(() => import('../features/jobs/screens/JobInvitationsScreen'));
 const FreelancerProfileScreen = lazy(() => import('../features/profile/screens/FreelancerProfileScreen'));
+const FreelancerDirectoryScreen = lazy(() => import('../features/profile/screens/FreelancerDirectoryScreen').then(module => ({ default: module.FreelancerDirectoryScreen })));
+const PublicFreelancerProfileScreen = lazy(() => import('../features/profile/screens/PublicFreelancerProfileScreen').then(module => ({ default: module.PublicFreelancerProfileScreen })));
+const PublicFreelancersScreen = lazy(() => import('../features/talent-matching/screens/PublicFreelancersScreen'));
+const PublicJobPostsScreen = lazy(() => import('../features/jobs/screens/PublicJobPostsScreen'));
 const ClientProfileScreen = lazy(() => import('../features/profile/screens/ClientProfileScreen'));
 const ProposalsInboxScreen = lazy(() => import('../features/proposals/screens/ProposalsInboxScreen'));
 const CreateProposalScreen = lazy(() => import('../features/proposals/screens/CreateProposalScreen'));
@@ -181,6 +186,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <RouteErrorScreen />,
     children: [
       // Public routes - redirect to dashboard if authenticated
       { index: true, element: <PublicRoute><LandingScreen /></PublicRoute> },
@@ -218,20 +224,25 @@ export const router = createBrowserRouter([
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/post/esign', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><CreatePostJobEsignScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract/esign', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><CreatePostJobEsignScreen /></ProtectedRoute> },
-      { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
+      { path: 'jobs', element: <BrowseJobsScreen /> },
+      { path: 'jobs/browse', element: <Navigate to="/jobs" replace /> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
       { path: 'jobs/invitations', element: <ProtectedRoute requireAuth requireSetup><JobInvitationsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><MyJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs/:jobPostId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><JobDetailScreen /></ProtectedRoute> },
-      { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
+      { path: 'jobs/:id', element: <JobDetailScreen /> },
       { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><EditJobPostScreen /></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><ManageJobPostQuestionsScreen /></ProtectedRoute> },
 
-      // Profiles - requires authentication
+      // Authenticated application profiles
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
       { path: 'profile/freelancer/:id/edit', element: <Navigate to="/settings" replace /> },
       { path: 'profile/client/:id/edit', element: <Navigate to="/settings" replace /> },
+
+      // Public marketplace and SEO-safe profile routes
+      { path: 'freelancers', element: <FreelancerDirectoryScreen /> },
+      { path: 'freelancers/:id', element: <PublicFreelancerProfileScreen /> },
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
@@ -255,13 +266,16 @@ export const router = createBrowserRouter([
       { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><MessagesScreen /></ProtectedRoute> },
 
       // Workspace - requires authentication and setup
-      { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
+      { path: 'workspace', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
+      { path: 'projects', element: <Navigate to="/workspace" replace /> },
       { path: 'workspace/:contractId', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
 
       { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },
       { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
       { path: 'ai-interview/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
-      { path: 'talent-matching', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><SmartTalentMatchingScreen /></ProtectedRoute> },
+      { path: 'talent-matching', element: <SmartTalentMatchingScreen /> },
+      { path: 'public/freelancers', element: <PublicFreelancersScreen /> },
+      { path: 'public/job-posts', element: <PublicJobPostsScreen /> },
 
       // Settings - requires authentication
       { path: 'settings', element: <ProtectedRoute requireAuth><SettingsScreen /></ProtectedRoute> },

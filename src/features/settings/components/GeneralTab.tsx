@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router';
-import { User, FileText, Briefcase, Building2, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X, Image as ImageIcon } from 'lucide-react';
+import { User, FileText, Briefcase, Building2, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X, Image as ImageIcon, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -38,6 +38,7 @@ interface ProfileForm {
   title: string;
   bio: string;
   availability: number;
+  allowSearchEngineIndexing: boolean;
   majorId: string;
   categoryIds: string[];
   skillIds: string[];
@@ -62,6 +63,7 @@ const initialProfileForm = (user: any): ProfileForm => ({
   title: '',
   bio: '',
   availability: 0,
+  allowSearchEngineIndexing: false,
   majorId: '',
   categoryIds: [],
   skillIds: [],
@@ -74,7 +76,7 @@ const initialProfileForm = (user: any): ProfileForm => ({
 
 export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const { user, role } = useApp();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation(['settings', 'common']);
   const [searchParams] = useSearchParams();
   const urlSubTab = searchParams.get('subtab') as SubTab | null;
   const [subTab, setSubTab] = useState<SubTab>(urlSubTab || defaultSubTab || 'basic');
@@ -109,7 +111,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItemDto[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const [savingPortfolio, setSavingPortfolio] = useState(false);
-  const [showPortfolioForm, setShowPortfolioForm] = useState(false);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
   const [portfolioForm, setPortfolioForm] = useState<{
     title: string;
@@ -154,7 +155,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
   const [loadingExperience, setLoadingExperience] = useState(false);
   const [savingExperience, setSavingExperience] = useState(false);
-  const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
   const [experienceForm, setExperienceForm] = useState({
     companyName: '',
@@ -245,7 +245,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         if (res.success) {
           toast.success('Portfolio item updated!');
           setEditingPortfolioId(null);
-          setShowPortfolioForm(false);
           setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
           void loadPortfolio();
         } else {
@@ -255,7 +254,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         const res = await portfolioAPI.createPortfolioItem(portfolioForm);
         if (res.success) {
           toast.success('Portfolio item created!');
-          setShowPortfolioForm(false);
           setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
           void loadPortfolio();
         } else {
@@ -293,7 +291,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       projectUrl: item.projectUrl || '',
       projectDate: item.projectDate || '',
     });
-    setShowPortfolioForm(true);
   };
 
   const handleSaveWorkExperience = async (e: React.FormEvent) => {
@@ -323,7 +320,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         if (res.success) {
           toast.success('Work experience updated!');
           setEditingExperienceId(null);
-          setShowExperienceForm(false);
           setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
           void loadWorkExperiences();
         } else {
@@ -333,7 +329,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         const res = await workExperienceAPI.createWorkExperience(experienceForm);
         if (res.success) {
           toast.success('Work experience created!');
-          setShowExperienceForm(false);
           setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
           void loadWorkExperiences();
         } else {
@@ -371,7 +366,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       endDate: item.endDate || '',
       description: item.description || '',
     });
-    setShowExperienceForm(true);
   };
 
   // GSAP Sub-Tab Transition Animation
@@ -437,7 +431,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         phoneNumber: user.phone_number ?? '',
         identityOrTaxCode: '',
         avatarUrl: user.avatar ?? '',
-        preferredLanguage: i18n.language?.startsWith('en') ? 'en' : 'vi',
+        preferredLanguage: 'vi',
       };
 
       if (userProfileRes.success && userProfileRes.data) {
@@ -448,7 +442,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           phoneNumber: userProfileRes.data.phoneNumber || (user.phone_number ?? ''),
           identityOrTaxCode: userProfileRes.data.identityOrTaxCode ?? '',
           avatarUrl: userProfileRes.data.avatar || (user.avatar ?? ''),
-          preferredLanguage: prefLang === 'en' || prefLang === 'vi' ? prefLang : (i18n.language?.startsWith('en') ? 'en' : 'vi'),
+          preferredLanguage: prefLang === 'en' || prefLang === 'vi' ? prefLang : 'vi',
         };
         setAvatarPreview(userProfileRes.data.avatar || user?.avatar || null);
         setSavedIdentityCode((userProfileRes.data.identityOrTaxCode ?? '').replace(/\s+/g, ''));
@@ -486,6 +480,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
             title: profile.title ?? '',
             bio: profile.bio ?? '',
             availability: profile.availability ?? 0,
+            allowSearchEngineIndexing: profile.allowSearchEngineIndexing,
             majorId: profile.majorId ?? '',
             categoryIds: currentCategoryIds,
             skillIds: profile.skills.map(s => s.skillId),
@@ -544,7 +539,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
     } finally {
       setLoading(false);
     }
-  }, [role, user, t, i18n.language]);
+  }, [role, user]);
 
   useEffect(() => {
     void loadData();
@@ -627,11 +622,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       setSavedIdentityCode(userUpdateRes.data?.identityOrTaxCode ?? normalizedIdentityCode);
       setIdentityVerificationTicket(null);
 
-      // Sync site language if preferred language changed
-      if (formData.preferredLanguage && i18n.language !== formData.preferredLanguage) {
-        void i18n.changeLanguage(formData.preferredLanguage);
-      }
-
       // 2. Update Detailed Role Profile (Freelancer or Client)
       if (role === UserRole.Freelancer) {
         if (!formData.majorId && subTab === 'details') {
@@ -662,6 +652,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           majorId: formData.majorId,
           categoryIds: formData.categoryIds,
           skillIds: formData.skillIds,
+          allowSearchEngineIndexing: formData.allowSearchEngineIndexing,
         });
 
         if (!response.success) {
@@ -713,7 +704,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
     return (
       <div className="settings-form-card flex min-h-48 items-center justify-center p-6 text-sm text-secondary">
         <RefreshCw size={20} className="mr-3 animate-spin text-[var(--brand,#494be7)]" />
-        {t('settings.loadingSettings')}
+        {t('settings.loadingSettings', { defaultValue: 'Loading settings...' })}
       </div>
     );
   }
@@ -956,7 +947,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
               </div>
 
               <div className="settings-form-group">
-                <label className="settings-form-label">{t('settings.selectLanguage')}</label>
+                <label className="settings-form-label">{t('settings.preferredLanguage', { defaultValue: 'Preferred Working Language' })}</label>
                 <div className="relative flex items-center p-1 rounded-xl bg-[var(--surface-muted,#f1f1f3)] border border-[var(--border,#ededf0)] h-[46px]">
                   {/* Sliding Pill Background */}
                   <div
@@ -1060,6 +1051,56 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                           </option>
                         ))}
                       </select>
+                    </div>
+                  </div>
+
+                  <div className="settings-form-group full-width">
+                    <div
+                      onClick={() => setFormData(prev => ({ ...prev, allowSearchEngineIndexing: !prev.allowSearchEngineIndexing }))}
+                      className={`group relative flex items-center justify-between gap-4 p-5 rounded-2xl border cursor-pointer transition-all duration-300 ${
+                        formData.allowSearchEngineIndexing
+                          ? 'border-[var(--brand,#494be7)] bg-gradient-to-r from-[var(--brand-soft,rgba(73,75,231,0.08))] via-[var(--surface,#ffffff)] to-[var(--surface,#ffffff)] shadow-md shadow-[var(--brand-soft)]'
+                          : 'border-[var(--border,#ededf0)] bg-[var(--surface-muted,#f8f8fb)] hover:border-[var(--border-strong,#d4d4d8)]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3.5">
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300 ${
+                          formData.allowSearchEngineIndexing
+                            ? 'bg-[var(--brand,#494be7)] text-white shadow-sm'
+                            : 'bg-[var(--surface-hover,#ededf0)] text-[var(--text-secondary,#6e6e80)]'
+                        }`}>
+                          <Globe size={20} />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-sm text-[var(--text-primary,#121217)]">
+                              {t('settings.searchEngineVisibility', { defaultValue: 'Cho phép công cụ tìm kiếm lập chỉ mục hồ sơ' })}
+                            </span>
+                            <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border transition-all ${
+                              formData.allowSearchEngineIndexing
+                                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                                : 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
+                            }`}>
+                              {formData.allowSearchEngineIndexing ? '✓ Enabled' : 'Disabled'}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-[var(--text-secondary,#6e6e80)] leading-relaxed">
+                            {t('settings.searchEngineVisibilityDescription', { defaultValue: 'Hồ sơ vẫn hiển thị trên GigBridge khi tắt. Khi bật, hồ sơ có thể xuất hiện trên Google và các công cụ tìm kiếm.' })}
+                          </p>
+
+                          <div className="flex items-center gap-1.5 pt-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <ShieldCheck size={13} />
+                            <span>{t('settings.privacyGuaranteed', { defaultValue: 'Email và số điện thoại của bạn luôn được bảo mật tuyệt đối.' })}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* iOS-Style Toggle Switch */}
+                      <div className={`settings-toggle-switch shrink-0 ${formData.allowSearchEngineIndexing ? 'active' : ''}`}>
+                        <div className="settings-toggle-knob" />
+                      </div>
                     </div>
                   </div>
 
@@ -1317,225 +1358,222 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       {/* Sub-Tab 3: Portfolio Showcase Management */}
       {role === UserRole.Freelancer && subTab === 'portfolio' && (
         <div className="settings-subtab-content space-y-6">
+          {/* Card 1: Add / Edit Portfolio Item Form (Always Visible like Profile Tab) */}
           <section className="settings-form-card space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
               <div>
-                <h2 className="settings-form-card-title mb-1 flex items-center gap-2 text-base font-extrabold text-[var(--text-primary)]">
+                <h2 className="settings-form-card-title mb-1 flex items-center gap-2">
                   <FolderGit2 size={19} className="text-[var(--brand,#494be7)]" />
-                  <span>Portfolio Showcase</span>
+                  <span>{editingPortfolioId ? t('settings.editProject', { defaultValue: 'Edit Project' }) : t('settings.portfolioTitle', { defaultValue: 'Portfolio Showcase' })}</span>
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Manage project cards shown in your 3D Coverflow profile gallery.
+                  {t('settings.portfolioSubtitle', { defaultValue: 'Add or update project cards shown on your 3D profile gallery.' })}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingPortfolioId(null);
-                  setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
-                  setShowPortfolioForm(!showPortfolioForm);
-                }}
-                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold"
-              >
-                {showPortfolioForm ? <X size={15} /> : <Plus size={15} />}
-                <span>{showPortfolioForm ? 'Cancel' : 'Add Project'}</span>
-              </button>
+
+              {editingPortfolioId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingPortfolioId(null);
+                    setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
+                  }}
+                  className="cp-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
+                >
+                  <X size={14} />
+                  <span>{t('settings.cancel', { defaultValue: 'Cancel Edit' })}</span>
+                </button>
+              )}
             </div>
 
-            {/* Form Section */}
-            {showPortfolioForm && (
-              <form onSubmit={handleSavePortfolioItem} className="p-5 rounded-2xl bg-[var(--surface-hover)] border border-[var(--brand-soft)] space-y-4 shadow-sm">
-                <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-                  <Sparkles size={16} className="text-[var(--brand,#494be7)]" />
-                  <span>{editingPortfolioId ? 'Edit Portfolio Item' : 'New Portfolio Item'}</span>
-                </h3>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">
-                      Project Title <span className="text-red-500">*</span>
-                    </label>
+            <form onSubmit={handleSavePortfolioItem} className="space-y-6">
+              <div className="settings-form-grid">
+                {/* Project Title */}
+                <div className="settings-form-group full-width">
+                  <label className="settings-form-label">
+                    {t('settings.projectTitleLabel', { defaultValue: 'Project Title' })}
+                    <span className="text-[var(--destructive,#dc2626)] ml-0.5">*</span>
+                  </label>
+                  <div className="settings-input-wrapper">
+                    <FolderGit2 size={16} className="settings-input-icon" />
                     <input
                       type="text"
                       required
-                      placeholder="e.g. E-Commerce Web App"
+                      placeholder={t('settings.projectTitlePlaceholder', { defaultValue: 'e.g. E-Commerce Web App' })}
                       value={portfolioForm.title}
                       onChange={e => setPortfolioForm(prev => ({ ...prev, title: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-input"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">Description</label>
+                {/* Description */}
+                <div className="settings-form-group full-width">
+                  <label className="settings-form-label">{t('settings.projectDescLabel', { defaultValue: 'Description' })}</label>
+                  <div className="settings-input-wrapper">
+                    <AlignLeft size={16} className="settings-input-icon self-start mt-3.5" />
                     <textarea
                       rows={3}
-                      placeholder="Brief overview of tech stack, features, and key achievements..."
+                      placeholder={t('settings.projectDescPlaceholder', { defaultValue: 'Brief overview of tech stack, features, and key achievements...' })}
                       value={portfolioForm.description}
                       onChange={e => setPortfolioForm(prev => ({ ...prev, description: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-textarea"
                     />
                   </div>
+                </div>
 
-                  {/* Image Upload & Crop Control */}
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-1.5">
-                      <Camera size={14} className="text-[var(--brand,#494be7)]" />
-                      <span>Ảnh bìa Dự án (Cover Image - Tỷ lệ 7:6 trên Gallery)</span>
-                    </label>
-                    <div className="flex items-start gap-4 flex-wrap">
-                      {portfolioForm.imageUrl ? (
-                        <div className="relative group w-36 h-28 rounded-2xl overflow-hidden border-2 border-[var(--brand,#494be7)] shadow-lg transition-transform hover:scale-105 shrink-0">
-                          <img
-                            src={portfolioForm.imageUrl}
-                            alt="Project preview"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <label className="p-2 rounded-full bg-white/20 hover:bg-white/40 text-white cursor-pointer transition-colors" title="Change & Crop">
-                              <Camera size={14} />
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handlePortfolioImageFileChange}
-                                className="hidden"
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => setPortfolioForm(prev => ({ ...prev, imageUrl: '', imageFile: undefined }))}
-                              className="p-2 rounded-full bg-red-500/80 hover:bg-red-600 text-white transition-colors"
-                              title="Remove Image"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
+                {/* Image Upload & Crop Control */}
+                <div className="settings-form-group full-width">
+                  <label className="settings-form-label flex items-center justify-between">
+                    <span>{t('settings.projectCoverLabel', { defaultValue: 'Project Cover Image (7:6 Ratio)' })}</span>
+                  </label>
+                  <div className="flex items-start gap-4 flex-wrap">
+                    {portfolioForm.imageUrl ? (
+                      <div className="relative group w-36 h-28 rounded-xl overflow-hidden border-2 border-[var(--brand,#494be7)] shadow-sm shrink-0">
+                        <img
+                          src={portfolioForm.imageUrl}
+                          alt="Project preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label className="p-2 rounded-full bg-white/20 hover:bg-white/40 text-white cursor-pointer transition-colors" title={t('settings.changeCover', { defaultValue: 'Change Cover' })}>
+                            <Camera size={14} />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePortfolioImageFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setPortfolioForm(prev => ({ ...prev, imageUrl: '', imageFile: undefined }))}
+                            className="p-2 rounded-full bg-red-500/80 hover:bg-red-600 text-white transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
-                      ) : (
-                        <div className="w-36 h-28 rounded-2xl bg-[var(--surface-hover)] border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 text-xs text-[var(--text-muted)] p-3 text-center shrink-0">
-                          <ImageIcon size={22} className="text-[var(--brand,#494be7)] opacity-60" />
-                          <span className="text-[10px] font-medium">Chưa có ảnh</span>
-                        </div>
-                      )}
+                      </div>
+                    ) : (
+                      <div className="w-36 h-28 rounded-xl bg-[var(--surface-hover)] border-2 border-dashed border-[var(--border,#ededf0)] flex flex-col items-center justify-center gap-1 text-xs text-[var(--text-muted)] p-3 text-center shrink-0">
+                        <ImageIcon size={22} className="text-[var(--brand,#494be7)] opacity-60" />
+                        <span className="text-[10px] font-medium">Chưa có ảnh</span>
+                      </div>
+                    )}
 
-                      <div className="flex-1 min-w-[220px] space-y-2.5">
-                        <label className="cp-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-extrabold cursor-pointer hover:border-[var(--brand,#494be7)] transition-all">
-                          <Camera size={15} className="text-[var(--brand,#494be7)]" />
-                          <span>{portfolioForm.imageUrl ? 'Cắt & Đổi ảnh mới' : 'Tải & Cắt ảnh chuẩn Coverflow'}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePortfolioImageFileChange}
-                            className="hidden"
-                          />
-                        </label>
-                        <div className="space-y-1">
-                          <span className="text-[11px] text-[var(--text-muted)]">Hoặc dán URL ảnh trực tiếp:</span>
-                          <input
-                            type="url"
-                            placeholder="https://example.com/image.jpg"
-                            value={portfolioForm.imageUrl}
-                            onChange={e => setPortfolioForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                            className="settings-input w-full text-xs"
-                          />
-                        </div>
+                    <div className="flex-1 min-w-[220px] space-y-2.5">
+                      <label className="cp-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-extrabold cursor-pointer hover:border-[var(--brand,#494be7)] transition-all">
+                        <Camera size={15} className="text-[var(--brand,#494be7)]" />
+                        <span>{portfolioForm.imageUrl ? t('settings.changeCover', { defaultValue: 'Change Cover' }) : t('settings.uploadAndCropCover', { defaultValue: 'Upload Cover Image' })}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePortfolioImageFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <div className="settings-input-wrapper">
+                        <Globe size={16} className="settings-input-icon" />
+                        <input
+                          type="url"
+                          placeholder={t('settings.orPasteUrl', { defaultValue: 'Or paste image URL directly:' })}
+                          value={portfolioForm.imageUrl}
+                          onChange={e => setPortfolioForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                          className="settings-form-input text-xs"
+                        />
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">Project Link (URL)</label>
+                {/* Project Link (URL) */}
+                <div className="settings-form-group">
+                  <label className="settings-form-label">{t('settings.projectUrlLabel', { defaultValue: 'Project Link (URL)' })}</label>
+                  <div className="settings-input-wrapper">
+                    <Globe size={16} className="settings-input-icon" />
                     <input
                       type="url"
                       placeholder="https://github.com/my-user/my-repo"
                       value={portfolioForm.projectUrl}
                       onChange={e => setPortfolioForm(prev => ({ ...prev, projectUrl: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-input"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">Completion Date</label>
+                {/* Completion Date */}
+                <div className="settings-form-group">
+                  <label className="settings-form-label">{t('settings.completionDateLabel', { defaultValue: 'Completion Date' })}</label>
+                  <div className="settings-input-wrapper">
+                    <Calendar size={16} className="settings-input-icon" />
                     <input
                       type="date"
                       max={todayStr}
                       value={portfolioForm.projectDate}
                       onChange={e => setPortfolioForm(prev => ({ ...prev, projectDate: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-input"
                     />
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPortfolioForm(false);
-                      setEditingPortfolioId(null);
-                    }}
-                    className="cp-btn-secondary px-4 py-2 text-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingPortfolio}
-                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5 font-extrabold"
-                  >
-                    {savingPortfolio ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                    <span>{editingPortfolioId ? 'Update Item' : 'Save Item'}</span>
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* Live 3D Coverflow Gallery Preview Container */}
-            <div className="relative overflow-hidden rounded-3xl p-5 border border-[var(--border)] bg-[var(--surface)] shadow-xl transition-all duration-500 hover:border-[var(--brand-soft)] space-y-3">
-              {/* Ambient Glowing Brand Bubble Gradients */}
-              <div className="pointer-events-none absolute -top-24 -left-20 h-56 w-56 rounded-full bg-[var(--brand,#494be7)] opacity-15 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-24 -right-20 h-56 w-56 rounded-full bg-purple-500 opacity-15 blur-3xl" />
-
-              <div className="relative z-10 flex items-center justify-between text-xs text-[var(--text-secondary)] px-1">
-                <span className="font-extrabold uppercase tracking-wider text-[var(--brand,#494be7)] flex items-center gap-2">
-                  <Sparkles size={15} /> Live 3D Coverflow Gallery Preview
-                </span>
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand,#494be7)]">
-                  {portfolioItems.length} {portfolioItems.length === 1 ? 'Project' : 'Projects'}
-                </span>
               </div>
 
-              <div className="relative z-10 rounded-2xl overflow-hidden">
-                <Smooth3DSlideshow
-                  slides={
-                    portfolioItems.length > 0
-                      ? portfolioItems.map((item, idx) => ({
-                          id: item.portfolioItemId || String(idx),
-                          title: item.title,
-                          description: item.description,
-                          projectUrl: item.projectUrl,
-                          image: {
-                            src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
-                            alt: item.title,
-                          },
-                        }))
-                      : undefined
-                  }
-                  cardWidth={280}
-                  cardHeight={260}
-                  radius={4}
-                  tilt={10}
-                  sideTilt={6}
-                  gap={6}
-                />
+              <div className="pt-4 border-t border-[var(--border,#ededf0)] flex justify-end gap-2">
+                <button
+                  type="submit"
+                  disabled={savingPortfolio}
+                  className="settings-submit-btn"
+                >
+                  {savingPortfolio ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                  <span>{editingPortfolioId ? t('settings.updateProject', { defaultValue: 'Update Item' }) : t('settings.saveProject', { defaultValue: 'Save Item' })}</span>
+                </button>
               </div>
+            </form>
+          </section>
+
+          {/* Card 2: 3D Gallery Preview & Existing Items */}
+          <section className="settings-form-card space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
+              <h2 className="settings-form-card-title flex items-center gap-2">
+                <Sparkles size={18} className="text-[var(--brand,#494be7)]" />
+                <span>{t('settings.livePreview', { defaultValue: 'Live 3D Coverflow Gallery Preview' })}</span>
+              </h2>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--brand-soft,#ececfe)] text-[var(--brand,#494be7)]">
+                {portfolioItems.length} {portfolioItems.length === 1 ? 'Project' : 'Projects'}
+              </span>
             </div>
 
-            {/* Portfolio Items List */}
+            <div className="rounded-2xl overflow-hidden border border-[var(--border,#ededf0)] bg-[var(--surface-muted,#f8f9fa)] p-4">
+              <Smooth3DSlideshow
+                slides={
+                  portfolioItems.length > 0
+                    ? portfolioItems.map((item, idx) => ({
+                        id: item.portfolioItemId || String(idx),
+                        title: item.title,
+                        description: item.description,
+                        projectUrl: item.projectUrl,
+                        image: {
+                          src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
+                          alt: item.title,
+                        },
+                      }))
+                    : undefined
+                }
+                cardWidth={280}
+                cardHeight={260}
+                radius={4}
+                tilt={10}
+                sideTilt={6}
+                gap={6}
+              />
+            </div>
+
+            {/* Existing Projects List */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Existing Projects</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{t('settings.existingProjects', { defaultValue: 'Existing Projects' })}</h3>
               {loadingPortfolio ? (
                 <div className="flex items-center justify-center p-8 text-sm text-[var(--text-secondary)]">
                   <RefreshCw size={18} className="animate-spin mr-2 text-[var(--brand,#494be7)]" />
-                  Loading portfolio...
+                  {t('settings.loadingPortfolio', { defaultValue: 'Loading portfolio...' })}
                 </div>
               ) : portfolioItems.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1569,7 +1607,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                               rel="noreferrer"
                               className="text-xs text-[var(--brand,#494be7)] font-medium inline-flex items-center gap-1 hover:underline pt-1"
                             >
-                              <ExternalLink size={12} /> View Project
+                              <ExternalLink size={12} /> {t('settings.viewProject', { defaultValue: 'View Project' })}
                             </a>
                           )}
                         </div>
@@ -1599,7 +1637,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                 </div>
               ) : (
                 <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]">
-                  No portfolio items created yet. Click "+ Add Project" to build your showcase!
+                  {t('settings.noProjects', { defaultValue: 'No portfolio items created yet.' })}
                 </div>
               )}
             </div>
@@ -1610,185 +1648,202 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       {/* Sub-Tab 4: Work Experience Management */}
       {role === UserRole.Freelancer && subTab === 'experience' && (
         <div className="settings-subtab-content space-y-6">
+          {/* Card 1: Add / Edit Work Experience Form (Always Visible like Profile Tab) */}
           <section className="settings-form-card space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
               <div>
-                <h2 className="settings-form-card-title mb-1 flex items-center gap-2 text-base font-extrabold text-[var(--text-primary)]">
+                <h2 className="settings-form-card-title mb-1 flex items-center gap-2">
                   <Building2 size={19} className="text-[var(--brand,#494be7)]" />
-                  <span>Work Experience</span>
+                  <span>{editingExperienceId ? t('settings.editExperience', { defaultValue: 'Edit Work Experience' }) : t('settings.experienceTitle', { defaultValue: 'Work Experience' })}</span>
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Add your past professional roles and work history.
+                  {t('settings.experienceSubtitle', { defaultValue: 'Add your past professional roles and work history.' })}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingExperienceId(null);
-                  setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
-                  setShowExperienceForm(!showExperienceForm);
-                }}
-                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold"
-              >
-                {showExperienceForm ? <X size={15} /> : <Plus size={15} />}
-                <span>{showExperienceForm ? 'Cancel' : 'Add Position'}</span>
-              </button>
+
+              {editingExperienceId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingExperienceId(null);
+                    setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
+                  }}
+                  className="cp-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
+                >
+                  <X size={14} />
+                  <span>{t('settings.cancel', { defaultValue: 'Cancel Edit' })}</span>
+                </button>
+              )}
             </div>
 
-            {/* Form Section */}
-            {showExperienceForm && (
-              <form onSubmit={handleSaveWorkExperience} className="p-5 rounded-2xl bg-[var(--surface-hover)] border border-[var(--brand-soft)] space-y-4 shadow-sm">
-                <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-                  <Sparkles size={16} className="text-[var(--brand,#494be7)]" />
-                  <span>{editingExperienceId ? 'Edit Work Experience' : 'New Work Experience'}</span>
-                </h3>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">
-                      Job Title <span className="text-red-500">*</span>
-                    </label>
+            <form onSubmit={handleSaveWorkExperience} className="space-y-6">
+              <div className="settings-form-grid">
+                {/* Job Title */}
+                <div className="settings-form-group">
+                  <label className="settings-form-label">
+                    {t('settings.jobTitleLabel', { defaultValue: 'Job Title' })}
+                    <span className="text-[var(--destructive,#dc2626)] ml-0.5">*</span>
+                  </label>
+                  <div className="settings-input-wrapper">
+                    <Briefcase size={16} className="settings-input-icon" />
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Senior Frontend Engineer"
+                      placeholder={t('settings.jobTitlePlaceholder', { defaultValue: 'e.g. Senior Frontend Engineer' })}
                       value={experienceForm.jobTitle}
                       onChange={e => setExperienceForm(prev => ({ ...prev, jobTitle: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-input"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">
-                      Company / Organization <span className="text-red-500">*</span>
-                    </label>
+                {/* Company / Organization */}
+                <div className="settings-form-group">
+                  <label className="settings-form-label">
+                    {t('settings.companyNameLabel', { defaultValue: 'Company / Organization' })}
+                    <span className="text-[var(--destructive,#dc2626)] ml-0.5">*</span>
+                  </label>
+                  <div className="settings-input-wrapper">
+                    <Building2 size={16} className="settings-input-icon" />
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Acme Software Inc."
+                      placeholder={t('settings.companyNamePlaceholder', { defaultValue: 'e.g. Acme Software Inc.' })}
                       value={experienceForm.companyName}
                       onChange={e => setExperienceForm(prev => ({ ...prev, companyName: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-input"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">
-                      Start Date <span className="text-red-500">*</span>
-                    </label>
+                {/* Start Date */}
+                <div className="settings-form-group">
+                  <label className="settings-form-label">
+                    {t('settings.startDateLabel', { defaultValue: 'Start Date' })}
+                    <span className="text-[var(--destructive,#dc2626)] ml-0.5">*</span>
+                  </label>
+                  <div className="settings-input-wrapper">
+                    <Calendar size={16} className="settings-input-icon" />
                     <input
                       type="date"
                       required
                       max={todayStr}
                       value={experienceForm.startDate}
                       onChange={e => setExperienceForm(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-input"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">End Date (Leave empty if current job)</label>
+                {/* End Date */}
+                <div className="settings-form-group">
+                  <label className="settings-form-label">{t('settings.endDateLabel', { defaultValue: 'End Date (Leave empty if current job)' })}</label>
+                  <div className="settings-input-wrapper">
+                    <Calendar size={16} className="settings-input-icon" />
                     <input
                       type="date"
                       min={experienceForm.startDate || undefined}
                       max={todayStr}
                       value={experienceForm.endDate}
                       onChange={e => setExperienceForm(prev => ({ ...prev, endDate: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-input"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">Description / Responsibilities</label>
+                {/* Description */}
+                <div className="settings-form-group full-width">
+                  <label className="settings-form-label">{t('settings.experienceDescLabel', { defaultValue: 'Description / Responsibilities' })}</label>
+                  <div className="settings-input-wrapper">
+                    <AlignLeft size={16} className="settings-input-icon self-start mt-3.5" />
                     <textarea
                       rows={3}
-                      placeholder="Describe key responsibilities, tools used, and deliverables..."
+                      placeholder={t('settings.experienceDescPlaceholder', { defaultValue: 'Describe key responsibilities, tools used, and deliverables...' })}
                       value={experienceForm.description}
                       onChange={e => setExperienceForm(prev => ({ ...prev, description: e.target.value }))}
-                      className="settings-input w-full"
+                      className="settings-form-textarea"
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowExperienceForm(false);
-                      setEditingExperienceId(null);
-                    }}
-                    className="cp-btn-secondary px-4 py-2 text-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingExperience}
-                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5 font-extrabold"
-                  >
-                    {savingExperience ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                    <span>{editingExperienceId ? 'Update Position' : 'Save Position'}</span>
-                  </button>
-                </div>
-              </form>
-            )}
+              <div className="pt-4 border-t border-[var(--border,#ededf0)] flex justify-end">
+                <button
+                  type="submit"
+                  disabled={savingExperience}
+                  className="settings-submit-btn"
+                >
+                  {savingExperience ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                  <span>{editingExperienceId ? t('settings.updateExperience', { defaultValue: 'Update Position' }) : t('settings.saveExperience', { defaultValue: 'Save Position' })}</span>
+                </button>
+              </div>
+            </form>
+          </section>
 
-            {/* Experience List */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Work History</h3>
-              {loadingExperience ? (
-                <div className="flex items-center justify-center p-8 text-sm text-[var(--text-secondary)]">
-                  <RefreshCw size={18} className="animate-spin mr-2 text-[var(--brand,#494be7)]" />
-                  Loading work history...
-                </div>
-              ) : workExperiences.length > 0 ? (
-                <div className="space-y-3">
-                  {workExperiences.map(item => (
-                    <div
-                      key={item.workExperienceId}
-                      className="experience-card-item p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-start justify-between gap-4 transition-all duration-300 hover:border-[var(--brand-soft)] hover:shadow-xl"
-                    >
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-base font-bold text-[var(--text-primary)]">{item.jobTitle}</h4>
-                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand,#494be7)] font-bold">
-                            {item.companyName}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-                          <Calendar size={13} className="text-[var(--brand,#494be7)]" />
-                          <span>{item.startDate} - {item.endDate || 'Present'}</span>
-                        </div>
-                        {item.description && (
-                          <p className="text-sm text-[var(--text-secondary)] pt-1">{item.description}</p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditExperience(item)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteWorkExperience(item.workExperienceId)}
-                          className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]">
-                  No work experience entries added yet. Click "+ Add Position" to populate your work history!
-                </div>
-              )}
+          {/* Card 2: Work History List */}
+          <section className="settings-form-card space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
+              <h2 className="settings-form-card-title flex items-center gap-2">
+                <Briefcase size={18} className="text-[var(--brand,#494be7)]" />
+                <span>{t('settings.workHistory', { defaultValue: 'Work History' })}</span>
+              </h2>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--brand-soft,#ececfe)] text-[var(--brand,#494be7)]">
+                {workExperiences.length} {workExperiences.length === 1 ? 'Position' : 'Positions'}
+              </span>
             </div>
+
+            {loadingExperience ? (
+              <div className="flex items-center justify-center p-8 text-sm text-[var(--text-secondary)]">
+                <RefreshCw size={18} className="animate-spin mr-2 text-[var(--brand,#494be7)]" />
+                {t('settings.loadingExperience', { defaultValue: 'Loading work history...' })}
+              </div>
+            ) : workExperiences.length > 0 ? (
+              <div className="space-y-3">
+                {workExperiences.map(item => (
+                  <div
+                    key={item.workExperienceId}
+                    className="experience-card-item p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-start justify-between gap-4 transition-all duration-300 hover:border-[var(--brand-soft)] hover:shadow-xl"
+                  >
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-base font-bold text-[var(--text-primary)]">{item.jobTitle}</h4>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand,#494be7)] font-bold">
+                          {item.companyName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                        <Calendar size={13} className="text-[var(--brand,#494be7)]" />
+                        <span>{item.startDate} - {item.endDate || 'Present'}</span>
+                      </div>
+                      {item.description && (
+                        <p className="text-sm text-[var(--text-secondary)] pt-1">{item.description}</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditExperience(item)}
+                        className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteWorkExperience(item.workExperienceId)}
+                        className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]">
+                {t('settings.noExperience', { defaultValue: 'No work experience entries added yet.' })}
+              </div>
+            )}
           </section>
         </div>
       )}

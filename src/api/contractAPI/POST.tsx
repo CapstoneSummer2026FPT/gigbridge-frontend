@@ -1,6 +1,6 @@
-import { apiService } from '../../service/apiService';
+import { apiService, type UploadRequestOptions } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractProductHandoffResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
+import type { ContractProductHandoffResponse, ContractWorkflowResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
 import { normalizeMilestone } from './GET';
 
 const contractsUrl = 'Contracts';
@@ -56,11 +56,13 @@ export const contractPostAPI = {
   submitMilestone: async (
     contractId: string,
     milestoneId: string,
-    formData: FormData
+    formData: FormData,
+    options?: UploadRequestOptions,
   ): Promise<ApiResponse<Milestone>> => {
-    const response = await apiService.post<unknown>(
+    const response = await apiService.upload<unknown>(
       `contracts/${contractId}/milestones/${milestoneId}/submit`,
       formData,
+      options,
     );
     return {
       ...response,
@@ -141,33 +143,35 @@ export const contractPostAPI = {
    */
   submitProductHandoff: async (
     contractId: string,
-    formData: FormData
+    formData: FormData,
+    options?: UploadRequestOptions,
   ): Promise<ApiResponse<ContractProductHandoffResponse>> => {
-    return apiService.post<ContractProductHandoffResponse>(
+    return apiService.upload<ContractProductHandoffResponse>(
       `contracts/${contractId}/product-handoffs`,
-      formData
+      formData,
+      options,
     );
   },
 
   /**
    * POST /api/contracts/{contractId}/details/submit
    */
-  submitDetails: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/submit`);
+  submitDetails: async (contractId: string): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.post<ContractWorkflowResponse>(`contracts/${contractId}/details/submit`);
   },
 
   /**
    * POST /api/contracts/{contractId}/details/confirm
    */
-  confirmDetails: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/confirm`);
+  confirmDetails: async (contractId: string): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.post<ContractWorkflowResponse>(`contracts/${contractId}/details/confirm`);
   },
 
   /**
    * POST /api/contracts/{contractId}/details/request-change
    */
-  requestChange: async (contractId: string, reason: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/request-change`, { reason });
+  requestChange: async (contractId: string, reason: string): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.post<ContractWorkflowResponse>(`contracts/${contractId}/details/request-change`, { reason });
   },
 
   /**

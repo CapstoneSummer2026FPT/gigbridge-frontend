@@ -40,6 +40,14 @@ const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
 const normalizeOrder = <T extends { orderIndex: number }>(items: T[]) =>
   items.map((item, orderIndex) => ({ ...item, orderIndex }));
 
+// Public job detail 404s for Invite Only jobs; fall back to the freelancer's
+// own applied/invited job detail endpoint, which allows access regardless of visibility.
+const fetchJobPostDetailForFreelancer = async (id: string) => {
+  const publicResponse = await jobGetAPI.getJobPostDetail(id);
+  if (publicResponse.success && publicResponse.data) return publicResponse;
+  return jobGetAPI.getMyAppliedJobPostById(id);
+};
+
 export function useCreateProposal() {
   const navigate = useNavigate();
   const { t } = useTranslation(['proposals', 'common']);
@@ -60,7 +68,7 @@ export function useCreateProposal() {
   const [outOfScope, setOutOfScope] = useState('');
   const [workItems, setWorkItems] = useState<ProposalWorkBreakdownItemDto[]>([]);
   const [milestones, setMilestones] = useState<ProposalMilestonePlanDto[]>([emptyMilestone(0)]);
-  const [expandedMilestone, setExpandedMilestone] = useState<number | null>(0);
+  const [expandedMilestones, setExpandedMilestones] = useState<number[]>([0]);
   const [advancedMilestoneIndexes, setAdvancedMilestoneIndexes] = useState<number[]>([]);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
   const [narrativeErrors, setNarrativeErrors] = useState<{ coverLetter?: string; proposalApproach?: string }>({});
@@ -118,7 +126,7 @@ export function useCreateProposal() {
     setWorkItems(editableItems.customWorkItems);
     setAdvancedMilestoneIndexes(editableItems.customMilestoneIndexes);
     setMilestones(loadedMilestones);
-    setExpandedMilestone(editableItems.customMilestoneIndexes[0] ?? 0);
+    setExpandedMilestones(loadedMilestones.map((_, i) => i));
   };
 
   useEffect(() => {
@@ -130,13 +138,13 @@ export function useCreateProposal() {
           const response = await proposalGetAPI.getProposalDetail(proposalId);
           if (!response.success || !response.data) return setError(response.message || tRef.current('createProposal.errLoadProposal'));
           hydrateProposal(response.data);
-          const jobResponse = await jobGetAPI.getJobPostDetail(response.data.jobPostId);
+          const jobResponse = await fetchJobPostDetailForFreelancer(response.data.jobPostId);
           if (jobResponse.success && jobResponse.data) setJobPost(jobResponse.data);
           return;
         }
         if (!jobPostId) return setError(tRef.current('createProposal.errMissingJobId'));
         const [jobResponse, existingResponse] = await Promise.all([
-          jobGetAPI.getJobPostDetail(jobPostId),
+          fetchJobPostDetailForFreelancer(jobPostId),
           proposalGetAPI.getMyProposalByJobPost(jobPostId),
         ]);
         if (!jobResponse.success || !jobResponse.data) return setError(jobResponse.message || tRef.current('createProposal.errLoadJob'));
@@ -151,7 +159,7 @@ export function useCreateProposal() {
           setMilestones(baseline);
           setWorkItems([]);
           setAdvancedMilestoneIndexes([]);
-          setExpandedMilestone(0);
+          setExpandedMilestones(baseline.map((_, i) => i));
           setNotice(tRef.current('createProposal.baselineCopiedNotice'));
         }
       } finally {
@@ -201,7 +209,9 @@ export function useCreateProposal() {
     const invalidWorkItem = workItems.find(item => !item.title?.trim() || !item.description?.trim());
     if (invalidWorkItem) {
       const milestoneIndex = invalidWorkItem.milestoneOrderIndex ?? 0;
-      setExpandedMilestone(milestoneIndex);
+      setExpandedMilestones(indexes => indexes.includes(milestoneIndex)
+        ? indexes
+        : [...indexes, milestoneIndex].sort((left, right) => left - right));
       setAdvancedMilestoneIndexes(indexes => indexes.includes(milestoneIndex)
         ? indexes
         : [...indexes, milestoneIndex].sort((left, right) => left - right));
@@ -221,8 +231,11 @@ export function useCreateProposal() {
     const firstErrorKey = Object.keys(errors)[0];
     if (firstErrorKey) {
       const [index, field] = firstErrorKey.split('.');
+      const numIndex = Number(index);
       setMilestoneErrors(errors);
-      setExpandedMilestone(Number(index));
+      setExpandedMilestones(indexes => indexes.includes(numIndex)
+        ? indexes
+        : [...indexes, numIndex].sort((left, right) => left - right));
       requestAnimationFrame(() => {
         const target = document.querySelector<HTMLElement>(`[data-milestone-field="${index}.${field}"]`);
         target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -362,8 +375,10 @@ export function useCreateProposal() {
     setAssumptions,
     outOfScope,
     setOutOfScope,
-    expandedMilestone,
-    setExpandedMilestone,
+    expandedMilestones,
+    setExpandedMilestones,
+    expandedMilestone: expandedMilestones[0] ?? null,
+    setExpandedMilestone: (index: number | null) => setExpandedMilestones(index !== null ? [index] : []),
     advancedMilestoneIndexes,
     setAdvancedMilestoneIndexes,
     milestoneErrors,

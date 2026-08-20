@@ -10,6 +10,7 @@ yarn.lock
 
 # Build outputs
 dist/
+.seo-build/
 build/
 .next/
 out/

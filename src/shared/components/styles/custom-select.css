@@ -10,7 +10,8 @@
 }
 
 .cs-container.is-open {
-  z-index: 100;
+  z-index: 1000;
+  position: relative;
 }
 
 .cs-trigger {
@@ -98,6 +99,7 @@
     opacity: 0;
     transform: translateY(-6px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

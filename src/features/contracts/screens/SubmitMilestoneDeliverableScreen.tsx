@@ -37,7 +37,7 @@ interface SubmissionState {
   submitting: boolean;
 }
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set([
   'pdf',
   'doc',
@@ -168,7 +168,7 @@ export default function SubmitMilestoneDeliverableScreen() {
     const validationErrors: string[] = [];
 
     if (selectedFile.size > MAX_FILE_SIZE) {
-      validationErrors.push(t('contracts.fileSizeError', { name: selectedFile.name, defaultValue: `MSG49: ${selectedFile.name} must be under 100MB` }));
+      validationErrors.push(t('contracts.fileSizeError', { name: selectedFile.name, defaultValue: `MSG49: ${selectedFile.name} must be under 10MB` }));
     }
 
     const ext = selectedFile.name.split('.').pop()?.toLowerCase();
@@ -490,7 +490,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                             : state.files[0].name}
                         </span>
                         <span className="upload-hint">
-                          {t('contracts.max100Mb')}
+                          {t('contracts.max10Mb')}
                         </span>
                       </button>
                     </div>

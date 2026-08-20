@@ -88,6 +88,8 @@ const normalizeType = (type: unknown): UiNotificationType => {
       19: 'rank_protection',
       20: 'report',
       21: 'review',
+      22: 'system',
+      23: 'system',
       24: 'receipt',
       25: 'receipt',
     };
@@ -105,7 +107,7 @@ const normalizeType = (type: unknown): UiNotificationType => {
   if (normalized.includes('dispute')) return 'dispute';
   if (normalized.includes('review')) return 'review';
   if (normalized.includes('ai')) return 'ai_suggestion';
-  if (normalized.includes('job')) return 'job';
+  if (normalized.includes('job') || normalized.includes('invitation')) return 'job';
   if (normalized.includes('schedule')) return 'schedule';
   if (normalized.includes('subscription')) return 'subscription';
   if (normalized.includes('promotion')) return 'promotion';
@@ -130,15 +132,83 @@ const getActionUrl = (
   const referenceType = String(
     getField<string>(notification, 'referenceType', 'ReferenceType') ?? '',
   ).toLowerCase();
+  const title = String(getField<string>(notification, 'title', 'Title') ?? '').toLowerCase();
+  const body = String(
+    getField<string>(notification, 'body', 'message', 'content', 'Message', 'Content') ?? '',
+  ).toLowerCase();
   const metadataRaw = getField<any>(notification, 'metadata', 'Metadata');
   let metadata: any;
   try { metadata = typeof metadataRaw === 'string' ? JSON.parse(metadataRaw) : metadataRaw; } catch { metadata = null; }
 
+  // Check if notification is a Proposal accepted for negotiation or negotiation start
+  const isNegotiationNotification =
+    title.includes('negotiation') ||
+    title.includes('thương lượng') ||
+    body.includes('negotiation') ||
+    body.includes('thương lượng') ||
+    referenceType.includes('negotiation');
+
+  if (isNegotiationNotification) {
+    const targetConvId = metadata?.conversationId || metadata?.ConversationId;
+    if (targetConvId) {
+      return `/messages?conversationId=${targetConvId}`;
+    }
+    const targetProposalId =
+      metadata?.proposalId ||
+      metadata?.proposalsId ||
+      metadata?.ProposalId ||
+      metadata?.ProposalsId ||
+      (referenceType.includes('proposal') ? referenceId : null);
+
+    if (targetProposalId) {
+      return `/messages?proposalId=${targetProposalId}`;
+    }
+    if (referenceId) {
+      if (referenceType.includes('conversation')) {
+        return `/messages?conversationId=${referenceId}`;
+      }
+      return `/messages?proposalId=${referenceId}`;
+    }
+    return '/messages';
+  }
+
+  // Check if notification is a Job or JobInvitation regardless of whether backend sent type = 0 (SystemAlert)
+  const isJobOrInvitation =
+    type === 'job' ||
+    referenceType.includes('job') ||
+    referenceType.includes('invitation') ||
+    title.includes('job invitation') ||
+    title.includes('invitation');
+
+  if (isJobOrInvitation) {
+    const targetJobPostId =
+      metadata?.jobPostId ||
+      metadata?.jobPostsId ||
+      metadata?.jobId ||
+      metadata?.JobPostId ||
+      metadata?.JobPostsId ||
+      metadata?.JobId;
+    if (targetJobPostId) return `/jobs/${targetJobPostId}`;
+    return referenceId ? `/jobs/${referenceId}` : '/jobs/browse';
+  }
+
   switch (type) {
-    case 'job':
-      return referenceId ? `/jobs/${referenceId}` : '/jobs/browse';
-    case 'proposal':
+    case 'proposal': {
+      if (
+        title.includes('negotiation') ||
+        title.includes('thương lượng') ||
+        title.includes('accepted') ||
+        body.includes('negotiation') ||
+        body.includes('thương lượng') ||
+        body.includes('accepted for negotiation') ||
+        referenceType.includes('negotiation')
+      ) {
+        const targetConvId = metadata?.conversationId || metadata?.ConversationId;
+        if (targetConvId) return `/messages?conversationId=${targetConvId}`;
+        return referenceId ? `/messages?proposalId=${referenceId}` : '/messages';
+      }
       return '/proposals';
+    }
     case 'contract':
       return referenceId ? `/contracts/${referenceId}` : '/contracts';
     case 'milestone':
@@ -148,7 +218,7 @@ const getActionUrl = (
     case 'payment':
       return '/wallet/history';
     case 'message':
-      return referenceId ? `/workspace/${referenceId}` : '/projects';
+      return referenceId ? `/workspace/${referenceId}` : '/workspace';
     case 'dispute':
       return userRole === 2 ? '/admin/disputes' : '/contracts';
     case 'review':

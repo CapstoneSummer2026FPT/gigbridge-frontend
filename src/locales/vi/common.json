@@ -29,6 +29,20 @@
     "yes": "Có",
     "no": "Không"
   },
+  "fileUploadProgress": {
+    "uploading": "Đang tải tệp lên...",
+    "uploadingPercent": "Đang tải tệp lên... {{percent}}%",
+    "processing": "Đang kiểm tra và lưu tệp...",
+    "processingMessage": "Đang kiểm tra và gửi tệp...",
+    "refreshing": "Đang cập nhật dữ liệu Workspace...",
+    "sent": "Đã gửi {{loaded}}",
+    "sentOfTotal": "Đã gửi {{loaded}} / {{total}}"
+  },
+  "fileUploadError": {
+    "network": "Không thể kết nối đến máy chủ tải lên. Vui lòng kiểm tra kết nối và thử lại.",
+    "timeout": "Quá trình tải lên mất quá nhiều thời gian. Vui lòng thử lại.",
+    "requestTooLarge": "Yêu cầu tải lên vượt quá dung lượng cho phép."
+  },
   "app": {
     "name": "GigBridge",
     "tagline": "Nền Tảng Freelance Được Hỗ Trợ Bởi AI"
@@ -70,13 +84,13 @@
     "dashboard": "Bảng Điều Khiển",
     "browseJobs": "Tìm Công Việc",
     "postJob": "Đăng Công Việc",
-    "myJobs": "Công Việc Của Tôi",
+    "myJobs": "Công Việc",
     "proposals": "Đề Xuất",
-    "myProposals": "Đề Xuất Của Tôi",
-    "projects": "Dự Án",
+    "myProposals": "Đề Xuất",
+    "projects": "Workspace",
     "receipts": "Biên nhận",
-    "reviews": "Đánh giá của tôi",
-    "myDisputes": "Tranh chấp của tôi",
+    "reviews": "Đánh Giá",
+    "myDisputes": "Tranh Chấp",
     "reviewManagement": "Quản lý review",
     "aiAssistant": "Trợ Lý AI",
     "aiInterview": "Phỏng Vấn AI",
@@ -97,13 +111,16 @@
     "savedFreelancers": "Freelancer Đã Lưu",
     "work": "Làm Việc",
     "findWork": "Tìm Việc Làm",
-    "myWork": "Công Việc Của Tôi",
+    "hireTalent": "Tuyển Nhân Tài",
+    "howItWorks": "Cách GigBridge hoạt động",
+    "myWork": "Công Việc",
     "searchJobs": "Tìm Kiếm Việc Làm",
-    "myContracts": "Hợp Đồng Của Tôi",
-    "myProjects": "Dự Án Của Tôi",
-    "myReviews": "Đánh Giá Của Tôi",
+    "myContracts": "Hợp Đồng",
+    "myProjects": "Workspace",
+    "myReviews": "Đánh Giá",
     "contracts": "Hợp Đồng",
     "financialOverview": "Tổng Quan Tài Chính",
+    "supportAndFeedback": "Hỗ Trợ & Phản Hồi",
     "savedJobs": "Công Việc Đã Lưu",
     "jobInvitations": "Lời Mời Nhận Việc",
     "earlyPayout": "Thanh Toán Sớm",
@@ -141,6 +158,19 @@
     "systemFinance": "Tài Chính Hệ Thống",
     "systemTracking": "Theo Dõi Hệ Thống",
     "platformAnalytics": "Phân Tích Nền Tảng"
+  },
+  "topNavSearch": {
+    "placeholder": "Tìm kiếm trên GigBridge...",
+    "inputLabel": "Tìm kiếm trên GigBridge",
+    "scopeMenuLabel": "Chọn phạm vi tìm kiếm",
+    "talent": "Nhân tài",
+    "talentDescription": "Tìm freelancer theo tên, chuyên môn hoặc kỹ năng",
+    "jobs": "Công việc",
+    "jobsDescription": "Xem công việc do khách hàng đăng",
+    "resultsFor": "Kết quả cho “{{query}}”",
+    "noTalentResults": "Không có freelancer phù hợp với từ khóa này.",
+    "noProjectResults": "Không có dự án phù hợp với từ khóa này.",
+    "tryAnotherSearch": "Hãy thử một từ khóa khác."
   },
   "footer": {
     "allRightsReserved": "Bản quyền được bảo lưu",
@@ -359,8 +389,8 @@
       "description": "Câu hỏi tiếp theo sẽ tự động được phát."
     },
     "proposal": {
-      "submitted": "Đề xuất của bạn đã được gửi thành công.",
-      "submittedWithInterview": "Đề xuất đã được gửi. Hãy bắt đầu phỏng vấn AI khi bạn sẵn sàng.",
+      "submitted": "Đã gửi đề xuất thành công.",
+      "submittedWithInterview": "Đã gửi đề xuất. Sẵn sàng bắt đầu phỏng vấn AI.",
       "readyTitle": "Phỏng vấn AI đã sẵn sàng",
       "readyDescription": "Khách hàng đã bật phỏng vấn AI cho công việc này. Bạn có thể bắt đầu ngay hoặc quay lại đây khi đã sẵn sàng.",
       "completedTitle": "Đã hoàn tất phỏng vấn AI",

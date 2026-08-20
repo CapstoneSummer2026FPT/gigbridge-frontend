@@ -84,6 +84,7 @@ export interface FreelancerProfileDto {
   availability?: number;
   location?: string;
   profileCompletionScore?: number;
+  allowSearchEngineIndexing: boolean;
   createdAt: string;
   updatedAt?: string;
   majorId?: string | null;
@@ -108,6 +109,33 @@ export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
   tierName?: string | null;
   tierProgress?: number | null;
   skills: FreelancerSkillDto[];
+  portfolioItems: PortfolioItemDto[];
+  workExperiences: WorkExperienceDto[];
+}
+
+export interface PublicFreelancerSummaryDto {
+  userId: string;
+  userFullName?: string | null;
+  userAvatar?: string | null;
+  title?: string | null;
+  bio?: string | null;
+  location?: string | null;
+  majorName?: string | null;
+  rating: number;
+  updatedAt?: string | null;
+  skills: Array<Pick<FreelancerSkillDto, 'skillName'>>;
+}
+
+export interface PublicFreelancerProfileDto extends PublicFreelancerSummaryDto {
+  freelancerProfilesId: string;
+  availability?: number | null;
+  createdAt: string;
+  eloPoints: number;
+  isPremium: boolean;
+  isIdentityVerified: boolean;
+  showProVerifiedBadge: boolean;
+  allowSearchEngineIndexing: boolean;
+  categories: FreelancerProfileCategoryDto[];
   portfolioItems: PortfolioItemDto[];
   workExperiences: WorkExperienceDto[];
 }
@@ -175,6 +203,7 @@ export interface UpdateFreelancerProfileDto {
   majorId: string;
   categoryIds: string[];
   skillIds?: string[];
+  allowSearchEngineIndexing: boolean;
 }
 
 export interface ClientProfileDetailDto {
@@ -216,6 +245,7 @@ export interface FreelancerProfileResponseDto {
   availability: number;
   location: string;
   profileCompletionScore: number;
+  allowSearchEngineIndexing: boolean;
   createdAt: string;
   updatedAt: string;
   majorId?: string | null;

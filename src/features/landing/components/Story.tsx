@@ -49,7 +49,7 @@ export default function Story() {
   };
 
   return (
-    <div id="story" className="min-h-dvh w-screen bg-background text-foreground transition-colors duration-300">
+    <div id="story" className="min-h-dvh w-full bg-background text-foreground transition-colors duration-300">
       <div className="flex size-full flex-col items-center py-10 pb-24">
         <p className="font-general text-sm uppercase md:text-[10px] text-muted-foreground">
           {t('landing.story.label')}
@@ -58,7 +58,7 @@ export default function Story() {
         <div className="relative size-full">
           <AnimatedTitle
             title={t('landing.story.animatedTitle')}
-            containerClass="mt-5 pointer-events-none mix-blend-difference relative z-10"
+            containerClass="mt-5 pointer-events-none mix-blend-difference relative z-10 !text-white"
           />
 
           <div className="story-img-container">
@@ -70,8 +70,11 @@ export default function Story() {
                   onMouseLeave={handleMouseLeave}
                   onMouseUp={handleMouseLeave}
                   onMouseEnter={handleMouseLeave}
-                  src="/img/entrance.png"
-                  alt="entrance.png"
+                  src="/img/entrance.jpg"
+                  alt="entrance"
+                  width={800}
+                  height={800}
+                  loading="lazy"
                   className="object-contain"
                 />
               </div>
@@ -105,9 +108,9 @@ export default function Story() {
           </div>
         </div>
 
-        <div className="-mt-80 flex w-full justify-center md:-mt-64 md:me-44 md:justify-end">
-          <div className="flex h-full w-fit flex-col items-center md:items-start">
-            <p className="mt-3 max-w-sm text-center font-circular-web text-muted-foreground md:text-start">
+        <div className="mt-8 flex w-full justify-center md:mt-10 md:me-36 md:justify-end px-4">
+          <div className="flex h-full w-fit flex-col items-center md:items-start max-w-md">
+            <p className="mt-2 text-center font-circular-web text-sm md:text-base text-muted-foreground md:text-start leading-relaxed">
               {t('landing.story.desc')}
             </p>
 
@@ -115,7 +118,7 @@ export default function Story() {
               id="realm-btn"
               title={t('landing.story.cta')}
               onClick={() => navigate('/guide')}
-              containerClass="mt-5"
+              containerClass="mt-5 shadow-lg hover:shadow-xl transition-all"
             />
           </div>
         </div>

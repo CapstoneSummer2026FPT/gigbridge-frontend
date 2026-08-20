@@ -3,7 +3,7 @@ import { X, ZoomIn, ZoomOut, RotateCw, Check, Move, RefreshCw, AlertCircle, Scis
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { removeBackground } from '../../../services/removeBgService';
+import { removeBackground } from '../../../service/removeBgService';
 
 interface AvatarCropModalProps {
   isOpen: boolean;

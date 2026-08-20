@@ -360,9 +360,9 @@ function ContractCardItem({
 
   if (status === ContractStatus.Active) {
     primaryAction = {
-      label: t('contracts.submitDeliverables'),
-      icon: <Zap size={14} />,
-      path: `/contracts/${contract.contractsId}/submit`,
+      label: t('contracts.goToWorkspace', { defaultValue: 'Go to workspace' }),
+      icon: <ListChecks size={14} />,
+      path: `/workspace/${contract.contractsId}`,
       styleClass: 'bg-brand text-white shadow-sm',
     };
   } else if (status === ContractStatus.Draft || status === ContractStatus.PendingSignature) {
@@ -440,7 +440,7 @@ function ContractCardItem({
       {/* Action Buttons Footer */}
       <div className="flex flex-wrap items-center justify-between border-t border-border/60 pt-4 gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Primary Action Button */}
+          {/* Primary Action Button (e.g. Go to Workspace for Active) */}
           <button
             type="button"
             onClick={() => onNavigate(primaryAction.path)}
@@ -449,19 +449,8 @@ function ContractCardItem({
             {primaryAction.icon} {primaryAction.label}
           </button>
 
-          {/* Manage Milestones button for Active Freelancer Contracts */}
-          {status === ContractStatus.Active && (
-            <button
-              type="button"
-              onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
-            >
-              <ListChecks size={14} /> {t('contracts.manageMilestones')}
-            </button>
-          )}
-
           {/* Secondary View Details Button */}
-          {primaryAction.label !== t('contracts.viewDetails') && status !== ContractStatus.Active && (
+          {primaryAction.label !== t('contracts.viewDetails') && (
             <button
               type="button"
               onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}

@@ -29,7 +29,7 @@ export default function About() {
   });
 
   return (
-    <div id="about" className="min-h-screen w-screen">
+    <div id="about" className="min-h-screen w-full">
       <div className="relative mb-8 mt-36 flex flex-col items-center gap-5">
         <p className="font-general text-sm uppercase md:text-[10px]">
           {t('landing.about.welcome')}
@@ -37,22 +37,25 @@ export default function About() {
 
         <AnimatedTitle
           title={t('landing.about.animatedTitle')}
-          containerClass="mt-5 text-center"
+          containerClass="mt-2 text-center"
         />
 
         <div className="about-subtext">
-          <p>{t('landing.about.subtext1')}</p>
-          <p className="text-gray-500">
+          <p className="font-medium text-foreground">{t('landing.about.subtext1')}</p>
+          <p className="text-muted-foreground mt-1">
             {t('landing.about.subtext2')}
           </p>
         </div>
       </div>
 
-      <div className="h-dvh w-screen" id="clip">
+      <div className="h-dvh w-full" id="clip">
         <div className="mask-clip-path about-image">
           <img
-            src="/img/about.png"
+            src="/img/about.jpg"
             alt="Background"
+            width={800}
+            height={800}
+            loading="lazy"
             className="absolute left-0 top-0 size-full object-cover"
           />
         </div>

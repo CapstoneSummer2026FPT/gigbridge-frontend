@@ -89,7 +89,7 @@ export function CustomSelect({
   }, [open]);
 
   return (
-    <div ref={containerRef} className={`cs-container ${className}`}>
+    <div ref={containerRef} className={`cs-container ${open ? 'is-open' : ''} ${className}`}>
       {/* Trigger Button */}
       <button
         type="button"

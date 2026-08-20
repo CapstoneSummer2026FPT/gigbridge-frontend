@@ -364,18 +364,42 @@ export function useClientProposals() {
       const aiSoftSkills = prop?.aiSoftSkills ?? detailObj?.aiSoftSkills;
       const aiHolisticAdjustmentReason = prop?.aiHolisticAdjustmentReason ?? detailObj?.aiHolisticAdjustmentReason;
       const aiHolisticAdjustment = prop?.aiHolisticAdjustment ?? detailObj?.aiHolisticAdjustment;
+      const topIsAiGenerated = prop?.aiIsAiGenerated ?? detailObj?.aiIsAiGenerated ?? prop?.isAiGenerated ?? detailObj?.isAiGenerated;
+      const topAiConfidenceScore = prop?.aiConfidenceScore ?? detailObj?.aiConfidenceScore;
+      const topAiDetectionSummary = prop?.aiDetectionSummary ?? detailObj?.aiDetectionSummary;
       const rawQuestions = prop?.aiGradedQuestions ?? detailObj?.aiGradedQuestions ?? [];
 
       if (aiScore !== null && aiScore !== undefined) {
-        const gradedQuestions = rawQuestions.map((q: any) => ({
-          questionIndex: typeof q.questionIndex === 'number' ? q.questionIndex : q.question_index,
-          questionText: q.questionText ?? q.question_text ?? '',
-          questionType: q.questionType ?? q.question_type ?? '',
-          difficulty: q.difficulty ?? '',
-          candidateAnswer: q.candidateAnswer ?? q.candidate_answer ?? '',
-          score: q.score ?? 0,
-          feedback: q.feedback ?? '',
-        }));
+        const gradedQuestions = rawQuestions.map((q: any) => {
+          const isAi = q.isAiGenerated ?? q.is_ai_generated ?? false;
+          const conf = typeof q.aiConfidenceScore === 'number' ? q.aiConfidenceScore : (typeof q.ai_confidence_score === 'number' ? q.ai_confidence_score : (isAi ? 0.75 : 0.1));
+          const reason = q.aiDetectionReason ?? q.ai_detection_reason ?? '';
+          return {
+            questionIndex: typeof q.questionIndex === 'number' ? q.questionIndex : q.question_index,
+            questionText: q.questionText ?? q.question_text ?? '',
+            questionType: q.questionType ?? q.question_type ?? '',
+            difficulty: q.difficulty ?? '',
+            candidateAnswer: q.candidateAnswer ?? q.candidate_answer ?? '',
+            score: q.score ?? 0,
+            feedback: q.feedback ?? '',
+            isAiGenerated: isAi,
+            aiConfidenceScore: conf,
+            aiDetectionReason: reason,
+          };
+        });
+
+        const maxQuestionConf = gradedQuestions.length > 0
+          ? Math.max(...gradedQuestions.map((q: any) => q.aiConfidenceScore ?? 0))
+          : 0;
+        const anyQuestionAi = gradedQuestions.some((q: any) => q.isAiGenerated || (q.aiConfidenceScore ?? 0) >= 0.5);
+
+        const calculatedIsAi = topIsAiGenerated ?? anyQuestionAi;
+        const calculatedConf = typeof topAiConfidenceScore === 'number' ? topAiConfidenceScore : maxQuestionConf;
+        const calculatedSummary = topAiDetectionSummary || (
+          anyQuestionAi
+            ? 'At least 1 candidate answer exhibits AI generation patterns or generic textbook LLM structure.'
+            : 'Candidate answers appear authentic with human experience indicators.'
+        );
 
         setEvalResult({
           score: aiScore,
@@ -385,6 +409,9 @@ export function useClientProposals() {
           recommendedHire: !!aiRecommendedHire,
           holisticAdjustment: aiHolisticAdjustment ?? 0,
           holisticAdjustmentReason: aiHolisticAdjustmentReason || '',
+          isAiGenerated: calculatedIsAi,
+          aiConfidenceScore: calculatedConf,
+          aiDetectionSummary: calculatedSummary,
           gradedQuestions,
         });
       } else {

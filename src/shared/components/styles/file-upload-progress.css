@@ -1,0 +1,19 @@
+@keyframes file-upload-progress-indeterminate {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(310%);
+  }
+}
+
+.file-upload-progress__indeterminate {
+  animation: file-upload-progress-indeterminate 1.25s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-upload-progress__indeterminate {
+    animation-duration: 2.5s;
+  }
+}

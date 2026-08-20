@@ -2,10 +2,72 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/seo.ts": { "includeFiles": ".seo-build/**" },
+    "api/sitemap.ts": { "includeFiles": ".seo-build/**" }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/"
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.gigbridge.id.vn" }],
+      "destination": "/api/redirect?target=https://gigbridge.id.vn/:path*"
+    },
+    { "source": "/jobs/browse", "destination": "/api/redirect?target=/jobs" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    {
+      "source": "/jobs",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([gG]ooglebot|[bB]ingbot|[yY]andex|[bB]aiduspider|[dD]uck[dD]uck[bB]ot|[tT]witterbot|[fF]acebookexternalhit|[lL]inked[iI]n[bB]ot|[sS]lackbot|[wW]hats[aA]pp|[dD]iscordbot|[tT]elegram[bB]ot|[aA]pplebot|[bB]ot|[sS]pider|[cC]rawler).*"
+        }
+      ],
+      "destination": "/api/seo?path=/jobs"
+    },
+    {
+      "source": "/jobs/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([gG]ooglebot|[bB]ingbot|[yY]andex|[bB]aiduspider|[dD]uck[dD]uck[bB]ot|[tT]witterbot|[fF]acebookexternalhit|[lL]inked[iI]n[bB]ot|[sS]lackbot|[wW]hats[aA]pp|[dD]iscordbot|[tT]elegram[bB]ot|[aA]pplebot|[bB]ot|[sS]pider|[cC]rawler).*"
+        }
+      ],
+      "destination": "/api/seo?path=/jobs/:id"
+    },
+    {
+      "source": "/freelancers",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([gG]ooglebot|[bB]ingbot|[yY]andex|[bB]aiduspider|[dD]uck[dD]uck[bB]ot|[tT]witterbot|[fF]acebookexternalhit|[lL]inked[iI]n[bB]ot|[sS]lackbot|[wW]hats[aA]pp|[dD]iscordbot|[tT]elegram[bB]ot|[aA]pplebot|[bB]ot|[sS]pider|[cC]rawler).*"
+        }
+      ],
+      "destination": "/api/seo?path=/freelancers"
+    },
+    {
+      "source": "/freelancers/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([gG]ooglebot|[bB]ingbot|[yY]andex|[bB]aiduspider|[dD]uck[dD]uck[bB]ot|[tT]witterbot|[fF]acebookexternalhit|[lL]inked[iI]n[bB]ot|[sS]lackbot|[wW]hats[aA]pp|[dD]iscordbot|[tT]elegram[bB]ot|[aA]pplebot|[bB]ot|[sS]pider|[cC]rawler).*"
+        }
+      ],
+      "destination": "/api/seo?path=/freelancers/:id"
+    },
+    { "source": "/about", "destination": "/about/index.html" },
+    { "source": "/careers", "destination": "/careers/index.html" },
+    { "source": "/faq", "destination": "/faq/index.html" },
+    { "source": "/guide", "destination": "/guide/index.html" },
+    { "source": "/press-kit", "destination": "/press-kit/index.html" },
+    { "source": "/terms", "destination": "/terms/index.html" },
+    { "source": "/privacy", "destination": "/privacy/index.html" },
+    {
+      "source": "/((?!assets/|img/|fonts/|videos/|icons/|audio/|robots.txt|api/).*)",
+      "destination": "/spa.html"
     }
   ]
 }

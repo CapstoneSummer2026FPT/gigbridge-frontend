@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { jobInvitationGetAPI } from '../../../api/jobInvitationAPI/GET';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
@@ -216,6 +217,27 @@ export function useJobDetail() {
             setSimilarJobs([]);
             return;
           }
+
+          // If activeJobPostId is an invitationId, resolve jobPostId from invitations list
+          try {
+            const myInvitations = await jobInvitationGetAPI.getMyInvitations();
+            const foundInv = myInvitations.find(
+              inv => (inv.jobInvitationId || inv.jobInvitationsId) === activeJobPostId
+            );
+            const targetJobPostId = foundInv?.jobPostId || foundInv?.jobPostsId;
+            if (targetJobPostId) {
+              const invitedResponse = await jobGetAPI.getMyAppliedJobPostById(targetJobPostId);
+              if (invitedResponse.success && invitedResponse.data) {
+                setJob(toJobFromDetail(invitedResponse.data));
+                setClient(null);
+                setClientProfile(null);
+                setSimilarJobs([]);
+                return;
+              }
+            }
+          } catch (invErr) {
+            console.error('Failed to resolve job invitation in useJobDetail:', invErr);
+          }
         }
 
         throw publicError;
@@ -311,6 +333,10 @@ export function useJobDetail() {
   // ── Actions ───────────────────────────────────────────────────
   const toggleSavedJob = async () => {
     if (!job) return;
+    if (!user) {
+      navigate(`/auth/login?returnUrl=${encodeURIComponent(`/jobs/${job.id}`)}`);
+      return;
+    }
     if (!user || role !== UserRole.Freelancer) {
       toast.error('Please log in as a freelancer to save jobs.');
       return;
@@ -337,7 +363,11 @@ export function useJobDetail() {
   };
 
   const handleApplyJob = async () => {
-    if (!job || !user) return;
+    if (!job) return;
+    if (!user) {
+      navigate(`/auth/login?returnUrl=${encodeURIComponent(`/jobs/${job.id}`)}`);
+      return;
+    }
     if (job.status !== 'open' || job.visibility === 3) {
       setProposalMessage('This job post is no longer accepting proposals.');
       return;

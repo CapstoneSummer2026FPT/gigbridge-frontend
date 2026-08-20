@@ -18,8 +18,8 @@ import {
   Layers,
   MessageSquare,
   Search,
-  ShieldAlert,
   Sparkles,
+  X,
   XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -295,11 +295,12 @@ export default function FreelancerProposalsScreen() {
 
   const statusBadgeClass = (status: number | string) => {
     const value = Number(status);
-    if (value === ProposalStatus.Accepted) return 'border border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-extrabold';
-    if (value === ProposalStatus.Rejected || value === ProposalStatus.Withdrawn) return 'border border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400 font-extrabold';
-    if (value === ProposalStatus.Shortlisted) return 'border border-blue-500/40 bg-blue-500/20 text-blue-600 dark:text-blue-400 font-extrabold';
-    if (value === ProposalStatus.Draft) return 'border border-border bg-surface-muted text-text-muted font-bold';
-    return 'border border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold';
+    if (value === ProposalStatus.Accepted) return 'bg-emerald-600 text-white font-black shadow-xs border-none';
+    if (value === ProposalStatus.Rejected) return 'bg-rose-600 text-white font-black shadow-xs border-none';
+    if (value === ProposalStatus.Withdrawn) return 'bg-slate-500 text-white font-black shadow-xs border-none';
+    if (value === ProposalStatus.Shortlisted) return 'bg-blue-600 text-white font-black shadow-xs border-none';
+    if (value === ProposalStatus.Draft) return 'bg-slate-600 text-white font-black shadow-xs border-none';
+    return 'bg-amber-500 text-white font-black shadow-xs border-none';
   };
 
   return (
@@ -382,9 +383,14 @@ export default function FreelancerProposalsScreen() {
 
         {/* Message Banner */}
         {message && (
-          <div className="mx-6 mt-3 p-3 rounded-xl border border-amber-500/20 bg-amber-500/10 flex items-center gap-2.5 text-xs font-semibold text-amber-600 dark:text-amber-400 shrink-0">
-            <ShieldAlert size={16} className="shrink-0" />
-            <span>{message}</span>
+          <div className="mx-6 mt-3 p-4 rounded-2xl bg-emerald-600 text-white shadow-md flex items-center justify-between gap-3 text-xs font-bold shrink-0">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 size={18} className="shrink-0" />
+              <span>{message}</span>
+            </div>
+            <button type="button" onClick={() => setMessage('')} className="hover:opacity-80 transition cursor-pointer">
+              <X size={16} />
+            </button>
           </div>
         )}
 

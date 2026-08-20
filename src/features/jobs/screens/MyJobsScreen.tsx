@@ -45,6 +45,7 @@ import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge'
 import '../../premium/styles/premium.css';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import { ConfirmationModal } from '../../../shared/components/ConfirmationModal';
+import { getAllowedJobPostVisibilities } from '../utils/jobPostEditing';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
@@ -60,30 +61,30 @@ const statusBadgeInfo = (status: number | null | undefined, t: any) => {
   if (status === JobPostStatus.Draft) {
     return {
       label: t('myJobs.status.draft', { defaultValue: 'Bản nháp' }),
-      badgeClass: 'bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400',
+      badgeClass: 'bg-amber-500 text-white font-black shadow-xs border-none',
     };
   }
   if (status === JobPostStatus.Open) {
     return {
       label: t('myJobs.status.open', { defaultValue: 'Đang tuyển' }),
-      badgeClass: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+      badgeClass: 'bg-emerald-600 text-white font-black shadow-xs border-none',
     };
   }
   if (status === JobPostStatus.Closed) {
     return {
       label: t('myJobs.status.closed', { defaultValue: 'Đã đóng' }),
-      badgeClass: 'bg-surface-muted border-border text-text-muted',
+      badgeClass: 'bg-slate-600 text-white font-black shadow-xs border-none',
     };
   }
   if (status === JobPostStatus.Cancelled) {
     return {
       label: t('myJobs.status.cancelled', { defaultValue: 'Đã hủy' }),
-      badgeClass: 'bg-rose-500/15 border-rose-500/30 text-rose-500',
+      badgeClass: 'bg-rose-600 text-white font-black shadow-xs border-none',
     };
   }
   return {
     label: t('myJobs.status.unknown', { defaultValue: 'Không rõ' }),
-    badgeClass: 'bg-surface-muted border-border text-text-muted',
+    badgeClass: 'bg-slate-500 text-white font-black shadow-xs border-none',
   };
 };
 
@@ -280,6 +281,11 @@ export default function MyJobsScreen() {
     [t]
   );
 
+  const getVisibilitySelectOptions = (job: GetMyJobPostDto): SelectOption[] => {
+    const allowed = new Set(getAllowedJobPostVisibilities(job.status, job.visibility));
+    return visibilitySelectOptions.filter(option => allowed.has(Number(option.value) as JobPostVisibility));
+  };
+
   const filteredJobs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -335,7 +341,7 @@ export default function MyJobsScreen() {
   const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
   const canClose = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open;
   const canCancel = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open || job.status === JobPostStatus.Draft;
-  const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined && job.visibility !== null;
+  const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined;
 
   return (
     <AppLayout>
@@ -828,9 +834,9 @@ export default function MyJobsScreen() {
                         {canChangeVisibility(job) && (
                           <div className="w-36 shrink-0">
                             <CustomSelect
-                              value={String(job.visibility)}
+                              value={String(job.visibility ?? JobPostVisibility.Public)}
                               onChange={val => void patchVisibility(job, Number(val) as JobPostVisibility)}
-                              options={visibilitySelectOptions}
+                              options={getVisibilitySelectOptions(job)}
                               disabled={isPending || job.visibility === 3}
                               searchable={false}
                               ariaLabel={t('myJobs.visibility.ariaLabel', { defaultValue: 'Quyền riêng tư' })}

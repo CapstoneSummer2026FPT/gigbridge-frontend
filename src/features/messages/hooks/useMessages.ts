@@ -23,6 +23,7 @@ import { disputeGetAPI } from '../../../api/disputeAPI';
 import { getMessageRoom } from '../utils/messageRooms';
 import { getContractWorkflowRoute } from '../utils/contractWorkflowRoute';
 import { useOngoingScheduleStatus } from './useOngoingScheduleStatus';
+import type { ApiTransportError } from '../../../types/common';
 import {
   calculateNegotiationBudget,
   calculateNegotiationDuration,
@@ -31,6 +32,12 @@ import {
   resolveNegotiationMilestones,
   validateNegotiationMilestones,
 } from '../utils/negotiationMilestonePlan';
+import {
+  removeMessageAttachmentUpload,
+  startMessageAttachmentUpload,
+  updateMessageAttachmentUpload,
+  type MessageAttachmentUploads,
+} from '../utils/messageUploadProgress';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -221,14 +228,23 @@ function dedupeMessages(messages: MsgMessage[]): MsgMessage[] {
   return [...unique.values(), ...withoutId];
 }
 
-function formatSendError(res: { statusCode?: number; message?: string; errors?: unknown }) {
-  const parts = [
-    `status=${res.statusCode ?? 'unknown'}`,
-    res.message || 'Message was not saved.',
-    res.errors ? `errors=${JSON.stringify(res.errors)}` : null,
-  ].filter(Boolean);
-
-  return parts.join(' | ');
+function formatSendError(
+  res: {
+    statusCode?: number;
+    message?: string;
+    transportError?: ApiTransportError;
+  },
+  copy: {
+    fallback: string;
+    network: string;
+    timeout: string;
+    requestTooLarge: string;
+  },
+) {
+  if (res.statusCode === 413) return copy.requestTooLarge;
+  if (res.transportError === 'timeout') return copy.timeout;
+  if (res.transportError === 'network') return copy.network;
+  return res.message || copy.fallback;
 }
 
 function getEventValue(event: unknown, ...keys: string[]): string | null {
@@ -254,7 +270,6 @@ export function useMessages() {
 
   // ── Room expand state ────────────────────────────────────────────────────
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({
-    room_invited: true,
     room_negotiation: true,
     room_workspace: true,
     room_dispute: true,
@@ -329,6 +344,9 @@ export function useMessages() {
   const [dealMilestonesSaving, setDealMilestonesSaving] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [chatAttachments, setChatAttachments] = useState<File[]>([]);
+  const [attachmentUploadsByClientMessageId, setAttachmentUploadsByClientMessageId] = useState<
+    MessageAttachmentUploads
+  >({});
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -601,16 +619,24 @@ export function useMessages() {
 
         setActiveConvId(currentActiveConvId => {
           if (selectableConvos.length === 0) return '';
+
+          const searchParams = new URLSearchParams(location.search);
+          const queryConvId = searchParams.get('conversationId');
+          const queryProposalId = searchParams.get('proposalId');
+          const stateConvId = queryConvId || location.state?.activeConvId;
+          const stateProposalId = queryProposalId || location.state?.proposalId;
+
+          const foundById = selectableConvos.find((c: any) => c.id === stateConvId);
+          const foundByProposal = selectableConvos.find((c: any) => c.proposalId === stateProposalId);
+
+          if (foundById) return foundById.id;
+          if (foundByProposal) return foundByProposal.id;
+
           if (currentActiveConvId && selectableConvos.some((c: any) => c.id === currentActiveConvId)) {
             return currentActiveConvId;
           }
 
-          const queryConvId = new URLSearchParams(location.search).get('conversationId');
-          const stateConvId = queryConvId || location.state?.activeConvId;
-          const stateProposalId = location.state?.proposalId;
-          const foundById = selectableConvos.find((c: any) => c.id === stateConvId);
-          const foundByProposal = selectableConvos.find((c: any) => c.proposalId === stateProposalId);
-          return foundById ? foundById.id : foundByProposal ? foundByProposal.id : selectableConvos[0].id;
+          return selectableConvos[0].id;
         });
       }
     } catch (err) {
@@ -619,6 +645,33 @@ export function useMessages() {
       setLoading(false);
     }
   }, [user, location.state, location.search]);
+
+  // Sync activeConvId when URL search params change (e.g. clicking notification while already on /messages)
+  useEffect(() => {
+    if (conversationsState.length === 0) return;
+    const searchParams = new URLSearchParams(location.search);
+    const queryConvId = searchParams.get('conversationId');
+    const queryProposalId = searchParams.get('proposalId');
+    const stateProposalId = location.state?.proposalId;
+
+    const targetProposalId = queryProposalId || stateProposalId;
+
+    if (queryConvId) {
+      const found = conversationsState.find(c => c.id === queryConvId);
+      if (found) {
+        setActiveConvId(found.id);
+        return;
+      }
+    }
+
+    if (targetProposalId) {
+      const found = conversationsState.find(c => c.proposalId === targetProposalId);
+      if (found) {
+        setActiveConvId(found.id);
+        return;
+      }
+    }
+  }, [location.search, location.state, conversationsState]);
 
   useEffect(() => {
     loadConversations();
@@ -1202,7 +1255,7 @@ export function useMessages() {
   };
 
   const MAX_CHAT_FILES = 5;
-  const MAX_CHAT_FILE_SIZE = 100 * 1024 * 1024;
+  const MAX_CHAT_FILE_SIZE = 10 * 1024 * 1024;
 
   const handleSelectChatFiles = (files: FileList | File[]): void => {
     const incoming = Array.from(files);
@@ -1210,7 +1263,7 @@ export function useMessages() {
 
     const oversized = incoming.find(file => file.size <= 0 || file.size > MAX_CHAT_FILE_SIZE);
     if (oversized) {
-      console.error(`"${oversized.name}" exceeds the 100MB attachment limit.`);
+      console.error(`"${oversized.name}" exceeds the 10MB attachment limit.`);
       return;
     }
 
@@ -1276,6 +1329,9 @@ export function useMessages() {
     }));
     setMessageInput('');
     setChatAttachments([]);
+    if (filesToSend.length > 0) {
+      setAttachmentUploadsByClientMessageId(prev => startMessageAttachmentUpload(prev, clientMessageId));
+    }
 
     // Optimistically update conversation preview in sidebar
     setConversationsState(prev =>
@@ -1298,7 +1354,14 @@ export function useMessages() {
             activeConvId,
             clientMessageId,
             content || undefined,
-            filesToSend
+            filesToSend,
+            {
+              onUploadProgress: progress => {
+                setAttachmentUploadsByClientMessageId(prev =>
+                  updateMessageAttachmentUpload(prev, clientMessageId, progress)
+                );
+              },
+            },
           )
         : await messagePostAPI.sendMessage({
             conversationId: activeConvId,
@@ -1312,10 +1375,16 @@ export function useMessages() {
           clientMessageId,
           response: res,
         });
-        throw new Error(formatSendError(res));
+        throw new Error(formatSendError(res, {
+          fallback: t('messages.msgNotSaved'),
+          network: t('fileUploadError.network'),
+          timeout: t('fileUploadError.timeout'),
+          requestTooLarge: t('fileUploadError.requestTooLarge'),
+        }));
       }
 
       const backendMsg = { ...mapBackendMessage(res.data), sendStatus: 'sent' as const };
+      setAttachmentUploadsByClientMessageId(prev => removeMessageAttachmentUpload(prev, clientMessageId));
       setMessagesMap(prev => {
         const list = prev[activeConvId] ?? [];
         const idx = list.findIndex(
@@ -1351,6 +1420,7 @@ export function useMessages() {
         clientMessageId,
         error: err,
       });
+      setAttachmentUploadsByClientMessageId(prev => removeMessageAttachmentUpload(prev, clientMessageId));
       setMessagesMap(prev => ({
         ...prev,
         [activeConvId]: (prev[activeConvId] ?? []).map(m =>
@@ -1360,6 +1430,9 @@ export function useMessages() {
         ),
       }));
       setMessageInput(current => (current.trim() ? current : content));
+      if (filesToSend.length > 0 && activeConvIdRef.current === activeConvId) {
+        setChatAttachments(current => current.length > 0 ? current : filesToSend);
+      }
       loadConversations();
     }
   };
@@ -1933,6 +2006,7 @@ export function useMessages() {
     messageInput,
     setMessageInput,
     chatAttachments,
+    attachmentUploadsByClientMessageId,
     handleSelectChatFiles,
     handleRemoveChatFile,
     isFavorited,

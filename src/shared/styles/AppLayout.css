@@ -214,22 +214,58 @@
   pointer-events: none;
 }
 
+.top-nav-search-input-with-scope {
+  border-bottom-right-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.top-nav-search-scope-button {
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-glass-border);
+  border-left: 0;
+  border-bottom-right-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.top-nav-search-scope-button:hover,
+.top-nav-search-scope-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.white .top-nav-search-scope-button,
+[data-theme="light"] .top-nav-search-scope-button {
+  background: rgba(84, 112, 235, 0.05);
+  border-color: rgba(84, 112, 235, 0.18);
+}
+
+.white .top-nav-search-scope-button:hover,
+.white .top-nav-search-scope-button[aria-expanded="true"],
+[data-theme="light"] .top-nav-search-scope-button:hover,
+[data-theme="light"] .top-nav-search-scope-button[aria-expanded="true"] {
+  background: rgba(84, 112, 235, 0.12);
+}
+
 /* ══════════════════════════════════════════════════════════════
-   TopNav Modal Hierarchy Rule: TopNav stays behind any open popup/modal
+   TopNav Hierarchy & Z-Index Rules
    ══════════════════════════════════════════════════════════════ */
 
 .landing-nav-container {
-  z-index: 35 !important;
+  z-index: 100;
 }
 
-body:has([role="dialog"]) .landing-nav-container,
-body:has(.modal-backdrop) .landing-nav-container,
-body:has(.modal-overlay) .landing-nav-container,
-body:has(.dialog-overlay) .landing-nav-container,
-body:has([data-state="open"]) .landing-nav-container,
-body:has(.fixed.inset-0:not(.landing-nav-container)) .landing-nav-container,
-body:has(.z-\[120\]) .landing-nav-container,
-body:has(.z-50:not(.landing-nav-container)) .landing-nav-container {
+/* When avatar, notification, or wallet dropdown is open, TopNav floats above sticky headers */
+.landing-nav-container.top-nav-menu-open,
+.landing-nav-container:has(.dropdown-menu),
+.landing-nav-container:has([role="menu"]) {
+  z-index: 110 !important;
+}
+
+/* Modal Hierarchy: TopNav stays behind full-screen modals/popups when active */
+body:has([role="dialog"]) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.modal-backdrop) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.modal-overlay) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.dialog-overlay) .landing-nav-container:not(.top-nav-menu-open),
+body:has(.z-\[120\]) .landing-nav-container:not(.top-nav-menu-open) {
   z-index: 10 !important;
 }
 
@@ -265,4 +301,18 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover,
 input[type="time"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
   transform: scale(1.15);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Mobile Navbar Collapsing (< 768px) for Guest / Landing Modes
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .landing-nav-container .desktop-nav-links,
+  .landing-nav-container .nav-hover-btn {
+    display: none !important;
+  }
+
+  .landing-nav-container .logo-text {
+    display: none !important;
+  }
 }

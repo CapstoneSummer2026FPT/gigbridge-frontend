@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   BarChart2, Shield, Flag, HelpCircle,
   TrendingUp, PlusCircle, Zap, Bookmark,
-  ChevronDown, Wallet, Banknote, Star, Scale, FileCheck2
+  ChevronDown, Wallet, Banknote, Star, Scale, FileCheck2, History, Send
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -52,7 +52,7 @@ function getClientNavItems(t: any): NavItem[] {
       icon: <Briefcase size={18} />,
       children: [
         { id: 'post-job', label: t('nav.postJob', { defaultValue: 'Post a Job' }), icon: <PlusCircle size={18} />, path: '/jobs/post/guide', badge: 'AI', badgeType: 'cyan' },
-        { id: 'my-jobs', label: t('nav.myJobs', { defaultValue: 'My Jobs' }), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
+        { id: 'my-jobs', label: t('nav.myJobs', { defaultValue: 'Jobs' }), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
       ],
     },
     {
@@ -60,11 +60,10 @@ function getClientNavItems(t: any): NavItem[] {
       label: t('nav.work', { defaultValue: 'Work' }),
       icon: <Flag size={18} />,
       children: [
-        { id: 'proposals', label: t('nav.proposals', { defaultValue: 'Proposals' }), icon: <FileText size={18} />, path: '/proposals' },
+        { id: 'proposals', label: t('nav.proposals', { defaultValue: 'Proposals' }), icon: <Send size={18} />, path: '/proposals' },
         { id: 'contracts', label: t('nav.contracts', { defaultValue: 'Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
-        { id: 'projects', label: t('nav.projects', { defaultValue: 'Projects' }), icon: <Flag size={18} />, path: '/projects' },
-        { id: 'reviews', label: t('nav.reviews', { defaultValue: 'Reviews' }), icon: <Star size={18} />, path: '/reviews' },
-        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'My Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
+        { id: 'projects', label: t('nav.projects', { defaultValue: 'Workspace' }), icon: <Flag size={18} />, path: '/workspace' },
+        { id: 'messages', label: t('nav.messages', { defaultValue: 'Messages' }), icon: <MessageSquare size={18} />, path: '/messages' },
       ],
     },
     {
@@ -77,20 +76,23 @@ function getClientNavItems(t: any): NavItem[] {
       ],
     },
     {
-      id: 'messages',
-      label: t('nav.messages', { defaultValue: 'Messages' }),
-      icon: <MessageSquare size={18} />,
-      path: '/messages',
-    },
-    {
       id: 'wallet',
       label: t('nav.wallet', { defaultValue: 'Wallet' }),
       icon: <Wallet size={18} />,
       children: [
         { id: 'deposit', label: t('wallet.deposit', { defaultValue: 'Deposit' }), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
-        { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
         { id: 'receipts', label: t('nav.receipts', { defaultValue: 'Receipts' }), icon: <FileCheck2 size={18} />, path: '/receipts' },
         { id: 'financial-overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
+        { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <History size={18} />, path: '/wallet/history' },
+      ],
+    },
+    {
+      id: 'support-feedback',
+      label: t('nav.supportAndFeedback', { defaultValue: 'Support & Feedback' }),
+      icon: <HelpCircle size={18} />,
+      children: [
+        { id: 'reviews', label: t('nav.reviews', { defaultValue: 'Reviews' }), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
       ],
     },
   ];
@@ -115,31 +117,34 @@ function getFreelancerNavItems(t: any): NavItem[] {
     },
     {
       id: 'my-jobs',
-      label: t('nav.myWork', { defaultValue: 'My Work' }),
+      label: t('nav.myWork', { defaultValue: 'Work' }),
       icon: <Briefcase size={18} />,
       children: [
-        { id: 'my-proposals', label: t('nav.myProposals', { defaultValue: 'My Proposals' }), icon: <FileText size={18} />, path: '/proposals' },
-        { id: 'my-contracts', label: t('nav.myContracts', { defaultValue: 'My Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
-        { id: 'my-projects', label: t('nav.myProjects', { defaultValue: 'My Projects' }), icon: <Flag size={18} />, path: '/projects' },
-        { id: 'my-reviews', label: t('nav.myReviews', { defaultValue: 'My Reviews' }), icon: <Star size={18} />, path: '/reviews' },
-        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'My Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
+        { id: 'my-proposals', label: t('nav.myProposals', { defaultValue: 'Proposals' }), icon: <Send size={18} />, path: '/proposals' },
+        { id: 'my-contracts', label: t('nav.myContracts', { defaultValue: 'Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
+        { id: 'my-projects', label: t('nav.myProjects', { defaultValue: 'Workspace' }), icon: <Flag size={18} />, path: '/workspace' },
+        { id: 'messages', label: t('nav.messages', { defaultValue: 'Messages' }), icon: <MessageSquare size={18} />, path: '/messages' },
       ],
     },
     {
-      id: 'messages',
-      label: t('nav.messages', { defaultValue: 'Messages' }),
-      icon: <MessageSquare size={18} />,
-      path: '/messages',
+      id: 'wallet',
+      label: t('nav.wallet', { defaultValue: 'Wallet' }),
+      icon: <Wallet size={18} />,
+      children: [
+        { id: 'deposit', label: t('wallet.deposit', { defaultValue: 'Deposit' }), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { id: 'receipts', label: t('nav.receipts', { defaultValue: 'Receipts' }), icon: <FileCheck2 size={18} />, path: '/receipts' },
+        { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdrawals' },
+        { id: 'overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
+        { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <History size={18} />, path: '/wallet/history' },
+      ],
     },
     {
-      id: 'finance',
-      label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }),
-      icon: <BarChart2 size={18} />,
+      id: 'support-feedback',
+      label: t('nav.supportAndFeedback', { defaultValue: 'Support & Feedback' }),
+      icon: <HelpCircle size={18} />,
       children: [
-        { id: 'overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
-        { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdrawals' },
-        { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
-        { id: 'receipts', label: t('nav.receipts', { defaultValue: 'Receipts' }), icon: <FileCheck2 size={18} />, path: '/receipts' },
+        { id: 'my-reviews', label: t('nav.myReviews', { defaultValue: 'Reviews' }), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
       ],
     },
   ];

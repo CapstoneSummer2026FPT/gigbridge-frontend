@@ -67,6 +67,7 @@ export function useProfileSetup() {
     location: '',
     majorId: '',
     categoryIds: [],
+    allowSearchEngineIndexing: false,
   });
 
   // Fetch Lookups for Client

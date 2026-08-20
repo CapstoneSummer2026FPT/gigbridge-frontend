@@ -12,7 +12,6 @@ import {
   NestedMilestonePlanEditor,
   type EditableMilestonePlan,
 } from '../../../shared/components/NestedMilestonePlanEditor';
-import { JobPostVisibility } from '../../../types/models/Job';
 import type { usePostJob } from '../hooks/usePostJob';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
@@ -208,19 +207,6 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
         <label htmlFor="job-deadline">{t('postJob.endDate')} *</label>
         <input id="job-deadline" type="date" value={form.deadline} onChange={event => setForm({ ...form, deadline: event.target.value })} />
         <small>{t('postJobWizard.details.deadlineHint')}</small>
-      </div>
-      <div className="job-post-field">
-        <label htmlFor="job-visibility">{t('postJob.visibility')}</label>
-        <CustomSelect
-          value={form.visibility}
-          options={[
-            { value: String(JobPostVisibility.Public), label: t('postJob.public') },
-            { value: String(JobPostVisibility.Private), label: t('postJob.private') },
-            { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnly') },
-          ]}
-          onChange={val => setForm({ ...form, visibility: val })}
-          searchable={false}
-        />
       </div>
     </div>
   );
