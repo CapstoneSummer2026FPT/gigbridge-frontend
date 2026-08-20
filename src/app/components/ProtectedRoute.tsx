@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router';
 import { useApp } from '../providers/AppProvider';
 import { UserRole } from '../../types/models/User';
+import { getPublicRouteRedirect } from '../utils/publicRouteRedirect';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -90,23 +91,8 @@ export function PublicRoute({ children }: { children: React.ReactNode }) {
     return <div>Loading...</div>;
   }
 
-  // User is authenticated, redirect to appropriate dashboard
-  if (user) {
-    if (user.role === UserRole.Admin) {
-      return <Navigate to="/admin" replace />;
-    }
-
-    if (!user.is_setup) {
-      return <Navigate to="/onboarding/profile-setup" replace />;
-    }
-
-    // Redirect to role-based dashboard
-    if (user.role === UserRole.Client) {
-      return <Navigate to="/client/dashboard" replace />;
-    } else if (user.role === UserRole.Freelancer) {
-      return <Navigate to="/freelancer/dashboard" replace />;
-    }
-  }
+  const redirectPath = getPublicRouteRedirect(user);
+  if (redirectPath) return <Navigate to={redirectPath} replace />;
 
   // Not authenticated, show public page
   return <>{children}</>;

@@ -34,6 +34,7 @@ import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
+import { useESignDocumentChangedEvent } from '../hooks/useESignDocumentChangedEvent';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
@@ -64,6 +65,7 @@ interface PreparedSignatureImage {
 
 const PDF_SIGNATURE_MAX_WIDTH = 220;
 const PDF_SIGNATURE_MAX_HEIGHT = 80;
+const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
 
 const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImage => {
   const fallbackScale = Math.min(
@@ -271,16 +273,6 @@ export default function SignatureWorkflowScreen() {
     signatureStep === 'complete' && isWaitingForCounterpart,
     refreshWorkflow,
   );
-
-  useEffect(() => {
-    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
-
-    const intervalId = window.setInterval(() => {
-      void refreshWorkflow();
-    }, 5000);
-
-    return () => window.clearInterval(intervalId);
-  }, [isWaitingForCounterpart, refreshWorkflow, signatureStep]);
 
   useEffect(() => {
     const fetchContractDetails = async () => {
@@ -522,21 +514,29 @@ export default function SignatureWorkflowScreen() {
     return nextStatus;
   }, [contractId, loadDocument]);
 
-  useEffect(() => {
-    if (
-      signatureStep !== 'complete' ||
-      !hasValidCurrentUserDraft ||
-      contract?.status !== ContractStatus.PendingSignature
-    ) {
-      return undefined;
-    }
-
-    const intervalId = window.setInterval(() => {
+  const handleDocumentChangedDuringSigning = useCallback((): void => {
+    if (signatureStep !== 'complete') return;
+    if (isWaitingForCounterpart) {
+      void refreshWorkflow();
+    } else if (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature) {
       void refreshAfterSigning();
-    }, 5_000);
+    }
+  }, [
+    contract?.status,
+    hasValidCurrentUserDraft,
+    isWaitingForCounterpart,
+    refreshAfterSigning,
+    refreshWorkflow,
+    signatureStep,
+  ]);
 
-    return () => window.clearInterval(intervalId);
-  }, [contract?.status, hasValidCurrentUserDraft, refreshAfterSigning, signatureStep]);
+  useESignDocumentChangedEvent(
+    contractId,
+    signatureStep === 'complete' &&
+    (isWaitingForCounterpart ||
+      (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
+    handleDocumentChangedDuringSigning,
+  );
 
   const handleSubmitSignature = async () => {
     if (!contract || !hasSignatureForDraft) return;
@@ -705,33 +705,30 @@ export default function SignatureWorkflowScreen() {
 
           {/* Stepper Card */}
           <div className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-2xl bg-muted/40 border border-border/60 shrink-0 self-start md:self-auto relative z-10 overflow-x-auto">
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'review'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'review'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
               <span>{t('contracts.reviewProposal')}</span>
             </div>
 
             <ChevronRight size={13} className="text-muted-foreground shrink-0" />
 
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'capture'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'capture'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
               <span>{t('contracts.proceedToSign')}</span>
             </div>
 
             <ChevronRight size={13} className="text-muted-foreground shrink-0" />
 
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'complete'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'complete'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
               <span>{hasValidCurrentUserDraft && !isContractFinalized ? 'Waiting' : t('contracts.completed')}</span>
             </div>
