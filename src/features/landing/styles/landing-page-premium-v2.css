@@ -128,6 +128,18 @@ body {
   color: var(--foreground);
 }
 
+/* Guarantee Mobile Navbar Collapsing below 768px */
+@media (max-width: 767px) {
+  .landing-nav-container .desktop-nav-links,
+  .landing-nav-container .nav-hover-btn {
+    display: none !important;
+  }
+
+  .landing-nav-container .logo-text {
+    display: none !important;
+  }
+}
+
 .absolute-center {
   position: absolute;
   top: 50%;
@@ -324,6 +336,10 @@ body {
 
 .contact-clip-path-2 {
   clip-path: polygon(29% 15%, 85% 30%, 50% 100%, 10% 64%);
+}
+
+.contact-clip-path-3 {
+  clip-path: polygon(20% 0%, 85% 12%, 68% 78%, 10% 68%);
 }
 
 .indicator-line {

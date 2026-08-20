@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { ChevronDown, LogOut, Settings, Menu, X, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, Menu, X, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare, Search } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -50,6 +50,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [searchVal, setSearchVal] = useState('');
   const [searchScope, setSearchScope] = useState<TopNavSearchScope>(TOP_NAV_SEARCH_SCOPE.Jobs);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   // Safely get app context - might be null for guest users
   let appContext;
@@ -239,12 +240,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-35 h-16 border-none transition-all duration-700 landing-nav-container"
       >
         <header className="absolute top-1/2 w-full -translate-y-1/2">
-          <nav className="flex size-full items-center justify-between p-4">
+          <nav className="flex size-full items-center justify-between px-2.5 sm:px-4 py-2 gap-1.5 sm:gap-4">
             {/* Logo and CTA Button */}
-            <div className="flex items-center gap-3 sm:gap-7">
+            <div className="flex items-center gap-2.5 sm:gap-6 min-w-0 flex-shrink-0">
               <div
                 onClick={() => navigate('/')}
-                className="flex items-center gap-2 cursor-pointer select-none"
+                className="flex items-center gap-2 cursor-pointer select-none flex-shrink-0"
               >
                 <img
                   src="/img/logo.png"
@@ -263,13 +264,13 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 title={isAuthenticated ? t('nav.dashboard') : t('auth.login')}
                 rightIcon={<TiLocationArrow />}
                 onClick={handleCtaClick}
-                containerClass="bg-blue-50 flex items-center justify-center gap-1 !px-4 !py-2 sm:!px-7 sm:!py-3"
+                containerClass="bg-blue-50 flex items-center justify-center gap-1 !px-2.5 !py-1.5 sm:!px-6 sm:!py-2.5 text-xs sm:text-sm font-semibold flex-shrink-0"
               />
             </div>
 
             {/* Navigation Links, Hamburger & Audio Button */}
-            <div className="flex h-full items-center">
-              <div className="hidden md:flex items-center">
+            <div className="flex h-full items-center flex-shrink-0">
+              <div className="desktop-nav-links hidden md:flex items-center">
                 {localizedNavItems.map((item, index) => {
                   const handleClick = (e: React.MouseEvent) => {
                     e.preventDefault();
@@ -301,12 +302,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               <CombinedThemeLanguageSwitcher
                 theme={theme}
                 setTheme={setTheme}
-                className="ml-2 sm:ml-8 flex"
+                className="ml-1.5 sm:ml-6 flex flex-shrink-0 scale-90 sm:scale-100 origin-right"
               />
 
               <button
+                type="button"
                 onClick={toggleAudioIndicator}
-                className="ml-2 sm:ml-8 flex items-center space-x-0.5"
+                className="ml-2 sm:ml-6 hidden sm:flex items-center space-x-0.5 flex-shrink-0"
+                aria-label="Toggle background audio"
               >
                 <audio
                   ref={audioElementRef}
@@ -330,11 +333,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
               {/* Mobile Navigation Drawer Toggle Button */}
               <button
+                type="button"
                 onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-                className="ml-2.5 p-2 rounded-xl bg-secondary/80 border border-border text-foreground md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] shadow-sm active:scale-95 transition-all"
+                className="ml-1.5 sm:ml-2.5 p-1.5 sm:p-2 rounded-xl bg-secondary/80 border border-border text-foreground md:hidden flex items-center justify-center min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] shadow-sm active:scale-95 transition-all flex-shrink-0"
                 aria-label="Toggle Navigation Menu"
               >
-                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
             </div>
           </nav>
@@ -342,7 +346,26 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 mt-2 p-5 rounded-2xl bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl z-50 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="md:hidden absolute top-full left-0 right-0 mt-2 p-4 rounded-2xl bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl z-50 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-4 duration-300">
+            {/* Audio Toggle in Mobile Drawer */}
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-secondary/40 border border-border/50">
+              <span className="text-xs font-semibold text-secondary">Am Thanh Nền</span>
+              <button
+                type="button"
+                onClick={toggleAudioIndicator}
+                className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-secondary/80 border border-border"
+              >
+                <span className="text-xs text-muted-foreground mr-1">{isAudioPlaying ? 'Bật' : 'Tắt'}</span>
+                {[1, 2, 3, 4].map((bar) => (
+                  <div
+                    key={bar}
+                    className={clsx('indicator-line', { active: isIndicatorActive })}
+                    style={{ animationDelay: `${bar * 0.1}s`, ['--animation-order' as any]: bar }}
+                  />
+                ))}
+              </button>
+            </div>
+
             {localizedNavItems.map((item, index) => {
               const handleClick = (e: React.MouseEvent) => {
                 e.preventDefault();
@@ -413,7 +436,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         <span className="text-primary font-bold text-lg hidden sm:block">GigBridge</span>
       </div>
 
-      {/* Search Bar */}
+      {/* Desktop Search Bar */}
       {!isLandingMode && (
         <TopNavSearch
           value={searchVal}
@@ -427,9 +450,27 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         />
       )}
 
+      {/* Mobile Search Button (< md) */}
+      {!isLandingMode && (
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileSearchOpen(prev => !prev);
+            setShowUserMenu(false);
+            setShowNotifs(false);
+            setShowWalletMenu(false);
+            setShowSearchScopeMenu(false);
+          }}
+          className="md:hidden p-2 rounded-lg transition-all hover:bg-white/10 glass-button text-muted hover:text-primary flex-shrink-0"
+          aria-label="Toggle search bar"
+        >
+          <Search size={18} />
+        </button>
+      )}
+
       {/* Nav Links (Guest) */}
       {isLandingMode && (
-        <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
+        <nav className="desktop-nav-links hidden md:flex items-center gap-6 flex-1 justify-center">
           {[
             { label: 'How It Works', path: '/guide' },
             { label: 'Browse Jobs', path: '/jobs/browse' },
@@ -500,7 +541,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             </button>
 
             {showWalletMenu && (
-              <div className="absolute right-0 top-12 w-56 rounded-2xl p-2 z-50 dropdown-menu">
+              <div className="absolute right-0 top-12 w-56 max-w-[calc(100vw-1.5rem)] rounded-2xl p-2 z-50 dropdown-menu">
                 <div className="px-3 py-2 mb-1">
                   <p className="text-xs text-muted">{t('wallet.depositedBalance')}</p>
                   <div className="flex items-center gap-1">
@@ -597,7 +638,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             </button>
 
             {showUserMenu && (
-              <div className="absolute right-0 top-12 w-64 rounded-2xl p-2.5 z-50 dropdown-menu shadow-2xl border border-white/10">
+              <div className="absolute right-0 top-12 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl p-2.5 z-50 dropdown-menu shadow-2xl border border-white/10">
                 {/* User Profile Info Card */}
                 <div
                   className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer flex items-center gap-3 mb-2 border border-white/10 group"
@@ -694,9 +735,46 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         )}
       </div>
 
+      {/* Mobile Search Overlay Panel */}
+      {!isLandingMode && isMobileSearchOpen && (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] px-3 sm:px-6 md:hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="glass-card p-2 rounded-xl border border-white/15 shadow-2xl flex items-center gap-2 bg-background/95 backdrop-blur-xl">
+            <form
+              className="flex-1 flex items-center gap-2 min-w-0"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearch();
+                setIsMobileSearchOpen(false);
+              }}
+            >
+              <Search size={16} className="text-muted shrink-0 ml-2" />
+              <input
+                type="search"
+                value={searchVal}
+                onChange={(e) => setSearchVal(e.target.value)}
+                placeholder={t('topNavSearch.placeholder')}
+                autoFocus
+                className="w-full bg-transparent text-sm text-primary focus:outline-none placeholder:text-muted py-1.5 min-w-0"
+              />
+              <button type="submit" className="btn-cyan text-xs px-3 py-1.5 rounded-lg shrink-0 font-medium">
+                {t('common.search', { defaultValue: 'Search' })}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={() => setIsMobileSearchOpen(false)}
+              className="p-1.5 text-muted hover:text-primary rounded-lg shrink-0"
+              aria-label="Close mobile search"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Click outside to close menus */}
-      {(showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }} />
+      {(showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu || isMobileSearchOpen) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); setIsMobileSearchOpen(false); }} />
       )}
 
       {/* Guest Auth Invitation Modal */}

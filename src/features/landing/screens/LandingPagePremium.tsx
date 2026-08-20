@@ -5,7 +5,6 @@ import { useApp } from '../../../app/providers/AppProvider';
 
 // Import components
 import { TopNav } from '../../../shared/components/TopNav';
-import GlassIcon from '../components/GlassIcon';
 import Hero from '../components/Hero';
 import About from '../components/About';
 import HowItWorks from '../components/HowItWorks';
@@ -15,6 +14,7 @@ import Pathways from '../components/Pathways';
 import Story from '../components/Story';
 import Contact from '../components/Contact';
 import { Footer } from '../../../shared/components/Footer';
+import GlassIcon from '../components/GlassIcon';
 
 // Import stylesheet
 import '../styles/landing-page-premium-v2.css';

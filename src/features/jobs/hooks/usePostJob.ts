@@ -140,6 +140,7 @@ interface PostJobDraftOverrides {
   questions?: QuestionInput[];
   milestonePlans?: JobPostMilestonePlanDto[];
   visibility?: JobPostVisibility;
+  hasAiInterview?: boolean;
 }
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
@@ -342,6 +343,9 @@ export function usePostJob() {
   const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
     withoutWorkBreakdownItems(initialJobData?.milestonePlans || []));
   const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
+  const [hasAiInterview, setHasAiInterview] = useState<boolean>(() =>
+    Boolean(initialJobData?.hasAiInterview)
+  );
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
@@ -1176,6 +1180,7 @@ export function usePostJob() {
         orderIndex,
         workItems: [],
       })),
+      hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
     };
   };
 
@@ -1189,6 +1194,7 @@ export function usePostJob() {
     skillNameById,
     interviewQuestions: (overrides?.questions || questions).map((question, index) => ({ ...question, orderIndex: index })),
     attachments,
+    hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
   });
 
   const buildNavigationState = (
@@ -1745,5 +1751,7 @@ export function usePostJob() {
     backgroundHiringPlanError,
     handleApproveDetails,
     handleCancelDetails,
+    hasAiInterview,
+    setHasAiInterview,
   };
 }
