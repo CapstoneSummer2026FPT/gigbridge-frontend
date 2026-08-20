@@ -302,3 +302,17 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
   transform: scale(1.15);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Mobile Navbar Collapsing (< 768px) for Guest / Landing Modes
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .landing-nav-container .desktop-nav-links,
+  .landing-nav-container .nav-hover-btn {
+    display: none !important;
+  }
+
+  .landing-nav-container .logo-text {
+    display: none !important;
+  }
+}

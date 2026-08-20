@@ -266,7 +266,8 @@ export const router = createBrowserRouter([
       { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><MessagesScreen /></ProtectedRoute> },
 
       // Workspace - requires authentication and setup
-      { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
+      { path: 'workspace', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
+      { path: 'projects', element: <Navigate to="/workspace" replace /> },
       { path: 'workspace/:contractId', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
 
       { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },

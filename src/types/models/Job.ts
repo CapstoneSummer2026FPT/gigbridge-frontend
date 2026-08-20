@@ -354,6 +354,7 @@ export interface SaveDraftJobPostRequest {
   customSkillNames?: string[] | null;
   questions?: SaveDraftJobPostQuestionRequest[] | null;
   milestonePlans?: JobPostMilestonePlanDto[] | null;
+  hasAiInterview?: boolean | null;
 }
 
 export interface GenerateJobDescriptionRequest {
