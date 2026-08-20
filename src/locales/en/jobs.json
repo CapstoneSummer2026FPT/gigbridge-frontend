@@ -101,7 +101,6 @@
     "selectCategory": "Select a category",
     "visibility": "Visibility",
     "public": "Public",
-    "private": "Private",
     "inviteOnly": "Invite Only",
     "requiredSkills": "Helpful Skills",
     "addSkillPlaceholder": "Add a skill...",
@@ -377,10 +376,9 @@
       "title": "Choose visibility",
       "subtitle": "Select who can discover this Project Request before publishing.",
       "publicDescription": "Visible to all freelancers. Content is locked after publishing.",
-      "privateDescription": "Kept private and remains editable after publishing.",
       "inviteOnlyDescription": "Visible only through invitations. Content is locked after publishing.",
       "warningTitle": "This choice affects editing access",
-      "warning": "After publishing, Public and Invite Only job posts cannot have their content edited or return to Private. Public and Invite Only can still be switched between each other.",
+      "warning": "After publishing, job posts cannot have their content edited. Public and Invite Only can still be switched between each other.",
       "confirm": "Publish Project Request"
     },
     "validation": {
@@ -502,7 +500,6 @@
     "posted": "Posted",
     "visibility": {
       "public": "Public",
-      "private": "Private",
       "inviteOnly": "Invite Only",
       "unknown": "Unknown",
       "lockedByAdmin": "Locked by Admin"
@@ -553,7 +550,7 @@
     "editPost": "Edit Post",
     "editLocked": "Content locked after publishing",
     "editLockedTitle": "This job post cannot be edited",
-    "editLockedDescription": "Published Public and Invite Only job posts cannot have their content edited and cannot return to Private.",
+    "editLockedDescription": "Published job posts cannot have their content edited.",
     "adminLockedTitle": "This job post is locked by an admin",
     "adminLockedDescription": "All updates are disabled. Contact support if you believe this is a mistake.",
     "backToJobs": "Back to My Jobs",

@@ -102,7 +102,6 @@
     "selectCategory": "Chọn danh mục",
     "visibility": "Phạm Vi Hiển Thị",
     "public": "Công Khai",
-    "private": "Riêng Tư",
     "inviteOnly": "Chỉ Mời",
     "requiredSkills": "Chuyên Môn Hữu Ích",
     "addSkillPlaceholder": "Thêm kỹ năng...",
@@ -374,10 +373,9 @@
       "title": "Chọn phạm vi hiển thị",
       "subtitle": "Chọn đối tượng có thể tìm thấy Project Request trước khi đăng.",
       "publicDescription": "Hiển thị với mọi freelancer. Nội dung sẽ bị khóa sau khi đăng.",
-      "privateDescription": "Giữ ở chế độ riêng tư và vẫn có thể chỉnh sửa sau khi đăng.",
       "inviteOnlyDescription": "Chỉ hiển thị qua lời mời. Nội dung sẽ bị khóa sau khi đăng.",
       "warningTitle": "Lựa chọn này ảnh hưởng quyền chỉnh sửa",
-      "warning": "Sau khi đăng, Job Post Công khai hoặc Chỉ mời không thể chỉnh sửa nội dung hoặc chuyển về Riêng tư. Hai phạm vi Công khai và Chỉ mời vẫn có thể chuyển đổi qua lại.",
+      "warning": "Sau khi đăng, Job Post không thể chỉnh sửa nội dung. Hai phạm vi Công khai và Chỉ mời vẫn có thể chuyển đổi qua lại.",
       "confirm": "Đăng Project Request"
     },
     "validation": {
@@ -499,7 +497,6 @@
     "posted": "Đã đăng",
     "visibility": {
       "public": "Công khai",
-      "private": "Riêng tư",
       "inviteOnly": "Chỉ mời",
       "unknown": "Không xác định",
       "lockedByAdmin": "Bị khóa bởi Admin"
@@ -550,7 +547,7 @@
     "editPost": "Sửa Bài Đăng",
     "editLocked": "Nội dung đã khóa sau khi đăng",
     "editLockedTitle": "Không thể chỉnh sửa Job Post này",
-    "editLockedDescription": "Job Post Công khai hoặc Chỉ mời đã đăng không thể chỉnh sửa nội dung và không thể chuyển về Riêng tư.",
+    "editLockedDescription": "Job Post đã đăng không thể chỉnh sửa nội dung.",
     "adminLockedTitle": "Job Post đã bị Admin khóa",
     "adminLockedDescription": "Mọi cập nhật bị vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ nếu bạn cho rằng đây là nhầm lẫn.",
     "backToJobs": "Quay lại Công việc của tôi",
