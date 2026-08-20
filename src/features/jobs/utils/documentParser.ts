@@ -120,3 +120,40 @@ export async function parseJobDocument(file: File): Promise<ParsedDocumentResult
     isTruncated,
   };
 }
+
+export interface CombinedDocumentsResult {
+  text: string;
+  charCount: number;
+  isTruncated: boolean;
+}
+
+/**
+ * Concatenates text extracted from multiple documents with section headers
+ * and caps the combined total text length at 15,000 characters.
+ */
+export function combineAndTrimJobDocuments(
+  docs: Array<{ fileName: string; text: string }>,
+  maxChars = MAX_CHAR_LIMIT
+): CombinedDocumentsResult {
+  if (!docs || docs.length === 0) {
+    return { text: '', charCount: 0, isTruncated: false };
+  }
+
+  const sections = docs.map(
+    doc => `--- ATTACHED SPECIFICATION DOCUMENT (${doc.fileName}) ---\n${doc.text}`
+  );
+  let combined = sections.join('\n\n');
+
+  let isTruncated = false;
+  if (combined.length > maxChars) {
+    combined = combined.slice(0, maxChars);
+    isTruncated = true;
+  }
+
+  return {
+    text: combined,
+    charCount: combined.length,
+    isTruncated,
+  };
+}
+
