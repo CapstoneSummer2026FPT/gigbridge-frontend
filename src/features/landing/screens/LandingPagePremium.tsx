@@ -15,7 +15,6 @@ import Pathways from '../components/Pathways';
 import Story from '../components/Story';
 import Contact from '../components/Contact';
 import { Footer } from '../../../shared/components/Footer';
-import GlassIcon from '../components/GlassIcon';
 
 // Import stylesheet
 import '../styles/landing-page-premium-v2.css';
