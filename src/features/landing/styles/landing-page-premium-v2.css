@@ -39,12 +39,14 @@ body {
 
 .nav-hover-btn {
   position: relative;
-  margin-left: 2.5rem;
   font-family: "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
   font-size: 0.75rem;
   text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   color: var(--foreground);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .nav-hover-btn::after {
@@ -128,13 +130,15 @@ body {
   color: var(--foreground);
 }
 
-/* Guarantee Mobile Navbar Collapsing below 768px */
-@media (max-width: 767px) {
+/* Guarantee Mobile/Tablet Navbar Collapsing below 1024px */
+@media (max-width: 1023px) {
   .landing-nav-container .desktop-nav-links,
   .landing-nav-container .nav-hover-btn {
     display: none !important;
   }
+}
 
+@media (max-width: 639px) {
   .landing-nav-container .logo-text {
     display: none !important;
   }

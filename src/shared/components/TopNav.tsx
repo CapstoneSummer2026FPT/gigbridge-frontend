@@ -178,8 +178,17 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
   useEffect(() => {
     const handleScroll = () => setCurrentScrollY(window.scrollY);
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileMenuOpen(false);
+      }
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const toggleAudioIndicator = () => {
@@ -219,7 +228,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     gsap.to(navContainerRef.current, {
       y: isNavVisible ? 0 : -100,
       opacity: isNavVisible ? 1 : 0,
-      duration: 0.2,
+      duration: 0.25,
+      ease: 'power2.out',
     });
   }, [isNavVisible, isLandingMode]);
 
@@ -397,6 +407,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               );
             })}
           </div>
+        )}
+
+        {/* Backdrop for landing mobile drawer */}
+        {isMobileMenuOpen && (
+          <div
+            className="top-nav-backdrop-overlay"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
         )}
 
         {/* Guest Auth Invitation Modal */}
