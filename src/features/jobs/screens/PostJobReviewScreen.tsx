@@ -51,14 +51,13 @@ export default function PostJobReviewScreen() {
     submitDraftFlow, renderSubmitLabel, retryAutosave, navigateWizard,
     flushAutosave,
     isBudgetExceededPromptOpen, handleBudgetExceededConfirm, handleBudgetExceededCancel,
+    hasAiInterview, setHasAiInterview,
   } = controller;
   const [editingSection, setEditingSection] = useState<PostJobReviewSection | null>(null);
   const [isFinishingEdit, setIsFinishingEdit] = useState(false);
   const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false);
   const [publishVisibility, setPublishVisibility] = useState<JobPostVisibility>(JobPostVisibility.Public);
-  const [isAiInterviewEnabled, setIsAiInterviewEnabled] = useState<boolean>(
-    Boolean(routeState?.jobData?.hasAiInterview)
-  );
+  const isAiInterviewEnabled = hasAiInterview;
 
   const handleToggleAiInterview = (e?: React.MouseEvent) => {
     if (e) {
@@ -75,7 +74,7 @@ export default function PostJobReviewScreen() {
       return;
     }
 
-    setIsAiInterviewEnabled(prev => {
+    setHasAiInterview(prev => {
       const next = !prev;
       toast.success(
         next

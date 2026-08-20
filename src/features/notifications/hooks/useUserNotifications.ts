@@ -218,7 +218,7 @@ const getActionUrl = (
     case 'payment':
       return '/wallet/history';
     case 'message':
-      return referenceId ? `/workspace/${referenceId}` : '/projects';
+      return referenceId ? `/workspace/${referenceId}` : '/workspace';
     case 'dispute':
       return userRole === 2 ? '/admin/disputes' : '/contracts';
     case 'review':

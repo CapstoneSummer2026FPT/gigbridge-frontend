@@ -1,7 +1,8 @@
 import { useState, type FormEvent, useRef, useEffect } from 'react';
 import { Crown, Sparkles, LoaderCircle, ArrowUp, Code2, Palette, PenTool, Eraser, X, Paperclip, FileText, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { parseJobDocument } from '../utils/documentParser';
+import { parseJobDocument, combineAndTrimJobDocuments } from '../utils/documentParser';
+import { PostJobTrimWarningModal } from './PostJobTrimWarningModal';
 
 interface Props {
   isPremium: boolean;
@@ -9,6 +10,12 @@ interface Props {
   onGenerate: (prompt: string) => Promise<void>;
   onUpgrade: () => void;
   onClose: () => void;
+}
+
+interface AttachedFileItem {
+  name: string;
+  text: string;
+  charCount: number;
 }
 
 const PRESETS = [
@@ -35,11 +42,12 @@ const PRESETS = [
 export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, onClose }: Props) {
   const { t } = useTranslation(['jobs', 'common']);
   const [prompt, setPrompt] = useState('');
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const [extractedText, setExtractedText] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [fileMeta, setFileMeta] = useState<{ charCount: number; fileType: string; isTruncated: boolean } | null>(null);
+
+  const [isTrimModalOpen, setIsTrimModalOpen] = useState(false);
+  const [hasConfirmedTrim, setHasConfirmedTrim] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,25 +62,30 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
   }, [prompt]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
 
-    setAttachedFile(file);
     setIsParsingDoc(true);
     setParseError(null);
 
     try {
-      const result = await parseJobDocument(file);
-      setExtractedText(result.text);
-      setFileMeta({
-        charCount: result.charCount,
-        fileType: result.fileType,
-        isTruncated: result.isTruncated,
-      });
+      const newItems: AttachedFileItem[] = [];
+      for (const file of selectedFiles) {
+        // Skip duplicate filenames if already attached
+        if (attachedFiles.some(f => f.name === file.name)) continue;
+        const result = await parseJobDocument(file);
+        newItems.push({
+          name: result.fileName,
+          text: result.text,
+          charCount: result.charCount,
+        });
+      }
+
+      if (newItems.length > 0) {
+        setAttachedFiles(prev => [...prev, ...newItems]);
+        setHasConfirmedTrim(false);
+      }
     } catch (err: any) {
-      setAttachedFile(null);
-      setExtractedText('');
-      setFileMeta(null);
       if (err.message === 'FILE_TOO_LARGE') {
         setParseError(t('postJobWizard.ai.fileTooLarge', 'File size exceeds 10 MB limit.'));
       } else if (err.message === 'UNSUPPORTED_FORMAT') {
@@ -88,39 +101,69 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
     }
   };
 
-  const removeAttachment = () => {
-    setAttachedFile(null);
-    setExtractedText('');
-    setFileMeta(null);
+  const removeAttachment = (fileName: string) => {
+    setAttachedFiles(prev => prev.filter(f => f.name !== fileName));
     setParseError(null);
+    setHasConfirmedTrim(false);
+  };
+
+  const clearAllAttachments = () => {
+    setAttachedFiles([]);
+    setParseError(null);
+    setHasConfirmedTrim(false);
+  };
+
+  const combinedDocs = combineAndTrimJobDocuments(
+    attachedFiles.map(f => ({ fileName: f.name, text: f.text }))
+  );
+
+  const rawTotalCharCount = attachedFiles.reduce((acc, f) => acc + f.charCount, 0);
+
+  const executeGeneration = async () => {
+    const trimmedPrompt = prompt.trim();
+    if (!trimmedPrompt && !combinedDocs.text) return;
+
+    const finalPrompt = combinedDocs.text
+      ? `${trimmedPrompt}\n\n${combinedDocs.text}`.trim()
+      : trimmedPrompt;
+
+    await onGenerate(finalPrompt);
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!isPremium || isLoading || isParsingDoc) return;
     const trimmedPrompt = prompt.trim();
-    if (!trimmedPrompt && !extractedText) return;
+    if (!trimmedPrompt && !combinedDocs.text) return;
 
-    const finalPrompt = extractedText
-      ? `${trimmedPrompt}\n\n--- ATTACHED SPECIFICATION DOCUMENT (${attachedFile?.name}) ---\n${extractedText}`
-      : trimmedPrompt;
+    if (rawTotalCharCount > 15000 && !hasConfirmedTrim) {
+      setIsTrimModalOpen(true);
+      return;
+    }
 
-    await onGenerate(finalPrompt);
+    await executeGeneration();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if ((prompt.trim() || extractedText) && !isLoading && !isParsingDoc && isPremium) {
-        const finalPrompt = extractedText
-          ? `${prompt.trim()}\n\n--- ATTACHED SPECIFICATION DOCUMENT (${attachedFile?.name}) ---\n${extractedText}`
-          : prompt.trim();
-        void onGenerate(finalPrompt);
+      if ((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc && isPremium) {
+        if (rawTotalCharCount > 15000 && !hasConfirmedTrim) {
+          setIsTrimModalOpen(true);
+          return;
+        }
+        void executeGeneration();
       }
     }
   };
 
-  const canSubmit = Boolean((prompt.trim() || extractedText) && !isLoading && !isParsingDoc);
+  const handleConfirmTrimModal = () => {
+    setHasConfirmedTrim(true);
+    setIsTrimModalOpen(false);
+    void executeGeneration();
+  };
+
+  const canSubmit = Boolean((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc);
 
   return (
     <div className="job-post-ai-bar-container">
@@ -156,6 +199,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             accept=".docx,.pdf,.txt,.md"
             className="hidden"
             onChange={handleFileSelect}
@@ -165,8 +209,8 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
           {/* Horizontal ChatGPT Input Bar */}
           <form onSubmit={submit} className="job-post-ai-bar__form">
             {/* Attachment / Parsing Status Badge */}
-            {(isParsingDoc || attachedFile || parseError) && (
-              <div className="px-3 pt-2 flex items-center justify-between gap-2 border-b border-[var(--border)] pb-2 text-xs">
+            {(isParsingDoc || attachedFiles.length > 0 || parseError) && (
+              <div className="px-3 pt-2 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-2 text-xs">
                 {isParsingDoc && (
                   <div className="flex items-center gap-2 text-[var(--brand)] font-medium">
                     <LoaderCircle size={14} className="animate-spin" />
@@ -174,23 +218,40 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                   </div>
                 )}
 
-                {attachedFile && !isParsingDoc && (
-                  <div className="flex items-center gap-2 bg-[var(--surface-muted)] px-2.5 py-1 rounded-md text-foreground font-medium border border-[var(--border)]">
-                    <FileText size={14} className="text-blue-500" />
-                    <span className="max-w-[200px] truncate">{attachedFile.name}</span>
-                    {fileMeta && (
-                      <span className="text-[10px] bg-[var(--brand)]/10 text-[var(--brand)] font-bold px-1.5 py-0.5 rounded">
-                        {fileMeta.charCount.toLocaleString()} chars {fileMeta.isTruncated && '(capped)'}
-                      </span>
+                {attachedFiles.length > 0 && !isParsingDoc && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {attachedFiles.map(file => (
+                      <div
+                        key={file.name}
+                        className="flex items-center gap-1.5 bg-[var(--surface-muted)] px-2.5 py-1 rounded-md text-foreground font-medium border border-[var(--border)]"
+                      >
+                        <FileText size={14} className="text-blue-500 shrink-0" />
+                        <span className="max-w-[150px] truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(file.name)}
+                          className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors"
+                          title="Remove document"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+
+                    <span className="text-[10px] bg-[var(--brand)]/10 text-[var(--brand)] font-bold px-2 py-0.5 rounded">
+                      {t('postJobWizard.ai.totalChars', { count: combinedDocs.charCount.toLocaleString(), defaultValue: `Total: ${combinedDocs.charCount.toLocaleString()} / 15,000 chars` })}{' '}
+                      {combinedDocs.isTruncated && t('postJobWizard.ai.cappedAt15k', '(capped at 15k)')}
+                    </span>
+
+                    {attachedFiles.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={clearAllAttachments}
+                        className="text-[10px] text-muted-foreground hover:text-destructive underline ml-1"
+                      >
+                        {t('postJobWizard.ai.removeAll', 'Remove all')}
+                      </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={removeAttachment}
-                      className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors"
-                      title="Remove document"
-                    >
-                      <X size={13} />
-                    </button>
                   </div>
                 )}
 
@@ -213,7 +274,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                 value={prompt}
                 onChange={event => setPrompt(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={attachedFile ? t('postJobWizard.ai.placeholderWithDoc', 'Add additional requirements or instructions...') : t('postJobWizard.ai.placeholder')}
+                placeholder={attachedFiles.length > 0 ? t('postJobWizard.ai.placeholderWithDoc', 'Add additional requirements or instructions...') : t('postJobWizard.ai.placeholder')}
                 rows={1}
                 disabled={isLoading || isParsingDoc}
                 maxLength={5000}
@@ -271,7 +332,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                   className="text-xs text-muted-foreground hover:text-foreground font-bold px-2.5 py-1 rounded-md hover:bg-[var(--surface-muted)] transition-colors"
                   onClick={onClose}
                 >
-                  Cancel
+                  {t('postJobWizard.cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -288,6 +349,14 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
               </div>
             </div>
           </form>
+
+          {/* Document Trim Confirmation Modal */}
+          <PostJobTrimWarningModal
+            isOpen={isTrimModalOpen}
+            totalCharCount={rawTotalCharCount}
+            onConfirmTrim={handleConfirmTrimModal}
+            onCancel={() => setIsTrimModalOpen(false)}
+          />
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { ChevronDown, LogOut, Settings, Menu, X, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, Menu, X, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare, Search, Bell } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -18,6 +18,7 @@ import { UserAvatar } from './UserAvatar';
 import { getProfilePath } from '../hooks/useProfileNavigation';
 import { TopNavSearch } from './TopNavSearch';
 import { AuthInviteModal } from './AuthInviteModal';
+import './styles/TopNav.css';
 import {
   getTopNavSearchPath,
   TOP_NAV_SEARCH_SCOPE,
@@ -52,6 +53,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [searchVal, setSearchVal] = useState('');
   const [searchScope, setSearchScope] = useState<TopNavSearchScope>(TOP_NAV_SEARCH_SCOPE.Jobs);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isMobileWalletExpanded, setIsMobileWalletExpanded] = useState(false);
 
   // Safely get app context - might be null for guest users
   let appContext;
@@ -180,8 +183,17 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
   useEffect(() => {
     const handleScroll = () => setCurrentScrollY(window.scrollY);
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileMenuOpen(false);
+      }
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const toggleAudioIndicator = () => {
@@ -221,7 +233,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     gsap.to(navContainerRef.current, {
       y: isNavVisible ? 0 : -100,
       opacity: isNavVisible ? 1 : 0,
-      duration: 0.2,
+      duration: 0.25,
+      ease: 'power2.out',
     });
   }, [isNavVisible, isLandingMode]);
 
@@ -241,25 +254,25 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     return (
       <div
         ref={navContainerRef}
-        className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-35 h-16 border-none transition-all duration-700 landing-nav-container"
+        className="top-nav-landing-container landing-nav-container"
       >
-        <header className="absolute top-1/2 w-full -translate-y-1/2">
-          <nav className="flex size-full items-center justify-between p-4">
+        <header className="top-nav-landing-header">
+          <nav className="top-nav-landing-nav">
             {/* Logo and CTA Button */}
-            <div className="flex items-center gap-3 sm:gap-7">
+            <div className="top-nav-left-group">
               <div
                 onClick={() => navigate('/')}
-                className="flex items-center gap-2 cursor-pointer select-none"
+                className="top-nav-logo-wrapper"
               >
                 <img
                   src="/img/logo.png"
                   alt="GigBridge Logo"
                   width={32}
                   height={32}
-                  className="w-8 h-8 rounded-lg object-cover"
+                  className="top-nav-logo-img"
                 />
-                <span className="text-xl font-bold tracking-tight logo-text hidden sm:block">
-                  GIGBRIDGE
+                <span className="top-nav-logo-text logo-text">
+                  GigBridge
                 </span>
               </div>
 
@@ -268,13 +281,13 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 title={isAuthenticated ? t('nav.dashboard') : t('auth.login')}
                 rightIcon={<TiLocationArrow />}
                 onClick={handleCtaClick}
-                containerClass="bg-blue-50 flex items-center justify-center gap-1 !px-4 !py-2 sm:!px-7 sm:!py-3"
+                containerClass="top-nav-auth-btn"
               />
             </div>
 
             {/* Navigation Links, Hamburger & Audio Button */}
-            <div className="flex h-full items-center">
-              <div className="hidden md:flex items-center">
+            <div className="top-nav-right-group">
+              <div className="top-nav-desktop-links desktop-nav-links">
                 {localizedNavItems.map((item, index) => {
                   const handleClick = (e: React.MouseEvent) => {
                     e.preventDefault();
@@ -306,12 +319,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               <CombinedThemeLanguageSwitcher
                 theme={theme}
                 setTheme={setTheme}
-                className="ml-2 sm:ml-8 flex"
+                className="top-nav-switcher-landing"
               />
 
               <button
+                type="button"
                 onClick={toggleAudioIndicator}
-                className="ml-2 sm:ml-8 flex items-center space-x-0.5"
+                className="top-nav-audio-btn"
+                aria-label="Toggle background audio"
               >
                 <audio
                   ref={audioElementRef}
@@ -335,11 +350,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
               {/* Mobile Navigation Drawer Toggle Button */}
               <button
+                type="button"
                 onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-                className="ml-2.5 p-2 rounded-xl bg-secondary/80 border border-border text-foreground md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] shadow-sm active:scale-95 transition-all"
+                className="top-nav-drawer-toggle-btn"
                 aria-label="Toggle Navigation Menu"
               >
-                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
             </div>
           </nav>
@@ -347,7 +363,26 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 mt-2 p-5 rounded-2xl bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl z-50 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="top-nav-mobile-drawer">
+            {/* Audio Toggle in Mobile Drawer */}
+            <div className="top-nav-mobile-audio-row">
+              <span className="text-xs font-semibold text-secondary">Am Thanh Nền</span>
+              <button
+                type="button"
+                onClick={toggleAudioIndicator}
+                className="top-nav-mobile-audio-button"
+              >
+                <span className="text-xs text-muted-foreground mr-1">{isAudioPlaying ? 'Bật' : 'Tắt'}</span>
+                {[1, 2, 3, 4].map((bar) => (
+                  <div
+                    key={bar}
+                    className={clsx('indicator-line', { active: isIndicatorActive })}
+                    style={{ animationDelay: `${bar * 0.1}s`, ['--animation-order' as any]: bar }}
+                  />
+                ))}
+              </button>
+            </div>
+
             {localizedNavItems.map((item, index) => {
               const handleClick = (e: React.MouseEvent) => {
                 e.preventDefault();
@@ -369,7 +404,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <div
                   key={index}
                   onClick={handleClick}
-                  className="px-4 py-3 rounded-xl bg-secondary/50 border border-border/60 font-bold text-sm text-foreground flex items-center justify-between cursor-pointer min-h-[44px] active:bg-secondary transition-colors"
+                  className="top-nav-mobile-drawer-item"
                 >
                   <span>{item.label}</span>
                   <ChevronRight size={16} className="text-muted-foreground" />
@@ -377,6 +412,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               );
             })}
           </div>
+        )}
+
+        {/* Backdrop for landing mobile drawer */}
+        {isMobileMenuOpen && (
+          <div
+            className="top-nav-backdrop-overlay"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
         )}
 
         {/* Guest Auth Invitation Modal */}
@@ -394,12 +437,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   // STANDARD APPLICATION TOP NAV
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className={`fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 h-16 border-none landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300 ${isAnyDropdownOpen ? 'z-[100] top-nav-menu-open' : 'z-[45]'}`}>
+    <div className={`top-nav-standard-container landing-nav-container floating-nav ${isAnyDropdownOpen ? 'top-nav-menu-open z-[100]' : 'z-[45]'}`}>
       {/* Hamburger Menu Button - Show on both mobile and desktop when logged in */}
       {showMenuButton && (
         <button
           onClick={onMenuClick}
-          className="p-2 rounded-lg transition-all hover:bg-white/10 glass-button"
+          className="top-nav-icon-btn glass-button"
           aria-label="Toggle sidebar"
         >
           <Menu size={20} className="text-muted" />
@@ -407,18 +450,18 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       )}
 
       {/* Logo */}
-      <div className="flex items-center gap-2 cursor-pointer flex-shrink-0" onClick={() => navigate('/')}>
+      <div className="top-nav-app-logo" onClick={() => navigate('/')}>
         <img
           src="/img/logo.png"
           alt="GigBridge Logo"
           width={32}
           height={32}
-          className="w-8 h-8 rounded-lg object-cover"
+          className="top-nav-logo-img"
         />
-        <span className="text-primary font-bold text-lg hidden sm:block">GigBridge</span>
+        <span className="top-nav-app-logo-text">GigBridge</span>
       </div>
 
-      {/* Search Bar */}
+      {/* Desktop Search Bar */}
       {!isLandingMode && (
         <TopNavSearch
           value={searchVal}
@@ -432,9 +475,27 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         />
       )}
 
+      {/* Mobile Search Button (< md) */}
+      {!isLandingMode && (
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileSearchOpen(prev => !prev);
+            setShowUserMenu(false);
+            setShowNotifs(false);
+            setShowWalletMenu(false);
+            setShowSearchScopeMenu(false);
+          }}
+          className="top-nav-mobile-search-btn glass-button"
+          aria-label="Toggle search bar"
+        >
+          <Search size={18} />
+        </button>
+      )}
+
       {/* Nav Links (Guest) */}
       {isLandingMode && (
-        <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
+        <nav className="top-nav-guest-links desktop-nav-links">
           {[
             { label: 'How It Works', path: '/guide' },
             { label: 'Browse Jobs', path: '/jobs/browse' },
@@ -449,53 +510,56 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         </nav>
       )}
 
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="top-nav-right-tools">
         {user && role !== 2 && !premiumStatus.loading && (
-          <button
-            type="button"
-            className={premiumStatus.isPremium ? 'top-nav-premium-active' : 'top-nav-get-premium'}
-            onClick={() => {
-              if (premiumStatusUnavailable) {
-                void premiumStatus.refresh();
-                return;
-              }
-              navigate(
-                role === 0
-                  ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
-                  : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing'
-              );
-            }}
-          >
-            {premiumStatusUnavailable ? (
-              <>
-                <RotateCw size={15} />
-                <span className="hidden sm:inline">Retry Status</span>
-                <span className="sm:hidden">Retry</span>
-              </>
-            ) : premiumStatus.isPremium ? (
-              <>
-                {/* Crown Badge on the top-right corner edge of the border, matching UserAvatar */}
-                <span className="top-nav-crown-badge-corner" aria-hidden="true">
-                  <Crown size={10} strokeWidth={2.5} className="fill-[var(--brand,#494be7)] text-[var(--brand,#494be7)]" />
-                </span>
-                <span className="hidden sm:inline">Premium Member</span>
-                <span className="sm:hidden">Premium</span>
-              </>
-            ) : (
-              <>
-                <Crown size={15} />
-                <span className="hidden sm:inline">Get Premium Now</span>
-                <span className="sm:hidden">Get PRO</span>
-              </>
-            )}
-          </button>
+          premiumStatusUnavailable ? (
+            <button
+              type="button"
+              className="top-nav-get-premium top-nav-desktop-only"
+              onClick={() => { void premiumStatus.refresh(); }}
+            >
+              <RotateCw size={15} />
+              <span className="hidden sm:inline">Retry Status</span>
+              <span className="sm:hidden">Retry</span>
+            </button>
+          ) : premiumStatus.isPremium ? (
+            <div className="relative inline-flex items-center top-nav-desktop-only">
+              <div className="top-nav-premium-conic-pill">
+                <button
+                  type="button"
+                  className="top-nav-premium-active-btn"
+                  onClick={() => {
+                    navigate(role === 0 ? '/premium/client' : '/premium/freelancer');
+                  }}
+                >
+                  <span className="hidden sm:inline">Premium Member</span>
+                  <span className="sm:hidden">Premium</span>
+                </button>
+              </div>
+              <span className="top-nav-crown-badge-corner" aria-hidden="true">
+                <Crown size={10} strokeWidth={2.5} className="fill-white text-white" />
+              </span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="top-nav-get-premium top-nav-desktop-only"
+              onClick={() => {
+                navigate(role === 0 ? '/premium/client/pricing' : '/premium/freelancer/pricing');
+              }}
+            >
+              <Crown size={15} />
+              <span className="hidden sm:inline">Get Premium Now</span>
+              <span className="sm:hidden">Get PRO</span>
+            </button>
+          )
         )}
         {/* Wallet Balance Dropdown */}
         {user && role !== 2 && (
-          <div className="relative">
+          <div className="relative top-nav-desktop-only">
             <button
               onClick={() => { setShowWalletMenu(!showWalletMenu); setShowNotifs(false); setShowUserMenu(false); setShowSearchScopeMenu(false); }}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all glass-button"
+              className="top-nav-wallet-trigger glass-button"
               title={t('wallet.depositedTooltip')}
               aria-label={t('wallet.depositedTooltip')}
             >
@@ -505,7 +569,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             </button>
 
             {showWalletMenu && (
-              <div className="absolute right-0 top-12 w-56 rounded-2xl p-2 z-50 dropdown-menu">
+              <div className="top-nav-wallet-dropdown dropdown-menu">
                 <div className="px-3 py-2 mb-1">
                   <p className="text-xs text-muted">{t('wallet.depositedBalance')}</p>
                   <div className="flex items-center gap-1">
@@ -515,33 +579,33 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 </div>
                 <div className="h-px mb-1 dropdown-divider" />
 
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                <button className="top-nav-dropdown-item"
                   onClick={() => { navigate('/wallet/deposit'); setShowWalletMenu(false); }}>
                   <GigCoinLogo size={14} />
                   <span>{t('wallet.deposit')}</span>
                 </button>
 
                 {role === 1 && (
-                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                  <button className="top-nav-dropdown-item"
                     onClick={() => { navigate('/wallet/withdrawals'); setShowWalletMenu(false); }}>
                     <Banknote size={14} />
                     <span>{t('wallet.withdraw')}</span>
                   </button>
                 )}
 
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                <button className="top-nav-dropdown-item"
                   onClick={() => { navigate(role === 1 ? '/premium/freelancer/pricing' : '/premium/client/pricing'); setShowWalletMenu(false); }}>
                   <CreditCard size={14} />
                   {t('nav.subscription')}
                 </button>
 
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                <button className="top-nav-dropdown-item"
                   onClick={() => { navigate('/financial-overview'); setShowWalletMenu(false); }}>
                   <TrendingUp size={14} />
                   {t('nav.financialOverview')}
                 </button>
 
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                <button className="top-nav-dropdown-item"
                   onClick={() => { navigate('/wallet/history'); setShowWalletMenu(false); }}>
                   <History size={14} />
                   {t('wallet.history')}
@@ -552,43 +616,44 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         )}
 
         {/* Notifications Dropdown Component */}
-        <TopNavNotificationDropdown
-          user={user}
-          isOpen={showNotifs}
-          onToggle={() => {
-            setShowNotifs(!showNotifs);
-            setShowUserMenu(false);
-            setShowWalletMenu(false);
-            setShowSearchScopeMenu(false);
-          }}
-          onClose={() => setShowNotifs(false)}
-        />
+        <div className="top-nav-desktop-only relative">
+          <TopNavNotificationDropdown
+            user={user}
+            isOpen={showNotifs}
+            onToggle={() => {
+              setShowNotifs(!showNotifs);
+              setShowUserMenu(false);
+              setShowWalletMenu(false);
+              setShowSearchScopeMenu(false);
+            }}
+            onClose={() => setShowNotifs(false)}
+          />
+        </div>
 
         {/* Messages Icon (Positioned immediately to the right of Notifications Bell) */}
         {user ? (
           <button
             onClick={() => { setShowNotifs(false); setShowUserMenu(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); navigate('/messages'); }}
-            className="p-2 rounded-lg transition-all relative glass-button"
+            className="top-nav-messages-btn glass-button top-nav-desktop-only"
             title={t('nav.messages', { defaultValue: 'Messages' })}
             aria-label={t('nav.messages', { defaultValue: 'Messages' })}
           >
             <MessageSquare size={16} className={unreadMessagesCount > 0 ? 'text-[var(--brand)]' : 'text-muted'} />
             {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white shadow-sm ring-2 ring-background animate-in zoom-in duration-200">
+              <span className="top-nav-badge">
                 {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
               </span>
             )}
           </button>
         ) : null}
 
-
-
         {/* User Menu / Auth Buttons */}
         {user ? (
           <div className="relative">
             <button
               onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }}
-              className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-all glass-button"
+              className="top-nav-user-trigger"
+              aria-label="User Menu"
             >
               <UserAvatar
                 name={user.full_name || `${user.first_name} ${user.last_name}`}
@@ -597,15 +662,13 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 premium={premiumStatus.isPremium}
                 size="sm"
               />
-              <span className={`text-primary text-sm font-medium hidden md:block ${premiumStatus.isPremium ? 'premium-user-name' : ''}`}>{user.first_name}</span>
-              <ChevronDown size={14} className="text-muted" />
             </button>
 
             {showUserMenu && (
-              <div className="absolute right-0 top-12 w-64 rounded-2xl p-2.5 z-50 dropdown-menu shadow-2xl border border-white/10">
+              <div className="top-nav-user-dropdown dropdown-menu">
                 {/* User Profile Info Card */}
                 <div
-                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer flex items-center gap-3 mb-2 border border-white/10 group"
+                  className="top-nav-user-card group"
                   onClick={() => {
                     const path = getProfilePath(user.id, role);
                     if (path) navigate(path);
@@ -635,10 +698,156 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
                 <div className="h-px mb-1 dropdown-divider" />
 
+                {/* Mobile / Tablet Collapsed User Tools (< 1024px) */}
+                <div className="top-nav-mobile-tools">
+                  {/* Wallet Balance Item with Expandable Submenu */}
+                  {role !== 2 && (
+                    <div className="flex flex-col">
+                      <button
+                        type="button"
+                        className="top-nav-dropdown-item justify-between"
+                        onClick={() => setIsMobileWalletExpanded(prev => !prev)}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <GigCoinLogo size={14} />
+                          <span className="truncate">{t('wallet.title', { defaultValue: 'Wallet' })}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <span className="text-xs font-bold text-[var(--gb-amber,#f59e0b)]">
+                            {formatGigCoinNumber(walletBalance)} G
+                          </span>
+                          <ChevronDown
+                            size={14}
+                            className={clsx('text-muted transition-transform duration-200', isMobileWalletExpanded && 'rotate-180')}
+                          />
+                        </div>
+                      </button>
+
+                      {/* Wallet Sub-options when expanded */}
+                      {isMobileWalletExpanded && (
+                        <div className="flex flex-col pl-3 py-1 space-y-0.5 border-l border-white/10 ml-3 my-1">
+                          <button
+                            type="button"
+                            className="top-nav-dropdown-item py-1.5 text-xs"
+                            onClick={() => { navigate('/wallet/deposit'); setShowUserMenu(false); }}
+                          >
+                            <GigCoinLogo size={14} />
+                            <span>{t('wallet.deposit')}</span>
+                          </button>
+
+                          {role === 1 && (
+                            <button
+                              type="button"
+                              className="top-nav-dropdown-item py-1.5 text-xs"
+                              onClick={() => { navigate('/wallet/withdrawals'); setShowUserMenu(false); }}
+                            >
+                              <Banknote size={14} />
+                              <span>{t('wallet.withdraw')}</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="top-nav-dropdown-item py-1.5 text-xs"
+                            onClick={() => { navigate(role === 1 ? '/premium/freelancer/pricing' : '/premium/client/pricing'); setShowUserMenu(false); }}
+                          >
+                            <CreditCard size={14} />
+                            <span>{t('nav.subscription')}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="top-nav-dropdown-item py-1.5 text-xs"
+                            onClick={() => { navigate('/financial-overview'); setShowUserMenu(false); }}
+                          >
+                            <TrendingUp size={14} />
+                            <span>{t('nav.financialOverview')}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="top-nav-dropdown-item py-1.5 text-xs"
+                            onClick={() => { navigate('/wallet/history'); setShowUserMenu(false); }}
+                          >
+                            <History size={14} />
+                            <span>{t('wallet.history')}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Messages Item */}
+                  <button
+                    type="button"
+                    className="top-nav-dropdown-item justify-between"
+                    onClick={() => { navigate('/messages'); setShowUserMenu(false); }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <MessageSquare size={14} className="shrink-0" />
+                      <span className="truncate">{t('nav.messages', { defaultValue: 'Messages' })}</span>
+                    </div>
+                    {unreadMessagesCount > 0 && (
+                      <span className="top-nav-badge-inline">
+                        {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notifications Item */}
+                  <button
+                    type="button"
+                    className="top-nav-dropdown-item justify-between"
+                    onClick={() => {
+                      setShowNotifs(true);
+                      setShowUserMenu(false);
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Bell size={14} className="shrink-0" />
+                      <span className="truncate">{t('notifications.title', { defaultValue: 'Notifications' })}</span>
+                    </div>
+                  </button>
+
+                  {/* Get Premium / Premium Member Item */}
+                  {role !== 2 && !premiumStatus.loading && (
+                    <button
+                      type="button"
+                      className="top-nav-dropdown-item justify-between"
+                      onClick={() => {
+                        if (premiumStatusUnavailable) {
+                          void premiumStatus.refresh();
+                          return;
+                        }
+                        navigate(
+                          role === 0
+                            ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
+                            : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing'
+                        );
+                        setShowUserMenu(false);
+                      }}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Crown size={14} className="shrink-0" />
+                        <span className="truncate font-semibold">
+                          {premiumStatus.isPremium ? 'Premium Member' : 'Get Premium Now'}
+                        </span>
+                      </div>
+                      {!premiumStatus.isPremium && (
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shrink-0">
+                          PRO
+                        </span>
+                      )}
+                    </button>
+                  )}
+
+                  <div className="h-px my-1 dropdown-divider" />
+                </div>
+
                 {/* Profile Link Button */}
                 {(role === 0 || role === 1) && (
                   <button
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                    className="top-nav-dropdown-item"
                     onClick={() => {
                       const path = getProfilePath(user.id, role);
                       if (path) navigate(path);
@@ -651,7 +860,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 )}
 
                 <button
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                  className="top-nav-dropdown-item"
                   onClick={() => { navigate('/settings'); setShowUserMenu(false); }}
                 >
                   <Settings size={14} />
@@ -659,7 +868,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 </button>
 
                 {/* Theme and Language Switcher Capsule inside Dropdown */}
-                <div className="px-3 py-2 flex justify-center">
+                <div className="top-nav-dropdown-switcher-wrapper">
                   <CombinedThemeLanguageSwitcher
                     theme={theme}
                     setTheme={setTheme}
@@ -670,7 +879,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <div className="h-px my-1 dropdown-divider" />
 
                 <button
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 logout-button"
+                  className="top-nav-dropdown-item top-nav-logout-btn logout-button"
                   onClick={() => { logout('/'); setShowUserMenu(false); }}
                 >
                   <LogOut size={14} />
@@ -680,7 +889,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="top-nav-guest-auth-group">
             {/* Combined Theme and Language Switcher for Guest Users */}
             <CombinedThemeLanguageSwitcher
               theme={theme}
@@ -699,9 +908,46 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         )}
       </div>
 
+      {/* Mobile Search Overlay Panel */}
+      {!isLandingMode && isMobileSearchOpen && (
+        <div className="top-nav-search-overlay">
+          <div className="top-nav-search-card glass-card">
+            <form
+              className="flex-1 flex items-center gap-2 min-w-0"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearch();
+                setIsMobileSearchOpen(false);
+              }}
+            >
+              <Search size={16} className="text-muted shrink-0 ml-2" />
+              <input
+                type="search"
+                value={searchVal}
+                onChange={(e) => setSearchVal(e.target.value)}
+                placeholder={t('topNavSearch.placeholder')}
+                autoFocus
+                className="w-full bg-transparent text-sm text-primary focus:outline-none placeholder:text-muted py-1.5 min-w-0"
+              />
+              <button type="submit" className="btn-cyan text-xs px-3 py-1.5 rounded-lg shrink-0 font-medium">
+                {t('common.search', { defaultValue: 'Search' })}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={() => setIsMobileSearchOpen(false)}
+              className="p-1.5 text-muted hover:text-primary rounded-lg shrink-0"
+              aria-label="Close mobile search"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Click outside to close menus */}
-      {(showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }} />
+      {(showUserMenu || showNotifs || showWalletMenu || showSearchScopeMenu || isMobileSearchOpen) && (
+        <div className="top-nav-backdrop-overlay" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); setIsMobileSearchOpen(false); }} />
       )}
 
       {/* Guest Auth Invitation Modal */}
