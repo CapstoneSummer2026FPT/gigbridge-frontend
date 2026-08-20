@@ -441,7 +441,11 @@
       "fileTooLarge": "Kích thước tệp vượt quá giới hạn 10 MB.",
       "unsupportedFormat": "Định dạng tệp không được hỗ trợ. Vui lòng tải .docx, .pdf, .txt hoặc .md.",
       "parsingFailed": "Không thể đọc tài liệu. Vui lòng kiểm tra lại tệp.",
-      "pdfPageLimit": "File PDF vượt quá 15 trang; đã trích xuất 15 trang đầu tiên."
+      "pdfPageLimit": "File PDF vượt quá 15 trang; đã trích xuất 15 trang đầu tiên.",
+      "trimNoticeTitle": "Thông báo cắt bớt tài liệu",
+      "trimNoticeDesc": "Các tài liệu bạn đính kèm có tổng cộng {{total}} ký tự. Để đảm bảo AI xử lý tối ưu, nội dung sẽ được tự động cắt bớt còn 15.000 ký tự đầu tiên.",
+      "trimNoticeAgree": "Đồng ý & Tiếp tục",
+      "trimNoticeCancel": "Hủy & Chỉnh sửa tệp"
     }
   },
   "postJobAI": {

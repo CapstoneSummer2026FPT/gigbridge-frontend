@@ -444,7 +444,11 @@
       "fileTooLarge": "File size exceeds 10 MB limit.",
       "unsupportedFormat": "Unsupported file format. Please upload .docx, .pdf, .txt, or .md.",
       "parsingFailed": "Could not read document. Please check the file and try again.",
-      "pdfPageLimit": "PDF exceeds 15 page limit; extracted first 15 pages."
+      "pdfPageLimit": "PDF exceeds 15 page limit; extracted first 15 pages.",
+      "trimNoticeTitle": "Document Trim Notice",
+      "trimNoticeDesc": "Your attached specification documents contain a total of {{total}} characters. To ensure optimal AI processing, the content will be automatically trimmed to the first 15,000 characters.",
+      "trimNoticeAgree": "Agree & Continue",
+      "trimNoticeCancel": "Cancel & Edit Files"
     }
   },
   "postJobAI": {

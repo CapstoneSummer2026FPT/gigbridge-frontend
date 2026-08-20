@@ -2,6 +2,7 @@ import { useState, type FormEvent, useRef, useEffect } from 'react';
 import { Crown, Sparkles, LoaderCircle, ArrowUp, Code2, Palette, PenTool, Eraser, X, Paperclip, FileText, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { parseJobDocument, combineAndTrimJobDocuments } from '../utils/documentParser';
+import { PostJobTrimWarningModal } from './PostJobTrimWarningModal';
 
 interface Props {
   isPremium: boolean;
@@ -45,6 +46,9 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
 
+  const [isTrimModalOpen, setIsTrimModalOpen] = useState(false);
+  const [hasConfirmedTrim, setHasConfirmedTrim] = useState(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,6 +83,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
 
       if (newItems.length > 0) {
         setAttachedFiles(prev => [...prev, ...newItems]);
+        setHasConfirmedTrim(false);
       }
     } catch (err: any) {
       if (err.message === 'FILE_TOO_LARGE') {
@@ -99,20 +104,22 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
   const removeAttachment = (fileName: string) => {
     setAttachedFiles(prev => prev.filter(f => f.name !== fileName));
     setParseError(null);
+    setHasConfirmedTrim(false);
   };
 
   const clearAllAttachments = () => {
     setAttachedFiles([]);
     setParseError(null);
+    setHasConfirmedTrim(false);
   };
 
   const combinedDocs = combineAndTrimJobDocuments(
     attachedFiles.map(f => ({ fileName: f.name, text: f.text }))
   );
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!isPremium || isLoading || isParsingDoc) return;
+  const rawTotalCharCount = attachedFiles.reduce((acc, f) => acc + f.charCount, 0);
+
+  const executeGeneration = async () => {
     const trimmedPrompt = prompt.trim();
     if (!trimmedPrompt && !combinedDocs.text) return;
 
@@ -123,16 +130,37 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
     await onGenerate(finalPrompt);
   };
 
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!isPremium || isLoading || isParsingDoc) return;
+    const trimmedPrompt = prompt.trim();
+    if (!trimmedPrompt && !combinedDocs.text) return;
+
+    if (rawTotalCharCount > 15000 && !hasConfirmedTrim) {
+      setIsTrimModalOpen(true);
+      return;
+    }
+
+    await executeGeneration();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if ((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc && isPremium) {
-        const finalPrompt = combinedDocs.text
-          ? `${prompt.trim()}\n\n${combinedDocs.text}`.trim()
-          : prompt.trim();
-        void onGenerate(finalPrompt);
+        if (rawTotalCharCount > 15000 && !hasConfirmedTrim) {
+          setIsTrimModalOpen(true);
+          return;
+        }
+        void executeGeneration();
       }
     }
+  };
+
+  const handleConfirmTrimModal = () => {
+    setHasConfirmedTrim(true);
+    setIsTrimModalOpen(false);
+    void executeGeneration();
   };
 
   const canSubmit = Boolean((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc);
@@ -320,6 +348,14 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
               </div>
             </div>
           </form>
+
+          {/* Document Trim Confirmation Modal */}
+          <PostJobTrimWarningModal
+            isOpen={isTrimModalOpen}
+            totalCharCount={rawTotalCharCount}
+            onConfirmTrim={handleConfirmTrimModal}
+            onCancel={() => setIsTrimModalOpen(false)}
+          />
         </div>
       )}
     </div>
