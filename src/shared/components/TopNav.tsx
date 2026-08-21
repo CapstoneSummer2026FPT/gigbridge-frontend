@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { ChevronDown, LogOut, Settings, Menu, X, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare, Search, Bell } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, Menu, X, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare, Search, Bell, ArrowRight, UsersRound, BriefcaseBusiness } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -906,36 +906,116 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       {/* Mobile Search Overlay Panel */}
       {!isLandingMode && isMobileSearchOpen && (
         <div className="top-nav-search-overlay">
-          <div className="top-nav-search-card glass-card">
+          <div className="top-nav-search-card flex flex-col gap-3">
+            {/* Header: Scope Switcher + Clean Close Action */}
+            <div className="flex items-center justify-between gap-2">
+              {user && (role === 0 || role === 1) ? (
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--surface-muted)] border border-[var(--border)] flex-1 max-w-[16rem]">
+                  <button
+                    type="button"
+                    onClick={() => setSearchScope(TOP_NAV_SEARCH_SCOPE.Talent)}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      searchScope === TOP_NAV_SEARCH_SCOPE.Talent
+                        ? 'bg-[var(--brand)] text-white shadow-sm'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <UsersRound size={13} />
+                    <span>{t('topNavSearch.talent')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchScope(TOP_NAV_SEARCH_SCOPE.Jobs)}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      searchScope === TOP_NAV_SEARCH_SCOPE.Jobs
+                        ? 'bg-[var(--brand)] text-white shadow-sm'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <BriefcaseBusiness size={13} />
+                    <span>{t('topNavSearch.jobs')}</span>
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] px-1">
+                  {t('topNavSearch.search')}
+                </span>
+              )}
+
+              {/* Close Button - Clean Text Pill */}
+              <button
+                type="button"
+                onClick={() => setIsMobileSearchOpen(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] border border-[var(--border)] transition-colors shrink-0"
+                aria-label="Close mobile search"
+              >
+                {t('topNavSearch.close', { defaultValue: 'Close' })}
+              </button>
+            </div>
+
+            {/* Input Bar */}
             <form
-              className="flex-1 flex items-center gap-2 min-w-0"
+              className="flex items-center gap-2 w-full"
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSearch();
                 setIsMobileSearchOpen(false);
               }}
             >
-              <Search size={16} className="text-muted shrink-0 ml-2" />
-              <input
-                type="search"
-                value={searchVal}
-                onChange={(e) => setSearchVal(e.target.value)}
-                placeholder={t('topNavSearch.placeholder')}
-                autoFocus
-                className="w-full bg-transparent text-sm text-primary focus:outline-none placeholder:text-muted py-1.5 min-w-0"
-              />
-              <button type="submit" className="btn-cyan text-xs px-3 py-1.5 rounded-lg shrink-0 font-medium">
-                {t('common.search', { defaultValue: 'Search' })}
+              <div className="flex items-center flex-1 min-w-0 bg-[var(--surface-muted)] rounded-full px-3.5 py-2 border border-[var(--border-strong)] focus-within:border-[var(--brand)] transition-all">
+                <Search size={16} className="text-[var(--brand)] shrink-0 mr-2.5" />
+                <input
+                  type="text"
+                  value={searchVal}
+                  onChange={(e) => setSearchVal(e.target.value)}
+                  placeholder={t('topNavSearch.placeholder')}
+                  autoFocus
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full bg-transparent text-sm text-[var(--text-primary)] focus:outline-none placeholder:text-[var(--text-muted)] py-0 min-w-0"
+                />
+                {/* Single Clear Text Button */}
+                {searchVal && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchVal('')}
+                    className="w-5 h-5 rounded-full bg-[var(--surface-hover)] hover:bg-[var(--destructive)] hover:text-white text-[var(--text-muted)] flex items-center justify-center shrink-0 transition-colors"
+                    aria-label="Clear text"
+                  >
+                    <X size={12} strokeWidth={2.5} />
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="gb-search-submit-btn !w-10 !h-10 shrink-0"
+                aria-label={t('topNavSearch.search')}
+                title={t('topNavSearch.search')}
+              >
+                <ArrowRight size={15} strokeWidth={2.5} />
               </button>
             </form>
-            <button
-              type="button"
-              onClick={() => setIsMobileSearchOpen(false)}
-              className="p-1.5 text-muted hover:text-primary rounded-lg shrink-0"
-              aria-label="Close mobile search"
-            >
-              <X size={16} />
-            </button>
+
+            {/* Quick Category Chips on Mobile */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {(searchScope === TOP_NAV_SEARCH_SCOPE.Talent
+                ? ['UI/UX Designer', 'React & Next.js', 'AI Engineer', 'Mobile Flutter']
+                : ['Frontend Developer', 'Smart Contracts', 'Node.js Backend', 'Product Designer']
+              ).map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    setSearchVal(tag);
+                    navigate(getTopNavSearchPath(searchScope, tag));
+                    setIsMobileSearchOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface-muted)] hover:bg-[var(--surface-hover)] border border-[var(--border)] hover:border-[var(--brand)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
