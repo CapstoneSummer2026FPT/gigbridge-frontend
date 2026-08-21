@@ -34,6 +34,7 @@ import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
+import { useESignDocumentChangedEvent } from '../hooks/useESignDocumentChangedEvent';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
@@ -274,18 +275,15 @@ export default function SignatureWorkflowScreen() {
   );
 
   useEffect(() => {
-    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
+if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
 
-    const intervalId = window.setInterval(() => {
-      if (window.document.visibilityState === 'visible') {
-        void refreshWorkflow();
-      }
-    }, ESIGN_STATUS_FALLBACK_POLL_MS);
+const intervalId = window.setInterval(() => {
+  if (window.document.visibilityState === 'visible') {
+    void refreshWorkflow();
+  }
+}, ESIGN_STATUS_FALLBACK_POLL_MS);
 
-    return () => window.clearInterval(intervalId);
-  }, [isWaitingForCounterpart, refreshWorkflow, signatureStep]);
-
-  useEffect(() => {
+return () => window.clearInterval(intervalId);
     const fetchContractDetails = async () => {
       if (!contractId) {
         setError('contracts.invalidId');
@@ -525,6 +523,29 @@ export default function SignatureWorkflowScreen() {
     return nextStatus;
   }, [contractId, loadDocument]);
 
+const handleDocumentChangedDuringSigning = useCallback((): void => {
+  if (signatureStep !== 'complete') return;
+  if (isWaitingForCounterpart) {
+    void refreshWorkflow();
+  } else if (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature) {
+    void refreshAfterSigning();
+  }
+}, [
+  contract?.status,
+  hasValidCurrentUserDraft,
+  isWaitingForCounterpart,
+  refreshAfterSigning,
+  refreshWorkflow,
+  signatureStep,
+]);
+
+useESignDocumentChangedEvent(
+  contractId,
+  signatureStep === 'complete' &&
+    (isWaitingForCounterpart ||
+      (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
+  handleDocumentChangedDuringSigning,
+);
   const handleSubmitSignature = async () => {
     if (!contract || !hasSignatureForDraft) return;
     if (submittingRef.current || signingInProgress) return;

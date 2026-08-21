@@ -140,6 +140,7 @@ interface PostJobDraftOverrides {
   questions?: QuestionInput[];
   milestonePlans?: JobPostMilestonePlanDto[];
   visibility?: JobPostVisibility;
+  hasAiInterview?: boolean;
 }
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
@@ -303,6 +304,7 @@ export function usePostJob() {
   });
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [pendingGeneratedDetails, setPendingGeneratedDetails] = useState<GenerateJobDescriptionDetailsResponse | null>(null);
+  const [aiGenerationSource, setAiGenerationSource] = useState<'prompt' | 'document'>('prompt');
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isHiringPlanGenerated, setIsHiringPlanGenerated] = useState(() => {
     return (location.state as any)?.hiringPlanGenerated ?? false;
@@ -342,6 +344,9 @@ export function usePostJob() {
   const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
     withoutWorkBreakdownItems(initialJobData?.milestonePlans || []));
   const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
+  const [hasAiInterview, setHasAiInterview] = useState<boolean>(() =>
+    Boolean(initialJobData?.hasAiInterview)
+  );
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
@@ -821,7 +826,8 @@ export function usePostJob() {
     setDraggedIndex(null);
   };
 
-  const handleGenerateInstantJob = async (prompt?: string) => {
+  const handleGenerateInstantJob = async (prompt?: string, sourceType: 'prompt' | 'document' = 'prompt') => {
+    setAiGenerationSource(sourceType);
     let promptText = typeof prompt === 'string' ? prompt.trim() : '';
 
     if (!promptText) {
@@ -1176,6 +1182,7 @@ export function usePostJob() {
         orderIndex,
         workItems: [],
       })),
+      hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
     };
   };
 
@@ -1189,6 +1196,7 @@ export function usePostJob() {
     skillNameById,
     interviewQuestions: (overrides?.questions || questions).map((question, index) => ({ ...question, orderIndex: index })),
     attachments,
+    hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
   });
 
   const buildNavigationState = (
@@ -1739,11 +1747,14 @@ export function usePostJob() {
     isJobDetailsGenerated,
     isGeneratingInstant,
     handleGenerateInstantJob,
+    aiGenerationSource,
     isReviewModalOpen,
     pendingGeneratedDetails,
     isGeneratingPlan,
     backgroundHiringPlanError,
     handleApproveDetails,
     handleCancelDetails,
+    hasAiInterview,
+    setHasAiInterview,
   };
 }
