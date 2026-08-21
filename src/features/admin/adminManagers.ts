@@ -1,19 +1,15 @@
 import {
   Activity,
-  Banknote,
   BarChart3,
   Bell,
   Briefcase,
   FileCheck2,
-  FileQuestion,
   FileText,
   Flag,
-  Gauge,
   HelpCircle,
   History,
   Layers,
   LayoutDashboard,
-  Settings,
   Shield,
   ShieldAlert,
   Star,
@@ -41,7 +37,7 @@ export interface AdminManagerDefinition {
   group: AdminManagerGroup;
   showInNavigation: boolean;
   showOnDashboard: boolean;
-  parentId?: 'reports' | 'elo';
+  parentId?: 'reports';
 }
 
 export const ADMIN_GROUPS: ReadonlyArray<{
@@ -65,6 +61,7 @@ export const ADMIN_MANAGERS: readonly AdminManagerDefinition[] = [
 
   // 2. User Management
   { id: 'users', labelKey: 'nav.allUsers', fallbackLabel: 'Quản Lý Người Dùng', descriptionKey: 'adminDashboard.descriptions.users', fallbackDescription: 'Review profiles, access, reports, and enforcement history', path: '/admin/users', icon: Users, group: 'users', showInNavigation: true, showOnDashboard: true },
+  { id: 'elo-history', labelKey: 'adminElo.navHistory', fallbackLabel: 'Lịch Sử Điểm Elo', descriptionKey: 'adminDashboard.descriptions.eloHistory', fallbackDescription: 'Inspect every Elo transaction across the platform', path: '/admin/elo/history', icon: History, group: 'users', showInNavigation: true, showOnDashboard: true },
 
   // 3. Marketplace Workflows (Job -> Proposal -> Contract & E-sign -> Deliverable)
   { id: 'jobs', labelKey: 'nav.jobPosts', fallbackLabel: 'Bài Đăng Việc Làm', descriptionKey: 'adminDashboard.descriptions.jobs', fallbackDescription: 'Review job posts and their moderation state', path: '/admin/jobs', icon: Briefcase, group: 'marketplace', showInNavigation: true, showOnDashboard: true },
@@ -73,20 +70,15 @@ export const ADMIN_MANAGERS: readonly AdminManagerDefinition[] = [
   { id: 'esign', labelKey: 'adminNav.esign', fallbackLabel: 'Ký Kết Điện Tử', descriptionKey: 'adminDashboard.descriptions.esign', fallbackDescription: 'Review electronic agreement and signature state', path: '/admin/contracts/esign', icon: FileText, group: 'marketplace', showInNavigation: false, showOnDashboard: false },
   { id: 'assets', labelKey: 'adminNav.assets', fallbackLabel: 'Sản Phẩm Bàn Giao', descriptionKey: 'adminDashboard.descriptions.assets', fallbackDescription: 'Inspect platform deliverables and handoff assets', path: '/admin/assets', icon: Layers, group: 'marketplace', showInNavigation: true, showOnDashboard: true },
 
-  // 4. Financial Operations
-  { id: 'withdrawals', labelKey: 'nav.withdrawals', fallbackLabel: 'Yêu Cầu Rút Tiền', descriptionKey: 'adminDashboard.descriptions.withdrawals', fallbackDescription: 'Review and reconcile withdrawal requests', path: '/admin/withdrawals', icon: Banknote, group: 'finance', showInNavigation: true, showOnDashboard: true },
+  // 4. Financial Operations (empty / removed)
 
   // 5. Moderation, Disputes & Reputation
   { id: 'disputes', labelKey: 'nav.disputeManagement', fallbackLabel: 'Giải Quyết Tranh Chấp', descriptionKey: 'adminDashboard.descriptions.disputes', fallbackDescription: 'Resolve disputes using evidence and financial context', path: '/admin/disputes', icon: ShieldAlert, group: 'moderation', showInNavigation: true, showOnDashboard: true },
   { id: 'reports', labelKey: 'nav.reports', fallbackLabel: 'Báo Cáo Vi Phạm', descriptionKey: 'adminDashboard.descriptions.reports', fallbackDescription: 'Review account, job post, and review reports', path: '/admin/reports', icon: Flag, group: 'moderation', showInNavigation: true, showOnDashboard: true },
   { id: 'contract-reports', labelKey: 'adminNav.contractReports', fallbackLabel: 'Báo Cáo Hợp Đồng', descriptionKey: 'adminDashboard.descriptions.contractReports', fallbackDescription: 'Investigate contract execution reports', path: '/admin/reports/contracts', icon: Shield, group: 'moderation', showInNavigation: true, showOnDashboard: true, parentId: 'reports' },
   { id: 'reviews', labelKey: 'nav.reviewManagement', fallbackLabel: 'Quản Lý Đánh Giá', descriptionKey: 'adminDashboard.descriptions.reviews', fallbackDescription: 'Moderate platform reviews and related reports', path: '/admin/reviews', icon: Star, group: 'moderation', showInNavigation: true, showOnDashboard: true },
-  { id: 'elo', labelKey: 'adminElo.nav', fallbackLabel: 'Quản Lý Điểm Elo', descriptionKey: 'adminDashboard.descriptions.elo', fallbackDescription: 'Review Elo ledgers, resolve appeals, and configure dispute penalty', path: '/admin/elo', icon: Gauge, group: 'moderation', showInNavigation: true, showOnDashboard: true },
-  { id: 'elo-appeals', labelKey: 'adminElo.navAppeals', fallbackLabel: 'Khiếu Nại Điểm Elo', descriptionKey: 'adminDashboard.descriptions.eloAppeals', fallbackDescription: 'Review and resolve Elo point appeals', path: '/admin/elo/appeals', icon: FileQuestion, group: 'moderation', showInNavigation: true, showOnDashboard: true, parentId: 'elo' },
-  { id: 'elo-history', labelKey: 'adminElo.navHistory', fallbackLabel: 'Lịch Sử Điểm Elo', descriptionKey: 'adminDashboard.descriptions.eloHistory', fallbackDescription: 'Inspect every Elo transaction across the platform', path: '/admin/elo/history', icon: History, group: 'moderation', showInNavigation: true, showOnDashboard: true, parentId: 'elo' },
 
   // 6. System Configuration
-  { id: 'contract-templates', labelKey: 'nav.contractTemplates', fallbackLabel: 'Mẫu Hợp Đồng', descriptionKey: 'adminDashboard.descriptions.templates', fallbackDescription: 'Maintain reusable contract templates', path: '/admin/contract-templates', icon: Settings, group: 'configuration', showInNavigation: true, showOnDashboard: true },
   { id: 'faqs', labelKey: 'nav.faqManagement', fallbackLabel: 'Quản Lý FAQ & Trợ Giúp', descriptionKey: 'adminDashboard.descriptions.faqs', fallbackDescription: 'Maintain public help content', path: '/admin/faq-management', icon: HelpCircle, group: 'configuration', showInNavigation: true, showOnDashboard: true },
 
   // 7. System Monitoring & Tracking
