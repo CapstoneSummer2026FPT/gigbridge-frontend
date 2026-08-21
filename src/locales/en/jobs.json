@@ -456,6 +456,8 @@
       "dropzoneTitle": "Click or drop document here",
       "resizeHeight": "Drag up/down to adjust height",
       "resizeWidth": "Drag to adjust width",
+      "abort": "Stop generation",
+      "generationAborted": "AI generation cancelled.",
       "resizeCorner": "Drag corner to adjust size",
       "extractingText": "Extracting document text...",
       "documentAttached": "Document attached",
