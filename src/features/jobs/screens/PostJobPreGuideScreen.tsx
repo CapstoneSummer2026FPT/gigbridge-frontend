@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router';
 import {
   Sparkles, PenTool, CheckCircle,
   Lightbulb, ChevronRight, MessageSquare, BookOpen,
-  ArrowRight, ShieldAlert, BadgeInfo, LoaderCircle, LockKeyhole, RotateCw
+  ArrowRight, ShieldAlert, BadgeInfo, LoaderCircle, LockKeyhole, RotateCw, FileText
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -14,7 +14,7 @@ import '../../premium/styles/premium.css';
 
 export default function PostJobPreGuideScreen() {
   const navigate = useNavigate();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['jobs', 'common']);
   const { role } = useApp();
   const premiumStatus = usePremiumStatus(role);
   const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
@@ -155,6 +155,34 @@ export default function PostJobPreGuideScreen() {
                   className="text-xs text-muted-foreground leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: t('postJobGuide.guide1Desc') }}
                 />
+              </div>
+            </div>
+
+            {/* Guide Item: Document Autofill */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+                <FileText size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-1.5">{t('postJobGuide.guideAutofillTitle')}</h4>
+                <p
+                  className="text-xs text-muted-foreground leading-relaxed mb-3"
+                  dangerouslySetInnerHTML={{ __html: t('postJobGuide.guideAutofillDesc') }}
+                />
+                <div className="bg-muted/40 border border-border rounded-xl p-4">
+                  <p className="text-[11px] font-bold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Lightbulb size={12} className="text-emerald-500" />
+                    {t('postJobGuide.guideAutofillTipsTitle')}
+                  </p>
+                  <ul className="list-none space-y-2 text-[11px] text-muted-foreground">
+                    {(['guideAutofillTip1', 'guideAutofillTip2', 'guideAutofillTip3'] as const).map((key) => (
+                      <li key={key} className="flex gap-2 items-start">
+                        <span className="text-emerald-500 font-bold">•</span>
+                        <span dangerouslySetInnerHTML={{ __html: t(`postJobGuide.${key}`) }} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
 

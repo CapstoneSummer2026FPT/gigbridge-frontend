@@ -304,6 +304,7 @@ export function usePostJob() {
   });
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [pendingGeneratedDetails, setPendingGeneratedDetails] = useState<GenerateJobDescriptionDetailsResponse | null>(null);
+  const [aiGenerationSource, setAiGenerationSource] = useState<'prompt' | 'document'>('prompt');
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isHiringPlanGenerated, setIsHiringPlanGenerated] = useState(() => {
     return (location.state as any)?.hiringPlanGenerated ?? false;
@@ -825,7 +826,8 @@ export function usePostJob() {
     setDraggedIndex(null);
   };
 
-  const handleGenerateInstantJob = async (prompt?: string) => {
+  const handleGenerateInstantJob = async (prompt?: string, sourceType: 'prompt' | 'document' = 'prompt') => {
+    setAiGenerationSource(sourceType);
     let promptText = typeof prompt === 'string' ? prompt.trim() : '';
 
     if (!promptText) {
@@ -1745,6 +1747,7 @@ export function usePostJob() {
     isJobDetailsGenerated,
     isGeneratingInstant,
     handleGenerateInstantJob,
+    aiGenerationSource,
     isReviewModalOpen,
     pendingGeneratedDetails,
     isGeneratingPlan,
