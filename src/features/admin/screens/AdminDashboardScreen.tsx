@@ -51,7 +51,6 @@ const queueDefinitions: Array<{
   { key: 'reports', path: '/admin/reports', fallback: 'Open reports', color: '#ef4444' },
   { key: 'contractReports', path: '/admin/reports/contracts', fallback: 'Contract reports', color: '#f59e0b' },
   { key: 'disputes', path: '/admin/disputes', fallback: 'Active disputes', color: '#8b5cf6' },
-  { key: 'withdrawals', path: '/admin/withdrawals', fallback: 'Withdrawal attention', color: '#0284c7' },
 ];
 
 function MetricTrend({ metric, days, label, newPeriodLabel }: { metric: AdminDashboardCountMetric; days: number; label: string; newPeriodLabel: string }) {
