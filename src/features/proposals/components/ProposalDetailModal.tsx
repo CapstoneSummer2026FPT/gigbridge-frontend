@@ -163,10 +163,10 @@ export function ProposalDetailModal({
       {/* Main Dialog Container matching Review Dialog style */}
       <div
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-[96vw] max-w-[1550px] h-[92vh] max-h-[960px] min-h-[650px] rounded-[2.25rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all"
+        className="relative z-10 w-[98vw] max-w-[1780px] h-[95vh] max-h-[1050px] min-h-[700px] rounded-[2.5rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all"
       >
         {/* ═══ LEFT COLUMN: Candidate Hero & Proposal Context ═══════════ */}
-        <div className="w-full lg:w-[310px] xl:w-[350px] p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
+        <div className="w-full lg:w-[340px] xl:w-[390px] p-6 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           {/* Top Header Eyebrow */}
