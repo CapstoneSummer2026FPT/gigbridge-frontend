@@ -8,6 +8,37 @@ export interface AISideBySideMilestoneMatrixProps {
   fullEvaluationJson?: string | null;
 }
 
+function parseDurationToWeeks(durationStr?: string | null): number {
+  if (!durationStr) return 0;
+  const lower = durationStr.toLowerCase().trim();
+  const numMatch = lower.match(/(\d+(\.\d+)?)/);
+  if (!numMatch) return 0;
+  const val = parseFloat(numMatch[1]);
+  if (lower.includes('month')) return val * 4;
+  if (lower.includes('day')) return val / 7;
+  if (lower.includes('week')) return val;
+  return val;
+}
+
+function sumMilestoneDurations(milestones: any[]): string | null {
+  if (!milestones || milestones.length === 0) return null;
+  let totalWeeks = 0;
+  let hasValid = false;
+  for (const m of milestones) {
+    const dur = m.estimatedDuration || m.estimated_duration;
+    if (dur) {
+      const w = parseDurationToWeeks(dur);
+      if (w > 0) {
+        totalWeeks += w;
+        hasValid = true;
+      }
+    }
+  }
+  if (!hasValid) return null;
+  const rounded = Math.round(totalWeeks * 10) / 10;
+  return rounded === 1 ? '1 week' : `${rounded} weeks`;
+}
+
 export function AISideBySideMilestoneMatrix({
   detail,
   proposal,
@@ -32,6 +63,7 @@ export function AISideBySideMilestoneMatrix({
   }
 
   const milestones = detail?.milestonePlans || [];
+  const milestoneSumDuration = sumMilestoneDurations(milestones);
 
   // Metrics for Financial & Timeline Comparison
   const baselineBudgetMax = jobBaseline?.budget_max || 0;
@@ -39,9 +71,19 @@ export function AISideBySideMilestoneMatrix({
     proposal?.proposedBudget || proposalOffer?.proposed_budget || detail?.proposedBudget || 0;
   const savingsRatioPercent =
     proposal?.aiSavingsRatioPercent ?? deterministic?.savings_ratio_percent ?? 0;
-  const baselineDuration = jobBaseline?.estimated_duration || '—';
+
+  const rawBaselineDuration = jobBaseline?.estimated_duration;
+  const baselineDuration =
+    rawBaselineDuration && rawBaselineDuration !== '—' && rawBaselineDuration !== 'null'
+      ? rawBaselineDuration
+      : milestoneSumDuration || 'Flexible / Unspecified';
+
+  const rawProposedDuration =
+    proposal?.proposedDuration || proposalOffer?.proposed_duration || detail?.proposedDuration;
   const proposedDuration =
-    proposal?.proposedDuration || proposalOffer?.proposed_duration || detail?.proposedDuration || '—';
+    rawProposedDuration && rawProposedDuration !== '—'
+      ? rawProposedDuration
+      : milestoneSumDuration || '—';
 
   // Metrics for Requirement Scope Fulfillment
   const totalReqs = requirementFulfillment.length;
@@ -129,7 +171,7 @@ export function AISideBySideMilestoneMatrix({
               <div className="bg-surface-muted/50 p-2.5 rounded-xl border border-border/40 text-center space-y-0.5">
                 <span className="block text-[9px] font-bold text-text-muted uppercase">Original Client Target</span>
                 <strong className="text-text-primary font-black text-xs block">
-                  {baselineDuration && baselineDuration !== '—' ? baselineDuration : 'Client Baseline Target'}
+                  {baselineDuration}
                 </strong>
               </div>
 

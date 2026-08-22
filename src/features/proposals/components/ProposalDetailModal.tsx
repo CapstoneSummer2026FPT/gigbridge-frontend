@@ -458,9 +458,23 @@ export function ProposalDetailModal({
 
 
 
-                  {/* Questions Breakdown */}
+                  {/* Questions Breakdown linked to Pillar 2 (Screening Q&A 30%) */}
                   {displayQuestions.length > 0 && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-2">
+                      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-surface-card p-3.5 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-[11px] text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                            ❓ Screening Q&A Accuracy & Reasoning (30%) Audit
+                          </span>
+                          <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                            Pillar 2 Evidence Source ({displayQuestions.length} câu hỏi sàng lọc)
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-text-muted font-medium">
+                          Bảng dưới đây liệt kê chi tiết từng câu hỏi sàng lọc, câu trả lời của ứng viên và điểm đối soát 5 tiêu chí kỹ thuật cấu thành nên điểm <strong>Screening Q&A (30% Weight)</strong>.
+                        </p>
+                      </div>
+
                       <h4 className="text-xs font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-2 flex items-center justify-between">
                         <span>{t('proposalAnswers.questionBreakdown', 'Chi tiết điểm từng câu hỏi & Feedback từ AI')}</span>
                         <span className="text-[11px] font-bold text-text-muted">
