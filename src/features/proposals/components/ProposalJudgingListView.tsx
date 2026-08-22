@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   Brain,
-  CheckCircle2,
-  XCircle,
   Sparkles,
   RefreshCw,
   Check,
@@ -483,30 +481,29 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                           </UserProfileLink>
                         </h3>
 
-                        {candidate.aiVerdictBadge === 'top_value' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/35 px-2.5 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400">
-                            🔥 Top Value Candidate
-                          </span>
-                        )}
-                        {candidate.aiVerdictBadge === 'top_technical' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/35 px-2.5 py-0.5 text-[10px] font-black text-purple-600 dark:text-purple-400">
-                            ⚡ Top Technical Expert
-                          </span>
-                        )}
-                        {candidate.aiVerdictBadge === 'budget_saver' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/35 px-2.5 py-0.5 text-[10px] font-black text-amber-600 dark:text-amber-400">
-                            💰 Budget Saver
-                          </span>
-                        )}
-                        {!candidate.aiVerdictBadge && candidate.aiRecommendedHire === true && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle2 size={11} /> AI Recommended
-                          </span>
-                        )}
-                        {candidate.aiRecommendedHire === false && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/12 border border-rose-500/25 px-2 py-0.5 text-[10px] font-black text-rose-600 dark:text-rose-400">
-                            <XCircle size={11} /> Not Recommended
-                          </span>
+                        {/* Prominent Recruiter Badges (Negotiation Verdict & Money Savings) */}
+                        {hasScore && (
+                          <>
+                            {/* 1. Negotiation Verdict Badge (Prominent) */}
+                            {(candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60) ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-500/20 to-pink-500/20 border-2 border-rose-500/40 px-3.5 py-1 text-xs font-black text-rose-600 dark:text-rose-400 shadow-2xs">
+                                🚫 Not Worth Negotiating
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-2 border-emerald-500/40 px-3.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400 shadow-2xs">
+                                🤝 Worth Negotiating
+                              </span>
+                            )}
+
+                            {/* 2. Money Savings Pill (Prominent) */}
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3.5 py-1 text-xs font-black shadow-2xs ${
+                              (candidate.aiSavingsRatioPercent ?? 0) > 0
+                                ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-surface-muted border-border/80 text-text-muted'
+                            }`}>
+                              {(candidate.aiSavingsRatioPercent ?? 0) > 0 ? `🔥 Save ${(candidate.aiSavingsRatioPercent ?? 0).toFixed(1)}%` : '💰 0% Savings'}
+                            </span>
+                          </>
                         )}
                       </div>
 
@@ -519,13 +516,31 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                         Nộp: {new Date(candidate.submittedAt).toLocaleDateString('vi-VN')}
                       </p>
 
-                      {/* AI Summary */}
+                      {/* Clean AI Executive Summary for Recruiters - Larger & Easy to Read */}
                       {candidate.aiSummary ? (
-                        <p className="text-[11px] text-text-primary/90 leading-relaxed italic bg-purple-500/5 px-3 py-2 rounded-xl border border-purple-500/10 whitespace-pre-wrap">
-                          "{candidate.aiSummary}"
-                        </p>
+                        <div className={`rounded-xl border p-3.5 space-y-1 text-xs sm:text-sm leading-relaxed shadow-2xs ${
+                          (candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60)
+                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-100 font-semibold'
+                            : 'border-purple-500/30 bg-purple-500/10 text-purple-950 dark:text-purple-100 font-medium'
+                        }`}>
+                          {candidate.aiSummary.startsWith('Technical Quality:') ? (
+                            (candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60) ? (
+                              <p>
+                                <strong className="font-black text-rose-600 dark:text-rose-400 mr-1">⚠️ High Risk Candidate:</strong>
+                                Candidate scored <span className="font-black">{candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0}/100</span> on technical quality and covers only <span className="font-black">{(candidate.aiScopeCompletenessPercent ?? 100).toFixed(0)}%</span> of required project scope deliverables.
+                              </p>
+                            ) : (
+                              <p>
+                                <strong className="font-black text-purple-600 dark:text-purple-400 mr-1">💡 Candidate Assessment:</strong>
+                                Candidate evaluated with <span className="font-black">{candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0}/100</span> technical quality and <span className="font-black">{(candidate.aiSavingsRatioPercent ?? 0).toFixed(1)}%</span> cost savings vs budget.
+                              </p>
+                            )
+                          ) : (
+                            <p className="italic">"{candidate.aiSummary}"</p>
+                          )}
+                        </div>
                       ) : (
-                        <p className="text-[11px] text-text-muted italic">
+                        <p className="text-xs text-text-muted italic">
                           Chưa có đánh giá AI. Nhấn "Chấm tất cả" để chấm điểm.
                         </p>
                       )}
