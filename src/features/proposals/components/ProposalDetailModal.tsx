@@ -23,6 +23,8 @@ import {
   type ProposalMilestonePlanDto,
   type GradedQuestionDto,
 } from '../../../types/models/Proposal';
+import { AIProposalVerdictCard } from './AIProposalVerdictCard';
+import { AISideBySideMilestoneMatrix } from './AISideBySideMilestoneMatrix';
 import type { BusyAction } from '../hooks/useClientProposals';
 import { getStatusLabel } from '../utils/statusHelpers';
 
@@ -392,10 +394,22 @@ export function ProposalDetailModal({
                   </div>
                 )}
 
-                {!evalLoading && evalResult && (
+                {(!evalLoading && (evalResult || activeProposal?.aiTechnicalQualityScore)) && (
                   <div className="space-y-5">
+                    {/* Render AI Candidate Evaluation Engine Verdict Card */}
+                    {activeProposal && (
+                      <AIProposalVerdictCard proposal={activeProposal} />
+                    )}
+
+                    {/* Render Side-by-Side Comparative Milestone Matrix */}
+                    <AISideBySideMilestoneMatrix
+                      detail={detail}
+                      fullEvaluationJson={activeProposal?.aiFullEvaluationJson}
+                    />
+
                     {/* Summary Card */}
-                    <div className="rounded-2xl border border-purple-500/25 bg-purple-500/5 p-5 space-y-4 shadow-2xs">
+                    {evalResult && (
+                      <div className="rounded-2xl border border-purple-500/25 bg-purple-500/5 p-5 space-y-4 shadow-2xs">
                       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/15 pb-4">
                         {/* Overall Score Circle */}
                         <div className="flex items-center gap-3.5">
@@ -474,9 +488,10 @@ export function ProposalDetailModal({
                         </div>
                       )}
                     </div>
+                  )}
 
-                    {/* Questions Breakdown */}
-                    {evalResult.gradedQuestions?.length > 0 && (
+                  {/* Questions Breakdown */}
+                  {evalResult?.gradedQuestions && evalResult.gradedQuestions.length > 0 && (
                       <div className="space-y-4">
                         <h4 className="text-xs font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-2">
                           {t('proposalAnswers.questionBreakdown', 'Chi tiết điểm từng câu hỏi')}

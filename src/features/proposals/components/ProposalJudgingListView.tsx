@@ -483,7 +483,22 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                           </UserProfileLink>
                         </h3>
 
-                        {candidate.aiRecommendedHire === true && (
+                        {candidate.aiVerdictBadge === 'top_value' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/35 px-2.5 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                            🔥 Top Value Candidate
+                          </span>
+                        )}
+                        {candidate.aiVerdictBadge === 'top_technical' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/35 px-2.5 py-0.5 text-[10px] font-black text-purple-600 dark:text-purple-400">
+                            ⚡ Top Technical Expert
+                          </span>
+                        )}
+                        {candidate.aiVerdictBadge === 'budget_saver' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/35 px-2.5 py-0.5 text-[10px] font-black text-amber-600 dark:text-amber-400">
+                            💰 Budget Saver
+                          </span>
+                        )}
+                        {!candidate.aiVerdictBadge && candidate.aiRecommendedHire === true && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 size={11} /> AI Recommended
                           </span>
