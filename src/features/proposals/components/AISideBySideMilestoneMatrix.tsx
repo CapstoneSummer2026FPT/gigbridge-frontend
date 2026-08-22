@@ -85,6 +85,28 @@ export function AISideBySideMilestoneMatrix({
       ? rawProposedDuration
       : milestoneSumDuration || '—';
 
+  const baselineWeeks = parseDurationToWeeks(baselineDuration);
+  const proposedWeeks = parseDurationToWeeks(proposedDuration);
+
+  let timelineBadgeLabel = '⏱️ Timeline Audit';
+  let timelineBadgeStyle = 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/40 shadow-2xs';
+
+  if (baselineWeeks > 0 && proposedWeeks > 0) {
+    const diffPct = ((baselineWeeks - proposedWeeks) / baselineWeeks) * 100;
+    const roundedPct = Math.abs(Math.round(diffPct * 10) / 10);
+
+    if (diffPct > 0) {
+      timelineBadgeLabel = `⚡ ${roundedPct}% Faster`;
+      timelineBadgeStyle = 'bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/50 shadow-2xs font-extrabold';
+    } else if (diffPct < 0) {
+      timelineBadgeLabel = `⏳ ${roundedPct}% Longer`;
+      timelineBadgeStyle = 'bg-amber-500/25 text-amber-800 dark:text-amber-300 border border-amber-500/50 shadow-2xs font-extrabold';
+    } else {
+      timelineBadgeLabel = '⏱️ On Schedule (0% Variance)';
+      timelineBadgeStyle = 'bg-blue-500/25 text-blue-800 dark:text-blue-300 border border-blue-500/50 shadow-2xs font-extrabold';
+    }
+  }
+
   // Metrics for Requirement Scope Fulfillment
   const totalReqs = requirementFulfillment.length;
   const fulfilledCount = requirementFulfillment.filter((r) => r.is_fulfilled).length;
@@ -125,13 +147,15 @@ export function AISideBySideMilestoneMatrix({
                 <Percent size={12} className="text-emerald-500" /> Budget Savings Comparison
               </span>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-2xs border ${
                   savingsRatioPercent > 0
-                    ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-surface-muted text-text-muted'
+                    ? 'bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border-emerald-500/50'
+                    : 'bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-500/40'
                 }`}
               >
-                {savingsRatioPercent > 0 ? `🟢 ${savingsRatioPercent.toFixed(1)}% Savings` : '0% Savings'}
+                {savingsRatioPercent > 0
+                  ? `🟢 ${savingsRatioPercent.toFixed(1)}% Savings`
+                  : '🎯 0% Savings (On Budget)'}
               </span>
             </div>
 
@@ -162,8 +186,8 @@ export function AISideBySideMilestoneMatrix({
               <span className="text-[10px] font-black uppercase text-text-muted flex items-center gap-1">
                 <Clock size={12} className="text-blue-500" /> Duration Comparison
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-500/15 text-blue-700 dark:text-blue-300">
-                ⏱️ Timeline Audit
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${timelineBadgeStyle}`}>
+                {timelineBadgeLabel}
               </span>
             </div>
 
