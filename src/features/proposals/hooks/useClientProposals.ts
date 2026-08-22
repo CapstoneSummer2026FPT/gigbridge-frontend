@@ -13,7 +13,6 @@ import {
   type ProposalAnswerDto,
   type ProposalDetailDto,
   type ProposalDto,
-  type VettingEvaluationResponseDto,
 } from '../../../types/models/Proposal';
 import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
 import { sortProposalReviewJobs } from '../components/ClientProposalJobSidebar';
@@ -51,7 +50,6 @@ export function useClientProposals() {
 
   const [evalModalOpen, setEvalModalOpen] = useState(false);
   const [evalLoading, setEvalLoading] = useState(false);
-  const [evalResult, setEvalResult] = useState<VettingEvaluationResponseDto | null>(null);
   const [evalError, setEvalError] = useState('');
   const [modalTab, setModalTab] = useState<'userAnswers' | 'proposalDetails' | 'aiReport'>('userAnswers');
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -328,17 +326,15 @@ export function useClientProposals() {
     }
   };
 
+
+
   const loadEvaluation = async (proposalId: string) => {
     setEvalModalOpen(true);
     setEvalLoading(true);
     setEvalError('');
-    setEvalResult(null);
-    try {
-      setEvalLoading(true);
-      setEvalError('');
-      setEvalResult(null);
-      setRawAnswers([]);
+    setRawAnswers([]);
 
+    try {
       const answersRes = await proposalGetAPI.getProposalAnswers(proposalId).catch(() => null);
       if (answersRes?.success && answersRes.data) {
         setRawAnswers(answersRes.data);
@@ -347,76 +343,12 @@ export function useClientProposals() {
       setDetailLoading(true);
       setDetailError('');
       const detailRes = await proposalGetAPI.getProposalDetail(proposalId).catch(() => null);
-      let detailObj: any = null;
       if (detailRes?.success && detailRes.data) {
         setDetail(detailRes.data);
-        detailObj = detailRes.data;
       } else {
         setDetailError(detailRes?.message || 'Failed to load proposal detail');
       }
       setDetailLoading(false);
-
-      const prop = proposals.find(p => p.proposalsId === proposalId) as any;
-      const aiScore = prop?.aiScore ?? detailObj?.aiScore;
-      const aiSummary = prop?.aiSummary ?? detailObj?.aiSummary;
-      const aiRecommendedHire = prop?.aiRecommendedHire ?? detailObj?.aiRecommendedHire;
-      const aiTechnicalSkills = prop?.aiTechnicalSkills ?? detailObj?.aiTechnicalSkills;
-      const aiSoftSkills = prop?.aiSoftSkills ?? detailObj?.aiSoftSkills;
-      const aiHolisticAdjustmentReason = prop?.aiHolisticAdjustmentReason ?? detailObj?.aiHolisticAdjustmentReason;
-      const aiHolisticAdjustment = prop?.aiHolisticAdjustment ?? detailObj?.aiHolisticAdjustment;
-      const topIsAiGenerated = prop?.aiIsAiGenerated ?? detailObj?.aiIsAiGenerated ?? prop?.isAiGenerated ?? detailObj?.isAiGenerated;
-      const topAiConfidenceScore = prop?.aiConfidenceScore ?? detailObj?.aiConfidenceScore;
-      const topAiDetectionSummary = prop?.aiDetectionSummary ?? detailObj?.aiDetectionSummary;
-      const rawQuestions = prop?.aiGradedQuestions ?? detailObj?.aiGradedQuestions ?? [];
-
-      if (aiScore !== null && aiScore !== undefined) {
-        const gradedQuestions = rawQuestions.map((q: any) => {
-          const isAi = q.isAiGenerated ?? q.is_ai_generated ?? false;
-          const conf = typeof q.aiConfidenceScore === 'number' ? q.aiConfidenceScore : (typeof q.ai_confidence_score === 'number' ? q.ai_confidence_score : (isAi ? 0.75 : 0.1));
-          const reason = q.aiDetectionReason ?? q.ai_detection_reason ?? '';
-          return {
-            questionIndex: typeof q.questionIndex === 'number' ? q.questionIndex : q.question_index,
-            questionText: q.questionText ?? q.question_text ?? '',
-            questionType: q.questionType ?? q.question_type ?? '',
-            difficulty: q.difficulty ?? '',
-            candidateAnswer: q.candidateAnswer ?? q.candidate_answer ?? '',
-            score: q.score ?? 0,
-            feedback: q.feedback ?? '',
-            isAiGenerated: isAi,
-            aiConfidenceScore: conf,
-            aiDetectionReason: reason,
-          };
-        });
-
-        const maxQuestionConf = gradedQuestions.length > 0
-          ? Math.max(...gradedQuestions.map((q: any) => q.aiConfidenceScore ?? 0))
-          : 0;
-        const anyQuestionAi = gradedQuestions.some((q: any) => q.isAiGenerated || (q.aiConfidenceScore ?? 0) >= 0.5);
-
-        const calculatedIsAi = topIsAiGenerated ?? anyQuestionAi;
-        const calculatedConf = typeof topAiConfidenceScore === 'number' ? topAiConfidenceScore : maxQuestionConf;
-        const calculatedSummary = topAiDetectionSummary || (
-          anyQuestionAi
-            ? 'At least 1 candidate answer exhibits AI generation patterns or generic textbook LLM structure.'
-            : 'Candidate answers appear authentic with human experience indicators.'
-        );
-
-        setEvalResult({
-          score: aiScore,
-          summary: aiSummary || '',
-          technicalSkills: aiTechnicalSkills || [],
-          softSkills: aiSoftSkills || [],
-          recommendedHire: !!aiRecommendedHire,
-          holisticAdjustment: aiHolisticAdjustment ?? 0,
-          holisticAdjustmentReason: aiHolisticAdjustmentReason || '',
-          isAiGenerated: calculatedIsAi,
-          aiConfidenceScore: calculatedConf,
-          aiDetectionSummary: calculatedSummary,
-          gradedQuestions,
-        });
-      } else {
-        setEvalResult(null);
-      }
     } catch (err: unknown) {
       setEvalError(err instanceof Error ? err.message : 'An error occurred during evaluation.');
     } finally {
@@ -480,7 +412,6 @@ export function useClientProposals() {
     evalModalOpen,
     setEvalModalOpen,
     evalLoading,
-    evalResult,
     evalError,
     modalTab,
     setModalTab,
