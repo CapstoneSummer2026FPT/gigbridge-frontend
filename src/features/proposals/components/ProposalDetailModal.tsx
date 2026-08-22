@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Brain,
   BriefcaseBusiness,
@@ -103,9 +104,43 @@ export function ProposalDetailModal({
   t,
   showAiReportTab = true,
 }: ProposalDetailModalProps) {
+  const activeProposal = proposals.find(p => p.proposalsId === activeId);
+
+  const displayQuestions: GradedQuestionDto[] = useMemo(() => {
+    if (evalResult?.gradedQuestions?.length) {
+      return evalResult.gradedQuestions;
+    }
+    if (activeProposal?.aiGradedQuestions?.length) {
+      return activeProposal.aiGradedQuestions;
+    }
+    if (activeProposal?.aiFullEvaluationJson) {
+      try {
+        const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
+        const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
+        return screeningQa.map((qa: any) => ({
+          questionIndex: qa.question_index ?? 0,
+          questionText: qa.question_text || `Câu hỏi #${(qa.question_index ?? 0) + 1}`,
+          candidateAnswer: qa.candidate_answer || 'Không có câu trả lời',
+          score: Math.round(
+            ((qa.answer_correctness?.score ?? 0) * 0.40) +
+            ((qa.technical_reasoning?.score ?? 0) * 0.25) +
+            ((qa.relevance?.score ?? 0) * 0.15) +
+            ((qa.depth?.score ?? 0) * 0.10) +
+            ((qa.practical_examples?.score ?? 0) * 0.10)
+          ),
+          feedback: qa.answer_correctness?.evidence?.[0]?.assessment ||
+                    qa.technical_reasoning?.evidence?.[0]?.assessment ||
+                    'Đánh giá chất lượng kỹ thuật dựa trên câu trả lời phỏng vấn.',
+        }));
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [evalResult, activeProposal]);
+
   if (!isOpen) return null;
 
-  const activeProposal = proposals.find(p => p.proposalsId === activeId);
   const currentStatus = Number(detail?.status ?? activeProposal?.status);
   const freelancerName = detail?.freelancerName || activeProposal?.freelancerName || 'Freelancer';
   const freelancerUserId = detail?.freelancerUserId || activeProposal?.freelancerUserId;
@@ -128,10 +163,10 @@ export function ProposalDetailModal({
       {/* Main Dialog Container matching Review Dialog style */}
       <div
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-full max-w-6xl h-[88vh] max-h-[820px] min-h-[600px] rounded-[2rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all"
+        className="relative z-10 w-[96vw] max-w-[1550px] h-[92vh] max-h-[960px] min-h-[650px] rounded-[2.25rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all"
       >
-        {/* ═══ LEFT COLUMN: Candidate Hero & Proposal Context (Matching Review Dialog) ═══════════ */}
-        <div className="w-full lg:w-1/3 p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
+        {/* ═══ LEFT COLUMN: Candidate Hero & Proposal Context ═══════════ */}
+        <div className="w-full lg:w-[310px] xl:w-[350px] p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           {/* Top Header Eyebrow */}
@@ -201,8 +236,8 @@ export function ProposalDetailModal({
           </button>
         </div>
 
-        {/* ═══ RIGHT COLUMN: Interactive Tab Content & Actions ═════════ */}
-        <div className="w-full lg:w-2/3 p-6 lg:p-8 bg-background flex flex-col justify-between relative min-w-0">
+        {/* ═══ RIGHT COLUMN: Tabbed Content & Decision Toolbar ════════════════════════ */}
+        <div className="flex-1 min-w-0 p-6 lg:p-8 bg-background flex flex-col justify-between relative">
           {/* Desktop Close Button */}
           <button
             type="button"
@@ -491,13 +526,13 @@ export function ProposalDetailModal({
                   )}
 
                   {/* Questions Breakdown */}
-                  {evalResult?.gradedQuestions && evalResult.gradedQuestions.length > 0 && (
+                  {displayQuestions.length > 0 && (
                       <div className="space-y-4">
                         <h4 className="text-xs font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-2">
-                          {t('proposalAnswers.questionBreakdown', 'Chi tiết điểm từng câu hỏi')}
+                          {t('proposalAnswers.questionBreakdown', 'Chi tiết điểm từng câu hỏi & Feedback từ AI')}
                         </h4>
 
-                        {evalResult.gradedQuestions.map((q: GradedQuestionDto, idx: number) => (
+                        {displayQuestions.map((q: GradedQuestionDto, idx: number) => (
                           <div key={idx} className="rounded-2xl border border-border/80 p-4 space-y-3 bg-surface-card/60 shadow-2xs">
                             <div className="flex justify-between items-start gap-4">
                               <h5 className="text-xs font-black text-text-primary leading-snug">
