@@ -452,6 +452,7 @@ export function ProposalDetailModal({
                     {/* Render Side-by-Side Comparative Milestone Matrix */}
                     <AISideBySideMilestoneMatrix
                       detail={detail}
+                      proposal={activeProposal}
                       fullEvaluationJson={activeProposal?.aiFullEvaluationJson}
                     />
 
