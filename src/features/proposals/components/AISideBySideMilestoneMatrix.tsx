@@ -89,7 +89,7 @@ export function AISideBySideMilestoneMatrix({
   const proposedWeeks = parseDurationToWeeks(proposedDuration);
 
   let timelineBadgeLabel = '⏱️ Timeline Audit';
-  let timelineBadgeStyle = 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/40 shadow-2xs';
+  let timelineBadgeStyle = 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border border-blue-500/60 text-xs font-black shadow-xs px-3 py-1';
 
   if (baselineWeeks > 0 && proposedWeeks > 0) {
     const diffPct = ((baselineWeeks - proposedWeeks) / baselineWeeks) * 100;
@@ -98,13 +98,13 @@ export function AISideBySideMilestoneMatrix({
 
     if (diffPct > 0) {
       timelineBadgeLabel = `⚡ ${roundedPct}% Faster (Saved ${weekDiff} wks)`;
-      timelineBadgeStyle = 'bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/50 shadow-2xs font-extrabold';
+      timelineBadgeStyle = 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/60 text-xs font-black shadow-xs px-3 py-1';
     } else if (diffPct < 0) {
       timelineBadgeLabel = `⏳ Exceeds Target (+${weekDiff} wks)`;
-      timelineBadgeStyle = 'bg-amber-500/25 text-amber-800 dark:text-amber-300 border border-amber-500/50 shadow-2xs font-extrabold';
+      timelineBadgeStyle = 'bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-500/60 text-xs font-black shadow-xs px-3 py-1';
     } else {
       timelineBadgeLabel = `⏱️ On Target (Exact ${baselineWeeks} wks)`;
-      timelineBadgeStyle = 'bg-blue-500/25 text-blue-800 dark:text-blue-300 border border-blue-500/50 shadow-2xs font-extrabold';
+      timelineBadgeStyle = 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border border-blue-500/60 text-xs font-black shadow-xs px-3 py-1';
     }
   }
 
@@ -154,13 +154,13 @@ export function AISideBySideMilestoneMatrix({
           <div className="rounded-xl bg-surface-card border border-border/60 p-3 space-y-2 shadow-2xs">
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <span className="text-[10px] font-black uppercase text-text-muted flex items-center gap-1">
-                <Percent size={12} className="text-emerald-500" /> Budget Savings Comparison
+                <Percent size={13} className="text-emerald-500" /> Budget Savings Comparison
               </span>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-2xs border ${
+                className={`px-3 py-1 rounded-full text-xs font-black shadow-xs border ${
                   savingsRatioPercent > 0
-                    ? 'bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border-emerald-500/50'
-                    : 'bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-500/40'
+                    ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border-emerald-500/60'
+                    : 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border-blue-500/60'
                 }`}
               >
                 {savingsRatioPercent > 0
@@ -172,7 +172,7 @@ export function AISideBySideMilestoneMatrix({
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-surface-muted/50 p-2.5 rounded-xl border border-border/40 text-center space-y-0.5">
                 <span className="block text-[9px] font-bold text-text-muted uppercase">Original Client Budget</span>
-                <strong className="text-text-primary font-black text-xs block">
+                <strong className="text-text-primary font-black text-sm sm:text-base block">
                   {baselineBudgetMax > 0
                     ? formatGigCoin(baselineBudgetMax)
                     : savingsRatioPercent > 0 && proposedBudget > 0
@@ -183,7 +183,7 @@ export function AISideBySideMilestoneMatrix({
 
               <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30 text-center space-y-0.5">
                 <span className="block text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">Freelancer Proposed</span>
-                <strong className="text-emerald-600 dark:text-emerald-400 font-black text-xs block">
+                <strong className="text-emerald-600 dark:text-emerald-400 font-black text-sm sm:text-base block">
                   {formatGigCoin(proposedBudget)}
                 </strong>
               </div>
@@ -194,9 +194,9 @@ export function AISideBySideMilestoneMatrix({
           <div className="rounded-xl bg-surface-card border border-border/60 p-3 space-y-2 shadow-2xs">
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <span className="text-[10px] font-black uppercase text-text-muted flex items-center gap-1">
-                <Clock size={12} className="text-blue-500" /> Duration & Time Savings
+                <Clock size={13} className="text-blue-500" /> Duration & Time Savings
               </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${timelineBadgeStyle}`}>
+              <span className={`rounded-full ${timelineBadgeStyle}`}>
                 {timelineBadgeLabel}
               </span>
             </div>
@@ -204,14 +204,14 @@ export function AISideBySideMilestoneMatrix({
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-surface-muted/50 p-2.5 rounded-xl border border-border/40 text-center space-y-0.5">
                 <span className="block text-[9px] font-bold text-text-muted uppercase">Original Client Target</span>
-                <strong className="text-text-primary font-black text-xs block">
+                <strong className="text-text-primary font-black text-sm sm:text-base block">
                   {baselineDuration}
                 </strong>
               </div>
 
               <div className="bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/30 text-center space-y-0.5">
                 <span className="block text-[9px] font-bold text-blue-700 dark:text-blue-300 uppercase">Freelancer Proposed</span>
-                <strong className="text-blue-600 dark:text-blue-400 font-black text-xs block">
+                <strong className="text-blue-600 dark:text-blue-400 font-black text-sm sm:text-base block">
                   {proposedDuration}
                 </strong>
               </div>
@@ -341,6 +341,8 @@ export function AISideBySideMilestoneMatrix({
           and <strong className="text-blue-600 dark:text-blue-400 font-black">{totalMilestoneDurationStr}</strong> total duration, matching the overall proposal totals evaluated in the Financial & Timeline Audit above.
         </span>
       </div>
+
+
 
       {/* Requirement Scope Fulfillment Section: Belongs to Scope (15%) & Requirement Coverage (30%) */}
       {requirementFulfillment.length > 0 && (
