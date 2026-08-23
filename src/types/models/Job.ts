@@ -18,7 +18,6 @@ export enum JobPostStatus {
 
 export enum JobPostVisibility {
   Public = 0,
-  Private = 1,
   InviteOnly = 2,
 }
 
@@ -354,6 +353,7 @@ export interface SaveDraftJobPostRequest {
   customSkillNames?: string[] | null;
   questions?: SaveDraftJobPostQuestionRequest[] | null;
   milestonePlans?: JobPostMilestonePlanDto[] | null;
+  hasAiInterview?: boolean | null;
 }
 
 export interface GenerateJobDescriptionRequest {

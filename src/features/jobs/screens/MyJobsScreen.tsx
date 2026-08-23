@@ -92,9 +92,6 @@ const visibilityInfo = (visibility: number | null | undefined, t: any) => {
   if (visibility === JobPostVisibility.Public) {
     return { label: t('myJobs.visibility.public', { defaultValue: 'Công khai' }), icon: <Globe size={13} /> };
   }
-  if (visibility === JobPostVisibility.Private) {
-    return { label: t('myJobs.visibility.private', { defaultValue: 'Riêng tư' }), icon: <Lock size={13} /> };
-  }
   if (visibility === JobPostVisibility.InviteOnly) {
     return { label: t('myJobs.visibility.inviteOnly', { defaultValue: 'Chỉ mời' }), icon: <UserRoundCheck size={13} /> };
   }
@@ -268,11 +265,6 @@ export default function MyJobsScreen() {
         icon: <Globe size={14} />,
       },
       {
-        value: String(JobPostVisibility.Private),
-        label: t('myJobs.visibility.private', { defaultValue: 'Riêng tư' }),
-        icon: <Lock size={14} />,
-      },
-      {
         value: String(JobPostVisibility.InviteOnly),
         label: t('myJobs.visibility.inviteOnly', { defaultValue: 'Chỉ mời' }),
         icon: <UserRoundCheck size={14} />,
@@ -282,7 +274,7 @@ export default function MyJobsScreen() {
   );
 
   const getVisibilitySelectOptions = (job: GetMyJobPostDto): SelectOption[] => {
-    const allowed = new Set(getAllowedJobPostVisibilities(job.status, job.visibility));
+    const allowed = new Set(getAllowedJobPostVisibilities(job.visibility));
     return visibilitySelectOptions.filter(option => allowed.has(Number(option.value) as JobPostVisibility));
   };
 

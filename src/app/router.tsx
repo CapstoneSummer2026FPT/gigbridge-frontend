@@ -23,7 +23,6 @@ const BrowseJobsScreen = lazy(() => import('../features/jobs/screens/BrowseJobsS
 const JobDetailScreen = lazy(() => import('../features/jobs/screens/JobDetailScreen'));
 const MyJobsScreen = lazy(() => import('../features/jobs/screens/MyJobsScreen'));
 const ManageJobPostQuestionsScreen = lazy(() => import('../features/jobs/screens/ManageJobPostQuestionsScreen'));
-const EditJobPostScreen = lazy(() => import('../features/jobs/screens/EditJobPostScreen'));
 const SavedJobsScreen = lazy(() => import('../features/jobs/screens/SavedJobsScreen'));
 const JobInvitationsScreen = lazy(() => import('../features/jobs/screens/JobInvitationsScreen'));
 const FreelancerProfileScreen = lazy(() => import('../features/profile/screens/FreelancerProfileScreen'));
@@ -108,6 +107,11 @@ const PARTICIPANT_ROLES = [UserRole.Client, UserRole.Freelancer] as const;
 function LegacyJobPostRedirect({ to }: { to: '/jobs/post' | '/jobs/post/plan' }) {
   const location = useLocation();
   return <Navigate to={to} replace state={location.state} />;
+}
+
+function EditJobPostRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to="/jobs/post" replace state={{ jobPostId: id }} />;
 }
 
 function NotFound() {
@@ -231,7 +235,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><MyJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs/:jobPostId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><JobDetailScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <JobDetailScreen /> },
-      { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><EditJobPostScreen /></ProtectedRoute> },
+      { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><EditJobPostRedirect /></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><ManageJobPostQuestionsScreen /></ProtectedRoute> },
 
       // Authenticated application profiles
@@ -266,7 +270,8 @@ export const router = createBrowserRouter([
       { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><MessagesScreen /></ProtectedRoute> },
 
       // Workspace - requires authentication and setup
-      { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
+      { path: 'workspace', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
+      { path: 'projects', element: <Navigate to="/workspace" replace /> },
       { path: 'workspace/:contractId', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
 
       { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },
