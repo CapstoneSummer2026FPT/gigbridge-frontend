@@ -75,6 +75,13 @@ export interface ProposalDto {
   firstMilestoneAmount?: number | null;
   // AI Judging Attributes
   aiScore?: number | null;
+  aiTechnicalQualityScore?: number | null;
+  aiValueScore?: number | null;
+  aiVerdictBadge?: string | null;
+  aiQualityBand?: string | null;
+  aiSavingsRatioPercent?: number | null;
+  aiScopeCompletenessPercent?: number | null;
+  aiFullEvaluationJson?: string | null;
   aiSummary?: string | null;
   aiRecommendedHire?: boolean | null;
   aiEvaluatedAt?: string | null;
