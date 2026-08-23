@@ -286,7 +286,7 @@ export default function JobDetailScreen() {
                     <Lock size={13} className="text-red-500" /> Locked by Admin
                   </span>
                 ) : canEditContent ? (
-                  <button className="jd-btn-edit" onClick={() => navigate(`/jobs/${job.id}/edit`)}>
+                  <button className="jd-btn-edit" onClick={() => navigate('/jobs/post', { state: { jobPostId: job.id } })}>
                     <Edit3 size={14} />
                     {t('jobDetail.editPost')}
                   </button>
