@@ -6,7 +6,10 @@ import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
 import { useApp } from '../../app/providers/AppProvider';
 import { walletGetAPI } from '../../api/walletAPI/GET';
-import { messageGetAPI } from '../../api/messageAPI/GET';
+import {
+  messageGetAPI,
+  type ConversationInboxRevisionChangedEvent,
+} from '../../api/messageAPI/GET';
 import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { TopNavNotificationDropdown } from '../../features/notifications/components/TopNavNotificationDropdown';
 import { onChatHubReconnected, subscribeChatHubEvent } from '../realtime/chatHubConnection';
@@ -29,11 +32,6 @@ import {
 interface TopNavProps {
   onMenuClick?: () => void;
   showMenuButton?: boolean;
-}
-
-interface ConversationInboxRevisionChanged {
-  revision: number;
-  unreadCount: number;
 }
 
 const navItems = [
@@ -147,7 +145,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     };
 
     void fetchUnreadMessages();
-    const unsubscribeRevision = subscribeChatHubEvent<ConversationInboxRevisionChanged>(
+    const unsubscribeRevision = subscribeChatHubEvent<ConversationInboxRevisionChangedEvent>(
       'ConversationInboxRevisionChanged',
       event => {
         if (event.revision <= conversationRevisionRef.current) return;
