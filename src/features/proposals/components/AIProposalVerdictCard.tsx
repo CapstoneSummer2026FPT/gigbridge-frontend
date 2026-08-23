@@ -512,13 +512,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           <MetricCalculationTooltip
             title="Financial & Timeline Value"
             weight="20%"
-            formula="Score = 0.50×Savings Ratio + 0.30×Pricing Realism + 0.20×Timeline Feasibility"
+            formula="Score = 0.30×Budget Savings + 0.20×Time Savings + 0.30×Pricing Realism + 0.20×Timeline Feasibility"
             items={[
-              { label: 'Budget Savings Ratio', weight: '50%', icon: '💵' },
+              { label: 'Budget Savings Ratio', weight: '30%', icon: '💵' },
+              { label: 'Time Savings Ratio', weight: '20%', icon: '⚡' },
               { label: 'Pricing Realism', weight: '30%', icon: '🏷️' },
               { label: 'Timeline Feasibility', weight: '20%', icon: '⏱️' },
             ]}
-            note="Balances cost savings with realistic pricing and achievable timeline."
+            note="Balances budget and duration savings with AI-verified pricing realism and timeline feasibility."
           >
             <div className="p-2 rounded-xl border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all">
               <div className="flex justify-between text-[11px] font-bold mb-1">
