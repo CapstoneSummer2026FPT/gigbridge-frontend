@@ -8,4 +8,8 @@ export const notificationGetAPI = {
   getUnreadCount: async () => {
     return apiService.get('Notifications/unread-count');
   },
+
+  getStatus: async () => {
+    return apiService.get<{ revision: number; unreadCount: number }>('Notifications/status');
+  },
 };

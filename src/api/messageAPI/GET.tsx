@@ -85,6 +85,15 @@ export interface ConversationUnreadCountResponse {
   unreadCount: number;
 }
 
+export interface ConversationInboxStatusResponse extends ConversationUnreadCountResponse {
+  revision: number;
+}
+
+interface ConversationSummaryPageResponse {
+  items: ConversationSummaryResponse[];
+  nextCursor?: string | null;
+}
+
 export interface ConversationMessageResponse extends MessageResponse {}
 
 export const messageGetAPI = {
@@ -92,14 +101,16 @@ export const messageGetAPI = {
    * GET /api/conversations
    */
   getConversations: async (): Promise<ApiResponse<ConversationSummaryResponse[]>> => {
-    return apiService.get<ConversationSummaryResponse[]>('conversations');
+    const response = await apiService.get<ConversationSummaryPageResponse>('conversations/summary', { pageSize: 50 });
+    return { ...response, data: response.data?.items };
   },
 
   /**
    * GET /api/conversations (alias to getConversations)
    */
   getMyConversations: async (): Promise<ApiResponse<ConversationSummaryResponse[]>> => {
-    return apiService.get<ConversationSummaryResponse[]>('conversations');
+    const response = await apiService.get<ConversationSummaryPageResponse>('conversations/summary', { pageSize: 50 });
+    return { ...response, data: response.data?.items };
   },
 
   /**
@@ -108,6 +119,12 @@ export const messageGetAPI = {
   getUnreadCount: async (): Promise<ApiResponse<ConversationUnreadCountResponse>> => {
     return apiService.get<ConversationUnreadCountResponse>('conversations/unread-count');
   },
+
+  getInboxStatus: async (): Promise<ApiResponse<ConversationInboxStatusResponse>> =>
+    apiService.get<ConversationInboxStatusResponse>('conversations/inbox-status'),
+
+  getConversationSummary: async (conversationId: string): Promise<ApiResponse<ConversationSummaryResponse>> =>
+    apiService.get<ConversationSummaryResponse>(`conversations/${conversationId}/summary`),
 
   /**
    * GET /api/messages/conversation/{conversationId}

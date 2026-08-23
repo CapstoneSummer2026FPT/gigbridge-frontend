@@ -69,7 +69,7 @@ export function useNotificationsScreen(): UseNotificationsScreenReturn {
     refresh,
     markAsRead,
     markAllAsRead,
-  } = useUserNotifications(user, { pageSize: 20, pollMs: 45_000 });
+  } = useUserNotifications(user, { pageSize: 20 });
 
   const readCount = useMemo(() => {
     return Math.max(0, notifications.length - unreadCount);

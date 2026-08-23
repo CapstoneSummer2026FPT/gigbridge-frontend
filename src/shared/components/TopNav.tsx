@@ -9,6 +9,7 @@ import { walletGetAPI } from '../../api/walletAPI/GET';
 import { messageGetAPI } from '../../api/messageAPI/GET';
 import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { TopNavNotificationDropdown } from '../../features/notifications/components/TopNavNotificationDropdown';
+import { onChatHubReconnected, subscribeChatHubEvent } from '../realtime/chatHubConnection';
 import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
 import { formatGigCoinNumber } from '../utils/gigcoin';
@@ -30,7 +31,10 @@ interface TopNavProps {
   showMenuButton?: boolean;
 }
 
-const UNREAD_MESSAGES_FALLBACK_POLL_MS = 60_000;
+interface ConversationInboxRevisionChanged {
+  revision: number;
+  unreadCount: number;
+}
 
 const navItems = [
   { label: 'Find Work', path: '/public/job-posts' },
@@ -50,6 +54,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const conversationRevisionRef = useRef(0);
   const [searchVal, setSearchVal] = useState('');
   const [searchScope, setSearchScope] = useState<TopNavSearchScope>(TOP_NAV_SEARCH_SCOPE.Jobs);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -118,34 +123,55 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   // Unread messages data
   useEffect(() => {
     let isMounted = true;
+    let resyncing = false;
 
     const fetchUnreadMessages = async () => {
+      if (resyncing) return;
       if (!user) {
         setUnreadMessagesCount(0);
+        conversationRevisionRef.current = 0;
         return;
       }
+      resyncing = true;
       try {
-        const response = await messageGetAPI.getUnreadCount();
+        const response = await messageGetAPI.getInboxStatus();
         if (isMounted && response.success && response.data) {
           setUnreadMessagesCount(response.data.unreadCount || 0);
+          conversationRevisionRef.current = response.data.revision || 0;
         }
       } catch (err) {
         // Safe fallback
+      } finally {
+        resyncing = false;
       }
     };
 
     void fetchUnreadMessages();
-    const intervalId = window.setInterval(() => {
-      if (window.document.visibilityState === 'visible') {
-        void fetchUnreadMessages();
-      }
-    }, UNREAD_MESSAGES_FALLBACK_POLL_MS);
+    const unsubscribeRevision = subscribeChatHubEvent<ConversationInboxRevisionChanged>(
+      'ConversationInboxRevisionChanged',
+      event => {
+        if (event.revision <= conversationRevisionRef.current) return;
+        if (event.revision > conversationRevisionRef.current + 1) {
+          void fetchUnreadMessages();
+          return;
+        }
+        conversationRevisionRef.current = event.revision;
+        setUnreadMessagesCount(event.unreadCount);
+      },
+    );
+    const unsubscribeReconnect = onChatHubReconnected(() => void fetchUnreadMessages());
+    const handleVisibility = (): void => {
+      if (window.document.visibilityState === 'visible') void fetchUnreadMessages();
+    };
     window.addEventListener('gigbridge-messages-updated', fetchUnreadMessages);
+    window.document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       isMounted = false;
-      window.clearInterval(intervalId);
+      unsubscribeRevision();
+      unsubscribeReconnect();
       window.removeEventListener('gigbridge-messages-updated', fetchUnreadMessages);
+      window.document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [location.pathname, user?.id]);
 

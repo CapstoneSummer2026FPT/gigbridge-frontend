@@ -24,7 +24,7 @@ import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { esignPostAPI } from '../../../api/esignAPI/POST';
 import { profileGetAPI } from '../../../api/profileAPI';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import type { ESignDocumentDto } from '../../../types/models/ESign';
+import type { ESignDocumentStatusDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
 import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
@@ -34,7 +34,7 @@ import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
-import { useESignDocumentChangedEvent } from '../hooks/useESignDocumentChangedEvent';
+import { useESignDocumentRevisionEvent } from '../hooks/useESignDocumentRevisionEvent';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
@@ -65,8 +65,6 @@ interface PreparedSignatureImage {
 
 const PDF_SIGNATURE_MAX_WIDTH = 220;
 const PDF_SIGNATURE_MAX_HEIGHT = 80;
-const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
-
 const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImage => {
   const fallbackScale = Math.min(
     PDF_SIGNATURE_MAX_WIDTH / canvas.width,
@@ -181,7 +179,7 @@ export default function SignatureWorkflowScreen() {
 
   const [contract, setContract] = useState<ContractDto | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [document, setDocument] = useState<ESignDocumentDto | null>(null);
+  const [document, setDocument] = useState<ESignDocumentStatusDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -240,7 +238,7 @@ export default function SignatureWorkflowScreen() {
 
   const loadDocument = useCallback(async (targetContractId: string): Promise<void> => {
     try {
-      const docResponse = await esignGetAPI.getDocumentByContract(targetContractId);
+      const docResponse = await esignGetAPI.getDocumentStatusByContract(targetContractId);
       if (docResponse.success && docResponse.data) {
         setDocument(docResponse.data);
         setDocumentWarning('');
@@ -530,7 +528,7 @@ export default function SignatureWorkflowScreen() {
     signatureStep,
   ]);
 
-  useESignDocumentChangedEvent(
+  useESignDocumentRevisionEvent(
     contractId,
     signatureStep === 'complete' &&
     (isWaitingForCounterpart ||

@@ -14,9 +14,9 @@ import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Mil
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import {
-  getChatHubUrl,
   type UploadTransferProgress,
 } from '../../../service/apiService';
+import { onChatHubReconnected, retainChatHubConnection } from '../../../shared/realtime/chatHubConnection';
 import {
   buildMilestoneSubmissionFormData,
   type MilestoneSubmissionPayload,
@@ -563,13 +563,8 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(getChatHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const lease = retainChatHubConnection();
+    const connection = lease.connection;
 
     const joinCurrentConversation = async (): Promise<void> => {
       const conversationId = conversationIdRef.current;
@@ -665,19 +660,13 @@ export function useProjectWorkspace(initialContractId: string) {
       connection.on(evt, handleRealtimeWorkspaceEvent);
     });
 
-    connection.onreconnected(() => {
+    const stopReconnect = onChatHubReconnected(() => {
       if (!disposed) void joinCurrentConversation();
     });
-    connection.onclose(error => {
-      if (!disposed && error) console.warn('[WorkspaceChatHub] disconnected', error);
-    });
 
-    void connection.start()
+    void lease.ready
       .then(() => {
-        if (disposed) {
-          void connection.stop();
-          return;
-        }
+        if (disposed) return;
         chatConnectionRef.current = connection;
         void joinCurrentConversation();
       })
@@ -693,8 +682,9 @@ export function useProjectWorkspace(initialContractId: string) {
       workspaceEvents.forEach(evt => {
         connection.off(evt, handleRealtimeWorkspaceEvent);
       });
+      stopReconnect();
       if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
-      void connection.stop();
+      lease.release();
     };
   }, [user?.id, debouncedReloadActiveWorkspace]);
 

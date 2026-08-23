@@ -10,7 +10,11 @@ import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { messagePutAPI } from '../../../api/messageAPI/PUT';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { getChatHubUrl } from '../../../service/apiService';
+import {
+  onChatHubReconnected,
+  onChatHubStatusChanged,
+  retainChatHubConnection,
+} from '../../../shared/realtime/chatHubConnection';
 import { scheduleAPI, type ScheduleEvent, type ScheduleMeetingResponse, type ScheduleResponse } from '../../../api/scheduleAPI';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
@@ -795,111 +799,33 @@ export function useMessages() {
 
   // Connect to SignalR
   useEffect(() => {
-    const hubUrl = getChatHubUrl();
     let disposed = false;
-    let retryAttempt = 0;
-    let retryTimer: number | null = null;
-    let currentConnection: signalR.HubConnection | null = null;
-
-    const clearRetryTimer = () => {
-      if (retryTimer === null) return;
-      window.clearTimeout(retryTimer);
-      retryTimer = null;
-    };
-
-    const scheduleFreshConnection = () => {
-      if (disposed || retryTimer !== null) return;
-      const delay = Math.min(1_000 * (2 ** retryAttempt), 15_000);
-      retryAttempt += 1;
-      setSignalRStatus('reconnecting');
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null;
-        void connect();
-      }, delay);
-    };
-
-    const connect = async () => {
-      if (disposed) return;
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setSignalRStatus('disconnected');
-        console.warn('[ChatHub] waiting for an access token before connecting');
-        scheduleFreshConnection();
-        return;
+    const lease = retainChatHubConnection();
+    const stopStatus = onChatHubStatusChanged(status => {
+      if (!disposed) setSignalRStatus(status);
+    });
+    const stopReconnect = onChatHubReconnected(() => {
+      const conversationId = activeConvIdRef.current;
+      if (!disposed && conversationId) {
+        void lease.connection.invoke('JoinConversation', conversationId).catch(err => {
+          console.error(`[ChatHub] failed to rejoin conversation group: ${conversationId}`, err);
+        });
       }
-
-      setSignalRStatus(retryAttempt > 0 ? 'reconnecting' : 'connecting');
-      console.info('[ChatHub] connecting:', hubUrl);
-
-      const connection = new signalR.HubConnectionBuilder()
-        .configureLogging(signalR.LogLevel.Warning)
-        .withUrl(hubUrl, {
-          accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-        })
-        .withAutomaticReconnect([0, 2_000, 5_000, 10_000])
-        .build();
-      currentConnection = connection;
-
-      connection.onreconnecting(err => {
-        if (disposed || currentConnection !== connection) return;
-        setSignalRStatus('reconnecting');
-        console.warn('[ChatHub] reconnecting:', err);
+    });
+    void lease.ready
+      .then(() => {
+        if (!disposed) setHubConnection(lease.connection);
+      })
+      .catch(err => {
+        if (!disposed) console.error('[ChatHub] connection failed:', err);
       });
-
-      connection.onreconnected(() => {
-        if (disposed || currentConnection !== connection) return;
-        retryAttempt = 0;
-        setSignalRStatus('connected');
-        console.info('[ChatHub] reconnected');
-        if (activeConvIdRef.current) {
-          connection.invoke('JoinConversation', activeConvIdRef.current)
-            .then(() => {
-              console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
-            })
-            .catch(err => {
-              console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
-            });
-        }
-      });
-
-      connection.onclose(err => {
-        if (disposed || currentConnection !== connection) return;
-        currentConnection = null;
-        setHubConnection(existing => existing === connection ? null : existing);
-        setSignalRStatus('disconnected');
-        console.warn('[ChatHub] disconnected:', err);
-        scheduleFreshConnection();
-      });
-
-      try {
-        await connection.start();
-        if (disposed || currentConnection !== connection) {
-          await connection.stop().catch(() => undefined);
-          return;
-        }
-        retryAttempt = 0;
-        setSignalRStatus('connected');
-        setHubConnection(connection);
-        console.info('[ChatHub] connected');
-      } catch (err) {
-        if (disposed || currentConnection !== connection) return;
-        currentConnection = null;
-        setHubConnection(existing => existing === connection ? null : existing);
-        setSignalRStatus('failed');
-        console.error('[ChatHub] connection failed:', err);
-        await connection.stop().catch(() => undefined);
-        scheduleFreshConnection();
-      }
-    };
-
-    void connect();
 
     return () => {
       disposed = true;
-      clearRetryTimer();
-      const connection = currentConnection;
-      currentConnection = null;
-      connection?.stop().catch(() => undefined);
+      stopStatus();
+      stopReconnect();
+      setHubConnection(existing => existing === lease.connection ? null : existing);
+      lease.release();
     };
   }, []);
 
