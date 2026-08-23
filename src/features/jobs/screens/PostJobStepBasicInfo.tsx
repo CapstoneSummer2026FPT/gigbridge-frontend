@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
   BriefcaseBusiness, ChevronDown, Clock3, FileText, Plus, Save, Sparkles,
   ImagePlus, LoaderCircle, Tag, Trash2, X,
 } from 'lucide-react';
+import gsap from 'gsap';
 import { jobAPI } from '../../../api/jobAPI';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
@@ -19,6 +20,7 @@ import { usePostJob } from '../hooks/usePostJob';
 import CustomSelect from '../../../shared/components/CustomSelect';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
 import { AIGeneratedDetailsReviewModal } from '../components/AIGeneratedDetailsReviewModal';
+import { ConicBorderButton } from '../../../shared/components/ConicBorderButton';
 
 export default function PostJobStepBasicInfo() {
   const navigate = useNavigate();
@@ -30,6 +32,17 @@ export default function PostJobStepBasicInfo() {
   const [drafts, setDrafts] = useState<GetMyJobPostDto[]>([]);
   const [isDraftsLoading, setIsDraftsLoading] = useState(false);
   const [draftsError, setDraftsError] = useState<string | null>(null);
+  const aiButtonWrapRef = useRef<HTMLDivElement>(null);
+
+  // Cinematic Flight Morph State
+  const [flightState, setFlightState] = useState<'none' | 'toInput' | 'toButton'>('none');
+  const orbRef = useRef<HTMLDivElement>(null);
+  const [flightCoords, setFlightCoords] = useState<{
+    startX: number;
+    startY: number;
+    targetX: number;
+    targetY: number;
+  } | null>(null);
 
   const {
     form, setForm, majors, categories, skillInput, setSkillInput,
@@ -44,7 +57,8 @@ export default function PostJobStepBasicInfo() {
     handleLeaveDiscardDraft, cancelBlockedNavigation, submitDraftFlow,
     renderSubmitLabel, retryAutosave, resetToNewDraft,
     uploadAttachment, deleteAttachment,
-    isGeneratingInstant, handleGenerateInstantJob,
+    isGeneratingInstant, handleGenerateInstantJob, handleAbortGenerateInstantJob,
+    aiGenerationSource,
     isReviewModalOpen, pendingGeneratedDetails, isGeneratingPlan,
     handleApproveDetails, handleCancelDetails, isInstantJobMode,
     setIsInstantJobMode,
@@ -106,9 +120,41 @@ export default function PostJobStepBasicInfo() {
       <AIGeneratedDetailsReviewModal
         isOpen={isReviewModalOpen}
         data={pendingGeneratedDetails}
+        sourceType={aiGenerationSource}
         onClose={handleCancelDetails}
         onApprove={handleApproveDetails}
       />
+
+      {/* Cinematic Flying AI Orb (Styled exactly like the floating AI Chatbot FAB) */}
+      {flightState !== 'none' && flightCoords && (
+        <div
+          ref={orbRef}
+          className="fixed z-[99999] pointer-events-none"
+          style={{
+            left: `${flightCoords.startX}px`,
+            top: `${flightCoords.startY}px`,
+            width: '52px',
+            height: '52px',
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          {/* Conic rotating border wrap with deep glow */}
+          <div className="relative w-full h-full p-[2px] rounded-full overflow-hidden shadow-[0_0_30px_rgba(73,75,231,0.7),0_0_20px_rgba(175,219,255,0.8)]">
+            {/* Continuous Conic Gradient Animation */}
+            <div
+              className="absolute inset-[-250%] animate-spin"
+              style={{
+                animationDuration: '2.5s',
+                background: 'conic-gradient(from 0deg, transparent 0deg, var(--brand, #494be7) 90deg, var(--mint, #AFDBFF) 180deg, var(--brand, #494be7) 270deg, var(--mint, #AFDBFF) 360deg)',
+              }}
+            />
+            {/* Inner Circular Card Body with Sparkles */}
+            <div className="relative z-10 w-full h-full rounded-full bg-[var(--card,#1e1e2d)] flex items-center justify-center text-[var(--brand,#494be7)] border border-white/20">
+              <Sparkles size={24} className="animate-pulse drop-shadow-[0_0_10px_rgba(73,75,231,0.8)]" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {isGeneratingPlan && (
         <div className="job-post-plan-spinner-overlay">
@@ -122,6 +168,155 @@ export default function PostJobStepBasicInfo() {
       )}
     </>
   );
+
+  const handleOpenAiInput = () => {
+    if (!aiButtonWrapRef.current) {
+      setIsInstantJobMode(true);
+      return;
+    }
+
+    const btnRect = aiButtonWrapRef.current.getBoundingClientRect();
+    const startX = btnRect.left + btnRect.width / 2;
+    const startY = btnRect.top + btnRect.height / 2;
+    const targetX = window.innerWidth / 2;
+    const targetY = window.innerHeight - 110;
+
+    setFlightCoords({ startX, startY, targetX, targetY });
+    setFlightState('toInput');
+
+    // Step 1: Smoothly collapse button from both sides inwards
+    gsap.to(aiButtonWrapRef.current, {
+      scaleX: 0.12,
+      scaleY: 0.45,
+      opacity: 0,
+      filter: 'brightness(1.6)',
+      duration: 0.22,
+      ease: 'power2.in',
+    });
+  };
+
+  const handleCloseAiInput = () => {
+    setIsInstantJobMode(false);
+    if (!aiButtonWrapRef.current) return;
+
+    const btnRect = aiButtonWrapRef.current.getBoundingClientRect();
+    const startX = window.innerWidth / 2;
+    const startY = window.innerHeight - 110;
+    const targetX = btnRect.left + btnRect.width / 2;
+    const targetY = btnRect.top + btnRect.height / 2;
+
+    setFlightCoords({ startX, startY, targetX, targetY });
+    setFlightState('toButton');
+  };
+
+  useEffect(() => {
+    if (flightState === 'none' || !flightCoords || !orbRef.current) return;
+
+    const orb = orbRef.current;
+    const { startX, startY, targetX, targetY } = flightCoords;
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+
+    if (flightState === 'toInput') {
+      const tl = gsap.timeline({
+        onComplete: () => {
+          setFlightState('none');
+          setIsInstantJobMode(true);
+        },
+      });
+
+      // 1. Spawns glowing energy bubble at button
+      tl.fromTo(
+        orb,
+        { x: 0, y: 0, scale: 0.2, opacity: 0, rotation: 0 },
+        { scale: 1.35, opacity: 1, duration: 0.18, ease: 'back.out(2)' }
+      );
+
+      // 2. Swoops & loops flight path down to footer prompt position
+      tl.to(orb, {
+        x: dx * 0.45 - 90,
+        y: dy * 0.35 - 50,
+        scale: 1.55,
+        rotation: 180,
+        duration: 0.22,
+        ease: 'power1.out',
+      });
+
+      tl.to(orb, {
+        x: dx,
+        y: dy,
+        scale: 1.1,
+        rotation: 360,
+        duration: 0.26,
+        ease: 'power2.inOut',
+      });
+
+      // 3. Impact Bloom into prompt slot
+      tl.to(orb, {
+        scale: 2.2,
+        opacity: 0,
+        filter: 'blur(8px)',
+        duration: 0.16,
+        ease: 'power3.out',
+      });
+    } else if (flightState === 'toButton') {
+      const tl = gsap.timeline({
+        onComplete: () => {
+          setFlightState('none');
+          if (aiButtonWrapRef.current) {
+            gsap.fromTo(
+              aiButtonWrapRef.current,
+              { scaleX: 0.12, scaleY: 0.45, opacity: 0, filter: 'brightness(1.6)' },
+              {
+                scaleX: 1,
+                scaleY: 1,
+                opacity: 1,
+                filter: 'brightness(1)',
+                duration: 0.45,
+                ease: 'elastic.out(1, 0.85)',
+                clearProps: 'all',
+              }
+            );
+          }
+        },
+      });
+
+      // 1. Spawns glowing energy bubble at footer prompt slot
+      tl.fromTo(
+        orb,
+        { x: 0, y: 0, scale: 0.2, opacity: 0, rotation: 0 },
+        { scale: 1.35, opacity: 1, duration: 0.18, ease: 'back.out(2)' }
+      );
+
+      // 2. Retraces the exact same arced loop trajectory back up to header
+      tl.to(orb, {
+        x: dx * 0.55 - 90,
+        y: dy * 0.65 - 50,
+        scale: 1.55,
+        rotation: -180,
+        duration: 0.26,
+        ease: 'power2.inOut',
+      });
+
+      tl.to(orb, {
+        x: dx,
+        y: dy,
+        scale: 1.1,
+        rotation: -360,
+        duration: 0.22,
+        ease: 'power1.out',
+      });
+
+      // 3. Impact Bloom on header button
+      tl.to(orb, {
+        scale: 2.2,
+        opacity: 0,
+        filter: 'blur(8px)',
+        duration: 0.16,
+        ease: 'power3.out',
+      });
+    }
+  }, [flightState, flightCoords]);
 
   return (
     <PostJobWizardShell
@@ -139,15 +334,26 @@ export default function PostJobStepBasicInfo() {
       isLoading={isDraftInitializing}
       onRetryAutosave={retryAutosave}
       headerAction={(
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="job-post-button job-post-button--secondary" onClick={loadDrafts}>
             <FileText size={15} />{t('postJob.continueDraft')}
           </button>
-          {!isInstantJobMode && (
-            <button type="button" className="job-post-button job-post-button--primary" onClick={() => setIsInstantJobMode(true)}>
-              <Sparkles size={15} />{t('postJobWizard.ai.open')}
-            </button>
-          )}
+          <div
+            ref={aiButtonWrapRef}
+            className="inline-flex"
+            style={{
+              visibility: (isInstantJobMode || flightState === 'toInput') ? 'hidden' : 'visible',
+              pointerEvents: (isInstantJobMode || flightState !== 'none') ? 'none' : 'auto',
+            }}
+          >
+            <ConicBorderButton
+              type="button"
+              onClick={handleOpenAiInput}
+            >
+              <Sparkles size={15} className="text-brand animate-pulse" />
+              {t('postJobWizard.ai.open')}
+            </ConicBorderButton>
+          </div>
         </div>
       )}
       secondaryAction={(
@@ -166,8 +372,9 @@ export default function PostJobStepBasicInfo() {
             isPremium={premium.isPremium}
             isLoading={isGeneratingInstant}
             onGenerate={handleGenerateInstantJob}
+            onAbort={handleAbortGenerateInstantJob}
             onUpgrade={() => navigate('/premium/client/pricing')}
-            onClose={() => setIsInstantJobMode(false)}
+            onClose={handleCloseAiInput}
           />
         )
       }

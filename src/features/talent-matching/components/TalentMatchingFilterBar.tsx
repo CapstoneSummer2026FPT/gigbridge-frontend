@@ -79,7 +79,7 @@ export function TalentMatchingFilterBar({
 
   return (
     <section
-      className="sticky top-24 z-10 rounded-2xl border border-border bg-surface-card/95 p-4 sm:p-5 shadow-sm space-y-3.5 transition-all"
+      className="sticky top-24 z-30 rounded-2xl border border-border bg-surface-card/95 p-4 sm:p-5 shadow-sm space-y-3.5 transition-all"
       style={{ backdropFilter: 'blur(16px)' }}
     >
       {/* Header Info Row: Title, Result Count, Description */}

@@ -304,6 +304,7 @@ export function usePostJob() {
   });
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [pendingGeneratedDetails, setPendingGeneratedDetails] = useState<GenerateJobDescriptionDetailsResponse | null>(null);
+  const [aiGenerationSource, setAiGenerationSource] = useState<'prompt' | 'document'>('prompt');
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isHiringPlanGenerated, setIsHiringPlanGenerated] = useState(() => {
     return (location.state as any)?.hiringPlanGenerated ?? false;
@@ -315,6 +316,7 @@ export function usePostJob() {
   const generationIdRef = useRef(0);
   // Cancels the in-flight HTTP fetch (Browser → ASP.NET) when user re-prompts
   const hiringPlanAbortRef = useRef<AbortController | null>(null);
+  const detailsAbortRef = useRef<AbortController | null>(null);
 
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
@@ -692,6 +694,8 @@ export function usePostJob() {
     setAttachmentError(null);
     hiringPlanAbortRef.current?.abort('Draft reset');
     hiringPlanAbortRef.current = null;
+    detailsAbortRef.current?.abort('Draft reset');
+    detailsAbortRef.current = null;
     generationIdRef.current += 1;
     backgroundHiringPlanPromiseRef.current = null;
     setBackgroundHiringPlanStatus('idle');
@@ -825,7 +829,8 @@ export function usePostJob() {
     setDraggedIndex(null);
   };
 
-  const handleGenerateInstantJob = async (prompt?: string) => {
+  const handleGenerateInstantJob = async (prompt?: string, sourceType: 'prompt' | 'document' = 'prompt') => {
+    setAiGenerationSource(sourceType);
     let promptText = typeof prompt === 'string' ? prompt.trim() : '';
 
     if (!promptText) {
@@ -845,6 +850,10 @@ export function usePostJob() {
     // any result that somehow still arrives (Scenarios 2 & 3 where the LLM keeps running).
     hiringPlanAbortRef.current?.abort('User re-prompted AI');
     hiringPlanAbortRef.current = null;
+    detailsAbortRef.current?.abort('User re-prompted AI');
+    const detailsController = new AbortController();
+    detailsAbortRef.current = detailsController;
+
     generationIdRef.current += 1;
     backgroundHiringPlanPromiseRef.current = null;
     setBackgroundHiringPlanStatus('idle');
@@ -853,7 +862,7 @@ export function usePostJob() {
     setErrorMessage(null);
     setIsGeneratingInstant(true);
     try {
-      const response = await jobAPI.generateAIDetails({ clientPrompt: promptText });
+      const response = await jobAPI.generateAIDetails({ clientPrompt: promptText }, detailsController.signal);
       if (!response.success || !response.data) {
         const errorMsg = response.message || 'Job details could not be generated.';
         toast.error(errorMsg);
@@ -866,13 +875,24 @@ export function usePostJob() {
       // Open the lightweight success modal — user confirms before prefill + Flow 2 start
       setIsReviewModalOpen(true);
     } catch (error) {
+      if (axios.isCancel(error) || (error instanceof Error && error.name === 'CanceledError')) {
+        return;
+      }
       const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
       toast.error(errorMsg);
       setErrorMessage(errorMsg);
     } finally {
       setIsGeneratingInstant(false);
+      detailsAbortRef.current = null;
     }
   };
+
+  const handleAbortGenerateInstantJob = useCallback(() => {
+    detailsAbortRef.current?.abort('User aborted generation');
+    detailsAbortRef.current = null;
+    setIsGeneratingInstant(false);
+    toast.info(t('postJobWizard.ai.generationAborted', 'AI generation cancelled.'));
+  }, [t]);
 
   const handleApproveDetails = async () => {
     if (!pendingGeneratedDetails) return;
@@ -1745,6 +1765,8 @@ export function usePostJob() {
     isJobDetailsGenerated,
     isGeneratingInstant,
     handleGenerateInstantJob,
+    handleAbortGenerateInstantJob,
+    aiGenerationSource,
     isReviewModalOpen,
     pendingGeneratedDetails,
     isGeneratingPlan,

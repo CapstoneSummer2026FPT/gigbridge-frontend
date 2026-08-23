@@ -18,24 +18,15 @@ export const canEditJobPostContent = (
 
   if (normalizedVisibility === 3) return false;
 
-  return isDraftJobPostStatus(status) || normalizedVisibility === JobPostVisibility.Private;
+  return isDraftJobPostStatus(status);
 };
 
 export const getAllowedJobPostVisibilities = (
-  status: JobPostStatusValue,
   visibility: number | null | undefined,
 ): readonly JobPostVisibility[] => {
   const normalizedVisibility = normalizeVisibility(visibility);
 
   if (normalizedVisibility === 3) return [];
-
-  if (isDraftJobPostStatus(status) || normalizedVisibility === JobPostVisibility.Private) {
-    return [
-      JobPostVisibility.Public,
-      JobPostVisibility.Private,
-      JobPostVisibility.InviteOnly,
-    ];
-  }
 
   return [JobPostVisibility.Public, JobPostVisibility.InviteOnly];
 };

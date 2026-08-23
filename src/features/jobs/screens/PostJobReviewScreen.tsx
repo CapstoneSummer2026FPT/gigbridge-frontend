@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Lock, Mail, Pencil, Save, Sparkles, Tags } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, Check, CheckCircle2, CircleDollarSign, Clock3, Coins, FileText, Globe, HelpCircle, Images, Layers, ListChecks, LoaderCircle, Mail, Pencil, Save, Sparkles, Tags } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoin, formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
@@ -28,7 +28,7 @@ import { renderDescription } from '../utils/descriptionFormatter';
 
 const normalizePublishVisibility = (visibility: string): JobPostVisibility => {
   const value = Number(visibility);
-  if (value === JobPostVisibility.Private || value === JobPostVisibility.InviteOnly) return value;
+  if (value === JobPostVisibility.InviteOnly) return value;
   return JobPostVisibility.Public;
 };
 
@@ -697,10 +697,9 @@ export default function PostJobReviewScreen() {
 
             <div className="pt-2">
               {/* 3-Option Visibility Segment Toggle Group */}
-              <div className="p-1 rounded-xl bg-muted/40 border border-border/60 grid grid-cols-3 gap-1">
+              <div className="p-1 rounded-xl bg-muted/40 border border-border/60 grid grid-cols-2 gap-1">
                 {[
                   { value: String(JobPostVisibility.Public), label: t('postJob.publicShort', 'Công khai'), icon: Globe },
-                  { value: String(JobPostVisibility.Private), label: t('postJob.privateShort', 'Riêng tư'), icon: Lock },
                   { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnlyShort', 'Lời mời'), icon: Mail },
                 ].map((item) => {
                   const isSelected = String(form.visibility) === item.value;
