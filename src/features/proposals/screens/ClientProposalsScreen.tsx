@@ -113,7 +113,6 @@ export default function ClientProposalsScreen() {
     evalModalOpen,
     setEvalModalOpen,
     evalLoading,
-    evalResult,
     evalError,
     modalTab,
     setModalTab,
@@ -489,7 +488,6 @@ export default function ClientProposalsScreen() {
           setModalTab={setModalTab}
           evalLoading={evalLoading}
           evalError={evalError}
-          evalResult={evalResult}
           rawAnswers={rawAnswers}
           rejectProposalId={rejectProposalId}
           setRejectProposalId={setRejectProposalId}
