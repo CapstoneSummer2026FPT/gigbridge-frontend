@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
-import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
+import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
@@ -39,6 +39,12 @@ type ErrorLogEntry = {
   userId: string | null;
   requestId: string;
   count: number;
+  source: string;
+  externalUrl: string | null;
+  firstObservedAt: string | null;
+  status: string | null;
+  environment: string | null;
+  platform: string | null;
 };
 
 type SystemAlert = {
@@ -150,6 +156,12 @@ const toFailureLog = (service: string, url: string, response: ApiResponse<unknow
   userId: null,
   requestId: url,
   count: 1,
+  source: 'admin-probe',
+  externalUrl: null,
+  firstObservedAt: null,
+  status: null,
+  environment: null,
+  platform: null,
 });
 
 const toAlert = (service: string, response: ApiResponse<unknown>): SystemAlert => ({
@@ -173,6 +185,7 @@ export default function AdminSystemTrackingScreen() {
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
   const [isLoadingTracking, setIsLoadingTracking] = useState(true);
+  const [errorMonitoring, setErrorMonitoring] = useState<SystemTrackingSnapshot['errorMonitoring'] | null>(null);
 
   // API Logs filters
   const [apiLogFilters, setApiLogFilters] = useState({
@@ -212,7 +225,14 @@ export default function AdminSystemTrackingScreen() {
       userId: null,
       requestId: error.requestId,
       count: error.count,
+      source: error.source,
+      externalUrl: error.externalUrl ?? null,
+      firstObservedAt: error.firstObservedAt ?? null,
+      status: error.status ?? null,
+      environment: error.environment ?? null,
+      platform: error.platform ?? null,
     })));
+    setErrorMonitoring(snapshot.errorMonitoring);
     setAlerts(snapshot.alerts.map(alert => ({
       id: alert.id,
       timestamp: alert.firstObservedAt,
@@ -368,7 +388,9 @@ export default function AdminSystemTrackingScreen() {
     return errorLogs.filter(error => {
       const matchesSearch = searchQuery === '' ||
         error.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        error.service.toLowerCase().includes(searchQuery.toLowerCase());
+        error.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        error.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (error.platform?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
 
       const matchesLevel = logLevelFilter === 'all' || error.level === logLevelFilter;
 
@@ -925,6 +947,28 @@ export default function AdminSystemTrackingScreen() {
           {/* Error Logs Tab */}
           {activeTab === 'errors' && (
             <div className="space-y-4">
+              {errorMonitoring && (
+                <div className={`glass-card p-4 border ${
+                  errorMonitoring.available
+                    ? 'border-green/30'
+                    : errorMonitoring.configured
+                      ? 'border-red/30'
+                      : 'border-amber/30'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    {errorMonitoring.available
+                      ? <CheckCircle size={18} className="text-green mt-0.5" />
+                      : <AlertTriangle size={18} className={errorMonitoring.configured ? 'text-red mt-0.5' : 'text-amber mt-0.5'} />}
+                    <div>
+                      <p className="text-sm font-semibold text-primary">
+                        {errorMonitoring.provider === 'sentry' ? 'Sentry issue feed' : errorMonitoring.provider}
+                      </p>
+                      <p className="text-xs text-secondary mt-1">{errorMonitoring.message}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Filters */}
               <div className="glass-card p-4">
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -961,6 +1005,7 @@ export default function AdminSystemTrackingScreen() {
                       <div className="flex items-center gap-2">
                         {getLogLevelBadge(error.level)}
                         <span className="badge-purple text-xs">{error.service}</span>
+                        <span className="badge-cyan text-xs">{error.source}</span>
                         {error.count > 1 && (
                           <span className="badge-amber text-xs">{error.count}x</span>
                         )}
@@ -970,6 +1015,12 @@ export default function AdminSystemTrackingScreen() {
                       </span>
                     </div>
                     <p className="text-sm font-semibold text-primary mb-2">{error.message}</p>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
+                      {error.environment && <span>Environment: {error.environment}</span>}
+                      {error.platform && <span>Platform: {error.platform}</span>}
+                      {error.status && <span>Status: {error.status}</span>}
+                      {error.firstObservedAt && <span>First seen: {formatTimestamp(error.firstObservedAt)}</span>}
+                    </div>
                     {error.stackTrace && (
                       <details className="mt-3">
                         <summary className="text-xs text-cyan cursor-pointer hover:underline">
@@ -980,17 +1031,27 @@ export default function AdminSystemTrackingScreen() {
                         </pre>
                       </details>
                     )}
-                    <div className="flex gap-3 text-xs text-muted mt-3">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted mt-3">
                       {error.requestId && <span>Request: {error.requestId}</span>}
                       {error.userId && <span>User: {error.userId}</span>}
+                      {error.externalUrl && (
+                        <a
+                          href={error.externalUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan hover:underline inline-flex items-center gap-1"
+                        >
+                          Open in Sentry <ExternalLink size={12} />
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
                 {!isLoadingTracking && filteredErrors.length === 0 && (
                   <div className="glass-card text-center py-12">
                     <CheckCircle size={48} className="mx-auto mb-4 text-green" />
-                    <p className="text-primary font-medium mb-2">No API errors found</p>
-                    <p className="text-sm text-secondary">All wired system tracking requests are currently successful.</p>
+                    <p className="text-primary font-medium mb-2">No unresolved errors found</p>
+                    <p className="text-sm text-secondary">No local API failures or unresolved Sentry issues match the current filters.</p>
                   </div>
                 )}
               </div>
