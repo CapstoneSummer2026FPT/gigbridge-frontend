@@ -89,6 +89,32 @@ export interface ConversationInboxStatusResponse extends ConversationUnreadCount
   revision: number;
 }
 
+export interface ConversationInboxRevisionChangedEvent extends ConversationInboxStatusResponse {
+  conversationId?: string | null;
+  changeKind: 'upsert' | 'reset' | string;
+}
+
+export interface NegotiationMilestonePlanUpdatedEvent {
+  conversationId: string;
+  updatedByUserId: string;
+  updatedAt: string;
+}
+
+export interface FinalOfferCreatedEvent {
+  conversationId: string;
+  offerId: string;
+  messageId: string;
+}
+
+export interface FinalOfferRespondedEvent {
+  conversationId: string;
+  offerId: string;
+  status: number;
+  response: 'Accept' | 'RequestChange' | 'Decline' | string;
+  contractId?: string | null;
+  messageId?: string | null;
+}
+
 interface ConversationSummaryPageResponse {
   items: ConversationSummaryResponse[];
   nextCursor?: string | null;
