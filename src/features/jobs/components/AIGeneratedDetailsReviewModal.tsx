@@ -1,10 +1,11 @@
-import { X, Sparkles, Check } from 'lucide-react';
+import { X, Sparkles, Check, FileText } from 'lucide-react';
 import type { GenerateJobDescriptionDetailsResponse } from '../../../types/models/Job';
 import { useTranslation } from '../../../hooks/useTranslation';
 
 interface Props {
   isOpen: boolean;
   data?: GenerateJobDescriptionDetailsResponse | null;
+  sourceType?: 'prompt' | 'document';
   onClose?: () => void;
   onApprove?: () => void;
   onOk?: () => void;
@@ -14,6 +15,7 @@ interface Props {
 export function AIGeneratedDetailsReviewModal({
   isOpen,
   data,
+  sourceType = 'prompt',
   onClose,
   onApprove,
   onOk,
@@ -24,6 +26,7 @@ export function AIGeneratedDetailsReviewModal({
 
   const handleConfirm = onOk || onApprove || (() => {});
   const handleDismiss = onCancel || onClose || (() => {});
+  const isDoc = sourceType === 'document';
 
   return (
     <div className="job-post-modal-overlay" role="dialog" aria-modal="true">
@@ -36,11 +39,17 @@ export function AIGeneratedDetailsReviewModal({
         <div className="job-post-modal-header border-b-0 pb-2">
           <div className="job-post-modal-header-title">
             <div className="job-post-modal-icon-sparkle">
-              <Sparkles size={22} className="text-primary-500" />
+              {isDoc ? (
+                <FileText size={22} className="text-primary-500" />
+              ) : (
+                <Sparkles size={22} className="text-primary-500" />
+              )}
             </div>
             <div>
               <h3 className="text-lg font-bold text-foreground">
-                {t('aiJobGeneratedModal.title', { defaultValue: 'Tạo Bài Đăng Tuyển Dụng AI Thành Công' })}
+                {isDoc
+                  ? t('aiJobGeneratedModal.documentTitle', { defaultValue: 'Đã Điền Thông Tin Từ Tài Liệu Dự Án' })
+                  : t('aiJobGeneratedModal.title', { defaultValue: 'Tạo Bài Đăng Tuyển Dụng AI Thành Công' })}
               </h3>
             </div>
           </div>
@@ -57,9 +66,13 @@ export function AIGeneratedDetailsReviewModal({
         {/* Modal Content */}
         <div className="job-post-modal-content py-3 text-sm text-muted-foreground leading-relaxed">
           <p>
-            {t('aiJobGeneratedModal.description', {
-              defaultValue: 'Mô tả công việc, ngân sách, thời gian triển khai và danh sách kỹ năng đã được AI khởi tạo thành công.',
-            })}
+            {isDoc
+              ? t('aiJobGeneratedModal.documentDescription', {
+                  defaultValue: 'Chúng tôi đã hỗ trợ bạn trích xuất và điền các thông tin từ tài liệu dự án vào bài đăng công việc (bao gồm mô tả chi tiết, ngân sách, thời gian và kỹ năng yêu cầu).',
+                })
+              : t('aiJobGeneratedModal.description', {
+                  defaultValue: 'Mô tả công việc, ngân sách, thời gian triển khai và danh sách kỹ năng đã được AI khởi tạo thành công.',
+                })}
           </p>
           <p className="mt-2 font-medium text-foreground">
             {t('aiJobGeneratedModal.instructionBefore', { defaultValue: 'Bấm ' })}

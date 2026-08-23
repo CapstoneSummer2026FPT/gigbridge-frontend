@@ -115,11 +115,11 @@ export default function ProjectsListScreen() {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
               {t('currentLanguage') === 'vi' ? (
                 <>
-                  <span className="text-blue-600 black:text-blue-400 italic font-light">Dự án</span> của tôi
+                  <span className="text-blue-600 black:text-blue-400 italic font-light">Workspace</span> của tôi
                 </>
               ) : (
                 <>
-                  My <span className="text-blue-600 black:text-blue-400 italic font-light">Projects</span>
+                  My <span className="text-blue-600 black:text-blue-400 italic font-light">Workspace</span>
                 </>
               )}
             </h1>

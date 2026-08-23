@@ -40,9 +40,10 @@ export const jobPostAPI = {
 
 
   generateAIDetails: async (
-    data: GenerateJobDescriptionRequest
+    data: GenerateJobDescriptionRequest,
+    signal?: AbortSignal,
   ): Promise<ApiResponse<GenerateJobDescriptionDetailsResponse>> => {
-    return apiService.post<GenerateJobDescriptionDetailsResponse>(`${jobPostsUrl}/ai/generate/details`, data);
+    return apiService.post<GenerateJobDescriptionDetailsResponse>(`${jobPostsUrl}/ai/generate/details`, data, {}, signal);
   },
 
   generateAIHiringPlan: async (

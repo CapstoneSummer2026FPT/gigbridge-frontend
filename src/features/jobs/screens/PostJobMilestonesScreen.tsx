@@ -26,9 +26,21 @@ export default function PostJobMilestonesScreen() {
   const { role } = useApp();
   const { isPremium } = usePremiumStatus(role);
   const routeState = location.state as PostJobRouteState | null;
-  const [isAiInterviewEnabled, setIsAiInterviewEnabled] = useState<boolean>(
-    Boolean(routeState?.jobData?.hasAiInterview)
-  );
+  const {
+    form, previewTitle, errorMessage, isDraftInitializing, draftError,
+    milestonePlans, milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
+    expandedMilestones, setExpandedMilestones, questions, setQuestions,
+    draggedIndex, updateQuestion, handleDragStart, handleDragOver, handleDragEnd,
+    MAX_QUESTION_LENGTH, milestonePlanTotal, milestoneTotalWeeks, expectedDurationWeeks,
+    isBudgetExceeded, isDurationExceeded, isActionDisabled,
+    isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
+    handleLeaveSaveDraft, handleLeaveDiscardDraft, cancelBlockedNavigation,
+    submitDraftFlow, renderSubmitLabel, retryAutosave, navigateWizard,
+    isBudgetExceededPromptOpen, handleBudgetExceededConfirm, handleBudgetExceededCancel,
+    hasAiInterview, setHasAiInterview,
+  } = usePostJob();
+
+  const isAiInterviewEnabled = hasAiInterview;
 
   const handleToggleAiInterview = (e?: React.MouseEvent) => {
     if (e) {
@@ -45,7 +57,7 @@ export default function PostJobMilestonesScreen() {
       return;
     }
 
-    setIsAiInterviewEnabled(prev => {
+    setHasAiInterview(prev => {
       const next = !prev;
       toast.success(
         next
@@ -55,19 +67,6 @@ export default function PostJobMilestonesScreen() {
       return next;
     });
   };
-
-  const {
-    form, previewTitle, errorMessage, isDraftInitializing, draftError,
-    milestonePlans, milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
-    expandedMilestones, setExpandedMilestones, questions, setQuestions,
-    draggedIndex, updateQuestion, handleDragStart, handleDragOver, handleDragEnd,
-    MAX_QUESTION_LENGTH, milestonePlanTotal, milestoneTotalWeeks, expectedDurationWeeks,
-    isBudgetExceeded, isDurationExceeded, isActionDisabled,
-    isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
-    handleLeaveSaveDraft, handleLeaveDiscardDraft, cancelBlockedNavigation,
-    submitDraftFlow, renderSubmitLabel, retryAutosave, navigateWizard,
-    isBudgetExceededPromptOpen, handleBudgetExceededConfirm, handleBudgetExceededCancel,
-  } = usePostJob();
   const questionCount = questions.filter(question => question.questionText.trim()).length;
   const [milestonesOpen, setMilestonesOpen] = useState(true);
   const [questionsOpen, setQuestionsOpen] = useState(questionCount > 0);

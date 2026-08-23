@@ -39,12 +39,14 @@ body {
 
 .nav-hover-btn {
   position: relative;
-  margin-left: 2.5rem;
   font-family: "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
   font-size: 0.75rem;
   text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   color: var(--foreground);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .nav-hover-btn::after {
@@ -126,6 +128,20 @@ body {
 }
 .floating-nav .logo-text {
   color: var(--foreground);
+}
+
+/* Guarantee Mobile/Tablet Navbar Collapsing below 1024px */
+@media (max-width: 1023px) {
+  .landing-nav-container .desktop-nav-links,
+  .landing-nav-container .nav-hover-btn {
+    display: none !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .landing-nav-container .logo-text {
+    display: none !important;
+  }
 }
 
 .absolute-center {
@@ -329,6 +345,10 @@ body {
 
 .contact-clip-path-2 {
   clip-path: polygon(29% 15%, 85% 30%, 50% 100%, 10% 64%);
+}
+
+.contact-clip-path-3 {
+  clip-path: polygon(20% 0%, 85% 12%, 68% 78%, 10% 68%);
 }
 
 .indicator-line {

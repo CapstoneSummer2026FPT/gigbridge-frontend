@@ -409,4 +409,3 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     </div>
   );
 };
-``
