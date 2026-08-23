@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import * as signalR from '@microsoft/signalr';
 import { adminGetAPI, adminPatchAPI, adminPostAPI } from '../../../api/adminAPI';
 import type { AdminResolveDisputePayload } from '../../../api/adminAPI/POST';
-import { getChatHubUrl } from '../../../service/apiService';
+import { onChatHubReconnected, retainChatHubConnection } from '../../../shared/realtime/chatHubConnection';
 import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { DisputeMessageRecipient } from '../../../api/messageAPI/GET';
 import { MilestoneStatus } from '../../../types/models/Contract';
@@ -272,10 +271,8 @@ export function useAdminDisputeManagement() {
     disputeConversationIdRef.current = conversationId;
     if (!conversationId) return;
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(getChatHubUrl(), { accessTokenFactory: () => localStorage.getItem('access_token') ?? '' })
-      .withAutomaticReconnect()
-      .build();
+    const lease = retainChatHubConnection();
+    const connection = lease.connection;
 
     const receive = (payload: ConversationMessageResponse) => {
       if (disposed || payload.conversationId !== disputeConversationIdRef.current) return;
@@ -290,15 +287,18 @@ export function useAdminDisputeManagement() {
       );
     };
     connection.on('ReceiveMessage', receive);
-    connection.onreconnected(() => void connection.invoke('JoinConversation', conversationId));
-    void connection
-      .start()
-      .then(() => (disposed ? connection.stop() : connection.invoke('JoinConversation', conversationId)))
+    const stopReconnect = onChatHubReconnected(() => {
+      if (!disposed) void connection.invoke('JoinConversation', conversationId);
+    });
+    void lease.ready
+      .then(() => (disposed ? undefined : connection.invoke('JoinConversation', conversationId)))
       .catch(() => undefined);
     return () => {
       disposed = true;
       connection.off('ReceiveMessage', receive);
-      void connection.stop();
+      stopReconnect();
+      void connection.invoke('LeaveConversation', conversationId).catch(() => undefined);
+      lease.release();
     };
   }, [selectedDispute?.conversations.disputeConversationId, selectedDispute?.conversations.workspaceConversationId]);
 

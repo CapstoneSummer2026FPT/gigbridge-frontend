@@ -1,14 +1,16 @@
 import { useCallback, useState } from 'react';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { esignPostAPI } from '../../../api/esignAPI/POST';
-import type { ESignDocumentDto } from '../../../types/models/ESign';
+import type { ESignDocumentDto, ESignDocumentStatusDto } from '../../../types/models/ESign';
 import { SignatureStatus } from '../../../types/models/ESign';
 import { sanitizePdfHtml } from '../utils/pdfHtmlSanitizer';
 
-export const getESignPdfFileName = (document: ESignDocumentDto): string =>
+type ESignPdfDocument = ESignDocumentDto | ESignDocumentStatusDto;
+
+export const getESignPdfFileName = (document: ESignPdfDocument): string =>
   document.contractId
     ? 'Gigbridge-Client-Freelancer-Contract.pdf'
-    : `${(document.documentCode || 'GigBridge-document').replace(/[^a-z0-9._-]+/gi, '-')}.pdf`;
+    : `${(('documentCode' in document && document.documentCode) || 'GigBridge-document').replace(/[^a-z0-9._-]+/gi, '-')}.pdf`;
 
 export const downloadESignPdfBlob = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob);
@@ -90,7 +92,7 @@ const renderPdf = async (document: ESignDocumentDto): Promise<Blob> => {
   }
 };
 
-export async function getESignPdfBlob(document: ESignDocumentDto): Promise<Blob> {
+export async function getESignPdfBlob(document: ESignPdfDocument): Promise<Blob> {
   if (document.hasPdfArtifact) {
     const cached = await esignGetAPI.downloadDocument(document.documentId);
     if (cached.success && cached.data) {
@@ -114,7 +116,15 @@ export async function getESignPdfBlob(document: ESignDocumentDto): Promise<Blob>
     return prepared.data;
   }
 
-  const pdf = await renderPdf(document);
+  const fullDocument = 'renderedHtmlContent' in document
+    ? document
+    : await esignGetAPI.getDocumentById(document.documentId).then(response => {
+        if (!response.success || !response.data) {
+          throw new Error(response.message || 'The E-sign document content could not be loaded.');
+        }
+        return response.data;
+      });
+  const pdf = await renderPdf(fullDocument);
   const signatureCount = document.signatures.filter(signature => signature.status === SignatureStatus.Signed).length;
   const saved = await esignPostAPI.saveDocumentPdf(
     document.documentId,
@@ -140,7 +150,7 @@ export async function prepareESignPdfById(documentId: string, download = false):
   await prepareESignPdf(response.data, download);
 }
 
-export function useESignPdf(document: ESignDocumentDto | null) {
+export function useESignPdf(document: ESignPdfDocument | null) {
   const [isPreparing, setIsPreparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,7 +159,8 @@ export function useESignPdf(document: ESignDocumentDto | null) {
     setIsPreparing(true);
     setError(null);
     try {
-      await prepareESignPdf(document, true);
+      const blob = await getESignPdfBlob(document);
+      downloadESignPdfBlob(blob, getESignPdfFileName(document));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The PDF could not be prepared.');
     } finally {

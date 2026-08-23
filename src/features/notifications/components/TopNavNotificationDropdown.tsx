@@ -48,7 +48,6 @@ export function TopNavNotificationDropdown({
   const notificationUser = location.pathname === '/notifications' ? null : user;
   const { notifications, unreadCount, markAsRead } = useUserNotifications(notificationUser, {
     pageSize: 8,
-    pollMs: 45000,
   });
 
   // Handle click outside to close dropdown
