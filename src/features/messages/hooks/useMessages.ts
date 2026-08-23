@@ -656,8 +656,13 @@ export function useMessages() {
 
     const targetProposalId = queryProposalId || stateProposalId;
 
+    // Same exclusion as the auto-select default above: a Dispute conversation must
+    // never become activeConvId here either, or a stale ?conversationId= left over
+    // from browser history/a shared link can hijack the panel on every refresh.
+    const selectable = conversationsState.filter((c: any) => c.conversationType !== ConversationType.Dispute && !c.disputeId);
+
     if (queryConvId) {
-      const found = conversationsState.find(c => c.id === queryConvId);
+      const found = selectable.find(c => c.id === queryConvId);
       if (found) {
         setActiveConvId(found.id);
         return;
@@ -665,7 +670,7 @@ export function useMessages() {
     }
 
     if (targetProposalId) {
-      const found = conversationsState.find(c => c.proposalId === targetProposalId);
+      const found = selectable.find(c => c.proposalId === targetProposalId);
       if (found) {
         setActiveConvId(found.id);
         return;

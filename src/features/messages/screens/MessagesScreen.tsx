@@ -510,7 +510,7 @@ export default function MessagesScreen() {
   ], [isVi]);
 
   useEffect(() => {
-    if (activeConv?.roomId && activeConv.roomId !== activeRoomId) {
+    if (activeConv?.roomId && !isDisputeConvo(activeConv) && activeConv.roomId !== activeRoomId) {
       setActiveRoomId(activeConv.roomId);
     }
   }, [activeConv?.id, activeConv?.roomId]);
