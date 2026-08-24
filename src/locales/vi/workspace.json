@@ -131,6 +131,8 @@
     "disputeLockedDescription": "Vui lòng tiếp tục trao đổi trong cuộc trò chuyện tranh chấp.",
     "conversationClosedTitle": "Cuộc hội thoại này đã bị khóa.",
     "conversationClosedDescription": "Không thể gửi tin nhắn sau khi phiếu tranh chấp được đóng.",
+    "conversationClosedCompletedTitle": "Cuộc hội thoại này đã bị khóa vì hợp đồng đã hoàn thành.",
+    "conversationClosedCompletedDescription": "Không thể gửi tin nhắn nữa.",
     "disputedBadge": "Đang tranh chấp",
     "openDispute": "Mở tranh chấp",
     "version": "Phiên bản {{version}}",
