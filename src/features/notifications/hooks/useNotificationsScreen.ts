@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { useUserNotifications, type UiNotification } from './useUserNotifications';
+import type { UiNotification } from './useUserNotifications';
+import { useNotificationsContext } from '../providers/NotificationsProvider';
 import {
   getNotificationDesignRule,
   getNotificationCategoryGroup,
@@ -49,7 +49,6 @@ export interface UseNotificationsScreenReturn {
 
 export function useNotificationsScreen(): UseNotificationsScreenReturn {
   const navigate = useNavigate();
-  const { user } = useApp();
   const { t: tNotif, i18n } = useTranslation('notifications');
   const isVi = i18n.language === 'vi';
 
@@ -60,7 +59,6 @@ export function useNotificationsScreen(): UseNotificationsScreenReturn {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('grid');
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Backend validates [Range(1, 20)] int pageSize = 20. Must be <= 20.
   const {
     notifications,
     unreadCount,
@@ -69,7 +67,7 @@ export function useNotificationsScreen(): UseNotificationsScreenReturn {
     refresh,
     markAsRead,
     markAllAsRead,
-  } = useUserNotifications(user, { pageSize: 20, pollMs: 45_000 });
+  } = useNotificationsContext();
 
   const readCount = useMemo(() => {
     return Math.max(0, notifications.length - unreadCount);

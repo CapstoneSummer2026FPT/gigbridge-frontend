@@ -381,7 +381,12 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
       }
     };
 
-    const attachHandler = () => connection.on('ReceiveNotification', handleNotification);
+    const attachHandler = () => {
+      connection.on('ReceiveNotification', handleNotification);
+      // A dropped connection can miss events broadcast during the outage; SignalR does not
+      // replay them, so resync explicitly instead of waiting for the next poll tick.
+      connection.onreconnected(() => { void loadNotifications(); });
+    };
     attachHandler();
 
     const startConnection = async () => {
