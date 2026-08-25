@@ -854,12 +854,23 @@ export function useMessages() {
         setSignalRStatus('connected');
         console.info('[ChatHub] reconnected');
         if (activeConvIdRef.current) {
-          connection.invoke('JoinConversation', activeConvIdRef.current)
+          const rejoinedConvId = activeConvIdRef.current;
+          connection.invoke('JoinConversation', rejoinedConvId)
             .then(() => {
-              console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
+              console.info(`[ChatHub] rejoined conversation group: ${rejoinedConvId}`);
+              // Resync: any events broadcast while disconnected were missed (SignalR
+              // doesn't replay), so refetch the active conversation's messages now.
+              return messageGetAPI.getConversationMessages(rejoinedConvId);
+            })
+            .then(res => {
+              if (disposed || activeConvIdRef.current !== rejoinedConvId) return;
+              if (res && res.success && res.data) {
+                const mapped = dedupeMessages(res.data.map(mapBackendMessage));
+                setMessagesMap(prev => ({ ...prev, [rejoinedConvId]: mapped }));
+              }
             })
             .catch(err => {
-              console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
+              console.error(`[ChatHub] failed to rejoin/resync conversation group: ${rejoinedConvId}`, err);
             });
         }
       });
