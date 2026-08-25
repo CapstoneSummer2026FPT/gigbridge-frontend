@@ -241,15 +241,17 @@ export interface SupportedBankResponse {
 
 export interface CreateBankAccountRequest {
   bankBin: string;
-  bankCode: string;
-  bankName: string;
   accountNumber: string;
   accountName: string;
   isDefault?: boolean;
+  /** Deprecated compatibility fields. The backend resolves bank identity from bankBin. */
+  bankCode?: string;
+  bankName?: string;
 }
 
 export interface UpdateBankAccountRequest {
   bankBin?: string;
+  /** Deprecated compatibility fields. The backend resolves bank identity from bankBin. */
   bankCode?: string;
   bankName?: string;
   accountNumber?: string;
