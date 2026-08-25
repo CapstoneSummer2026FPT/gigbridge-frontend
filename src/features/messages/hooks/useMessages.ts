@@ -835,6 +835,8 @@ export function useMessages() {
         .configureLogging(signalR.LogLevel.Warning)
         .withUrl(hubUrl, {
           accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+          skipNegotiation: true,
+          transport: signalR.HttpTransportType.WebSockets,
         })
         .withAutomaticReconnect([0, 2_000, 5_000, 10_000])
         .build();
