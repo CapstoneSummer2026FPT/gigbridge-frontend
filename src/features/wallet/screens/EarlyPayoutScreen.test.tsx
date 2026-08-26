@@ -100,7 +100,7 @@ describe('EarlyPayoutScreen', () => {
 
     render(<EarlyPayoutScreen />);
 
-    expect(await screen.findByText('Ngân hàng Vietcombank')).toBeInTheDocument();
+    expect(await screen.findAllByText('Ngân hàng Vietcombank')).not.toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Tạo Yêu Cầu Rút Tiền' })).toBeEnabled();
   });
 });

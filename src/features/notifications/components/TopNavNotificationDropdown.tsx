@@ -1,8 +1,9 @@
 import { useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate } from 'react-router';
 import { Bell, Sparkles, ChevronRight, ArrowRight, Clock } from 'lucide-react';
 import type { User } from '../../../types/models/User';
-import { useUserNotifications, type UiNotification } from '../hooks/useUserNotifications';
+import type { UiNotification } from '../hooks/useUserNotifications';
+import { useNotificationsContext } from '../providers/NotificationsProvider';
 import { getNotificationDesignRule } from '../utils/notificationDesignRules';
 import { useTranslation } from '../../../hooks/useTranslation';
 
@@ -41,14 +42,9 @@ export function TopNavNotificationDropdown({
   const { t, i18n } = useTranslation();
   const isVi = i18n.language === 'vi';
   const navigate = useNavigate();
-  const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // If currently on /notifications, don't auto-fetch in TopNav to avoid duplicate polling
-  const notificationUser = location.pathname === '/notifications' ? null : user;
-  const { notifications, unreadCount, markAsRead } = useUserNotifications(notificationUser, {
-    pageSize: 8,
-  });
+  const { notifications, unreadCount, markAsRead } = useNotificationsContext();
 
   // Handle click outside to close dropdown
   useEffect(() => {

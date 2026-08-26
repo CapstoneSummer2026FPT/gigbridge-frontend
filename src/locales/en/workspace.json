@@ -131,6 +131,8 @@
     "disputeLockedDescription": "Please continue communication in the dispute conversation.",
     "conversationClosedTitle": "This conversation has been locked.",
     "conversationClosedDescription": "Messages can no longer be sent after the dispute was closed.",
+    "conversationClosedCompletedTitle": "This conversation has been locked because the contract has been completed.",
+    "conversationClosedCompletedDescription": "Messages can no longer be sent.",
     "disputedBadge": "Disputed",
     "openDispute": "Open Dispute",
     "version": "Version {{version}}",

@@ -44,6 +44,7 @@ vi.mock('@microsoft/signalr', () => ({
     Disconnected: 'Disconnected',
     Connected: 'Connected',
   },
+  HttpTransportType: { WebSockets: 1 },
   LogLevel: { Warning: 3 },
 }));
 

@@ -20,7 +20,6 @@ import {
   CreditCard,
   Copy,
   Wifi,
-  Sparkles,
 } from 'lucide-react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
