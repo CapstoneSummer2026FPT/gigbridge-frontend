@@ -656,8 +656,13 @@ export function useMessages() {
 
     const targetProposalId = queryProposalId || stateProposalId;
 
+    // Same exclusion as the auto-select default above: a Dispute conversation must
+    // never become activeConvId here either, or a stale ?conversationId= left over
+    // from browser history/a shared link can hijack the panel on every refresh.
+    const selectable = conversationsState.filter((c: any) => c.conversationType !== ConversationType.Dispute && !c.disputeId);
+
     if (queryConvId) {
-      const found = conversationsState.find(c => c.id === queryConvId);
+      const found = selectable.find(c => c.id === queryConvId);
       if (found) {
         setActiveConvId(found.id);
         return;
@@ -665,7 +670,7 @@ export function useMessages() {
     }
 
     if (targetProposalId) {
-      const found = conversationsState.find(c => c.proposalId === targetProposalId);
+      const found = selectable.find(c => c.proposalId === targetProposalId);
       if (found) {
         setActiveConvId(found.id);
         return;
@@ -830,6 +835,8 @@ export function useMessages() {
         .configureLogging(signalR.LogLevel.Warning)
         .withUrl(hubUrl, {
           accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+          skipNegotiation: true,
+          transport: signalR.HttpTransportType.WebSockets,
         })
         .withAutomaticReconnect([0, 2_000, 5_000, 10_000])
         .build();
@@ -847,12 +854,23 @@ export function useMessages() {
         setSignalRStatus('connected');
         console.info('[ChatHub] reconnected');
         if (activeConvIdRef.current) {
-          connection.invoke('JoinConversation', activeConvIdRef.current)
+          const rejoinedConvId = activeConvIdRef.current;
+          connection.invoke('JoinConversation', rejoinedConvId)
             .then(() => {
-              console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
+              console.info(`[ChatHub] rejoined conversation group: ${rejoinedConvId}`);
+              // Resync: any events broadcast while disconnected were missed (SignalR
+              // doesn't replay), so refetch the active conversation's messages now.
+              return messageGetAPI.getConversationMessages(rejoinedConvId);
+            })
+            .then(res => {
+              if (disposed || activeConvIdRef.current !== rejoinedConvId) return;
+              if (res && res.success && res.data) {
+                const mapped = dedupeMessages(res.data.map(mapBackendMessage));
+                setMessagesMap(prev => ({ ...prev, [rejoinedConvId]: mapped }));
+              }
             })
             .catch(err => {
-              console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
+              console.error(`[ChatHub] failed to rejoin/resync conversation group: ${rejoinedConvId}`, err);
             });
         }
       });

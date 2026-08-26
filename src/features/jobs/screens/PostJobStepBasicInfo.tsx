@@ -57,7 +57,7 @@ export default function PostJobStepBasicInfo() {
     handleLeaveDiscardDraft, cancelBlockedNavigation, submitDraftFlow,
     renderSubmitLabel, retryAutosave, resetToNewDraft,
     uploadAttachment, deleteAttachment,
-    isGeneratingInstant, handleGenerateInstantJob,
+    isGeneratingInstant, handleGenerateInstantJob, handleAbortGenerateInstantJob,
     aiGenerationSource,
     isReviewModalOpen, pendingGeneratedDetails, isGeneratingPlan,
     handleApproveDetails, handleCancelDetails, isInstantJobMode,
@@ -372,6 +372,7 @@ export default function PostJobStepBasicInfo() {
             isPremium={premium.isPremium}
             isLoading={isGeneratingInstant}
             onGenerate={handleGenerateInstantJob}
+            onAbort={handleAbortGenerateInstantJob}
             onUpgrade={() => navigate('/premium/client/pricing')}
             onClose={handleCloseAiInput}
           />

@@ -1,15 +1,14 @@
+import { useMemo } from 'react';
 import {
   Brain,
   BriefcaseBusiness,
   Check,
-  CheckCircle2,
   FileQuestion,
   FileText,
   Layers,
   MessageSquare,
   Sparkles,
   X,
-  XCircle,
 } from 'lucide-react';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
@@ -19,10 +18,10 @@ import {
   type ProposalAnswerDto,
   type ProposalDetailDto,
   type ProposalDto,
-  type VettingEvaluationResponseDto,
   type ProposalMilestonePlanDto,
-  type GradedQuestionDto,
 } from '../../../types/models/Proposal';
+import { AIProposalVerdictCard } from './AIProposalVerdictCard';
+import { AISideBySideMilestoneMatrix } from './AISideBySideMilestoneMatrix';
 import type { BusyAction } from '../hooks/useClientProposals';
 import { getStatusLabel } from '../utils/statusHelpers';
 
@@ -39,7 +38,6 @@ export interface ProposalDetailModalProps {
   setModalTab: (tab: 'userAnswers' | 'proposalDetails' | 'aiReport') => void;
   evalLoading: boolean;
   evalError: string | null;
-  evalResult: VettingEvaluationResponseDto | null;
   rawAnswers: ProposalAnswerDto[];
   rejectProposalId: string | null;
   setRejectProposalId: (id: string | null) => void;
@@ -87,7 +85,6 @@ export function ProposalDetailModal({
   setModalTab,
   evalLoading,
   evalError,
-  evalResult,
   rawAnswers,
   rejectProposalId,
   setRejectProposalId,
@@ -101,9 +98,80 @@ export function ProposalDetailModal({
   t,
   showAiReportTab = true,
 }: ProposalDetailModalProps) {
+  const activeProposal = proposals.find(p => p.proposalsId === activeId);
+
+  const displayQuestions = useMemo(() => {
+    if (!activeProposal?.aiFullEvaluationJson) return [];
+    try {
+      const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
+      const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
+      return screeningQa.map((qa: any) => {
+        const correctness = qa.answer_correctness?.score ?? 0;
+        const reasoning = qa.technical_reasoning?.score ?? 0;
+        const relevance = qa.relevance?.score ?? 0;
+        const depth = qa.depth?.score ?? 0;
+        const examples = qa.practical_examples?.score ?? 0;
+
+        const weightedScore = Math.round(
+          correctness * 0.40 +
+          reasoning * 0.25 +
+          relevance * 0.15 +
+          depth * 0.10 +
+          examples * 0.10
+        );
+
+        const evidenceAssessment =
+          qa.answer_correctness?.evidence?.[0]?.assessment ||
+          qa.technical_reasoning?.evidence?.[0]?.assessment ||
+          qa.relevance?.evidence?.[0]?.assessment ||
+          'Technical quality assessment based on candidate response.';
+
+        const claims = [
+          ...(qa.answer_correctness?.evidence || []),
+          ...(qa.technical_reasoning?.evidence || []),
+        ].map((e: any) => e.claim).filter(Boolean);
+
+        return {
+          questionIndex: qa.question_index ?? 0,
+          questionText: qa.question_text || `Question #${(qa.question_index ?? 0) + 1}`,
+          candidateAnswer: qa.candidate_answer || 'No answer provided',
+          overallScore: weightedScore,
+          subcriteria: {
+            correctness: Math.round(correctness),
+            reasoning: Math.round(reasoning),
+            relevance: Math.round(relevance),
+            depth: Math.round(depth),
+            examples: Math.round(examples),
+          },
+          evidenceAssessment,
+          claims,
+        };
+      });
+    } catch {
+      return [];
+    }
+  }, [activeProposal]);
+
+  const pillar2Score = useMemo(() => {
+    if (!activeProposal?.aiFullEvaluationJson) {
+      return activeProposal?.aiTechnicalQualityScore ? activeProposal.aiTechnicalQualityScore * 0.9 : 13.9;
+    }
+    try {
+      const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
+      const score = parsed?.deterministic_calculations?.pillar_scores?.screening_qa;
+      if (score != null) return Number(score);
+      if (displayQuestions.length > 0) {
+        const avg = displayQuestions.reduce((acc: number, q: any) => acc + q.overallScore, 0) / displayQuestions.length;
+        return avg;
+      }
+      return activeProposal?.aiTechnicalQualityScore ? activeProposal.aiTechnicalQualityScore * 0.9 : 13.9;
+    } catch {
+      return 13.9;
+    }
+  }, [activeProposal, displayQuestions]);
+
   if (!isOpen) return null;
 
-  const activeProposal = proposals.find(p => p.proposalsId === activeId);
   const currentStatus = Number(detail?.status ?? activeProposal?.status);
   const freelancerName = detail?.freelancerName || activeProposal?.freelancerName || 'Freelancer';
   const freelancerUserId = detail?.freelancerUserId || activeProposal?.freelancerUserId;
@@ -126,10 +194,10 @@ export function ProposalDetailModal({
       {/* Main Dialog Container matching Review Dialog style */}
       <div
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-full max-w-6xl h-[88vh] max-h-[820px] min-h-[600px] rounded-[2rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all"
+        className="relative z-10 w-[98vw] max-w-[1780px] h-[95vh] max-h-[1050px] min-h-[700px] rounded-[2.5rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all"
       >
-        {/* ═══ LEFT COLUMN: Candidate Hero & Proposal Context (Matching Review Dialog) ═══════════ */}
-        <div className="w-full lg:w-1/3 p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
+        {/* ═══ LEFT COLUMN: Candidate Hero & Proposal Context ═══════════ */}
+        <div className="w-full lg:w-[340px] xl:w-[390px] p-6 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           {/* Top Header Eyebrow */}
@@ -199,8 +267,8 @@ export function ProposalDetailModal({
           </button>
         </div>
 
-        {/* ═══ RIGHT COLUMN: Interactive Tab Content & Actions ═════════ */}
-        <div className="w-full lg:w-2/3 p-6 lg:p-8 bg-background flex flex-col justify-between relative min-w-0">
+        {/* ═══ RIGHT COLUMN: Tabbed Content & Decision Toolbar ════════════════════════ */}
+        <div className="flex-1 min-w-0 p-6 lg:p-8 bg-background flex flex-col justify-between relative">
           {/* Desktop Close Button */}
           <button
             type="button"
@@ -380,7 +448,7 @@ export function ProposalDetailModal({
                   </div>
                 )}
 
-                {!evalLoading && !evalResult && (
+                {!evalLoading && !activeProposal?.aiTechnicalQualityScore && !activeProposal?.aiFullEvaluationJson && (
                   <div className="rounded-2xl border border-border bg-surface-muted/20 p-12 text-center text-xs text-muted-foreground space-y-3">
                     <Brain size={38} className="mx-auto text-purple-500/60" />
                     <div>
@@ -392,152 +460,125 @@ export function ProposalDetailModal({
                   </div>
                 )}
 
-                {!evalLoading && evalResult && (
+                {(!evalLoading && (activeProposal?.aiTechnicalQualityScore || activeProposal?.aiFullEvaluationJson)) && (
                   <div className="space-y-5">
-                    {/* Summary Card */}
-                    <div className="rounded-2xl border border-purple-500/25 bg-purple-500/5 p-5 space-y-4 shadow-2xs">
-                      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/15 pb-4">
-                        {/* Overall Score Circle */}
-                        <div className="flex items-center gap-3.5">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/15 border-2 border-purple-500/30 shrink-0 shadow-xs">
-                            <span className="text-xl font-black text-purple-600 dark:text-purple-400">{evalResult.score}</span>
-                          </div>
-                          <div>
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted">{t('proposalAnswers.overallScore', 'Điểm số tổng thể')}</h4>
-                            <p className="text-xs font-extrabold">{t('proposalAnswers.aiScore', { score: evalResult.score, defaultValue: `${evalResult.score} / 100 điểm` })}</p>
-                          </div>
-                        </div>
+                    {/* Render AI Candidate Evaluation Engine Verdict Card */}
+                    {activeProposal && (
+                      <AIProposalVerdictCard proposal={activeProposal} />
+                    )}
 
-                        {/* Recommendation Badge */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-text-muted font-bold">{t('proposalAnswers.recommendation', 'Khuyến nghị')}:</span>
-                          {evalResult.recommendedHire ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 size={13} /> {t('proposalAnswers.recommended', 'Khuyên dùng tuyển dụng')}
+                    {/* Render Side-by-Side Comparative Milestone Matrix */}
+                    <AISideBySideMilestoneMatrix
+                      detail={detail}
+                      proposal={activeProposal}
+                      fullEvaluationJson={activeProposal?.aiFullEvaluationJson}
+                    />
+
+
+
+                  {/* Questions Breakdown linked to Pillar 2 (Screening Q&A 30%) */}
+                  {displayQuestions.length > 0 && (
+                    <div className="space-y-4 pt-2">
+                      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-surface-card p-3.5 space-y-1.5 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-black text-[11px] text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                            ❓ Screening Q&A Accuracy & Reasoning (30%) Audit
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-0.5 text-xs font-black text-amber-800 dark:text-amber-200">
+                              Score: {pillar2Score.toFixed(1)} / 100
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-3.5 py-1 text-xs font-black text-rose-500">
-                              <XCircle size={13} /> {t('proposalAnswers.notRecommended', 'Cần cân nhắc thêm')}
+                            <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                              Pillar 2 Evidence Source ({displayQuestions.length} câu hỏi sàng lọc)
                             </span>
-                          )}
+                          </div>
                         </div>
+                        <p className="text-[11px] text-text-muted font-medium">
+                          Bảng dưới đây liệt kê chi tiết từng câu hỏi sàng lọc, câu trả lời của ứng viên và điểm đối soát 5 tiêu chí kỹ thuật cấu thành nên điểm <strong>Screening Q&A (30% Weight)</strong>.
+                        </p>
                       </div>
 
-                      {/* AI Authenticity & Detection Summary Card */}
-                      {(() => {
-                        const isAi = evalResult.isAiGenerated || (evalResult.aiConfidenceScore ?? 0) >= 0.5;
-                        const confPercent = Math.round((evalResult.aiConfidenceScore ?? (isAi ? 0.75 : 0.15)) * 100);
-                        const defaultSummary = isAi
-                          ? 'Một số câu trả lời của ứng viên mang dấu hiệu liệt kê hoặc diễn đạt chuẩn mẫu từ mô hình AI.'
-                          : 'Các câu trả lời phỏng vấn được đánh giá là chân thực với văn phong tự nhiên của ứng viên.';
-                        const summaryText = evalResult.aiDetectionSummary || defaultSummary;
+                      <h4 className="text-xs font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-2 flex items-center justify-between">
+                        <span>{t('proposalAnswers.questionBreakdown', 'Chi tiết điểm từng câu hỏi & Feedback từ AI')}</span>
+                        <span className="text-[11px] font-bold text-text-muted">
+                          {displayQuestions.length} câu hỏi sàng lọc
+                        </span>
+                      </h4>
 
-                        return (
-                          <div className={`rounded-xl border p-3.5 space-y-1.5 text-xs shadow-2xs ${
-                            isAi
-                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200'
-                              : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200'
-                          }`}>
-                            <div className="flex items-center justify-between font-black uppercase tracking-wider text-[10px]">
-                              <span className={`flex items-center gap-1.5 ${isAi ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                <Sparkles size={13} /> Đánh giá tính xác thực tổng thể (Authenticity Assessment)
-                              </span>
-                              <span className="rounded-full px-2.5 py-0.5 bg-background/80 border border-border text-[10px] font-black">
-                                {confPercent}% AI Confidence
-                              </span>
-                            </div>
-                            <p className="text-xs leading-relaxed font-medium pt-1">
-                              {summaryText}
+                      {displayQuestions.map((q: any, idx: number) => (
+                        <div key={idx} className="rounded-2xl border border-border/80 p-4.5 space-y-3.5 bg-surface-card/60 shadow-2xs">
+                          {/* Question Title & Overall Weighted Score */}
+                          <div className="flex justify-between items-start gap-4">
+                            <h5 className="text-xs font-black text-text-primary leading-snug">
+                              {q.questionIndex + 1}. {q.questionText}
+                            </h5>
+                            <span className={`shrink-0 rounded-full px-3 py-0.5 text-xs font-black ${getScoreColorClass(q.overallScore)}`}>
+                              {q.overallScore}/100
+                            </span>
+                          </div>
+
+                          {/* Candidate Answer Box */}
+                          <div className="rounded-xl bg-surface-muted/50 border border-border/60 p-3 text-xs space-y-1">
+                            <span className="block text-[10px] font-black uppercase text-text-muted tracking-wider">
+                              Câu trả lời của ứng viên
+                            </span>
+                            <p className="text-text-primary whitespace-pre-wrap leading-relaxed font-medium">
+                              {q.candidateAnswer || t('proposalAnswers.noAnswerProvided', 'Không có câu trả lời')}
                             </p>
                           </div>
-                        );
-                      })()}
 
-                      {/* Summary */}
-                      <div>
-                        <h4 className="text-[11px] font-black uppercase tracking-wider text-text-muted mb-1.5">{t('proposalAnswers.summary', 'Tóm tắt đánh giá của AI')}</h4>
-                        <p className="text-xs leading-relaxed text-text-primary font-medium whitespace-pre-wrap bg-purple-500/5 p-3.5 rounded-xl border border-purple-500/10">{evalResult.summary}</p>
-                      </div>
-
-                      {/* Holistic Adjustment */}
-                      {(evalResult.holisticAdjustment !== 0 || evalResult.holisticAdjustmentReason) && (
-                        <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-3 text-xs space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-black text-purple-700 dark:text-purple-300 uppercase tracking-wider text-[10px]">Hiệu chỉnh bổ sung:</span>
-                            <span className={`font-black px-2 py-0.5 rounded-full text-[10px] ${evalResult.holisticAdjustment > 0 ? 'bg-emerald-500/20 text-emerald-600' : 'bg-rose-500/20 text-rose-600'}`}>
-                              {evalResult.holisticAdjustment > 0 ? `+${evalResult.holisticAdjustment}` : evalResult.holisticAdjustment}
+                          {/* 5-Subcriteria Technical Evaluation Grid */}
+                          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 space-y-2.5">
+                            <span className="block text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                              📊 Chi tiết đánh giá 5 Tiêu chí Kỹ thuật (5 Sub-criteria Breakdown)
                             </span>
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                              <div className="rounded-lg bg-background/80 border border-border/60 p-2 text-center">
+                                <span className="block text-[9px] font-bold uppercase text-text-muted">Độ chính xác (40%)</span>
+                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.correctness)} border-0 bg-transparent p-0 block mt-0.5`}>
+                                  {q.subcriteria.correctness}/100
+                                </strong>
+                              </div>
+                              <div className="rounded-lg bg-background/80 border border-border/60 p-2 text-center">
+                                <span className="block text-[9px] font-bold uppercase text-text-muted">Tư duy Kỹ thuật (25%)</span>
+                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.reasoning)} border-0 bg-transparent p-0 block mt-0.5`}>
+                                  {q.subcriteria.reasoning}/100
+                                </strong>
+                              </div>
+                              <div className="rounded-lg bg-background/80 border border-border/60 p-2 text-center">
+                                <span className="block text-[9px] font-bold uppercase text-text-muted">Độ liên quan (15%)</span>
+                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.relevance)} border-0 bg-transparent p-0 block mt-0.5`}>
+                                  {q.subcriteria.relevance}/100
+                                </strong>
+                              </div>
+                              <div className="rounded-lg bg-background/80 border border-border/60 p-2 text-center">
+                                <span className="block text-[9px] font-bold uppercase text-text-muted">Độ sâu (10%)</span>
+                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.depth)} border-0 bg-transparent p-0 block mt-0.5`}>
+                                  {q.subcriteria.depth}/100
+                                </strong>
+                              </div>
+                              <div className="rounded-lg bg-background/80 border border-border/60 p-2 text-center col-span-2 sm:col-span-1">
+                                <span className="block text-[9px] font-bold uppercase text-text-muted">Ví dụ thực tế (10%)</span>
+                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.examples)} border-0 bg-transparent p-0 block mt-0.5`}>
+                                  {q.subcriteria.examples}/100
+                                </strong>
+                              </div>
+                            </div>
                           </div>
-                          {evalResult.holisticAdjustmentReason && (
-                            <p className="text-text-primary leading-relaxed font-medium mt-1">{evalResult.holisticAdjustmentReason}</p>
-                          )}
+
+                          {/* AI Technical Evidence Assessment */}
+                          <div className="rounded-xl bg-surface-card border border-border/70 p-3 text-xs space-y-1 shadow-2xs">
+                            <span className="block text-[10px] font-black uppercase text-brand tracking-wider">
+                              🧠 Đánh giá & Phản hồi Kỹ thuật của AI
+                            </span>
+                            <p className="text-text-primary leading-relaxed font-medium">
+                              {q.evidenceAssessment}
+                            </p>
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
-
-                    {/* Questions Breakdown */}
-                    {evalResult.gradedQuestions?.length > 0 && (
-                      <div className="space-y-4">
-                        <h4 className="text-xs font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-2">
-                          {t('proposalAnswers.questionBreakdown', 'Chi tiết điểm từng câu hỏi')}
-                        </h4>
-
-                        {evalResult.gradedQuestions.map((q: GradedQuestionDto, idx: number) => (
-                          <div key={idx} className="rounded-2xl border border-border/80 p-4 space-y-3 bg-surface-card/60 shadow-2xs">
-                            <div className="flex justify-between items-start gap-4">
-                              <h5 className="text-xs font-black text-text-primary leading-snug">
-                                {q.questionIndex + 1}. {q.questionText}
-                              </h5>
-                              <span className={`shrink-0 rounded-full px-3 py-0.5 text-xs font-black ${getScoreColorClass(q.score)}`}>
-                                {q.score}/100
-                              </span>
-                            </div>
-
-                            <div className="rounded-xl bg-surface-muted/50 border border-border/60 p-3 text-xs space-y-1">
-                              <span className="block text-[10px] font-black uppercase text-text-muted tracking-wider">Câu trả lời ứng viên</span>
-                              <p className="text-text-primary whitespace-pre-wrap leading-relaxed font-medium">{q.candidateAnswer || t('proposalAnswers.noAnswerProvided', 'Không có câu trả lời')}</p>
-                            </div>
-
-                            {/* Always display AI Authenticity Assessment for each question */}
-                            {(() => {
-                              const isAi = q.isAiGenerated || (q.aiConfidenceScore ?? 0) >= 0.5;
-                              const confPercent = Math.round((q.aiConfidenceScore ?? (isAi ? 0.75 : 0.15)) * 100);
-                              const defaultReason = isAi
-                                ? 'Cấu trúc câu trả lời và cách trình bày mang đặc trưng liệt kê mẫu của mô hình AI.'
-                                : 'Câu trả lời mang phong cách diễn đạt tự nhiên, trình bày trực tiếp kinh nghiệm thực tế của ứng viên.';
-                              const reasonText = q.aiDetectionReason || defaultReason;
-
-                              return (
-                                <div className={`rounded-xl border p-3 text-xs space-y-1 ${
-                                  isAi
-                                    ? 'bg-amber-500/10 border-amber-500/25 text-amber-900 dark:text-amber-200'
-                                    : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-900 dark:text-emerald-200'
-                                }`}>
-                                  <div className="flex items-center justify-between">
-                                    <span className={`font-black uppercase tracking-wider text-[10px] flex items-center gap-1.5 ${
-                                      isAi ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
-                                    }`}>
-                                      <Sparkles size={12} /> Đánh giá tính xác thực AI
-                                    </span>
-                                    <span className="text-[10px] font-black rounded-full px-2 py-0.5 bg-background/80 border border-border">
-                                      {confPercent}% AI Confidence
-                                    </span>
-                                  </div>
-                                  <p className="text-text-primary text-xs leading-relaxed font-medium mt-0.5">
-                                    {reasonText}
-                                  </p>
-                                </div>
-                              );
-                            })()}
-
-                            <div className="rounded-xl bg-purple-500/5 border border-purple-500/15 p-3 text-xs space-y-1">
-                              <span className="block text-[10px] font-black uppercase text-purple-600 dark:text-purple-400 tracking-wider">Phản hồi của AI</span>
-                              <p className="text-text-primary leading-relaxed font-medium">{q.feedback}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  )}
                   </div>
                 )}
               </>

@@ -242,7 +242,9 @@ export function ManageMilestone({
               const isLast = idx === project.milestones.length - 1;
               const previousMilestone = idx > 0 ? project.milestones[idx - 1] : null;
               const isPreviousMilestoneStarted = idx === 0 || (previousMilestone && previousMilestone.status !== 'pending');
-              const isConsecutiveEarlyStart = isPending && isPreviousMilestoneStarted;
+              const isPreviousMilestoneApproved = idx === 0 || (previousMilestone && (previousMilestone.status === 'approved' || previousMilestone.status === 'completed'));
+              const hasApprovedEarlyStart = (earlyStartRequests || []).some(request => request.milestoneId === milestone.id && Number(request.status) === 1);
+              const isConsecutiveEarlyStart = isPending && (isPreviousMilestoneApproved || hasApprovedEarlyStart);
               const canUnlockOrStartMilestone = isInProgress || isConsecutiveEarlyStart;
 
               const isLineFilled = isCompleted || isInProgress || isSubmitted;

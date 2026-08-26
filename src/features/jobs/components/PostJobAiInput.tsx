@@ -1,5 +1,5 @@
 import { useState, type FormEvent, useRef, useEffect, useCallback, useReducer } from 'react';
-import { Crown, Sparkles, LoaderCircle, ArrowUp, Eraser, X, Paperclip, FileText, FileType, Code2, AlertCircle, UploadCloud, Plus } from 'lucide-react';
+import { Crown, Sparkles, LoaderCircle, ArrowUp, Square, Eraser, X, Paperclip, FileText, FileType, Code2, AlertCircle, UploadCloud, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import gsap from 'gsap';
 import { parseJobDocument, combineAndTrimJobDocuments } from '../utils/documentParser';
@@ -9,6 +9,7 @@ interface Props {
   isPremium: boolean;
   isLoading: boolean;
   onGenerate: (prompt: string, sourceType?: 'prompt' | 'document') => Promise<void>;
+  onAbort?: () => void;
   onUpgrade: () => void;
   onClose: () => void;
 }
@@ -137,7 +138,7 @@ function hexPath(x: number, y: number, w: number, h: number, cutW: number, cutH:
   return roundedPolygonPath(points, radii);
 }
 
-export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, onClose }: Props) {
+export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUpgrade, onClose }: Props) {
   const { t } = useTranslation(['jobs', 'common']);
   const [prompt, setPrompt] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
@@ -713,18 +714,25 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                     >
                       {t('postJobWizard.cancel', 'Cancel')}
                     </button>
-                    <button
-                      type="submit"
-                      className="job-post-ai-bar__generate"
-                      disabled={!canSubmitPrompt}
-                      title={isLoading ? t('postJobWizard.ai.generating') : t('postJobWizard.ai.generate')}
-                    >
-                      {isLoading ? (
-                        <LoaderCircle size={15} className="animate-spin" />
-                      ) : (
+                    {isLoading ? (
+                      <button
+                        type="button"
+                        onClick={onAbort}
+                        className="job-post-ai-bar__generate cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                        title={t('postJobWizard.ai.abort', 'Stop generation')}
+                      >
+                        <Square size={14} className="fill-white text-white" />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        className="job-post-ai-bar__generate"
+                        disabled={!canSubmitPrompt}
+                        title={t('postJobWizard.ai.generate', 'Generate draft')}
+                      >
                         <ArrowUp size={15} />
-                      )}
-                    </button>
+                      </button>
+                    )}
                   </div>
                 </div>
               </form>
@@ -938,19 +946,26 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onUpgrade, on
                   >
                     {t('postJobWizard.cancel', 'Cancel')}
                   </button>
-                  <button
-                    type="submit"
-                    onClick={submitDocument}
-                    className="job-post-ai-bar__generate"
-                    disabled={!canSubmitDocument}
-                    title={isLoading ? t('postJobWizard.ai.generating') : t('postJobWizard.ai.generate')}
-                  >
                     {isLoading ? (
-                      <LoaderCircle size={15} className="animate-spin" />
+                      <button
+                        type="button"
+                        onClick={onAbort}
+                        className="job-post-ai-bar__generate cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                        title={t('postJobWizard.ai.abort', 'Stop generation')}
+                      >
+                        <Square size={14} className="fill-white text-white" />
+                      </button>
                     ) : (
-                      <ArrowUp size={15} />
+                      <button
+                        type="submit"
+                        onClick={submitDocument}
+                        className="job-post-ai-bar__generate"
+                        disabled={!canSubmitDocument}
+                        title={t('postJobWizard.ai.generate', 'Generate draft')}
+                      >
+                        <ArrowUp size={15} />
+                      </button>
                     )}
-                  </button>
                 </div>
               </div>
             </div>
