@@ -1388,8 +1388,17 @@ export default function MessagesScreen() {
                 <div className="mx-auto flex max-w-3xl items-center justify-center gap-3 text-muted-foreground">
                   <Lock size={20} className="shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <strong className="text-sm">{t('workspace.conversationClosedTitle')}</strong>
-                    <p className="text-xs">{t('workspace.conversationClosedDescription')}</p>
+                    {activeConv.contractStatus === ContractStatus.Completed ? (
+                      <>
+                        <strong className="text-sm">{t('workspace.conversationClosedCompletedTitle')}</strong>
+                        <p className="text-xs">{t('workspace.conversationClosedCompletedDescription')}</p>
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-sm">{t('workspace.conversationClosedTitle')}</strong>
+                        <p className="text-xs">{t('workspace.conversationClosedDescription')}</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

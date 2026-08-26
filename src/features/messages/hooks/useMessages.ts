@@ -927,7 +927,6 @@ export function useMessages() {
       .catch(err => {
         if (!disposed) console.error('[ChatHub] connection failed:', err);
       });
-
     return () => {
       disposed = true;
       stopStatus();

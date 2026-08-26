@@ -535,6 +535,30 @@ export function useProjectWorkspace(initialContractId: string) {
     }
   }, []);
 
+  const reloadActiveProductHandoffsOnly = useCallback(async (targetContractId?: string): Promise<void> => {
+    const contractId = targetContractId || activeProjectIdRef.current;
+    if (!contractId || contractId !== activeProjectIdRef.current) return;
+
+    try {
+      const productHandoffsRes = await contractGetAPI.getProductHandoffs(contractId);
+      if (productHandoffsRes.success) {
+        const nextProductHandoffs = productHandoffsRes.data ?? [];
+        setProductHandoffs(nextProductHandoffs);
+        setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
+
+        const cached = workspaceCacheRef.current.get(contractId);
+        if (cached) {
+          workspaceCacheRef.current.set(contractId, {
+            ...cached,
+            productHandoffs: nextProductHandoffs,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[useProjectWorkspace] failed to reload product handoffs:', err);
+    }
+  }, []);
+
   const debouncedReloadActiveWorkspace = useCallback(async (): Promise<void> => {
     const now = Date.now();
     if (now - lastReloadTimeRef.current < 300) return;
@@ -638,6 +662,13 @@ export function useProjectWorkspace(initialContractId: string) {
       void reloadActiveMilestonesOnly(eventContractId);
     };
 
+    const handleProductHandoffEvent = (payload?: Record<string, unknown>): void => {
+      const eventContractId = payload ? String(payload.contractId ?? payload.ContractId ?? payload.contractsId ?? '') : '';
+      if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
+      void reloadActiveProductHandoffsOnly(eventContractId);
+      void reloadActiveMilestonesOnly(eventContractId);
+    };
+
     const workspaceEvents = [
       'WorkspaceUpdated',
       'MilestoneUpdated',
@@ -650,8 +681,8 @@ export function useProjectWorkspace(initialContractId: string) {
       'DeliverableSubmitted',
       'EarlyStartRequested',
       'EarlyStartResponded',
-      'ProductHandoffSubmitted',
     ];
+    const productHandoffEvents = ['ProductHandoffUpdated', 'ProductHandoffAcknowledged'];
 
     connection.on('ReceiveMessage', handleReceiveMessage);
     connection.on('ContractCompleted', handleContractCompleted);
@@ -659,13 +690,21 @@ export function useProjectWorkspace(initialContractId: string) {
     workspaceEvents.forEach(evt => {
       connection.on(evt, handleRealtimeWorkspaceEvent);
     });
+    productHandoffEvents.forEach(evt => {
+      connection.on(evt, handleProductHandoffEvent);
+    });
 
     const stopReconnect = onChatHubReconnected(() => {
-      if (!disposed) void joinCurrentConversation();
+      if (!disposed) {
+        void joinCurrentConversation();
+        void reloadActiveWorkspace();
+      }
     });
 
     void lease.ready
+    void lease.ready
       .then(() => {
+        if (disposed) return;
         if (disposed) return;
         chatConnectionRef.current = connection;
         void joinCurrentConversation();
@@ -682,8 +721,12 @@ export function useProjectWorkspace(initialContractId: string) {
       workspaceEvents.forEach(evt => {
         connection.off(evt, handleRealtimeWorkspaceEvent);
       });
+      productHandoffEvents.forEach(evt => {
+        connection.off(evt, handleProductHandoffEvent);
+      });
       stopReconnect();
       if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
+      lease.release();
       lease.release();
     };
   }, [user?.id, debouncedReloadActiveWorkspace]);
