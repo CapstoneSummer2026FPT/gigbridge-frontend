@@ -35,6 +35,7 @@ interface Props {
   children: ReactNode;
   overlay?: ReactNode;
   promptInput?: ReactNode;
+  hideAIWidget?: boolean;
 }
 
 export function PostJobWizardShell({
@@ -63,12 +64,13 @@ export function PostJobWizardShell({
   children,
   overlay,
   promptInput,
+  hideAIWidget,
 }: Props) {
   const { t } = useTranslation('common');
   const completedSteps = Array.from({ length: currentStep - 1 }, (_, index) => index + 1);
 
   return (
-    <AppLayout>
+    <AppLayout hideAIWidget={Boolean(promptInput || hideAIWidget)}>
       <div className="job-post-wizard">
         <div className="job-post-wizard__mobile-progress">
           <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />

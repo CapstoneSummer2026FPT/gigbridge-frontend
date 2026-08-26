@@ -334,13 +334,13 @@ export default function PostJobStepBasicInfo() {
       isLoading={isDraftInitializing}
       onRetryAutosave={retryAutosave}
       headerAction={(
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="job-post-button job-post-button--secondary" onClick={loadDrafts}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <button type="button" className="job-post-button job-post-button--secondary w-full sm:w-auto" onClick={loadDrafts}>
             <FileText size={15} />{t('postJob.continueDraft')}
           </button>
           <div
             ref={aiButtonWrapRef}
-            className="inline-flex"
+            className="inline-flex w-full sm:w-auto"
             style={{
               visibility: (isInstantJobMode || flightState === 'toInput') ? 'hidden' : 'visible',
               pointerEvents: (isInstantJobMode || flightState !== 'none') ? 'none' : 'auto',
@@ -348,6 +348,7 @@ export default function PostJobStepBasicInfo() {
           >
             <ConicBorderButton
               type="button"
+              className="w-full sm:w-auto justify-center"
               onClick={handleOpenAiInput}
             >
               <Sparkles size={15} className="text-brand animate-pulse" />
@@ -424,16 +425,16 @@ export default function PostJobStepBasicInfo() {
             <div className="job-post-input flex min-h-[3rem] flex-wrap items-center gap-2 focus-within:border-[var(--brand)]">
               {selectedOfficialSkills.map(skill => (
                 <span key={skill.skillId} className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2.5 py-1 text-xs font-bold text-[var(--brand)]">
-                  {skill.name}<button type="button" onClick={() => removeOfficialSkill(skill.skillId)}><X size={11} /></button>
+                  {skill.name}<button type="button" className="p-0.5 hover:bg-brand/20 rounded-full" onClick={() => removeOfficialSkill(skill.skillId)}><X size={11} /></button>
                 </span>
               ))}
               {form.customSkillNames.map(skill => (
                 <span key={skill} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-bold">
-                  {skill}<button type="button" onClick={() => removeCustomSkill(skill)}><X size={11} /></button>
+                  {skill}<button type="button" className="p-0.5 hover:bg-muted-foreground/20 rounded-full" onClick={() => removeCustomSkill(skill)}><X size={11} /></button>
                 </span>
               ))}
               <input
-                className="min-w-[9rem] flex-1 border-none bg-transparent p-0 shadow-none outline-none"
+                className="min-w-[6.5rem] sm:min-w-[9rem] flex-1 border-none bg-transparent p-0 shadow-none outline-none text-xs sm:text-sm"
                 value={skillInput}
                 disabled={!form.categoryId}
                 placeholder={form.categoryId ? t('postJob.addSkillPlaceholder') : t('postJob.selectCategoryFirst')}
@@ -445,7 +446,7 @@ export default function PostJobStepBasicInfo() {
                   }
                 }}
               />
-              <button type="button" disabled={!skillInput.trim()} onClick={() => addSkill(skillInput)} aria-label={t('postJob.addSkill')}><Plus size={15} /></button>
+              <button type="button" className="p-1 rounded-lg hover:bg-muted" disabled={!skillInput.trim()} onClick={() => addSkill(skillInput)} aria-label={t('postJob.addSkill')}><Plus size={15} /></button>
             </div>
             {isSkillsLoading && <small>{t('postJob.loadingSkills')}</small>}
             {remainingSkills.length > 0 && (
@@ -487,10 +488,10 @@ export default function PostJobStepBasicInfo() {
           </div>
         </div>
         <div className="job-post-section__body">
-          {/* Expected Budget – full width */}
+          {/* Expected Budget – responsive full width */}
           <div className="job-post-field">
             <label htmlFor="job-budget">{t('postJob.expectedBudget', 'Ngân sách dự kiến')}</label>
-            <div className="relative flex items-center">
+            <div className="relative flex flex-col sm:flex-row sm:items-center">
               <input
                 id="job-budget"
                 type="number"
@@ -498,10 +499,10 @@ export default function PostJobStepBasicInfo() {
                 value={form.budget}
                 onChange={event => setForm({ ...form, budget: event.target.value })}
                 placeholder="0"
-                className="w-full pr-36"
+                className="w-full sm:pr-36"
               />
               {Number(form.budget) > 0 && (
-                <div className="absolute right-2.5 flex items-center gap-1 rounded-md bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2.5 py-1 text-xs font-bold text-[var(--brand)] pointer-events-none select-none">
+                <div className="mt-2 sm:mt-0 sm:absolute sm:right-2.5 flex items-center gap-1 rounded-md bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2.5 py-1 text-xs font-bold text-[var(--brand)] select-none self-start sm:self-auto">
                   <span>= {formatGigCoinToVnd(Number(form.budget))}</span>
                 </div>
               )}
@@ -514,7 +515,7 @@ export default function PostJobStepBasicInfo() {
                   type="button"
                   key={amount}
                   onClick={() => setForm({ ...form, budget: String(amount) })}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${form.budget === String(amount)
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition-all border cursor-pointer ${form.budget === String(amount)
                       ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
                       : 'bg-muted/40 text-muted-foreground border-border hover:border-[var(--brand)] hover:text-foreground'
                     }`}
@@ -525,7 +526,7 @@ export default function PostJobStepBasicInfo() {
                 </button>
               ))}
             </div>
-            <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--brand)_8%,var(--card))] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] px-3 py-1.5 text-xs text-foreground font-medium">
+            <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--brand)_8%,var(--card))] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] px-3 py-1.5 text-xs text-foreground font-medium flex-wrap">
               <GCoinIcon size={15} />
               <span>
                 Chú thích mệnh giá: <strong>1 G-coin = 1.000 VNĐ</strong>
@@ -534,13 +535,13 @@ export default function PostJobStepBasicInfo() {
             <small className="mt-0.5 text-muted-foreground">{t('postJobWizard.details.budgetFromMilestones', 'Được tự động tính từ kế hoạch milestone.')}</small>
           </div>
 
-          {/* Estimated Duration + Deadline – side-by-side */}
+          {/* Estimated Duration + Deadline – responsive grid */}
           <div className="job-post-grid">
             {/* Estimated Duration */}
             <div className="job-post-field">
               <label htmlFor="job-duration">{t('postJob.estimatedDuration', 'Thời gian dự kiến')} *</label>
-              <div className="flex items-center rounded-xl border border-border bg-background focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all overflow-hidden p-1 gap-1">
-                <div className="flex items-center flex-1 pl-3 pr-1">
+              <div className="flex flex-col sm:flex-row sm:items-center rounded-xl border border-border bg-background focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all overflow-hidden p-1.5 gap-1.5 sm:p-1 sm:gap-1">
+                <div className="flex items-center flex-1 px-2 sm:pl-3 sm:pr-1">
                   <Clock3 size={16} className="text-muted-foreground mr-2 flex-shrink-0" />
                   <input
                     id="job-duration"
@@ -552,8 +553,8 @@ export default function PostJobStepBasicInfo() {
                     className="w-full border-none bg-transparent p-1.5 text-sm font-bold text-foreground outline-none shadow-none focus:outline-none focus:shadow-none"
                   />
                 </div>
-                <div className="h-6 w-px bg-border/80 flex-shrink-0" />
-                <div className="flex items-center gap-1 p-0.5 bg-muted/40 rounded-lg">
+                <div className="hidden sm:block h-6 w-px bg-border/80 flex-shrink-0" />
+                <div className="grid grid-cols-3 sm:flex items-center gap-1 p-0.5 bg-muted/40 rounded-lg w-full sm:w-auto">
                   {JOB_DURATION_UNITS.map(unit => {
                     const isSelected = form.estimatedDurationUnit === unit;
                     const unitLabel = unit === 'weeks' ? 'Tuần' : unit === 'months' ? 'Tháng' : 'Năm';
@@ -562,7 +563,7 @@ export default function PostJobStepBasicInfo() {
                         type="button"
                         key={unit}
                         onClick={() => setForm({ ...form, estimatedDurationUnit: unit })}
-                        className={`px-3 py-1.5 text-xs font-extrabold rounded-md transition-all ${isSelected
+                        className={`px-2.5 py-1.5 text-xs font-extrabold rounded-md transition-all text-center cursor-pointer ${isSelected
                             ? 'bg-[var(--brand)] text-white shadow-sm'
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
                           }`}
@@ -588,12 +589,12 @@ export default function PostJobStepBasicInfo() {
           <div className="rounded-2xl border border-border/80 bg-muted/15 transition-all">
             <button
               type="button"
-              className="job-post-accordion__trigger p-4.5 flex items-center justify-between w-full text-left"
+              className="job-post-accordion__trigger p-4 sm:p-4.5 flex items-center justify-between w-full text-left"
               onClick={() => setShowAdvanced(current => !current)}
               aria-expanded={showAdvanced}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center font-bold text-xs">
+                <div className="w-7 h-7 rounded-lg bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center font-bold text-xs shrink-0">
                   <ImagePlus size={15} />
                 </div>
                 <span className="text-xs font-extrabold uppercase tracking-wider text-foreground">
@@ -603,7 +604,7 @@ export default function PostJobStepBasicInfo() {
               <ChevronDown size={18} className={`text-muted-foreground transition-transform duration-200 ${showAdvanced ? 'rotate-180 text-[var(--brand)]' : ''}`} />
             </button>
             {showAdvanced && (
-              <div className="grid gap-5 border-t border-border/80 p-5 bg-card/50 rounded-b-2xl">
+              <div className="grid gap-5 border-t border-border/80 p-4 sm:p-5 bg-card/50 rounded-b-2xl">
                 {/* Project Reference Images */}
                 <div className="job-post-field">
                   <span className="job-post-field__label font-bold text-foreground">
@@ -612,7 +613,7 @@ export default function PostJobStepBasicInfo() {
                   <p className="text-xs text-muted-foreground">
                     {t('postJobWizard.details.attachmentsHint', 'Thêm hình ảnh tham khảo để freelancer hiểu rõ kết quả bạn mong muốn.')}
                   </p>
-                  <label className={`job-post-image-picker mt-1 ${isUploadingAttachment ? 'pointer-events-none opacity-60' : ''}`}>
+                  <label className={`job-post-image-picker mt-1 flex-col sm:flex-row items-start sm:items-center ${isUploadingAttachment ? 'pointer-events-none opacity-60' : ''}`}>
                     <span className="job-post-image-picker__icon">
                       {isUploadingAttachment ? <LoaderCircle className="animate-spin" size={21} /> : <ImagePlus size={21} />}
                     </span>

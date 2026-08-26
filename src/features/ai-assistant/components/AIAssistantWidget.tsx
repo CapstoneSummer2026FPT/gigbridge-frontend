@@ -8,11 +8,9 @@ import {
   Send,
   Sparkles,
   X,
-  Minus,
 } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import {
-  AI_ASSISTANT_DISCLAIMER,
   estimateTokenUsage,
   type AIAssistantMessage,
 } from '../types/assistant';
@@ -147,54 +145,48 @@ export default function AIAssistantWidget() {
     playSound('send', soundEnabled);
 
     const userMsg: AIAssistantMessage = {
-      id: `u_${Date.now()}`, role: 'user', type: 'text',
-      content: text, createdAt: new Date().toISOString(), tokenEstimate: estimateTokenUsage(text),
+      id: `u_${Date.now()}`,
+      role: 'user',
+      type: 'text',
+      content: text,
+      createdAt: new Date().toISOString(),
+      tokenEstimate: estimateTokenUsage(text),
     };
 
-    setMessages(p => [...p, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
     setError('');
     setServiceState('thinking');
 
-    // Map history and strip disclaimers
-    const history = messages.map(m => ({
-      role: m.role,
-      content: m.content.replace(/\n\nDisclaimer:[\s\S]*$/, '')
-    }));
-
     try {
-      const response = await aiAssistantAPI.query({
+      const res = await aiAssistantAPI.query({
         question: text,
-        history: history,
-        collectionName: 'general-knowledge',
-        style: 'precision'
+        history: newMessages.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
       });
 
-      if (!response.success || !response.data) {
+      if (res.success && res.data) {
+        playSound('receive', soundEnabled);
+        const botMsg: AIAssistantMessage = {
+          id: `a_${Date.now()}`,
+          role: 'assistant',
+          type: 'text',
+          content: res.data.answer || 'No response received.',
+          createdAt: new Date().toISOString(),
+          tokenEstimate: estimateTokenUsage(res.data.answer || ''),
+        };
+        setMessages(prev => [...prev, botMsg]);
+        setServiceState('ready');
+      } else {
+        setError(res.message || 'Service is temporarily unavailable.');
         setServiceState('unavailable');
-        setError(response.message || 'AI service temporarily offline. Please try again.');
-        return;
       }
-
-      const answer = response.data.answer;
-
-      const aiMsg: AIAssistantMessage = {
-        id: `ai_${Date.now()}`,
-        role: 'assistant',
-        type: 'text',
-        content: `${answer}\n\nDisclaimer: ${AI_ASSISTANT_DISCLAIMER}`,
-        createdAt: new Date().toISOString(),
-        tokenEstimate: estimateTokenUsage(answer),
-      };
-
-      setMessages(p => [...p, aiMsg]);
-      setServiceState('ready');
-      setError('');
-      playSound('receive', soundEnabled);
-      if (!isOpen) setUnread(p => p + 1);
-    } catch (err: any) {
+    } catch {
+      setError('Connection error. Please try again.');
       setServiceState('unavailable');
-      setError(err?.message || 'Failed to generate response. Please try again.');
     }
   };
 
@@ -202,10 +194,10 @@ export default function AIAssistantWidget() {
      RENDER
   ──────────────────────────────── */
   return (
-    <div className="ai-widget">
+    <div className={`ai-widget ${isOpen ? 'is-panel-open' : ''}`}>
 
       {/* FAB bubble */}
-      <div className="ai-fab-wrap">
+      <div className={`ai-fab-wrap ${isOpen ? 'is-panel-open' : ''}`}>
         <button
           type="button"
           className={`ai-fab ${isOpen ? 'is-open' : ''}`}
@@ -252,8 +244,9 @@ export default function AIAssistantWidget() {
               className="ai-ctrl-btn close-btn"
               onClick={() => setIsOpen(false)}
               title="Close"
+              aria-label="Close AI Assistant"
             >
-              <Minus size={14} />
+              <X size={15} />
             </button>
           </div>
         </header>
@@ -344,7 +337,7 @@ export default function AIAssistantWidget() {
               disabled={!input.trim() || serviceState === 'thinking'}
               title="Send"
             >
-              <Send size={12} />
+              <Send size={13} />
             </button>
           </div>
         </div>
