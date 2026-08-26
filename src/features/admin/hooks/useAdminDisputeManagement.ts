@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import * as signalR from '@microsoft/signalr';
 import { adminGetAPI, adminPatchAPI, adminPostAPI } from '../../../api/adminAPI';
 import type { AdminResolveDisputePayload } from '../../../api/adminAPI/POST';
-import { getChatHubUrl } from '../../../service/apiService';
+import { createChatHubConnection } from '../../messages/services/chatHubConnection';
 import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { DisputeMessageRecipient } from '../../../api/messageAPI/GET';
 import { MilestoneStatus } from '../../../types/models/Contract';
@@ -272,10 +271,7 @@ export function useAdminDisputeManagement() {
     disputeConversationIdRef.current = conversationId;
     if (!conversationId) return;
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(getChatHubUrl(), { accessTokenFactory: () => localStorage.getItem('access_token') ?? '' })
-      .withAutomaticReconnect()
-      .build();
+    const connection = createChatHubConnection();
 
     const receive = (payload: ConversationMessageResponse) => {
       if (disposed || payload.conversationId !== disputeConversationIdRef.current) return;

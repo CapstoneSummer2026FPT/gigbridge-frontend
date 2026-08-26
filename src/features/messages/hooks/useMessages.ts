@@ -11,6 +11,7 @@ import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { messagePutAPI } from '../../../api/messageAPI/PUT';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { getChatHubUrl } from '../../../service/apiService';
+import { createChatHubConnection } from '../services/chatHubConnection';
 import { scheduleAPI, type ScheduleEvent, type ScheduleMeetingResponse, type ScheduleResponse } from '../../../api/scheduleAPI';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
@@ -831,15 +832,7 @@ export function useMessages() {
       setSignalRStatus(retryAttempt > 0 ? 'reconnecting' : 'connecting');
       console.info('[ChatHub] connecting:', hubUrl);
 
-      const connection = new signalR.HubConnectionBuilder()
-        .configureLogging(signalR.LogLevel.Warning)
-        .withUrl(hubUrl, {
-          accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-          skipNegotiation: true,
-          transport: signalR.HttpTransportType.WebSockets,
-        })
-        .withAutomaticReconnect([0, 2_000, 5_000, 10_000])
-        .build();
+      const connection = createChatHubConnection('direct-websocket', [0, 2_000, 5_000, 10_000]);
       currentConnection = connection;
 
       connection.onreconnecting(err => {
