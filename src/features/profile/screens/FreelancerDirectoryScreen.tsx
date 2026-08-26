@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, type FormEvent } from 'react';
+import { useEffect, useState, useMemo, useRef, type FormEvent } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router';
 import {
   Search,
@@ -27,7 +27,7 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { profileGetAPI } from '../../../api/profileAPI';
 import { useApp } from '../../../app/providers/AppProvider';
-import { useTranslation } from '../../../hooks/useTranslation';
+import { useLanguage } from '../../../hooks/useTranslation';
 import { AuthInviteModal } from '../../../shared/components/AuthInviteModal';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { PublicFreelancerSummaryDto, FreelancerDirectorySort } from '../../../types/models/Profile';
@@ -61,7 +61,7 @@ const POPULAR_SKILLS = [
 
 export function FreelancerDirectoryScreen() {
   const { user, role, isAuthenticated } = useApp();
-  const { t, currentLanguage } = useTranslation();
+  const { currentLanguage } = useLanguage();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -71,7 +71,7 @@ export function FreelancerDirectoryScreen() {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<FreelancerDirectorySort>('featured');
+  const [sortBy] = useState<FreelancerDirectorySort>('featured');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(20);
   const [layoutMode, setLayoutMode] = useState<'grid' | 'compact'>('grid');
