@@ -138,5 +138,52 @@
       "emailTitle": "Cập nhật qua email",
       "emailDescription": "Chúng tôi cũng sẽ gửi kết quả đến email của bạn."
     }
+  },
+  "aiAssistant": {
+    "brandTitle": "GIGBRIDGE AI",
+    "statusReady": "Sẵn sàng",
+    "statusThinking": "Đang phân tích…",
+    "toggleAria": "Mở GigBridge AI",
+    "closeAria": "Đóng",
+    "resetTitle": "Xóa cuộc trò chuyện",
+    "expandTitle": "Mở rộng Studio",
+    "minimizeTitle": "Thu nhỏ",
+    "welcomeHeadline": "Chào {{name}}! 👋",
+    "welcomeSubtitle": "Tôi là trợ lý GIGBRIDGE AI. Hãy chọn danh mục phân tích bên dưới hoặc đặt câu hỏi trực tiếp.",
+    "placeholder": "Đặt câu hỏi hoặc nhập yêu cầu cho GIGBRIDGE AI…",
+    "copied": "Đã sao chép",
+    "copy": "Sao chép",
+    "sendTitle": "Gửi câu hỏi",
+    "thinkingStatus": "Đang kết nối mạng nơ-ron & phân tích dữ liệu…",
+    "senderYou": "BẠN",
+    "senderAI": "GIGBRIDGE AI",
+    "guestName": "Quý khách",
+    "roleFreelancer": "Freelancer Workspace",
+    "roleClient": "Client Workspace",
+    "roleMember": "GigBridge Member",
+    "promptTiles": {
+      "matchTitle": "Phân tích cơ hội việc làm",
+      "matchDesc": "Lọc dự án phù hợp với hồ sơ năng lực và định giá thị trường",
+      "matchPrompt": "Phân tích các cơ hội việc làm đang mở trên sàn phù hợp nhất với kỹ năng và hồ sơ của tôi.",
+      "matchCategory": "Market Intelligence",
+      "proposalTitle": "Soạn thảo bản đề xuất thầu",
+      "proposalDesc": "Xây dựng cấu trúc Proposal chuyên nghiệp nhằm tăng tỷ lệ chốt hợp đồng",
+      "proposalPrompt": "Hướng dẫn và gợi ý cấu trúc một Proposal chuyên nghiệp để chinh phục khách hàng và tăng tỷ lệ trúng thầu.",
+      "proposalCategory": "Proposal Strategy",
+      "escrowTitle": "Kiểm toán điều khoản hợp đồng",
+      "escrowDesc": "Đánh giá tiến độ milestone và cơ chế bảo vệ thanh toán qua Escrow",
+      "escrowPrompt": "Giải thích cơ chế thanh toán tạm giữ Escrow an toàn và quy trình giải ngân milestone trên GigBridge.",
+      "escrowCategory": "Contract & Escrow",
+      "eloTitle": "Chiến lược tối ưu hóa thứ hạng",
+      "eloDesc": "Kế hoạch nâng cao điểm Elo reputation và độ uy tín hồ sơ",
+      "eloPrompt": "Chia sẻ các chiến lược hiệu quả để gia tăng điểm uy tín Elo và xếp hạng nổi bật trong cộng đồng GigBridge.",
+      "eloCategory": "Reputation Growth"
+    },
+    "errors": {
+      "maxLength": "Nội dung vượt quá giới hạn 5.000 ký tự cho phép",
+      "noResponse": "Không thể tạo phản hồi vào lúc này.",
+      "serviceUnavailable": "Dịch vụ AI đang bảo trì kết nối. Vui lòng thử lại sau.",
+      "networkError": "Lỗi kết nối máy chủ. Vui lòng kiểm tra lại đường truyền."
+    }
   }
 }

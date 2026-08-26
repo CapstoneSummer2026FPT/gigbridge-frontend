@@ -1,35 +1,44 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
-  Bot,
+  Check,
+  Compass,
   Copy,
+  CornerDownLeft,
   Eraser,
+  FileCheck2,
+  FileText,
+  Maximize2,
+  Minimize2,
   Send,
   Sparkles,
+  TrendingUp,
   X,
 } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
+import { UserRole } from '../../../types/models/User';
 import {
   estimateTokenUsage,
   type AIAssistantMessage,
 } from '../types/assistant';
 import { aiAssistantAPI } from '../../../api/aiAssistantAPI';
+import { ThreeAINeuralSphere, type SphereActivityMode } from './ThreeAINeuralSphere';
 import '../styles/ai-assistant-widget.css';
 
-const AI_SESSION_KEY = 'gb_ai_widget_v2';
+const AI_SESSION_KEY = 'gb_ai_widget_v6';
 
 type ServiceState = 'ready' | 'thinking' | 'unavailable';
 
-/* ── Web Audio sound effects ── */
-const playSound = (type: 'send' | 'receive' | 'chime', enabled: boolean) => {
-  if (!enabled) return;
+/* ── Web Audio Synthesizer (Studio Haptics) ── */
+const playAudioEffect = (type: 'send' | 'receive' | 'chime' | 'tap') => {
   try {
-    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
 
-    const beep = (freq: number, start: number, dur: number, vol = 0.06) => {
+    const playTone = (freq: number, start: number, dur: number, vol = 0.04) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -37,30 +46,85 @@ const playSound = (type: 'send' | 'receive' | 'chime', enabled: boolean) => {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, start);
       gain.gain.setValueAtTime(vol, start);
-      gain.gain.linearRampToValueAtTime(0.001, start + dur);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
       osc.start(start);
-      osc.stop(start + dur + 0.02);
+      osc.stop(start + dur + 0.01);
     };
 
     const t = ctx.currentTime;
-    if (type === 'send')    { beep(450, t, 0.1); beep(900, t + 0.05, 0.08); }
-    if (type === 'receive') { beep(600, t, 0.09); beep(750, t + 0.1, 0.12); }
-    if (type === 'chime')   { beep(520, t, 0.2, 0.04); }
-  } catch { /* ignore */ }
+    if (type === 'send') {
+      playTone(480, t, 0.06, 0.03);
+      playTone(720, t + 0.04, 0.08, 0.04);
+    } else if (type === 'receive') {
+      playTone(600, t, 0.08, 0.04);
+      playTone(900, t + 0.06, 0.12, 0.05);
+    } else if (type === 'chime') {
+      playTone(540, t, 0.12, 0.03);
+      playTone(810, t + 0.06, 0.18, 0.04);
+    } else if (type === 'tap') {
+      playTone(750, t, 0.02, 0.02);
+    }
+  } catch {
+    /* Ignore audio restrictions */
+  }
 };
 
 export default function AIAssistantWidget() {
-  const { user } = useApp();
+  const { t } = useTranslation('ai');
+  const { user, role } = useApp();
   const location = useLocation();
 
-  const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'there';
+  const displayName = user?.full_name || user?.first_name || t('aiAssistant.guestName', 'Quý khách');
+  const roleLabel = role === UserRole.Freelancer
+    ? t('aiAssistant.roleFreelancer', 'Freelancer Workspace')
+    : role === UserRole.Client
+      ? t('aiAssistant.roleClient', 'Client Workspace')
+      : t('aiAssistant.roleMember', 'GigBridge Member');
 
-  const chatEndRef         = useRef<HTMLDivElement>(null);
-  const textareaRef        = useRef<HTMLTextAreaElement>(null);
+  const executivePrompts = useMemo(() => [
+    {
+      id: 'match',
+      icon: Compass,
+      title: t('aiAssistant.promptTiles.matchTitle', 'Phân tích cơ hội việc làm'),
+      description: t('aiAssistant.promptTiles.matchDesc', 'Lọc dự án phù hợp với hồ sơ năng lực và định giá thị trường'),
+      prompt: t('aiAssistant.promptTiles.matchPrompt', 'Phân tích các cơ hội việc làm đang mở trên sàn phù hợp nhất với kỹ năng và hồ sơ của tôi.'),
+      category: t('aiAssistant.promptTiles.matchCategory', 'Market Intelligence'),
+    },
+    {
+      id: 'proposal',
+      icon: FileText,
+      title: t('aiAssistant.promptTiles.proposalTitle', 'Soạn thảo bản đề xuất thầu'),
+      description: t('aiAssistant.promptTiles.proposalDesc', 'Xây dựng cấu trúc Proposal chuyên nghiệp nhằm tăng tỷ lệ chốt hợp đồng'),
+      prompt: t('aiAssistant.promptTiles.proposalPrompt', 'Hướng dẫn và gợi ý cấu trúc một Proposal chuyên nghiệp để chinh phục khách hàng và tăng tỷ lệ trúng thầu.'),
+      category: t('aiAssistant.promptTiles.proposalCategory', 'Proposal Strategy'),
+    },
+    {
+      id: 'escrow',
+      icon: FileCheck2,
+      title: t('aiAssistant.promptTiles.escrowTitle', 'Kiểm toán điều khoản hợp đồng'),
+      description: t('aiAssistant.promptTiles.escrowDesc', 'Đánh giá tiến độ milestone và cơ chế bảo vệ thanh toán qua Escrow'),
+      prompt: t('aiAssistant.promptTiles.escrowPrompt', 'Giải thích cơ chế thanh toán tạm giữ Escrow an toàn và quy trình giải ngân milestone trên GigBridge.'),
+      category: t('aiAssistant.promptTiles.escrowCategory', 'Contract & Escrow'),
+    },
+    {
+      id: 'elo',
+      icon: TrendingUp,
+      title: t('aiAssistant.promptTiles.eloTitle', 'Chiến lược tối ưu hóa thứ hạng'),
+      description: t('aiAssistant.promptTiles.eloDesc', 'Kế hoạch nâng cao điểm Elo reputation và độ uy tín hồ sơ'),
+      prompt: t('aiAssistant.promptTiles.eloPrompt', 'Chia sẻ các chiến lược hiệu quả để gia tăng điểm uy tín Elo và xếp hạng nổi bật trong cộng đồng GigBridge.'),
+      category: t('aiAssistant.promptTiles.eloCategory', 'Reputation Growth'),
+    },
+  ], [t]);
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── State ── */
-  const [isOpen,            setIsOpen]          = useState(false);
-  const [messages,          setMessages]        = useState<AIAssistantMessage[]>(() => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const [messages, setMessages] = useState<AIAssistantMessage[]>(() => {
     try {
       const saved = localStorage.getItem(AI_SESSION_KEY);
       return saved ? JSON.parse(saved) : [];
@@ -68,81 +132,115 @@ export default function AIAssistantWidget() {
       return [];
     }
   });
-  const [input,             setInput]           = useState('');
-  const [serviceState,      setServiceState]    = useState<ServiceState>('ready');
-  const [error,             setError]           = useState('');
-  const [copiedId,          setCopiedId]        = useState<string | null>(null);
-  const [unread,            setUnread]          = useState(0);
-  const [showIntro,         setShowIntro]       = useState(false);
-  const [introClass,        setIntroClass]      = useState('active');
-  const soundEnabled = localStorage.getItem('gb_ai_sound') !== 'false';
+  const [input, setInput] = useState('');
+  const [serviceState, setServiceState] = useState<ServiceState>('ready');
+  const [error, setError] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [unread, setUnread] = useState(0);
+
+  /* ── 3D Sphere Activity Coupling State ── */
+  const [activityMode, setActivityMode] = useState<SphereActivityMode>('idle');
+  const [activityTrigger, setActivityTrigger] = useState(0);
+
+  // Trigger energy shockwave on any interactive click
+  const triggerPulse = useCallback(() => {
+    setActivityTrigger(prev => prev + 1);
+  }, []);
 
   /* ── Auto-scroll ── */
   useEffect(() => {
-    if (isOpen) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isOpen]);
-
-  /* ── Welcome intro ── */
-  useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      setShowIntro(true);
-      setIntroClass('active');
-      const t1 = setTimeout(() => setIntroClass('fade-out'), 2000);
-      const t2 = setTimeout(() => setShowIntro(false), 2500);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    } else {
-      setShowIntro(false);
+    if (isOpen) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [isOpen, messages.length]);
+  }, [messages, isOpen, serviceState]);
 
   /* ── Navigation-state trigger (from router redirect) ── */
   useEffect(() => {
-    if ((location.state as any)?.openAIAssistant) {
+    if ((location.state as { openAIAssistant?: boolean })?.openAIAssistant) {
       setIsOpen(true);
-      playSound('chime', soundEnabled);
+      triggerPulse();
+      playAudioEffect('chime');
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, soundEnabled]);
+  }, [location.state, triggerPulse]);
 
   /* ── Global toggle event ── */
   useEffect(() => {
     const handler = (e: Event) => {
       const d = (e as CustomEvent)?.detail;
       setIsOpen(d && typeof d.open === 'boolean' ? d.open : p => !p);
-      playSound('chime', soundEnabled);
+      triggerPulse();
+      playAudioEffect('chime');
     };
     window.addEventListener('toggle-ai-assistant', handler);
     return () => window.removeEventListener('toggle-ai-assistant', handler);
-  }, [soundEnabled]);
+  }, [triggerPulse]);
 
   /* ── Persist messages ── */
   useEffect(() => {
-    localStorage.setItem(AI_SESSION_KEY, JSON.stringify(messages));
+    try {
+      localStorage.setItem(AI_SESSION_KEY, JSON.stringify(messages));
+    } catch {
+      /* ignore */
+    }
   }, [messages]);
 
   /* ── Clear unread when panel opened ── */
-  useEffect(() => { if (isOpen) setUnread(0); }, [isOpen]);
+  useEffect(() => {
+    if (isOpen) setUnread(0);
+  }, [isOpen]);
+
+  // Handle typing activity connection with 3D Sphere
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    setActivityMode('typing');
+    triggerPulse();
+
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
+
+    typingTimerRef.current = setTimeout(() => {
+      if (serviceState !== 'thinking') {
+        setActivityMode('idle');
+      }
+    }, 1200);
+  };
 
   const reset = () => {
-    localStorage.removeItem(AI_SESSION_KEY);
+    triggerPulse();
+    playAudioEffect('tap');
+    try {
+      localStorage.removeItem(AI_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
     setMessages([]);
     setInput('');
     setServiceState('ready');
+    setActivityMode('idle');
     setError('');
   };
 
   const copyMsg = async (msg: AIAssistantMessage) => {
+    triggerPulse();
     await navigator.clipboard.writeText(msg.content);
+    playAudioEffect('tap');
     setCopiedId(msg.id);
-    setTimeout(() => setCopiedId(null), 1200);
+    setTimeout(() => setCopiedId(null), 1400);
   };
 
   const send = async (override?: string) => {
     const text = (override ?? input).trim();
     if (!text || serviceState === 'thinking') return;
-    if (text.length > 5000) { setError('Message must be under 5000 characters'); return; }
+    if (text.length > 5000) {
+      setError(t('aiAssistant.errors.maxLength', 'Nội dung vượt quá giới hạn 5.000 ký tự cho phép'));
+      return;
+    }
 
-    playSound('send', soundEnabled);
+    triggerPulse();
+    setActivityMode('send');
+    playAudioEffect('send');
 
     const userMsg: AIAssistantMessage = {
       id: `u_${Date.now()}`,
@@ -158,6 +256,7 @@ export default function AIAssistantWidget() {
     setInput('');
     setError('');
     setServiceState('thinking');
+    setActivityMode('thinking');
 
     try {
       const res = await aiAssistantAPI.query({
@@ -169,127 +268,236 @@ export default function AIAssistantWidget() {
       });
 
       if (res.success && res.data) {
-        playSound('receive', soundEnabled);
+        triggerPulse();
+        playAudioEffect('receive');
         const botMsg: AIAssistantMessage = {
           id: `a_${Date.now()}`,
           role: 'assistant',
           type: 'text',
-          content: res.data.answer || 'No response received.',
+          content: res.data.answer || t('aiAssistant.errors.noResponse', 'Không thể tạo phản hồi vào lúc này.'),
           createdAt: new Date().toISOString(),
           tokenEstimate: estimateTokenUsage(res.data.answer || ''),
         };
         setMessages(prev => [...prev, botMsg]);
         setServiceState('ready');
+        setActivityMode('burst');
+        setTimeout(() => setActivityMode('idle'), 1500);
       } else {
-        setError(res.message || 'Service is temporarily unavailable.');
+        setError(res.message || t('aiAssistant.errors.serviceUnavailable', 'Dịch vụ AI đang bảo trì kết nối. Vui lòng thử lại sau.'));
         setServiceState('unavailable');
+        setActivityMode('idle');
       }
     } catch {
-      setError('Connection error. Please try again.');
+      setError(t('aiAssistant.errors.networkError', 'Lỗi kết nối máy chủ. Vui lòng kiểm tra lại đường truyền.'));
       setServiceState('unavailable');
+      setActivityMode('idle');
     }
   };
 
-  /* ────────────────────────────────
-     RENDER
-  ──────────────────────────────── */
   return (
     <div className={`ai-widget ${isOpen ? 'is-panel-open' : ''}`}>
 
-      {/* FAB bubble */}
+      {/* Iconic ConicBorder FAB Trigger Button */}
       <div className={`ai-fab-wrap ${isOpen ? 'is-panel-open' : ''}`}>
         <button
           type="button"
           className={`ai-fab ${isOpen ? 'is-open' : ''}`}
-          onClick={() => { setIsOpen(p => !p); playSound('chime', soundEnabled); }}
-          aria-label="Toggle AI Assistant"
+          onClick={() => {
+            setIsOpen(p => !p);
+            triggerPulse();
+            playAudioEffect('chime');
+          }}
+          aria-label={t('aiAssistant.toggleAria', 'Mở GigBridge AI')}
         >
-          {isOpen
-            ? <X size={20} className="ai-fab-close" />
-            : (
-              <div className="ai-fab-icon-wrap">
-                <Sparkles size={21} className="animate-pulse" />
-              </div>
-            )
-          }
+          {isOpen ? (
+            <X size={20} className="ai-fab-close" />
+          ) : (
+            <div className="ai-fab-icon-wrap">
+              <div className="ai-fab-core-glow" />
+              <Sparkles size={22} className="ai-fab-sparkle-icon" />
+            </div>
+          )}
           {unread > 0 && !isOpen && <span className="ai-unread-badge animate-bounce">{unread}</span>}
         </button>
       </div>
 
-      {/* Chat panel */}
-      <div className={`ai-panel ${isOpen ? 'is-open' : ''}`}>
-        <div className="ai-ambient-orb ai-orb-1" />
-        <div className="ai-ambient-orb ai-orb-2" />
+      {/* Main Studio GIGBRIDGE AI Window with Concave Notch Header */}
+      <div className={`ai-panel ${isOpen ? 'is-open' : ''} ${isExpanded ? 'is-expanded' : ''}`}>
+        {/* Specular hairline top accent */}
+        <div className="ai-panel-halo" />
 
-        {/* ── Header ── */}
-        <header className="ai-header">
-          <div className="ai-header-meta">
-            <div className="ai-brand">
-              <span className="ai-brand-dot" />
-              <span className="ai-brand-name">GIGBRIDGE AI</span>
+        {/* ── Top Concave Notch Header ── */}
+        <header className="ai-header ai-header--concave">
+          <div className="ai-header-brand-wrap">
+            {/* Header Synced 3D Mini Sphere without box */}
+            <div className="ai-header-mini-sphere">
+              <ThreeAINeuralSphere
+                size="sm"
+                activityMode={activityMode}
+                activityTrigger={activityTrigger}
+              />
+              <span className="ai-brand-live-pulse" />
             </div>
-            <div className="ai-status">
-              <span className="ai-status-dot" />
-              <span>SYNAPSE ACTIVE</span>
+            <div className="min-w-0">
+              <h3 className="ai-brand-name">{t('aiAssistant.brandTitle', 'GIGBRIDGE AI')}</h3>
+              <p className="ai-brand-context">
+                {roleLabel} · {serviceState === 'thinking' ? t('aiAssistant.statusThinking', 'Đang phân tích…') : t('aiAssistant.statusReady', 'Sẵn sàng')}
+              </p>
             </div>
           </div>
 
+          {/* Action Toolbar */}
           <div className="ai-header-controls">
-            <button type="button" className="ai-ctrl-btn" onClick={reset} title="Reset conversation">
+            <button
+              type="button"
+              className="ai-ctrl-btn"
+              onClick={reset}
+              title={t('aiAssistant.resetTitle', 'Xóa cuộc trò chuyện')}
+              aria-label={t('aiAssistant.resetTitle', 'Xóa cuộc trò chuyện')}
+            >
               <Eraser size={14} />
+            </button>
+
+            <button
+              type="button"
+              className="ai-ctrl-btn hidden sm:inline-flex"
+              onClick={() => {
+                triggerPulse();
+                setIsExpanded(p => !p);
+              }}
+              title={isExpanded ? t('aiAssistant.minimizeTitle', 'Thu nhỏ') : t('aiAssistant.expandTitle', 'Mở rộng Studio')}
+              aria-label={isExpanded ? t('aiAssistant.minimizeTitle', 'Thu nhỏ') : t('aiAssistant.expandTitle', 'Mở rộng Studio')}
+            >
+              {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
             </button>
 
             <button
               type="button"
               className="ai-ctrl-btn close-btn"
               onClick={() => setIsOpen(false)}
-              title="Close"
-              aria-label="Close AI Assistant"
+              title={t('aiAssistant.closeAria', 'Đóng')}
+              aria-label={t('aiAssistant.closeAria', 'Đóng')}
             >
               <X size={15} />
             </button>
           </div>
         </header>
 
-        {/* ── Body (scrollable messages) ── */}
+        {/* Organic Concave Valley Divider */}
+        <div className="ai-header-concave-curve">
+          <svg viewBox="0 0 440 14" fill="none" preserveAspectRatio="none" className="ai-concave-svg">
+            <path
+              d="M0,0 L0,3 Q80,14 220,14 Q360,14 440,3 L440,0 Z"
+              className="ai-concave-fill"
+            />
+            <path
+              d="M0,3 Q80,14 220,14 Q360,14 440,3"
+              className="ai-concave-stroke"
+              strokeWidth="1"
+              fill="none"
+            />
+          </svg>
+        </div>
+
+        {/* ── Conversation Stream Body ── */}
         <div className="ai-body">
           {error && (
             <div className={`ai-alert ${serviceState === 'unavailable' ? 'danger' : 'warning'}`}>
-              <AlertTriangle size={13} />
+              <AlertTriangle size={14} className="shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           <div className="ai-messages">
-            {/* Welcome intro */}
-            {showIntro && (
-              <div className={`ai-welcome ${introClass}`}>
-                <div className="ai-welcome-logo animate-bounce">
-                  <Bot size={32} />
+            {/* Empty State with 3D Three.js Interactive Hologram Sphere */}
+            {messages.length === 0 && (
+              <div className="ai-empty-container">
+                <div
+                  className="ai-threejs-sphere-wrap cursor-pointer"
+                  onClick={triggerPulse}
+                  title="Nhấp để phát xung năng lượng 3D"
+                >
+                  <ThreeAINeuralSphere
+                    size="lg"
+                    activityMode={activityMode}
+                    activityTrigger={activityTrigger}
+                  />
                 </div>
-                <h3 className="ai-welcome-title">Xin chào {firstName}!</h3>
-                <p className="ai-welcome-desc">Tôi là GigBridge AI. Hỏi tôi bất kỳ điều gì để bắt đầu.</p>
+
+                <div className="text-center space-y-1 my-1">
+                  <h4 className="text-base sm:text-lg font-black text-text-primary tracking-tight">
+                    {t('aiAssistant.welcomeHeadline', 'Chào {{name}}! 👋', { name: displayName })}
+                  </h4>
+                  <p className="text-xs text-text-secondary max-w-xs mx-auto leading-relaxed">
+                    {t('aiAssistant.welcomeSubtitle', 'Tôi là trợ lý GIGBRIDGE AI. Hãy chọn danh mục phân tích bên dưới hoặc đặt câu hỏi trực tiếp.')}
+                  </p>
+                </div>
+
+                {/* Structured Executive Action Tiles */}
+                <div className="ai-tiles-grid">
+                  {executivePrompts.map(item => {
+                    const IconComponent = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="ai-tile-btn group/tile cursor-pointer"
+                        onClick={() => {
+                          triggerPulse();
+                          void send(item.prompt);
+                        }}
+                      >
+                        <div className="ai-tile-icon-box">
+                          <IconComponent size={15} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="ai-tile-category">{item.category}</span>
+                          <h5 className="ai-tile-title">{item.title}</h5>
+                          <p className="ai-tile-desc">{item.description}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Messages */}
+            {/* Conversational Chat Bubbles */}
             {messages.map(msg => (
               <article key={msg.id} className={`ai-msg-row ${msg.role}`}>
                 <div className="ai-msg-container">
-                  <div className={`ai-bubble ${msg.type}`}>
+                  <div className={`ai-bubble ${msg.role}`}>
                     <div className="ai-msg-meta">
-                      <span className="ai-meta-author">{msg.role === 'assistant' ? 'SYSTEM' : 'YOU'}</span>
-                      <span className="ai-meta-time">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <span className="ai-meta-author">
+                        {msg.role === 'assistant' ? t('aiAssistant.senderAI', 'GIGBRIDGE AI') : t('aiAssistant.senderYou', 'BẠN')}
                       </span>
+                      <time className="ai-meta-time">
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </time>
                     </div>
-                    <p className="ai-msg-text">{msg.content}</p>
+                    <div className="ai-msg-content-render">
+                      <p className="ai-msg-text">{msg.content}</p>
+                    </div>
                   </div>
+
                   {msg.role === 'assistant' && (
                     <div className="ai-msg-actions">
-                      <button className="ai-action-btn" type="button" onClick={() => copyMsg(msg)}>
-                        <Copy size={10} />
-                        {copiedId === msg.id ? 'Copied!' : 'Copy'}
+                      <button
+                        type="button"
+                        className="ai-action-btn cursor-pointer"
+                        onClick={() => copyMsg(msg)}
+                      >
+                        {copiedId === msg.id ? (
+                          <>
+                            <Check size={11} className="text-success" />
+                            <span className="text-success font-semibold">{t('aiAssistant.copied', 'Đã sao chép')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={11} />
+                            <span>{t('aiAssistant.copy', 'Sao chép')}</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   )}
@@ -297,16 +505,20 @@ export default function AIAssistantWidget() {
               </article>
             ))}
 
-            {/* Thinking indicator */}
+            {/* Kinetic Waveform Thinking Indicator */}
             {serviceState === 'thinking' && (
               <article className="ai-msg-row assistant">
-                <div className="ai-thinking">
-                  <div className="ai-typing-bars">
-                    <span className="ai-bar" />
-                    <span className="ai-bar" />
-                    <span className="ai-bar" />
+                <div className="ai-thinking-card">
+                  <div className="ai-quantum-waveform">
+                    <span className="ai-wave-bar" />
+                    <span className="ai-wave-bar" />
+                    <span className="ai-wave-bar" />
+                    <span className="ai-wave-bar" />
+                    <span className="ai-wave-bar" />
                   </div>
-                  <span className="ai-thinking-label">Formulating response...</span>
+                  <span className="ai-thinking-text">
+                    {t('aiAssistant.thinkingStatus', 'Đang kết nối mạng nơ-ron & phân tích dữ liệu…')}
+                  </span>
                 </div>
               </article>
             )}
@@ -315,30 +527,46 @@ export default function AIAssistantWidget() {
           </div>
         </div>
 
-        {/* ── Composer (input bar) ── */}
-        <div className="ai-composer">
-          <textarea
-            ref={textareaRef}
-            className="ai-composer-input"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Ask anything..."
-            rows={1}
-            maxLength={5000}
-          />
-          <div className="ai-composer-toolbar">
-            <span className="ai-composer-counter">{input.length}/5000</span>
+        {/* ── Floating Composer Bar ── */}
+        <div className="ai-composer-wrap">
+          <div className="ai-composer-island">
+            <textarea
+              ref={textareaRef}
+              className="ai-composer-input"
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              placeholder={t('aiAssistant.placeholder', 'Đặt câu hỏi hoặc nhập yêu cầu cho GIGBRIDGE AI…')}
+              rows={1}
+              maxLength={5000}
+            />
 
-            <button
-              type="button"
-              className="ai-composer-send"
-              onClick={() => send()}
-              disabled={!input.trim() || serviceState === 'thinking'}
-              title="Send"
-            >
-              <Send size={13} />
-            </button>
+            <div className="ai-composer-footer">
+              <div className="flex items-center gap-2 text-[10px] font-medium text-text-muted">
+                <span>{input.length}/5000</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline text-[9px] text-text-muted font-medium">
+                  Enter <CornerDownLeft size={10} className="inline" />
+                </span>
+                <button
+                  type="button"
+                  className="ai-send-button cursor-pointer"
+                  onClick={() => void send()}
+                  disabled={!input.trim() || serviceState === 'thinking'}
+                  title={t('aiAssistant.sendTitle', 'Gửi câu hỏi')}
+                  aria-label={t('aiAssistant.sendTitle', 'Gửi câu hỏi')}
+                >
+                  <Send size={12} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
