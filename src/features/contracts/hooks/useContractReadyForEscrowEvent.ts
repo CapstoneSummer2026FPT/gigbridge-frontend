@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import * as signalR from '@microsoft/signalr';
-import { getChatHubUrl } from '../../../service/apiService';
+import { createChatHubConnection } from '../../messages/services/chatHubConnection';
 
 const CONTRACT_READY_EVENT = 'ContractReadyForEscrowFunding';
 
@@ -20,13 +19,7 @@ export function useContractReadyForEscrowEvent(
     }
 
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(getChatHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const connection = createChatHubConnection();
 
     const handleReady = (payload: ContractReadyForEscrowPayload): void => {
       const eventContractId = payload.contractId ?? payload.ContractId;

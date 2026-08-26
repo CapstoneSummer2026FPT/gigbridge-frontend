@@ -7,8 +7,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { ConversationStatus, MessageType } from '../../../types/models/Message';
 import { DisputeStatus } from '../../../types/models/Dispute';
 import { UserRole } from '../../../types/models/User';
-import * as signalR from '@microsoft/signalr';
-import { getChatHubUrl } from '../../../service/apiService';
+import { createChatHubConnection } from '../../messages/services/chatHubConnection';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 
@@ -69,10 +68,7 @@ export function DisputeChat({ disputeId, disputeStatus }: DisputeChatProps) {
     const token = localStorage.getItem('access_token');
     if (!token) return;
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(getChatHubUrl(), { accessTokenFactory: () => localStorage.getItem('access_token') ?? '' })
-      .withAutomaticReconnect()
-      .build();
+    const connection = createChatHubConnection();
     const refreshMessages = (payload: Record<string, unknown>) => {
       const eventConversationId = String(payload.conversationId ?? payload.conversationsId ?? payload.ConversationsId ?? '');
       if (eventConversationId !== conversationId) return;

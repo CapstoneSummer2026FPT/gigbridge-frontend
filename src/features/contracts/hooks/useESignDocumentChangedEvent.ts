@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import * as signalR from '@microsoft/signalr';
-import { getChatHubUrl } from '../../../service/apiService';
+import { createChatHubConnection } from '../../messages/services/chatHubConnection';
 import { normalizeESignDocument } from '../../../api/esignAPI/GET';
 import type { ESignDocumentDto } from '../../../types/models/ESign';
 
@@ -17,13 +16,7 @@ export function useESignDocumentChangedEvent(
     }
 
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(getChatHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const connection = createChatHubConnection();
 
     const handleChanged = (payload: Parameters<typeof normalizeESignDocument>[0]): void => {
       if (disposed) return;
