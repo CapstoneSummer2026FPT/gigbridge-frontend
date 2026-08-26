@@ -105,7 +105,7 @@ export function AppLayout({
           {excludeMeshGradient ? (
             children
           ) : (
-            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6">
+            <MeshGradientBackground className={`min-h-[calc(100vh-6rem)] ${fullWidth ? 'p-0' : 'p-3 sm:p-6'}`}>
               {children}
             </MeshGradientBackground>
           )}

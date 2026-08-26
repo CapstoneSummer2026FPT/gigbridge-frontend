@@ -334,13 +334,18 @@ export default function PostJobStepBasicInfo() {
       isLoading={isDraftInitializing}
       onRetryAutosave={retryAutosave}
       headerAction={(
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-          <button type="button" className="job-post-button job-post-button--secondary w-full sm:w-auto" onClick={loadDrafts}>
-            <FileText size={15} />{t('postJob.continueDraft')}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+          <button
+            type="button"
+            className="job-post-button job-post-button--secondary w-full sm:w-auto justify-center"
+            onClick={loadDrafts}
+          >
+            <FileText size={15} />
+            <span>{t('postJob.continueDraft')}</span>
           </button>
           <div
             ref={aiButtonWrapRef}
-            className="inline-flex w-full sm:w-auto"
+            className="w-full sm:w-auto flex"
             style={{
               visibility: (isInstantJobMode || flightState === 'toInput') ? 'hidden' : 'visible',
               pointerEvents: (isInstantJobMode || flightState !== 'none') ? 'none' : 'auto',
@@ -348,11 +353,12 @@ export default function PostJobStepBasicInfo() {
           >
             <ConicBorderButton
               type="button"
-              className="w-full sm:w-auto justify-center"
+              wrapperClassName="w-full sm:w-auto flex"
+              className="w-full sm:w-auto justify-center min-h-[2.65rem] py-[0.7rem] px-[1.1rem] text-[0.8rem] font-[750]"
               onClick={handleOpenAiInput}
             >
-              <Sparkles size={15} className="text-brand animate-pulse" />
-              {t('postJobWizard.ai.open')}
+              <Sparkles size={15} className="text-brand animate-pulse shrink-0" />
+              <span>{t('postJobWizard.ai.open')}</span>
             </ConicBorderButton>
           </div>
         </div>

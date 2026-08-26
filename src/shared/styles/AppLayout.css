@@ -31,12 +31,12 @@
 }
 
 .app-layout-main.with-sidebar.full-width {
-  padding: 0;
+  padding: 0 !important;
 }
 
 /* Desktop: Add left margin when sidebar exists (but controlled by toggle state in component) */
 @media (min-width: 768px) {
-  .app-layout-main.with-sidebar {
+  .app-layout-main.with-sidebar:not(.full-width) {
     padding: 1.5rem;
   }
 

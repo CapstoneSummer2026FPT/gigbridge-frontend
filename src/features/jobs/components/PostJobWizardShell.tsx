@@ -70,7 +70,7 @@ export function PostJobWizardShell({
   const completedSteps = Array.from({ length: currentStep - 1 }, (_, index) => index + 1);
 
   return (
-    <AppLayout hideAIWidget={Boolean(promptInput || hideAIWidget)}>
+    <AppLayout hideAIWidget={Boolean(promptInput || hideAIWidget)} fullWidth>
       <div className="job-post-wizard">
         <div className="job-post-wizard__mobile-progress">
           <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />
