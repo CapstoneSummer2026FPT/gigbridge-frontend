@@ -173,10 +173,10 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
               value={form.budget}
               onChange={event => setForm({ ...form, budget: event.target.value })}
               placeholder="0"
-              className="w-full pr-36"
+              className="w-full pr-24 sm:pr-36 text-sm font-semibold"
             />
             {Number(form.budget) > 0 && (
-              <div className="absolute right-2.5 flex items-center gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2.5 py-1 text-xs font-bold text-[var(--brand)] pointer-events-none select-none">
+              <div className="absolute right-2.5 flex items-center gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-bold text-[var(--brand)] pointer-events-none select-none">
                 <span>= {formatGigCoinToVnd(Number(form.budget))}</span>
               </div>
             )}
@@ -191,7 +191,7 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
         </div>
         <div className="job-post-field">
           <label htmlFor="job-duration">{t('postJob.estimatedDuration')} *</label>
-          <div className="grid grid-cols-[1fr_8rem] gap-2">
+          <div className="grid grid-cols-[1fr_7.5rem] sm:grid-cols-[1fr_8rem] gap-2">
             <input id="job-duration" type="number" min="1" value={form.estimatedDurationValue} onChange={event => setForm({ ...form, estimatedDurationValue: event.target.value })} placeholder="3" />
             <CustomSelect
               value={form.estimatedDurationUnit}
@@ -215,6 +215,7 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
 export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
   const { t } = useTranslation('common');
   const {
+    form,
     milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
     expandedMilestone, setExpandedMilestone, questions, setQuestions,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver,
@@ -229,6 +230,7 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
           setMilestonePlans(plans);
           setMilestoneErrors({});
         }}
+        targetBudget={Number(form.budget) || null}
         optional
         showDueDate
         dueDateReadOnly

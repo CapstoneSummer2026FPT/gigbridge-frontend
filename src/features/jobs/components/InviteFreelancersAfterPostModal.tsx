@@ -120,19 +120,19 @@ export function InviteFreelancersAfterPostModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-      <div className="bg-card border border-border/80 rounded-3xl shadow-2xl w-full max-w-6xl max-h-[78vh] sm:max-h-[620px] flex flex-col overflow-hidden relative">
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-6 animate-fade-in">
+      <div className="bg-card border border-border/80 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] sm:max-h-[640px] flex flex-col overflow-hidden relative">
         {/* HERO HEADER */}
-        <div className="px-6 py-4.5 border-b border-border/70 bg-gradient-to-r from-[var(--brand)]/10 via-purple-500/5 to-card flex items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="p-2.5 rounded-2xl bg-gradient-to-br from-[var(--brand)]/15 to-purple-500/15 text-[var(--brand)] shrink-0">
-              <UserPlus size={20} />
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4.5 border-b border-border/70 bg-gradient-to-r from-[var(--brand)]/10 via-purple-500/5 to-card flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <span className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[var(--brand)]/15 to-purple-500/15 text-[var(--brand)] shrink-0">
+              <UserPlus size={18} />
             </span>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-lg font-black text-foreground tracking-tight truncate">
                 {t('inviteModal.title', 'Mời Freelancer ứng tuyển')}
               </h2>
-              <p className="text-xs text-muted-foreground line-clamp-1">
+              <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-1">
                 {t('inviteModal.subtitle', 'Gửi lời mời trực tiếp cho dự án "{{jobTitle}}" đến các freelancer hàng đầu.', { jobTitle: jobTitle || 'dự án của bạn' })}
               </p>
             </div>
@@ -148,16 +148,16 @@ export function InviteFreelancersAfterPostModal({
         </div>
 
         {/* MODAL BODY SPLIT */}
-        <div className="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 overflow-y-auto min-h-0 flex-1">
+        <div className="p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 sm:gap-6 overflow-y-auto min-h-0 flex-1">
           {/* LEFT: SEARCH & FREELANCERS GRID */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="relative">
-              <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
                 placeholder={t('inviteModal.searchPlaceholder', 'Tìm kiếm theo tên, chuyên môn, thành phố hoặc kỹ năng...')}
-                className="w-full rounded-2xl border border-border/80 bg-background py-3 pl-10 pr-4 text-sm font-medium text-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15 transition-all"
+                className="w-full rounded-xl sm:rounded-2xl border border-border/80 bg-background py-2.5 sm:py-3 pl-10 pr-4 text-xs sm:text-sm font-medium text-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15 transition-all"
               />
               {query && (
                 <button
@@ -171,23 +171,23 @@ export function InviteFreelancersAfterPostModal({
             </div>
 
             {loading ? (
-              <div className="rounded-2xl border border-border/70 bg-muted/20 p-12 text-center text-sm font-medium text-muted-foreground flex flex-col items-center justify-center gap-2">
-                <LoaderCircle className="animate-spin text-[var(--brand)]" size={24} />
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-8 sm:p-12 text-center text-xs sm:text-sm font-medium text-muted-foreground flex flex-col items-center justify-center gap-2">
+                <LoaderCircle className="animate-spin text-[var(--brand)]" size={22} />
                 <span>{t('inviteModal.loadingFreelancers', 'Đang tìm kiếm freelancer phù hợp...')}</span>
               </div>
             ) : error && freelancers.length === 0 ? (
-              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500 font-bold flex items-center gap-2">
-                <AlertCircle size={16} />
-                {error}
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 sm:p-4 text-xs sm:text-sm text-red-500 font-bold flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{error}</span>
               </div>
             ) : freelancers.length === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-border/80 bg-muted/20 p-12 text-center text-sm font-medium text-muted-foreground space-y-2">
-                <Users size={32} className="mx-auto text-muted-foreground/60" />
+              <div className="rounded-2xl border-2 border-dashed border-border/80 bg-muted/20 p-8 sm:p-12 text-center text-xs sm:text-sm font-medium text-muted-foreground space-y-2">
+                <Users size={28} className="mx-auto text-muted-foreground/60" />
                 <p className="font-bold text-foreground">{t('inviteModal.noFreelancers', 'Không tìm thấy freelancer phù hợp.')}</p>
                 <p className="text-xs text-muted-foreground">Thử tìm kiếm với từ khóa khác như kỹ năng hoặc chuyên môn.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 {freelancers.map(freelancer => {
                   const freelancerProfileId = getFreelancerProfileId(freelancer);
                   const checked = selectedIds.includes(freelancerProfileId);
@@ -197,7 +197,7 @@ export function InviteFreelancersAfterPostModal({
                     <div
                       key={freelancerProfileId}
                       onClick={() => !submitting && !success && toggleFreelancer(freelancerProfileId)}
-                      className={`group rounded-2xl border p-4 bg-card cursor-pointer flex items-start gap-3.5 transition-all shadow-2xs ${
+                      className={`group rounded-xl sm:rounded-2xl border p-3 sm:p-4 bg-card cursor-pointer flex items-start gap-2.5 sm:gap-3.5 transition-all shadow-2xs ${
                         checked
                           ? 'border-[var(--brand)] ring-2 ring-[var(--brand)]/20 bg-[var(--brand)]/5'
                           : 'border-border/80 hover:border-[var(--brand)]/50 hover:shadow-md'
@@ -205,13 +205,13 @@ export function InviteFreelancersAfterPostModal({
                     >
                       <div className="mt-0.5 shrink-0">
                         <div
-                          className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                          className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center transition-all ${
                             checked
                               ? 'bg-[var(--brand)] border-[var(--brand)] text-white shadow-2xs'
                               : 'border-border/80 bg-background group-hover:border-[var(--brand)]/60'
                           }`}
                         >
-                          {checked && <Check size={13} className="stroke-[3]" />}
+                          {checked && <Check size={12} className="stroke-[3]" />}
                         </div>
                       </div>
 
@@ -224,28 +224,28 @@ export function InviteFreelancersAfterPostModal({
                       </div>
 
                       <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <h3 className="text-sm font-extrabold text-foreground group-hover:text-[var(--brand)] transition-colors">
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-foreground group-hover:text-[var(--brand)] transition-colors truncate">
                             {getFreelancerName(freelancer)}
                           </h3>
                           {freelancer.location && (
-                            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 shrink-0">
+                            <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground flex items-center gap-1 shrink-0">
                               <MapPin size={11} className="text-[var(--brand)]" />
                               {freelancer.location}
                             </span>
                           )}
                         </div>
 
-                        <p className="text-xs font-semibold text-muted-foreground line-clamp-1">
+                        <p className="text-[11px] sm:text-xs font-semibold text-muted-foreground line-clamp-1">
                           {freelancer.title || 'Freelancer Professional'}
                         </p>
 
                         {skillNames.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-1">
+                          <div className="flex flex-wrap gap-1 pt-0.5">
                             {skillNames.slice(0, 5).map(skill => (
                               <span
                                 key={skill}
-                                className="inline-flex items-center bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 px-2.5 py-0.5 text-[10px] font-extrabold rounded-full"
+                                className="inline-flex items-center bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 px-2 py-0.5 text-[9.5px] sm:text-[10px] font-extrabold rounded-full"
                               >
                                 {skill}
                               </span>
@@ -261,7 +261,7 @@ export function InviteFreelancersAfterPostModal({
           </div>
 
           {/* RIGHT: PERSONAL INVITATION STICKY CARD */}
-          <div className="rounded-2xl border border-border/80 bg-muted/20 p-5 space-y-4 h-fit sticky top-0">
+          <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-muted/20 p-4 sm:p-5 space-y-3.5 sm:space-y-4 h-fit lg:sticky lg:top-0">
             <div className="space-y-1">
               <h3 className="text-sm font-black text-foreground flex items-center gap-2">
                 <Send size={15} className="text-[var(--brand)]" />

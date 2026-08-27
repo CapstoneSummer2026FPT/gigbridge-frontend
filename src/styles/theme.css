@@ -362,4 +362,8 @@
   background: var(--mesh-gradient);
   background-color: var(--mesh-gradient-bg);
   border-radius: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }

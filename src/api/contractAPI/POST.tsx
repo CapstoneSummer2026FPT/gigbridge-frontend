@@ -1,6 +1,6 @@
 import { apiService, type UploadRequestOptions } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractProductHandoffResponse, ContractWorkflowResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
+import type { ClaimFinalPayoutResponse, ContractProductHandoffResponse, ContractWorkflowResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
 import { normalizeMilestone } from './GET';
 
 const contractsUrl = 'Contracts';
@@ -135,6 +135,15 @@ export const contractPostAPI = {
     contractId: string
   ): Promise<ApiResponse<EndProjectResponse>> => {
     return apiService.post<EndProjectResponse>(`contracts/${contractId}/end-project`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/claim-final-payout
+   */
+  claimFinalPayout: async (
+    contractId: string
+  ): Promise<ApiResponse<ClaimFinalPayoutResponse>> => {
+    return apiService.post<ClaimFinalPayoutResponse>(`contracts/${contractId}/claim-final-payout`);
   },
 
   /**

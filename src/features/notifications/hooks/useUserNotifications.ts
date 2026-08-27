@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { notificationGetAPI, notificationPutAPI } from '../../../api/notificationAPI';
 import type { User } from '../../../types/models/User';
-import { createNotificationHubConnection } from '../services/notificationHubConnection';
+import {
+  onNotificationHubReconnected,
+  subscribeNotificationHubEvent,
+} from '../services/notificationHubConnection';
+import {
+  onChatHubReconnected,
+  subscribeChatHubEvent,
+} from '../../../shared/realtime/chatHubConnection';
 import { toast } from 'sonner';
 
 const surfacedMeetingAlerts = new Set<string>();
@@ -49,6 +56,8 @@ interface PaginatedNotificationResponse {
 }
 
 interface UnreadCountResponse {
+  revision?: number;
+  Revision?: number;
   unreadCount?: number;
   UnreadCount?: number;
 }
@@ -299,11 +308,20 @@ export const normalizeNotification = (notification: any, userRole?: number): UiN
   };
 };
 
-export function useUserNotifications(user: User | null, options: { pageSize?: number; pollMs?: number } = {}) {
-  const { pageSize = 20, pollMs = 60000 } = options;
+interface NotificationStateChanged {
+  revision: number;
+  unreadCount: number;
+  changeKind: 'upsert' | 'removed' | 'reset';
+  item?: unknown;
+  notificationId?: string;
+}
+
+export function useUserNotifications(user: User | null, options: { pageSize?: number } = {}) {
+  const { pageSize = 20 } = options;
   const [notifications, setNotifications] = useState<UiNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const seenNotificationIds = useRef(new Set<string>());
+  const stateRevision = useRef(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -320,7 +338,7 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
     setIsLoading(true);
     const [response, unreadResponse] = await Promise.all([
       notificationGetAPI.getUserNotifications({ page: 1, pageSize }),
-      notificationGetAPI.getUnreadCount(),
+      notificationGetAPI.getStatus(),
     ]);
 
     if (response.success && response.data) {
@@ -338,6 +356,7 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
     if (unreadResponse.success && unreadResponse.data) {
       const unreadData = unreadResponse.data as UnreadCountResponse;
       setUnreadCount(unreadData.unreadCount ?? unreadData.UnreadCount ?? 0);
+      stateRevision.current = unreadData.revision ?? unreadData.Revision ?? stateRevision.current;
     }
 
     setIsLoading(false);
@@ -345,20 +364,10 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
 
   useEffect(() => {
     void loadNotifications();
-
-    if (!user || pollMs <= 0) return undefined;
-
-    const intervalId = window.setInterval(() => {
-      void loadNotifications();
-    }, pollMs);
-
-    return () => window.clearInterval(intervalId);
-  }, [loadNotifications, pollMs, user]);
+  }, [loadNotifications]);
 
   useEffect(() => {
-    if (!user || !localStorage.getItem('access_token')) return;
-    let disposed = false;
-    let connection = createNotificationHubConnection('direct-websocket');
+    if (!user || !localStorage.getItem('access_token')) return undefined;
 
     const handleNotification = (raw: unknown) => {
       const incoming = normalizeNotification(raw, user.role);
@@ -381,42 +390,44 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
       }
     };
 
-    const attachHandler = () => connection.on('ReceiveNotification', handleNotification);
-    attachHandler();
-
-    const startConnection = async () => {
-      try {
-        await connection.start();
-      } catch (directWebSocketError) {
-        if (disposed) return;
-
-        console.warn(
-          '[NotificationHub] Direct WebSocket connection failed; retrying negotiated transport.',
-          directWebSocketError,
-        );
-        await connection.stop().catch(() => undefined);
-        if (disposed) return;
-
-        connection = createNotificationHubConnection('negotiated');
-        attachHandler();
-        try {
-          await connection.start();
-        } catch (negotiatedTransportError) {
-          if (!disposed) {
-            console.warn('[NotificationHub] Connection failed.', negotiatedTransportError);
-          }
-        }
+    const handleState = (event: NotificationStateChanged): void => {
+      if (event.revision <= stateRevision.current) return;
+      const hasGap = event.revision > stateRevision.current + 1;
+      stateRevision.current = event.revision;
+      setUnreadCount(event.unreadCount);
+      if (hasGap || event.changeKind === 'reset') {
+        void loadNotifications();
+        return;
       }
-
-      if (disposed) await connection.stop();
+      if (event.changeKind === 'removed' && event.notificationId) {
+        setNotifications(current => current.filter(item => item.id !== event.notificationId));
+        return;
+      }
+      if (event.changeKind === 'upsert' && event.item) {
+        const incoming = normalizeNotification(event.item, user.role);
+        seenNotificationIds.current.add(incoming.id);
+        setNotifications(current => {
+          const withoutIncoming = current.filter(item => item.id !== incoming.id);
+          return [incoming, ...withoutIncoming].slice(0, pageSize);
+        });
+      }
     };
-
-    void startConnection();
+    const unsubscribeNotification = subscribeNotificationHubEvent('ReceiveNotification', handleNotification);
+    const unsubscribeState = subscribeChatHubEvent('NotificationStateChanged', handleState);
+    const unsubscribeReconnect = onNotificationHubReconnected(() => void loadNotifications());
+    const unsubscribeChatReconnect = onChatHubReconnected(() => void loadNotifications());
+    const handleVisibility = (): void => {
+      if (window.document.visibilityState === 'visible') void loadNotifications();
+    };
+    window.document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      disposed = true;
-      void connection.stop();
+      unsubscribeNotification();
+      unsubscribeState();
+      unsubscribeReconnect();
+      unsubscribeChatReconnect();
+      window.document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [user?.id, user?.role]);
+  }, [loadNotifications, user?.id, user?.role]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     const target = notifications.find(notification => notification.id === notificationId);

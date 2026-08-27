@@ -31,6 +31,8 @@
   justify-content: center;
   border-radius: 9999px;
   flex-shrink: 0;
+  isolation: isolate;
+  z-index: 1;
 }
 
 /* Premium 3D Neon Tube SVG Overlay - Brand Color (Top Layer) */

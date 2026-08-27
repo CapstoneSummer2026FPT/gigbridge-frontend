@@ -14,9 +14,9 @@ import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Mil
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import {
-  getChatHubUrl,
   type UploadTransferProgress,
 } from '../../../service/apiService';
+import { onChatHubReconnected, retainChatHubConnection } from '../../../shared/realtime/chatHubConnection';
 import {
   buildMilestoneSubmissionFormData,
   type MilestoneSubmissionPayload,
@@ -387,29 +387,47 @@ export function useProjectWorkspace(initialContractId: string) {
     };
   }, []);
 
-  // Optimized single workspace loader with instant in-memory caching
+  const getSessionCachedWorkspace = (id: string) => {
+    try {
+      const raw = sessionStorage.getItem(`gb_workspace_cache_${id}`);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const setSessionCachedWorkspace = (id: string, data: any) => {
+    try {
+      sessionStorage.setItem(`gb_workspace_cache_${id}`, JSON.stringify(data));
+    } catch {
+      /* ignore storage quota/security error */
+    }
+  };
+
+  // Optimized single workspace loader with instant in-memory caching & progressive hydration
   useEffect(() => {
     let current = true;
 
     const loadWorkspace = async (): Promise<void> => {
       if (!activeProjectId) return;
 
-      // ⚡ INSTANT CACHE: If workspace was previously loaded, display cached data IMMEDIATELY (0ms delay!)
-      const cached = workspaceCacheRef.current.get(activeProjectId);
+      // ⚡ INSTANT CACHE: If workspace was previously loaded or in sessionStorage, display cached data IMMEDIATELY (0ms delay!)
+      const cached = workspaceCacheRef.current.get(activeProjectId) || getSessionCachedWorkspace(activeProjectId);
       if (cached) {
         setActiveContract(cached.contract);
         setProject(cached.project);
-        setProductHandoffs(cached.productHandoffs);
-        setCurrentProductHandoff(getCurrentProductHandoffFromList(cached.productHandoffs));
-        setEarlyStartRequests(cached.earlyStartRequests);
-        setProjectMessages(cached.messages);
+        setProductHandoffs(cached.productHandoffs || []);
+        setCurrentProductHandoff(getCurrentProductHandoffFromList(cached.productHandoffs || []));
+        setEarlyStartRequests(cached.earlyStartRequests || []);
+        setProjectMessages(cached.messages || []);
         setIsWorkspaceLoading(false);
       } else {
         setIsWorkspaceLoading(true);
       }
 
       try {
-        // ⚡ OPTIMIZATION: Only fetch workspace-specific data (pruned unnecessary global calls)
+        // ⚡ OPTIMIZATION: Only fetch workspace-specific data in parallel
         const [contractResponse, milestonesResponse, productHandoffsResponse, earlyStartResponse] = await Promise.all([
           contractGetAPI.getContractById(activeProjectId),
           contractGetAPI.getMilestonesByContract(activeProjectId),
@@ -435,14 +453,9 @@ export function useProjectWorkspace(initialContractId: string) {
         const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
         const nextEarlyStarts = earlyStartResponse.data || [];
 
-        let nextMessages: Message[] = cached ? cached.messages : [];
-        if (nextContract.conversationId) {
-          const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
-          if (current && messagesResponse.success && messagesResponse.data) {
-            nextMessages = messagesResponse.data.map(mapWorkspaceMessage);
-          }
-        }
+        let nextMessages: Message[] = cached ? (cached.messages || []) : [];
 
+        // ⚡ PROGRESSIVE HYDRATION: Display milestone & contract data IMMEDIATELY without waiting for chat!
         if (current) {
           setActiveContract(nextContract);
           setProject(nextProject);
@@ -450,15 +463,33 @@ export function useProjectWorkspace(initialContractId: string) {
           setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
           setEarlyStartRequests(nextEarlyStarts);
           setProjectMessages(nextMessages);
+          setIsWorkspaceLoading(false); // UI is now fully interactive!
+        }
 
-          // ⚡ Save to in-memory cache for instant switching next time
-          workspaceCacheRef.current.set(activeProjectId, {
+        // Asynchronously fetch conversation messages in background without holding UI
+        if (nextContract.conversationId) {
+          try {
+            const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
+            if (current && messagesResponse.success && messagesResponse.data) {
+              nextMessages = messagesResponse.data.map(mapWorkspaceMessage);
+              setProjectMessages(nextMessages);
+            }
+          } catch (msgErr) {
+            console.warn('[useProjectWorkspace] Chat messages background fetch failed:', msgErr);
+          }
+        }
+
+        if (current) {
+          const snapshot = {
             contract: nextContract,
             project: nextProject,
             productHandoffs: nextProductHandoffs,
             earlyStartRequests: nextEarlyStarts,
             messages: nextMessages,
-          });
+          };
+          // ⚡ Save to in-memory cache & sessionStorage for instant switching next time
+          workspaceCacheRef.current.set(activeProjectId, snapshot);
+          setSessionCachedWorkspace(activeProjectId, snapshot);
         }
       } catch (err) {
         console.error('Failed to load workspace:', err);
@@ -535,6 +566,30 @@ export function useProjectWorkspace(initialContractId: string) {
     }
   }, []);
 
+  const reloadActiveProductHandoffsOnly = useCallback(async (targetContractId?: string): Promise<void> => {
+    const contractId = targetContractId || activeProjectIdRef.current;
+    if (!contractId || contractId !== activeProjectIdRef.current) return;
+
+    try {
+      const productHandoffsRes = await contractGetAPI.getProductHandoffs(contractId);
+      if (productHandoffsRes.success) {
+        const nextProductHandoffs = productHandoffsRes.data ?? [];
+        setProductHandoffs(nextProductHandoffs);
+        setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
+
+        const cached = workspaceCacheRef.current.get(contractId);
+        if (cached) {
+          workspaceCacheRef.current.set(contractId, {
+            ...cached,
+            productHandoffs: nextProductHandoffs,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[useProjectWorkspace] failed to reload product handoffs:', err);
+    }
+  }, []);
+
   const debouncedReloadActiveWorkspace = useCallback(async (): Promise<void> => {
     const now = Date.now();
     if (now - lastReloadTimeRef.current < 300) return;
@@ -563,13 +618,8 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(getChatHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const lease = retainChatHubConnection();
+    const connection = lease.connection;
 
     const joinCurrentConversation = async (): Promise<void> => {
       const conversationId = conversationIdRef.current;
@@ -643,6 +693,13 @@ export function useProjectWorkspace(initialContractId: string) {
       void reloadActiveMilestonesOnly(eventContractId);
     };
 
+    const handleProductHandoffEvent = (payload?: Record<string, unknown>): void => {
+      const eventContractId = payload ? String(payload.contractId ?? payload.ContractId ?? payload.contractsId ?? '') : '';
+      if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
+      void reloadActiveProductHandoffsOnly(eventContractId);
+      void reloadActiveMilestonesOnly(eventContractId);
+    };
+
     const workspaceEvents = [
       'WorkspaceUpdated',
       'MilestoneUpdated',
@@ -655,8 +712,8 @@ export function useProjectWorkspace(initialContractId: string) {
       'DeliverableSubmitted',
       'EarlyStartRequested',
       'EarlyStartResponded',
-      'ProductHandoffSubmitted',
     ];
+    const productHandoffEvents = ['ProductHandoffUpdated', 'ProductHandoffAcknowledged'];
 
     connection.on('ReceiveMessage', handleReceiveMessage);
     connection.on('ContractCompleted', handleContractCompleted);
@@ -664,20 +721,20 @@ export function useProjectWorkspace(initialContractId: string) {
     workspaceEvents.forEach(evt => {
       connection.on(evt, handleRealtimeWorkspaceEvent);
     });
-
-    connection.onreconnected(() => {
-      if (!disposed) void joinCurrentConversation();
-    });
-    connection.onclose(error => {
-      if (!disposed && error) console.warn('[WorkspaceChatHub] disconnected', error);
+    productHandoffEvents.forEach(evt => {
+      connection.on(evt, handleProductHandoffEvent);
     });
 
-    void connection.start()
+    const stopReconnect = onChatHubReconnected(() => {
+      if (!disposed) {
+        void joinCurrentConversation();
+        void reloadActiveWorkspace();
+      }
+    });
+
+    void lease.ready
       .then(() => {
-        if (disposed) {
-          void connection.stop();
-          return;
-        }
+        if (disposed) return;
         chatConnectionRef.current = connection;
         void joinCurrentConversation();
       })
@@ -693,8 +750,12 @@ export function useProjectWorkspace(initialContractId: string) {
       workspaceEvents.forEach(evt => {
         connection.off(evt, handleRealtimeWorkspaceEvent);
       });
+      productHandoffEvents.forEach(evt => {
+        connection.off(evt, handleProductHandoffEvent);
+      });
+      stopReconnect();
       if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
-      void connection.stop();
+      lease.release();
     };
   }, [user?.id, debouncedReloadActiveWorkspace]);
 
@@ -1018,6 +1079,21 @@ export function useProjectWorkspace(initialContractId: string) {
     };
   };
 
+  const handleClaimFinalPayout = async (): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || isClient || activeContract?.status !== ContractStatus.Completed) {
+      return { success: false, message: 'Final payout is not available.' };
+    }
+
+    const response = await contractPostAPI.claimFinalPayout(activeProjectId);
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to claim final payout.' };
+    }
+
+    await reloadActiveWorkspace();
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    return { success: true, message: response.message };
+  };
+
   const handleSubmitProductHandoff = async (
     payload: SubmitProductHandoffPayload,
     lifecycle: WorkspaceUploadLifecycle = {},
@@ -1098,6 +1174,7 @@ export function useProjectWorkspace(initialContractId: string) {
     handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,
+    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,

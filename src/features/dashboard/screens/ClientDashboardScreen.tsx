@@ -1,11 +1,13 @@
 import {
   AlertCircle,
+  ArrowUpRight,
   Bot,
   Briefcase,
   ChevronLeft,
   ChevronRight,
   Crown,
   PlusCircle,
+  UserCheck,
   Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -18,6 +20,7 @@ import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
 import { ClientDashboardOverview } from '../components/ClientDashboardOverview';
+import { Dashboard3DBackground } from '../components/Dashboard3DBackground';
 import '../styles/client-dashboard-screen.css';
 import '../../premium/styles/premium.css';
 
@@ -87,6 +90,10 @@ export default function ClientDashboardScreen() {
   return (
     <AppLayout excludeMeshGradient>
       <div className="bg-background min-h-screen relative w-full overflow-x-hidden">
+        {/* Interactive 3D Canvas Mesh Background */}
+        <Dashboard3DBackground />
+
+        {/* Ambient Glowing Orbs */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
           <div className="client-dash-glow-orb orb-purple absolute" />
           <div className="client-dash-glow-orb orb-cyan absolute" />
@@ -100,6 +107,7 @@ export default function ClientDashboardScreen() {
         </div>
 
         <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-8 sm:py-10 space-y-12 sm:space-y-14">
+          {/* Header Hero Section */}
           <section className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 stagger-up">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -120,7 +128,7 @@ export default function ClientDashboardScreen() {
             </div>
             <div className="flex flex-wrap gap-4 shrink-0">
               <button
-                className="group glass-card h-16 px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm"
+                className="group glass-card h-16 px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm cursor-pointer"
                 onClick={() => navigate(premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing')}
               >
                 <Crown size={17} className="text-purple" />
@@ -129,7 +137,7 @@ export default function ClientDashboardScreen() {
                 </span>
               </button>
               <button
-                className="group glass-card !border-brand text-brand hover:!border-brand-hover hover:text-brand-hover hover:bg-brand-soft h-16 px-10 rounded-2xl font-bold transition-all duration-300 shadow-sm flex items-center gap-3"
+                className="group glass-card !border-brand text-brand hover:!border-brand-hover hover:text-brand-hover hover:bg-brand-soft h-16 px-10 rounded-2xl font-bold transition-all duration-300 shadow-sm flex items-center gap-3 cursor-pointer"
                 onClick={() => navigate('/jobs/post')}
               >
                 <span className="text-xs uppercase tracking-widest">
@@ -141,12 +149,13 @@ export default function ClientDashboardScreen() {
           </section>
 
           {error && (
-            <div className="glass-card rounded-2xl border border-warning/30 p-4 flex items-center gap-3 text-sm text-text-secondary">
+            <div className="bento-spotlight-card border border-warning/40 bg-warning/5 p-4 flex items-center gap-3 text-sm text-text-secondary">
               <AlertCircle size={18} className="text-warning shrink-0" />
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
+          {/* High-frequency live metrics overview */}
           <ClientDashboardOverview
             isLoading={isLoading}
             eloSummary={eloSummary}
@@ -161,49 +170,62 @@ export default function ClientDashboardScreen() {
             onOpenContracts={() => navigate('/contracts')}
           />
 
+          {/* Main Matrix Grid */}
           <section className="space-y-6" aria-labelledby="client-workflow-title">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Left Column (col-span-7) */}
-              <div className="lg:col-span-7 space-y-6">
-                {/* Work In Progress / Hiring Portfolio Card */}
-                <div className="glass-card p-6 sm:p-8 rounded-3xl min-h-72 flex flex-col justify-between group">
-                  <div className="flex justify-between items-start gap-5">
+              <div className="lg:col-span-7 space-y-8">
+                {/* Work In Progress / Hiring Portfolio Bento */}
+                <div className="bento-spotlight-card p-7 sm:p-8 min-h-72 flex flex-col justify-between group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-36 h-36 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:bg-brand/20 transition-all duration-500" />
+
+                  <div className="flex justify-between items-start gap-5 relative z-10">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-brand/10 rounded-2xl flex items-center justify-center text-brand shadow-sm shrink-0 border border-brand/20">
-                        <Briefcase size={22} />
+                      <div className="w-14 h-14 bg-brand/15 rounded-2xl flex items-center justify-center text-brand shadow-[0_0_20px_rgba(73,75,231,0.25)] shrink-0 border border-brand/30">
+                        <Briefcase size={24} />
                       </div>
                       <div>
-                        <span className="client-dash-card-eyebrow">{t('dashboard.currentWork', 'Current work')}</span>
-                        <h2 id="client-workflow-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5">
-                          {t('dashboard.workInProgress', 'Work in progress')}
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">
+                          {t('dashboard.currentWork', 'Current Work')}
+                        </span>
+                        <h2 id="client-workflow-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5 font-display-sm">
+                          {t('dashboard.workInProgress', 'Hiring Portfolio')}
                         </h2>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="block text-4xl sm:text-5xl font-black text-text-primary leading-none">{openRolesCount}</span>
+                      <span className="block text-4xl sm:text-5xl font-black text-text-primary leading-none tracking-tight">{openRolesCount}</span>
                       <span className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-1 block">Open roles</span>
                     </div>
                   </div>
 
-                  <div className="space-y-4 mt-6">
+                  <div className="space-y-4 mt-6 relative z-10">
                     <div className="flex items-end justify-between gap-4">
                       <div>
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-brand">Hiring portfolio</span>
-                        <span className="text-[9px] text-text-muted">Roles and contracts at a glance</span>
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-brand">Portfolio Status</span>
+                        <span className="text-[9px] text-text-muted font-medium">Roles and contracts breakdown</span>
                       </div>
-                      <button className="client-dash-icon-link" onClick={() => navigate('/jobs/my-jobs')}>
-                        Manage roles <ChevronRight size={15} />
+                      <button
+                        className="freelancer-dash-overview-link group/link cursor-pointer"
+                        onClick={() => navigate('/jobs/my-jobs')}
+                      >
+                        <span>Manage Roles</span>
+                        <ChevronRight size={14} className="transition-transform group-hover/link:translate-x-1" />
                       </button>
                     </div>
+
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {[
-                        { value: myJobs.length, label: 'All roles' },
-                        { value: draftRolesCount, label: 'Drafts' },
-                        { value: projects.length, label: 'Active contracts' },
-                        { value: completedContractsCount, label: 'Completed' },
+                        { value: myJobs.length, label: 'All Roles', color: 'text-text-primary' },
+                        { value: draftRolesCount, label: 'Drafts', color: 'text-text-secondary' },
+                        { value: projects.length, label: 'Active Contracts', color: 'text-brand' },
+                        { value: completedContractsCount, label: 'Completed', color: 'text-success' },
                       ].map(item => (
-                        <div key={item.label} className="text-center bg-surface-muted/60 p-3 rounded-2xl border border-border">
-                          <span className="block text-2xl font-black text-text-primary leading-none">{item.value}</span>
+                        <div
+                          key={item.label}
+                          className="text-center bg-surface-muted/50 hover:bg-surface-muted/80 p-3.5 rounded-2xl border border-border/70 transition-all duration-200"
+                        >
+                          <span className={`block text-2xl font-black leading-none ${item.color}`}>{item.value}</span>
                           <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-2">{item.label}</span>
                         </div>
                       ))}
@@ -211,44 +233,56 @@ export default function ClientDashboardScreen() {
                   </div>
                 </div>
 
-                {/* Talent Matching Card */}
-                <div className="glass-card p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-                  <div>
-                    <span className="client-dash-card-eyebrow">Talent matching</span>
-                    <h4 className="text-lg font-black text-text-primary mt-1">Find the next freelancer</h4>
-                    <p className="text-sm text-text-secondary mt-1">Run a current search when an open role still needs candidates.</p>
+                {/* Talent Matching Bento Banner */}
+                <div className="bento-spotlight-card p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-cyan/10 blur-3xl rounded-full pointer-events-none group-hover:bg-cyan/20 transition-all duration-500" />
+                  <div className="relative z-10 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan/15 border border-cyan/30 flex items-center justify-center text-cyan shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+                      <UserCheck size={22} />
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Talent Discovery</span>
+                      <h4 className="text-lg font-black text-text-primary tracking-tight mt-0.5">Find Top-Tier Freelancers</h4>
+                      <p className="text-xs text-text-secondary mt-0.5">AI-powered candidate sourcing for open and upcoming projects.</p>
+                    </div>
                   </div>
                   <button
-                    className="shrink-0 flex items-center gap-2 rounded-2xl border border-brand/30 px-5 py-3 text-xs font-black uppercase tracking-widest text-brand hover:bg-brand-soft transition-all"
+                    className="shrink-0 flex items-center gap-2 rounded-2xl border border-brand/35 bg-brand/10 hover:bg-brand hover:text-primary-foreground px-6 py-3.5 text-xs font-black uppercase tracking-widest text-brand transition-all duration-200 cursor-pointer shadow-sm relative z-10"
                     onClick={() => navigate('/talent-matching')}
                   >
-                    Find talent <ChevronRight size={16} />
+                    <span>Find Talent</span>
+                    <ChevronRight size={15} />
                   </button>
                 </div>
 
-                {/* Money & Budget Section in Empty Space */}
+                {/* Money & Budget Section */}
                 <div className="pt-2 space-y-4" aria-labelledby="client-finance-title">
                   <div className="px-1">
-                    <span className="client-dash-card-eyebrow">{t('dashboard.financialControl', 'Financial control')}</span>
-                    <h3 id="client-finance-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5">
-                      {t('dashboard.moneyAndBudget', 'Money & budget')}
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wallet size={14} className="text-brand" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">
+                        {t('dashboard.financialControl', 'Financial Control')}
+                      </span>
+                    </div>
+                    <h3 id="client-finance-title" className="text-2xl font-black tracking-tight text-text-primary uppercase font-display-sm">
+                      {t('dashboard.moneyAndBudget', 'Treasury & Spending')}
                     </h3>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {/* Financial Control Carousel Card (Funds Released & Wallet) */}
-                    <div className="glass-card p-6 rounded-3xl flex flex-col justify-between min-h-[300px] relative overflow-hidden group">
+                    <div className="bento-spotlight-card p-6 flex flex-col justify-between min-h-[320px] relative group">
                       {/* Carousel Header Controls */}
                       <div className="flex items-center justify-between mb-3 relative z-10">
                         <div className="flex items-center gap-1.5 bg-surface-muted/60 p-1 rounded-xl border border-border">
                           <button
-                            className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${financialSlide === 0 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+                            className={`px-3 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${financialSlide === 0 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
                             onClick={() => setFinancialSlide(0)}
                           >
                             Funds Released
                           </button>
                           <button
-                            className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${financialSlide === 1 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+                            className={`px-3 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${financialSlide === 1 ? 'bg-brand text-primary-foreground shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
                             onClick={() => setFinancialSlide(1)}
                           >
                             Wallet
@@ -256,16 +290,16 @@ export default function ClientDashboardScreen() {
                         </div>
                         <div className="flex items-center gap-1">
                           <button
-                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all disabled:opacity-30"
+                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all cursor-pointer"
                             onClick={() => setFinancialSlide(prev => (prev === 0 ? 1 : 0))}
-                            title="Previous slide"
+                            title="Toggle slide"
                           >
                             <ChevronLeft size={14} />
                           </button>
                           <button
-                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all disabled:opacity-30"
+                            className="w-7 h-7 rounded-lg bg-surface-muted/80 border border-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:border-brand/40 transition-all cursor-pointer"
                             onClick={() => setFinancialSlide(prev => (prev === 0 ? 1 : 0))}
-                            title="Next slide"
+                            title="Toggle slide"
                           >
                             <ChevronRight size={14} />
                           </button>
@@ -282,18 +316,18 @@ export default function ClientDashboardScreen() {
                             onMouseLeave={handleOverviewMouseLeave}
                             style={overviewCardStyle}
                           >
-                            <div className="relative flex flex-col items-center justify-center py-1">
-                              <div className="relative w-32 h-32 flex items-center justify-center">
+                            <div className="relative flex flex-col items-center justify-center py-2">
+                              <div className="relative w-36 h-36 flex items-center justify-center">
                                 <svg className="w-full h-full transform -rotate-90">
-                                  <circle cx="64" cy="64" r="54" className="stroke-surface-muted fill-none" strokeWidth="8" />
+                                  <circle cx="72" cy="72" r="58" className="stroke-surface-muted/60 fill-none" strokeWidth="8" />
                                   <circle
-                                    cx="64"
-                                    cy="64"
-                                    r="54"
-                                    className="stroke-brand fill-none client-dash-success-ring"
+                                    cx="72"
+                                    cy="72"
+                                    r="58"
+                                    className="stroke-brand fill-none freelancer-dash-gauge-ring"
                                     strokeWidth="8"
-                                    strokeDasharray={2 * Math.PI * 54}
-                                    strokeDashoffset={2 * Math.PI * 54 * (1 - financialProgress / 100)}
+                                    strokeDasharray={2 * Math.PI * 58}
+                                    strokeDashoffset={2 * Math.PI * 58 * (1 - financialProgress / 100)}
                                     strokeLinecap="round"
                                   />
                                 </svg>
@@ -301,8 +335,8 @@ export default function ClientDashboardScreen() {
                                   <span className="text-3xl font-black text-text-primary tracking-tighter">
                                     {isFinancialLoading ? '—' : `${financialProgress}%`}
                                   </span>
-                                  <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5">
-                                    {hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past month' : 'Past year') : 'No activity'}
+                                  <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5 tracking-wider">
+                                    {hasFinancialActivity ? (chartPeriod === 'monthly' ? 'Past Month' : 'Past Year') : 'No activity'}
                                   </span>
                                 </div>
                               </div>
@@ -332,27 +366,26 @@ export default function ClientDashboardScreen() {
                             style={walletCardStyle}
                             onClick={() => navigate('/wallet/deposit')}
                           >
-                            <div className="absolute -top-16 -right-16 w-36 h-36 bg-brand/10 blur-2xl rounded-full pointer-events-none group-hover:scale-125 transition-transform" />
                             <div className="flex items-start justify-between relative z-10 pt-1">
                               <div>
                                 <span className="block text-[8px] font-black text-brand uppercase tracking-widest">Wallet</span>
                                 <h4 className="text-sm font-black text-text-primary mt-0.5">GigBridge Pay</h4>
                               </div>
-                              <div className="w-9 h-9 bg-brand/10 text-brand rounded-xl flex items-center justify-center">
+                              <div className="w-10 h-10 bg-brand/15 text-brand rounded-2xl flex items-center justify-center border border-brand/25 shadow-sm">
                                 <Wallet size={18} />
                               </div>
                             </div>
                             <div className="my-2 relative z-10">
-                              <span className="block text-[9px] uppercase text-text-muted tracking-wider font-semibold mb-0.5">Available funds</span>
+                              <span className="block text-[9px] uppercase text-text-muted tracking-wider font-bold mb-0.5">Available Funds</span>
                               <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} className="text-3xl font-black tracking-tight text-text-primary" />
-                              <span className="block text-xs text-text-secondary mt-1">Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} /></span>
+                              <span className="block text-xs text-text-secondary mt-1 font-medium">Held in Escrow: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} /></span>
                             </div>
-                            <div className="flex items-center justify-between relative z-10 gap-2 pt-2 border-t border-border/60">
+                            <div className="flex items-center justify-between relative z-10 gap-2 pt-2.5 border-t border-border/60">
                               <div className="min-w-0">
-                                <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">Account holder</span>
+                                <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">Account Holder</span>
                                 <span className="block truncate text-xs font-bold text-text-secondary">{displayName}</span>
                               </div>
-                              <button className="py-2 px-3 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-colors shadow-md border border-transparent shrink-0">
+                              <button className="py-2.5 px-4 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-all shadow-sm border border-transparent shrink-0 cursor-pointer">
                                 Deposit
                               </button>
                             </div>
@@ -363,12 +396,12 @@ export default function ClientDashboardScreen() {
                       {/* Pagination Dots */}
                       <div className="flex items-center justify-center gap-1.5 mt-3 relative z-10">
                         <button
-                          className={`h-1.5 rounded-full transition-all ${financialSlide === 0 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
+                          className={`h-1.5 rounded-full transition-all cursor-pointer ${financialSlide === 0 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
                           onClick={() => setFinancialSlide(0)}
                           aria-label="Go to slide 1"
                         />
                         <button
-                          className={`h-1.5 rounded-full transition-all ${financialSlide === 1 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
+                          className={`h-1.5 rounded-full transition-all cursor-pointer ${financialSlide === 1 ? 'w-5 bg-brand' : 'w-1.5 bg-border hover:bg-text-muted'}`}
                           onClick={() => setFinancialSlide(1)}
                           aria-label="Go to slide 2"
                         />
@@ -376,61 +409,65 @@ export default function ClientDashboardScreen() {
                     </div>
 
                     {/* Spend Chart Card */}
-                    <div className="glass-card p-6 rounded-3xl flex flex-col justify-between min-h-[300px]">
-                      <div className="flex items-center justify-between mb-3">
+                    <div className="bento-spotlight-card p-6 flex flex-col justify-between min-h-[320px] relative group">
+                      <div className="flex items-center justify-between mb-3 relative z-10">
                         <div>
-                          <h4 className="text-text-primary font-bold text-base">
+                          <h4 className="text-text-primary font-black text-base tracking-tight">
                             {chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}
                           </h4>
-                          <p className="text-xs text-text-secondary opacity-75">Confirmed contract releases</p>
+                          <p className="text-xs text-text-secondary font-medium">Confirmed contract releases</p>
                         </div>
-                        <div className="chart-header-tabs flex">
+                        <div className="fl-chart-header-tabs flex">
                           <button
-                            className={`chart-tab-btn ${chartPeriod === 'monthly' ? 'active' : ''}`}
+                            className={`fl-chart-tab-btn cursor-pointer ${chartPeriod === 'monthly' ? 'active' : ''}`}
                             onClick={() => setChartPeriod('monthly')}
                           >
-                            M
+                            Monthly
                           </button>
                           <button
-                            className={`chart-tab-btn ${chartPeriod === 'yearly' ? 'active' : ''}`}
+                            className={`fl-chart-tab-btn cursor-pointer ${chartPeriod === 'yearly' ? 'active' : ''}`}
                             onClick={() => setChartPeriod('yearly')}
                           >
-                            Y
+                            Yearly
                           </button>
                         </div>
                       </div>
-                      <div className="w-full flex-1 flex items-center justify-center min-h-[180px]">
+
+                      <div className="w-full flex-1 flex items-center justify-center min-h-[190px] relative z-10">
                         {isFinancialLoading ? (
-                          <p className="text-sm text-text-muted animate-pulse">Loading financial data…</p>
+                          <p className="text-sm text-text-muted animate-pulse font-medium">Loading spending flow…</p>
                         ) : financialError ? (
-                          <p className="text-sm text-warning text-center">{financialError}</p>
+                          <p className="text-sm text-warning text-center font-medium">{financialError}</p>
                         ) : spendChartData.length === 0 || !hasFinancialActivity ? (
-                          <p className="text-sm text-text-muted text-center">No confirmed spend in this period.</p>
+                          <p className="text-sm text-text-muted text-center font-medium">No confirmed spend in this interval.</p>
                         ) : (
-                          <ResponsiveContainer width="100%" height={180}>
+                          <ResponsiveContainer width="100%" height={190}>
                             <AreaChart data={spendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                               <defs>
                                 <linearGradient id="clientSpendLineGrad" x1="0" y1="0" x2="1" y2="0">
-                                  <stop offset="0%" stopColor="#9F4BFF" />
-                                  <stop offset="100%" stopColor="#0077FF" />
+                                  <stop offset="0%" stopColor="#494be7" />
+                                  <stop offset="50%" stopColor="#8b5cf6" />
+                                  <stop offset="100%" stopColor="#06b6d4" />
                                 </linearGradient>
                                 <linearGradient id="clientSpendGrad2026" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#0077FF" stopOpacity={0.25} />
-                                  <stop offset="95%" stopColor="#0077FF" stopOpacity={0} />
+                                  <stop offset="5%" stopColor="#494be7" stopOpacity={0.35} />
+                                  <stop offset="95%" stopColor="#494be7" stopOpacity={0} />
                                 </linearGradient>
                               </defs>
                               <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} />
                               <YAxis tick={{ fill: '#8892A4', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={formatAxisAmount} />
                               <Tooltip
                                 contentStyle={{
-                                  background: theme === 'black' ? 'rgba(13, 14, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-                                  border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(73, 75, 231, 0.2)',
-                                  borderRadius: 12,
+                                  background: theme === 'black' ? 'rgba(13, 14, 25, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+                                  border: theme === 'black' ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid rgba(73, 75, 231, 0.2)',
+                                  borderRadius: 14,
                                   color: theme === 'black' ? '#f5f6f8' : '#19191b',
+                                  fontSize: 12,
+                                  boxShadow: '0 12px 35px rgba(0,0,0,0.18)',
                                 }}
                                 formatter={(value: number) => [`${value.toLocaleString()} G-coin`, 'Released']}
                               />
-                              <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3} fill="url(#clientSpendGrad2026)" isAnimationActive />
+                              <Area type="monotone" dataKey="spend" stroke="url(#clientSpendLineGrad)" strokeWidth={3.5} fill="url(#clientSpendGrad2026)" isAnimationActive />
                             </AreaChart>
                           </ResponsiveContainer>
                         )}
@@ -441,71 +478,89 @@ export default function ClientDashboardScreen() {
               </div>
 
               {/* Right Column (col-span-5) */}
-              <div className="lg:col-span-5 space-y-6">
-                {/* AI-assisted Job Drafting placed on top of Active Contracts */}
-                <div className="glass-card p-6 rounded-3xl client-dash-ai-bg relative overflow-hidden">
-                  <div className="ai-radar-graphic">
-                    <div className="ai-radar-circle-1" />
-                    <div className="ai-radar-circle-2" />
-                    <div className="ai-radar-sweep-line" />
-                    <div className="ai-radar-pulse" />
-                  </div>
-                  <div className="relative z-10 flex flex-col gap-3">
+              <div className="lg:col-span-5 space-y-8">
+                {/* AI Copilot Job Drafting Bento */}
+                <div className="bento-spotlight-card p-6 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-36 h-36 bg-brand/15 blur-3xl rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500" />
+                  <div className="relative z-10 flex flex-col gap-3.5">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-brand/20 flex items-center justify-center text-brand shrink-0 border border-brand/30">
-                          <Bot size={20} className="client-dash-ai-icon" />
+                        <div className="w-11 h-11 rounded-2xl bg-brand/20 flex items-center justify-center text-brand shrink-0 border border-brand/30 shadow-[0_0_15px_rgba(73,75,231,0.3)]">
+                          <Bot size={22} className="animate-pulse" />
                         </div>
                         <div>
                           <span className="block text-[8px] font-black uppercase tracking-widest text-brand">AI Copilot</span>
-                          <h4 className="text-base font-bold text-text-primary">AI-assisted job drafting</h4>
+                          <h4 className="text-base font-black text-text-primary tracking-tight">AI-Assisted Job Drafting</h4>
                         </div>
                       </div>
                       <button
-                        className="client-dash-ai-post-btn py-2 px-3.5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0"
+                        className="py-2.5 px-4 rounded-xl bg-brand hover:bg-brand-hover text-primary-foreground text-xs font-bold transition-all shadow-[0_0_15px_rgba(73,75,231,0.3)] shrink-0 cursor-pointer flex items-center gap-1.5"
                         onClick={() => navigate('/jobs/post')}
                       >
-                        Start draft
+                        <span>Draft Role</span>
+                        <ArrowUpRight size={13} />
                       </button>
                     </div>
-                    <p className="text-xs client-dash-ai-desc text-text-secondary">
-                      Start the next hiring flow with a reviewed AI draft based on your real project requirements.
+                    <p className="text-xs text-text-secondary leading-relaxed font-medium">
+                      Generate optimized job postings, scope requirements, and milestone suggestions with intelligent AI assistance.
                     </p>
                   </div>
                 </div>
 
-                {/* Active Contracts Header */}
-                <div className="flex items-center justify-between px-2">
-                  <h3 className="font-display-lg text-lg font-black tracking-tight uppercase">Active contracts</h3>
-                  <span className="text-xs font-bold text-text-muted">{projects.length}</span>
-                </div>
+                {/* Active Contracts Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="text-xl font-black tracking-tight uppercase text-text-primary font-display-sm">
+                      Active Contracts
+                    </h3>
+                    <span className="text-xs font-black text-brand bg-brand/10 px-3 py-1 rounded-xl border border-brand/25 shadow-xs">
+                      {projects.length} {projects.length === 1 ? 'contract' : 'contracts'}
+                    </span>
+                  </div>
 
-                {projects.length > 0 ? projects.slice(0, 2).map(project => (
-                  <div key={project.id} className="glass-card rounded-3xl p-6 sm:p-8 border border-brand/10 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand/10 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform" />
-                    <div className="flex justify-between items-start mb-5 relative z-10">
-                      <span className="text-[9px] font-black bg-success/10 text-success px-3 py-1.5 rounded-lg tracking-widest uppercase border border-success/20">{project.status}</span>
-                      <GigCoinAmount amount={project.totalBudget} className="text-xs font-bold text-text-primary" />
+                  {projects.length > 0 ? (
+                    projects.slice(0, 2).map(project => (
+                      <div
+                        key={project.id}
+                        className="bento-spotlight-card rounded-3xl p-7 border border-brand/20 relative group hover:-translate-y-1 transition-all duration-300"
+                      >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-brand/15 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform pointer-events-none" />
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                          <span className="text-[9px] font-black bg-success/15 text-success px-3 py-1 rounded-lg tracking-widest uppercase border border-success/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                            {project.status}
+                          </span>
+                          <GigCoinAmount amount={project.totalBudget} className="text-xs font-bold text-text-primary" />
+                        </div>
+                        <h4 className="text-lg font-black mb-1 text-text-primary relative z-10 line-clamp-1">{project.title}</h4>
+                        <p className="text-text-secondary text-xs mb-5 font-medium relative z-10">Freelancer: {project.freelancerName}</p>
+                        <button
+                          className="w-full py-3.5 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-widest uppercase rounded-2xl transition-all duration-200 shadow-[0_0_20px_rgba(73,75,231,0.35)] flex items-center justify-center gap-2 cursor-pointer relative z-10"
+                          onClick={() => navigate(`/workspace/${project.id}`)}
+                        >
+                          <span>Enter Workspace</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="bento-spotlight-card p-8 border border-border text-center text-text-muted text-sm font-medium">
+                      No active contracts currently in delivery.
                     </div>
-                    <h4 className="text-xl font-black mb-1 text-text-primary">{project.title}</h4>
-                    <p className="text-text-secondary text-xs mb-5 font-medium">Freelancer: {project.freelancerName}</p>
+                  )}
+
+                  <div className="bento-spotlight-card p-5 border border-border flex items-center justify-between group hover:border-brand/30 transition-all">
+                    <div>
+                      <span className="block text-[9px] uppercase tracking-widest text-text-muted font-bold">Completed Contracts</span>
+                      <span className="text-2xl font-black text-text-primary">{completedContractsCount}</span>
+                    </div>
                     <button
-                      className="w-full py-4 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-widest uppercase rounded-2xl transition-colors"
-                      onClick={() => navigate(`/workspace/${project.id}`)}
+                      className="freelancer-dash-overview-link group/link cursor-pointer"
+                      onClick={() => navigate('/contracts')}
                     >
-                      Enter workspace
+                      <span>View All</span>
+                      <ChevronRight size={14} className="transition-transform group-hover/link:translate-x-1" />
                     </button>
                   </div>
-                )) : (
-                  <div className="glass-card rounded-3xl p-6 border border-border text-center text-text-muted text-sm">No active contracts.</div>
-                )}
-
-                <div className="glass-card rounded-3xl p-5 border border-border flex items-center justify-between">
-                  <div>
-                    <span className="block text-[9px] uppercase tracking-widest text-text-muted">Completed contracts</span>
-                    <span className="text-2xl font-black text-text-primary">{completedContractsCount}</span>
-                  </div>
-                  <button className="text-xs font-black uppercase tracking-widest text-brand" onClick={() => navigate('/contracts')}>View all</button>
                 </div>
               </div>
             </div>

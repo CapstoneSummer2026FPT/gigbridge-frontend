@@ -6,11 +6,21 @@ import { ConversationStatus, ConversationType } from '../../../types/models/Mess
 
 import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
-import { messageGetAPI } from '../../../api/messageAPI/GET';
+import {
+  messageGetAPI,
+  type ConversationInboxRevisionChangedEvent,
+  type FinalOfferCreatedEvent,
+  type FinalOfferRespondedEvent,
+  type NegotiationMilestonePlanUpdatedEvent,
+} from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { messagePutAPI } from '../../../api/messageAPI/PUT';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { getChatHubUrl } from '../../../service/apiService';
+import {
+  onChatHubReconnected,
+  onChatHubStatusChanged,
+  retainChatHubConnection,
+} from '../../../shared/realtime/chatHubConnection';
 import { scheduleAPI, type ScheduleEvent, type ScheduleMeetingResponse, type ScheduleResponse } from '../../../api/scheduleAPI';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
@@ -335,7 +345,7 @@ export function useMessages() {
   const dealStatus = activeConv?.dealStatus ?? dealStatusMap[activeConvId] ?? 'idle';
 
   // ── UI state ─────────────────────────────────────────────────────────────
-  const [showInfo, setShowInfo] = useState(true);
+  const [showInfo, setShowInfo] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1280 : false));
   const [showDealPrice, setShowDealPrice] = useState(false);
   const [dealMilestones, setDealMilestones] = useState<NegotiationMilestoneDto[]>([]);
   const [dealAdvancedIndexes, setDealAdvancedIndexes] = useState<number[]>([]);
@@ -400,6 +410,11 @@ export function useMessages() {
   const resolvedAnchorKeyRef = useRef<string | null>(null);
   const anchorLookupKeyRef = useRef<string | null>(null);
   const sentReadReceiptKeysRef = useRef(new Set<string>());
+  const conversationRevisionRef = useRef(0);
+  const activeRoomTypeRef = useRef<MsgConversation['roomType'] | undefined>(activeConv?.roomType);
+  const resyncInFlightRef = useRef(new Map<string, Promise<void>>());
+  const resyncQueuedRef = useRef(new Set<string>());
+  const reconcileInboxRevisionRef = useRef<(force?: boolean) => Promise<void>>(async () => undefined);
 
   const markMessageReadOnce = useCallback((
     conversationId: string,
@@ -516,7 +531,8 @@ export function useMessages() {
   const activeConvIdRef = useRef(activeConvId);
   useEffect(() => {
     activeConvIdRef.current = activeConvId;
-  }, [activeConvId]);
+    activeRoomTypeRef.current = activeConv?.roomType;
+  }, [activeConv?.roomType, activeConvId]);
 
   useEffect(() => {
     const offerIds = activeMessages
@@ -636,6 +652,12 @@ export function useMessages() {
             return currentActiveConvId;
           }
 
+          // On mobile screens (< 768px), do not auto-select first conversation so user lands on Inbox & Room tabs
+          const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+          if (isMobile && !stateConvId && !stateProposalId) {
+            return '';
+          }
+
           return selectableConvos[0].id;
         });
       }
@@ -645,6 +667,101 @@ export function useMessages() {
       setLoading(false);
     }
   }, [user, location.state, location.search]);
+
+  const refreshConversationSummary = useCallback(async (conversationId: string): Promise<void> => {
+    const response = await messageGetAPI.getConversationSummary(conversationId);
+    if (!response.success || !response.data) return;
+    const mapped = mapBackendConversation(response.data);
+    setConversationsState(previous => {
+      const existing = previous.find(conversation => conversation.id === conversationId);
+      const merged = existing
+        ? {
+            ...existing,
+            ...mapped,
+            participantOnline: existing.participantOnline,
+            isMuted: existing.isMuted,
+            contractStatus: mapped.contractStatus ?? existing.contractStatus,
+          }
+        : mapped;
+      return sortConversations([
+        ...previous.filter(conversation => conversation.id !== conversationId),
+        merged,
+      ]);
+    });
+  }, []);
+
+  const refreshConversationMessages = useCallback(async (conversationId: string): Promise<void> => {
+    if (activeConvIdRef.current !== conversationId) return;
+    const response = await messageGetAPI.getConversationMessages(conversationId);
+    if (!response.success || !response.data || activeConvIdRef.current !== conversationId) return;
+    setMessagesMap(previous => ({
+      ...previous,
+      [conversationId]: dedupeMessages(response.data!.map(mapBackendMessage)),
+    }));
+  }, []);
+
+  const refreshNegotiationMilestones = useCallback(async (conversationId: string): Promise<void> => {
+    if (activeConvIdRef.current !== conversationId || activeRoomTypeRef.current !== 'negotiation') return;
+    const response = await messageGetAPI.getNegotiationMilestonePlan(conversationId);
+    if (!response.success || activeConvIdRef.current !== conversationId) return;
+    const prepared = prepareNegotiationMilestonesForEditing(response.data || []);
+    setDealMilestones(prepared.milestones);
+    setDealAdvancedIndexes(prepared.advancedIndexes);
+    setDealMilestoneErrors({});
+  }, []);
+
+  const resyncConversation = useCallback((conversationId: string): Promise<void> => {
+    const running = resyncInFlightRef.current.get(conversationId);
+    if (running) {
+      resyncQueuedRef.current.add(conversationId);
+      return running;
+    }
+
+    let task: Promise<void>;
+    task = (async () => {
+      do {
+        resyncQueuedRef.current.delete(conversationId);
+        await Promise.all([
+          refreshConversationSummary(conversationId),
+          refreshConversationMessages(conversationId),
+          refreshNegotiationMilestones(conversationId),
+        ]);
+      } while (resyncQueuedRef.current.has(conversationId));
+    })().finally(() => {
+      if (resyncInFlightRef.current.get(conversationId) === task) {
+        resyncInFlightRef.current.delete(conversationId);
+        resyncQueuedRef.current.delete(conversationId);
+      }
+    });
+    resyncInFlightRef.current.set(conversationId, task);
+    return task;
+  }, [refreshConversationMessages, refreshConversationSummary, refreshNegotiationMilestones]);
+
+  const reconcileInboxRevision = useCallback(async (force = false): Promise<void> => {
+    const response = await messageGetAPI.getInboxStatus();
+    if (!response.success || !response.data) return;
+    const nextRevision = response.data.revision || 0;
+    if (!force && nextRevision <= conversationRevisionRef.current) return;
+    conversationRevisionRef.current = nextRevision;
+    await loadConversations();
+    const conversationId = activeConvIdRef.current;
+    if (conversationId) await resyncConversation(conversationId);
+  }, [loadConversations, resyncConversation]);
+
+  useEffect(() => {
+    reconcileInboxRevisionRef.current = reconcileInboxRevision;
+  }, [reconcileInboxRevision]);
+
+  useEffect(() => {
+    conversationRevisionRef.current = 0;
+    if (!user?.id) return undefined;
+    void reconcileInboxRevision();
+    const handleVisibility = (): void => {
+      if (window.document.visibilityState === 'visible') void reconcileInboxRevision();
+    };
+    window.document.addEventListener('visibilitychange', handleVisibility);
+    return () => window.document.removeEventListener('visibilitychange', handleVisibility);
+  }, [reconcileInboxRevision, user?.id]);
 
   // Sync activeConvId when URL search params change (e.g. clicking notification while already on /messages)
   useEffect(() => {
@@ -656,8 +773,13 @@ export function useMessages() {
 
     const targetProposalId = queryProposalId || stateProposalId;
 
+    // Same exclusion as the auto-select default above: a Dispute conversation must
+    // never become activeConvId here either, or a stale ?conversationId= left over
+    // from browser history/a shared link can hijack the panel on every refresh.
+    const selectable = conversationsState.filter((c: any) => c.conversationType !== ConversationType.Dispute && !c.disputeId);
+
     if (queryConvId) {
-      const found = conversationsState.find(c => c.id === queryConvId);
+      const found = selectable.find(c => c.id === queryConvId);
       if (found) {
         setActiveConvId(found.id);
         return;
@@ -665,7 +787,7 @@ export function useMessages() {
     }
 
     if (targetProposalId) {
-      const found = conversationsState.find(c => c.proposalId === targetProposalId);
+      const found = selectable.find(c => c.proposalId === targetProposalId);
       if (found) {
         setActiveConvId(found.id);
         return;
@@ -790,111 +912,33 @@ export function useMessages() {
 
   // Connect to SignalR
   useEffect(() => {
-    const hubUrl = getChatHubUrl();
     let disposed = false;
-    let retryAttempt = 0;
-    let retryTimer: number | null = null;
-    let currentConnection: signalR.HubConnection | null = null;
-
-    const clearRetryTimer = () => {
-      if (retryTimer === null) return;
-      window.clearTimeout(retryTimer);
-      retryTimer = null;
-    };
-
-    const scheduleFreshConnection = () => {
-      if (disposed || retryTimer !== null) return;
-      const delay = Math.min(1_000 * (2 ** retryAttempt), 15_000);
-      retryAttempt += 1;
-      setSignalRStatus('reconnecting');
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null;
-        void connect();
-      }, delay);
-    };
-
-    const connect = async () => {
-      if (disposed) return;
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setSignalRStatus('disconnected');
-        console.warn('[ChatHub] waiting for an access token before connecting');
-        scheduleFreshConnection();
-        return;
+    const lease = retainChatHubConnection();
+    const stopStatus = onChatHubStatusChanged(status => {
+      if (!disposed) setSignalRStatus(status);
+    });
+    const stopReconnect = onChatHubReconnected(() => {
+      const conversationId = activeConvIdRef.current;
+      if (!disposed && conversationId) {
+        void lease.connection.invoke('JoinConversation', conversationId).catch(err => {
+          console.error(`[ChatHub] failed to rejoin conversation group: ${conversationId}`, err);
+        });
       }
-
-      setSignalRStatus(retryAttempt > 0 ? 'reconnecting' : 'connecting');
-      console.info('[ChatHub] connecting:', hubUrl);
-
-      const connection = new signalR.HubConnectionBuilder()
-        .configureLogging(signalR.LogLevel.Warning)
-        .withUrl(hubUrl, {
-          accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-        })
-        .withAutomaticReconnect([0, 2_000, 5_000, 10_000])
-        .build();
-      currentConnection = connection;
-
-      connection.onreconnecting(err => {
-        if (disposed || currentConnection !== connection) return;
-        setSignalRStatus('reconnecting');
-        console.warn('[ChatHub] reconnecting:', err);
+      if (!disposed) void reconcileInboxRevisionRef.current(true);
+    });
+    void lease.ready
+      .then(() => {
+        if (!disposed) setHubConnection(lease.connection);
+      })
+      .catch(err => {
+        if (!disposed) console.error('[ChatHub] connection failed:', err);
       });
-
-      connection.onreconnected(() => {
-        if (disposed || currentConnection !== connection) return;
-        retryAttempt = 0;
-        setSignalRStatus('connected');
-        console.info('[ChatHub] reconnected');
-        if (activeConvIdRef.current) {
-          connection.invoke('JoinConversation', activeConvIdRef.current)
-            .then(() => {
-              console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
-            })
-            .catch(err => {
-              console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
-            });
-        }
-      });
-
-      connection.onclose(err => {
-        if (disposed || currentConnection !== connection) return;
-        currentConnection = null;
-        setHubConnection(existing => existing === connection ? null : existing);
-        setSignalRStatus('disconnected');
-        console.warn('[ChatHub] disconnected:', err);
-        scheduleFreshConnection();
-      });
-
-      try {
-        await connection.start();
-        if (disposed || currentConnection !== connection) {
-          await connection.stop().catch(() => undefined);
-          return;
-        }
-        retryAttempt = 0;
-        setSignalRStatus('connected');
-        setHubConnection(connection);
-        console.info('[ChatHub] connected');
-      } catch (err) {
-        if (disposed || currentConnection !== connection) return;
-        currentConnection = null;
-        setHubConnection(existing => existing === connection ? null : existing);
-        setSignalRStatus('failed');
-        console.error('[ChatHub] connection failed:', err);
-        await connection.stop().catch(() => undefined);
-        scheduleFreshConnection();
-      }
-    };
-
-    void connect();
-
     return () => {
       disposed = true;
-      clearRetryTimer();
-      const connection = currentConnection;
-      currentConnection = null;
-      connection?.stop().catch(() => undefined);
+      stopStatus();
+      stopReconnect();
+      setHubConnection(existing => existing === lease.connection ? null : existing);
+      lease.release();
     };
   }, []);
 
@@ -1007,7 +1051,7 @@ export function useMessages() {
       setConversationsState(prev => {
         const exists = prev.some(c => c.id === conversationId);
         if (!exists) {
-          loadConversations();
+          void resyncConversation(conversationId);
           return prev;
         }
 
@@ -1065,18 +1109,54 @@ export function useMessages() {
       }
     };
 
-    const handleOfferUpdate = () => {
-      loadConversations();
-      if (activeConvId) {
-        messageGetAPI.getConversationMessages(activeConvId).then(res => {
-          if (res.success && res.data) {
-            setMessagesMap(prev => ({
-              ...prev,
-              [activeConvId]: dedupeMessages(res.data!.map(mapBackendMessage)),
-            }));
-          }
-        });
+    const handleOfferCreated = (event: FinalOfferCreatedEvent) => {
+      if (!event?.conversationId) {
+        void loadConversations();
+        return;
       }
+      void resyncConversation(event.conversationId);
+    };
+
+    const handleOfferResponded = (event: FinalOfferRespondedEvent) => {
+      if (!event?.conversationId) {
+        void loadConversations();
+        return;
+      }
+      setConversationsState(previous => previous.map(conversation =>
+        conversation.id === event.conversationId
+          ? {
+              ...conversation,
+              dealStatus: mapOfferStatusToDealStatus(event.status),
+              contractId: event.contractId ?? conversation.contractId,
+            }
+          : conversation
+      ));
+      setDealStatusMap(previous => ({
+        ...previous,
+        [event.conversationId]: mapOfferStatusToDealStatus(event.status) ?? 'idle',
+      }));
+      void resyncConversation(event.conversationId);
+    };
+
+    const handleMilestonePlanUpdated = (event: NegotiationMilestonePlanUpdatedEvent) => {
+      if (!event?.conversationId) return;
+      void resyncConversation(event.conversationId);
+    };
+
+    const handleConversationRevisionChanged = (event: ConversationInboxRevisionChangedEvent) => {
+      if (!event || event.revision <= conversationRevisionRef.current) return;
+      const hasGap = event.revision > conversationRevisionRef.current + 1;
+      conversationRevisionRef.current = event.revision;
+
+      if (hasGap || !event.conversationId) {
+        void loadConversations().then(() => {
+          const conversationId = activeConvIdRef.current;
+          return conversationId ? resyncConversation(conversationId) : undefined;
+        });
+        return;
+      }
+
+      void resyncConversation(event.conversationId);
     };
 
     const refreshActiveMessages = () => {
@@ -1190,8 +1270,10 @@ export function useMessages() {
     hubConnection.on('ReceiveMessage', handleReceiveMessage);
     hubConnection.on('ConversationUpdated', handleConversationUpdated);
     hubConnection.on('ConversationRead', handleConversationRead);
-    hubConnection.on('FinalOfferCreated', handleOfferUpdate);
-    hubConnection.on('FinalOfferResponded', handleOfferUpdate);
+    hubConnection.on('FinalOfferCreated', handleOfferCreated);
+    hubConnection.on('FinalOfferResponded', handleOfferResponded);
+    hubConnection.on('NegotiationMilestonePlanUpdated', handleMilestonePlanUpdated);
+    hubConnection.on('ConversationInboxRevisionChanged', handleConversationRevisionChanged);
     hubConnection.on('ContractDraftUpdated', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
@@ -1206,8 +1288,10 @@ export function useMessages() {
       hubConnection.off('ReceiveMessage', handleReceiveMessage);
       hubConnection.off('ConversationUpdated', handleConversationUpdated);
       hubConnection.off('ConversationRead', handleConversationRead);
-      hubConnection.off('FinalOfferCreated', handleOfferUpdate);
-      hubConnection.off('FinalOfferResponded', handleOfferUpdate);
+      hubConnection.off('FinalOfferCreated', handleOfferCreated);
+      hubConnection.off('FinalOfferResponded', handleOfferResponded);
+      hubConnection.off('NegotiationMilestonePlanUpdated', handleMilestonePlanUpdated);
+      hubConnection.off('ConversationInboxRevisionChanged', handleConversationRevisionChanged);
       hubConnection.off('ContractDraftUpdated', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
@@ -1218,7 +1302,7 @@ export function useMessages() {
       hubConnection.off('ScheduleMeetingChanged', handleMeetingChanged);
       hubConnection.off('ScheduleChanged', handleScheduleChanged);
     };
-  }, [hubConnection, activeConvId, activeConv?.contractId, loadConversations, markMessageReadOnce, syncOngoingSchedule, user]);
+  }, [hubConnection, activeConv?.contractId, loadConversations, markMessageReadOnce, resyncConversation, syncOngoingSchedule, user]);
 
   // Close conv menu on outside click
   useEffect(() => {
@@ -1811,7 +1895,13 @@ export function useMessages() {
     if (!ensureActiveNegotiationEligible()) return;
 
     try {
-      await messagePostAPI.startNegotiationFromProposal(activeConv.proposalId);
+      const response = await messagePostAPI.startNegotiationFromProposal(activeConv.proposalId);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to move to negotiation.');
+      }
+      const conversationId = String(response.data);
+      await resyncConversation(conversationId);
+      setActiveConvId(conversationId);
     } catch (err) {
       console.error('Failed to move to negotiation:', err);
     }

@@ -1,8 +1,7 @@
 /* ==========================================================================
    BankAccountManager Styles
-   GigBridge Premium Design System (Light & Dark mode compatible)
-   Fixes layout overflow with min-width: 0 & max-width: 100%
-   Custom Searchable Bank Dropdown & Horizontal Scroll for Saved Accounts
+   GigBridge Premium Fintech Design System (Light & Dark mode compatible)
+   Virtual Bank Card Live Preview, Quick Bank Chips, & Polished Bank Cards Grid
    ========================================================================== */
 
 .bam-wrapper {
@@ -20,8 +19,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem;
+  gap: 1.5rem;
+  padding: 1.75rem;
   border-radius: 1.5rem;
   background: var(--surface, #ffffff);
   border: 1px solid var(--border, #ededf0);
@@ -36,14 +35,23 @@
 
 .bam-card:hover {
   border-color: var(--brand-border, rgba(73, 75, 231, 0.35));
-  box-shadow: 0 16px 40px -10px var(--brand-soft, rgba(73, 75, 231, 0.12));
 }
 
 .bam-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--border, #ededf0);
+  padding-bottom: 1rem;
+}
+
+.bam-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   min-width: 0;
 }
 
@@ -65,17 +73,21 @@
   font-weight: 800;
   color: var(--text-primary, #19191b);
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.bam-header-subtitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #95959f);
+  margin: 0.125rem 0 0 0;
 }
 
 /* Alert Boxes */
 .bam-alert {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.875rem 1.125rem;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
   border-radius: 1rem;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -91,32 +103,220 @@
 
 .bam-alert-success {
   color: var(--success, #16a34a);
-  border: 1px solid rgba(22, 163, 74, 0.25);
+  border: 1px solid rgba(220, 38, 38, 0.25);
   background: rgba(22, 163, 74, 0.08);
 }
 
-/* Form Grid & Input Fields */
-.bam-form-grid {
+/* ==========================================================================
+   Virtual Bank Card Live Preview Section
+   ========================================================================== */
+.bam-form-container {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.25rem;
+  gap: 1.75rem;
   width: 100%;
-  max-width: 100%;
-  min-width: 0;
   box-sizing: border-box;
 }
 
-@media (min-width: 768px) {
-  .bam-form-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+@media (min-width: 1024px) {
+  .bam-form-container {
+    grid-template-columns: minmax(300px, 360px) 1fr;
+    align-items: start;
   }
+}
+
+/* 3D Holographic Card Preview */
+.bam-virtual-card-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.bam-virtual-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.586 / 1;
+  min-height: 200px;
+  border-radius: 1.25rem;
+  padding: 1.35rem 1.5rem;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #0f172a 100%);
+  color: #ffffff;
+  box-shadow: 0 16px 36px -10px rgba(15, 23, 42, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+}
+
+.bam-virtual-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.bam-virtual-card:hover {
+  transform: translateY(-4px) rotateX(2deg) rotateY(-2deg);
+  box-shadow: 0 22px 48px -12px rgba(73, 75, 231, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+}
+
+.bam-vcard-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 2;
+}
+
+.bam-vcard-bank {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.bam-vcard-bank-name {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.bam-vcard-badge {
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Chip & Contactless */
+.bam-vcard-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+  position: relative;
+  z-index: 2;
+}
+
+.bam-vcard-chip {
+  width: 2.25rem;
+  height: 1.75rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(135deg, #fde047 0%, #ca8a04 50%, #eab308 100%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.bam-vcard-chip::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.bam-vcard-contactless {
+  opacity: 0.75;
+}
+
+/* Card Number */
+.bam-vcard-number {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  margin: 0.25rem 0;
+  position: relative;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+/* Card Bottom */
+.bam-vcard-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 2;
+}
+
+.bam-vcard-holder {
+  min-width: 0;
+}
+
+.bam-vcard-holder-label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 0.125rem;
+}
+
+.bam-vcard-holder-name {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.bam-vcard-vietqr {
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   Form Fields
+   ========================================================================== */
+.bam-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .bam-field-group {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -173,9 +373,6 @@
   background: var(--surface-muted, #f1f1f3);
   border: 1px solid var(--border, #ededf0);
   outline: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -183,6 +380,10 @@
   border-color: var(--brand, #494be7);
   background: var(--surface, #ffffff);
   box-shadow: 0 0 0 3px var(--brand-soft, rgba(73, 75, 231, 0.18));
+}
+
+.bam-input.uppercase {
+  text-transform: uppercase;
 }
 
 /* ==========================================================================
@@ -232,6 +433,10 @@
   box-shadow: 0 0 0 3px var(--brand-soft, rgba(73, 75, 231, 0.2));
 }
 
+.bam-custom-select-trigger.has-bank {
+  padding-left: 0.625rem;
+}
+
 .bam-trigger-content {
   display: flex;
   align-items: center;
@@ -242,19 +447,49 @@
   white-space: nowrap;
 }
 
-.bam-bank-short-badge {
+.bam-bank-logo-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.1875rem 0.5rem;
-  border-radius: 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  background: var(--brand-soft, rgba(73, 75, 231, 0.15));
-  color: var(--brand, #494be7);
-  border: 1px solid var(--brand-border, rgba(73, 75, 231, 0.35));
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #e4e4e7);
+  background: #ffffff;
   flex-shrink: 0;
-  letter-spacing: 0.03em;
+  box-shadow: 0 2px 8px rgba(24, 24, 27, 0.08);
+}
+
+.bam-bank-logo-compact {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  padding: 0.1875rem;
+}
+
+.bam-bank-logo-card {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.875rem;
+  padding: 0.3125rem;
+}
+
+.bam-bank-logo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.bam-bank-logo-fallback {
+  color: var(--text-muted, #71717a);
+  background: var(--surface-muted, #f4f4f5);
+}
+
+.bam-bank-logo-fallback svg {
+  width: 55%;
+  height: 55%;
 }
 
 .bam-trigger-arrow {
@@ -275,16 +510,16 @@
   top: calc(100% + 0.5rem);
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: 60;
   background: var(--surface, #ffffff);
   border: 1px solid var(--brand-border, rgba(73, 75, 231, 0.35));
   border-radius: 1.25rem;
   box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(73, 75, 231, 0.08);
-  padding: 0.625rem;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  max-height: 300px;
+  gap: 0.625rem;
+  max-height: 340px;
   overflow: hidden;
   width: 100%;
   box-sizing: border-box;
@@ -296,7 +531,6 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding-bottom: 0.25rem;
 }
 
 .bam-search-icon {
@@ -341,9 +575,40 @@
   justify-content: center;
 }
 
-.bam-search-clear:hover {
-  color: var(--text-primary);
-  background: var(--surface-hover);
+/* Popular Bank Chips */
+.bam-popular-banks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border, #ededf0);
+}
+
+.bam-popular-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: var(--surface-muted, #f1f1f3);
+  color: var(--text-secondary, #353540);
+  border: 1px solid var(--border, #ededf0);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bam-popular-chip:hover {
+  background: var(--brand-soft, rgba(73, 75, 231, 0.12));
+  color: var(--brand, #494be7);
+  border-color: var(--brand-border, rgba(73, 75, 231, 0.3));
+}
+
+.bam-popular-chip.is-active {
+  background: var(--brand, #494be7);
+  color: #ffffff;
+  border-color: var(--brand, #494be7);
 }
 
 .bam-options-scroll {
@@ -351,16 +616,12 @@
   flex-direction: column;
   gap: 0.25rem;
   overflow-y: auto;
-  max-height: 210px;
+  max-height: 200px;
   padding-right: 0.25rem;
 }
 
 .bam-options-scroll::-webkit-scrollbar {
   width: 6px;
-}
-
-.bam-options-scroll::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .bam-options-scroll::-webkit-scrollbar-thumb {
@@ -412,23 +673,22 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.375rem;
-  height: 2.75rem;
+  padding: 0.625rem 1.5rem;
+  height: 2.875rem;
   border-radius: 0.875rem;
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #ffffff;
-  background: var(--brand, #494be7);
+  background: linear-gradient(135deg, var(--brand, #494be7) 0%, #3f41d0 100%);
   border: none;
   cursor: pointer;
-  box-shadow: 0 6px 18px var(--brand-soft, rgba(73, 75, 231, 0.38));
+  box-shadow: 0 6px 20px var(--brand-soft, rgba(73, 75, 231, 0.38));
   transition: all 0.25s ease;
 }
 
 .bam-btn-primary:hover:not(:disabled) {
-  background: var(--brand-hover, #3f41d0);
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px var(--brand-soft, rgba(73, 75, 231, 0.5));
+  box-shadow: 0 8px 24px var(--brand-soft, rgba(73, 75, 231, 0.5));
 }
 
 .bam-btn-primary:active:not(:disabled) {
@@ -441,7 +701,7 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1.125rem;
-  height: 2.75rem;
+  height: 2.875rem;
   border-radius: 0.875rem;
   font-size: 0.875rem;
   font-weight: 600;
@@ -464,47 +724,30 @@
   cursor: not-allowed;
 }
 
-/* Saved Accounts List - Single Horizontal Scroll Row */
+/* ==========================================================================
+   Saved Accounts List - Modern Responsive Grid of Bank Cards
+   ========================================================================== */
 .bam-accounts-grid {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 1rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 0.75rem;
-  padding-top: 0.25rem;
   width: 100%;
-  max-width: 100%;
-  min-width: 0;
   box-sizing: border-box;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
 }
 
-.bam-accounts-grid::-webkit-scrollbar {
-  height: 6px;
+@media (min-width: 640px) {
+  .bam-accounts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.bam-accounts-grid::-webkit-scrollbar-track {
-  background: var(--surface-muted, #f1f1f3);
-  border-radius: 9999px;
-}
-
-.bam-accounts-grid::-webkit-scrollbar-thumb {
-  background: var(--border-strong, #d4d4d8);
-  border-radius: 9999px;
-}
-
-.bam-accounts-grid::-webkit-scrollbar-thumb:hover {
-  background: var(--brand, #494be7);
+@media (min-width: 1024px) {
+  .bam-accounts-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .bam-account-item {
-  flex: 0 0 310px;
-  width: 310px;
-  max-width: 310px;
-  min-width: 310px;
-  scroll-snap-align: start;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -522,13 +765,13 @@
   border-color: var(--brand-border, rgba(73, 75, 231, 0.4));
   background: var(--surface, #ffffff);
   transform: translateY(-3px);
-  box-shadow: 0 10px 28px -6px rgba(73, 75, 231, 0.12);
+  box-shadow: 0 12px 30px -8px rgba(73, 75, 231, 0.14);
 }
 
 .bam-account-item.is-default {
   border-color: var(--brand, #494be7);
   background: linear-gradient(135deg, var(--brand-soft, rgba(73, 75, 231, 0.08)) 0%, var(--surface, #ffffff) 100%);
-  box-shadow: 0 4px 16px var(--brand-soft, rgba(73, 75, 231, 0.15));
+  box-shadow: 0 6px 20px var(--brand-soft, rgba(73, 75, 231, 0.16));
 }
 
 .bam-account-item.requires-update {
@@ -551,21 +794,6 @@
   min-width: 0;
 }
 
-.bam-bank-icon-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
-  background: var(--brand, #494be7);
-  color: #ffffff;
-  flex-shrink: 0;
-  font-weight: 800;
-  font-size: 0.875rem;
-  box-shadow: 0 4px 12px var(--brand-soft, rgba(73, 75, 231, 0.3));
-}
-
 .bam-bank-name {
   font-size: 0.9375rem;
   font-weight: 800;
@@ -586,19 +814,41 @@
   white-space: nowrap;
 }
 
+.bam-account-number-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: var(--surface, #ffffff);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border, #ededf0);
+}
+
 .bam-account-number {
-  font-family: monospace, sans-serif;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--text-primary, #19191b);
-  background: var(--surface, #ffffff);
-  padding: 0.375rem 0.625rem;
-  border-radius: 0.625rem;
-  border: 1px solid var(--border, #ededf0);
-  display: inline-block;
-  margin-top: 0.375rem;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.bam-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #95959f);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bam-copy-btn:hover {
+  color: var(--brand, #494be7);
+  background: var(--brand-soft, rgba(73, 75, 231, 0.1));
 }
 
 .bam-badge {
@@ -608,7 +858,7 @@
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
   flex-shrink: 0;
 }
 

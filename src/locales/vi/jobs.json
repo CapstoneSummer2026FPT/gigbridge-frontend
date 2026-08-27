@@ -451,6 +451,8 @@
       "dropzoneTitle": "Bấm hoặc kéo thả tài liệu vào đây",
       "resizeHeight": "Kéo lên/xuống để điều chỉnh chiều cao",
       "resizeWidth": "Kéo để điều chỉnh chiều rộng",
+      "abort": "Dừng tạo nội dung",
+      "generationAborted": "Đã hủy tạo nội dung AI.",
       "resizeCorner": "Kéo góc để điều chỉnh kích thước",
       "extractingText": "Đang trích xuất nội dung tài liệu...",
       "documentAttached": "Đã đính kèm tài liệu",
@@ -465,7 +467,10 @@
       "totalChars": "Tổng số: {{count}} / 15.000 ký tự",
       "cappedAt15k": "(tối đa 15k)",
       "removeAll": "Xóa tất cả",
-      "placeholderWithDoc": "Thêm yêu cầu hoặc hướng dẫn bổ sung cho tài liệu đính kèm..."
+      "placeholderWithDoc": "Thêm yêu cầu hoặc hướng dẫn bổ sung cho tài liệu đính kèm...",
+      "aiExtractTitle": "AI Tự động trích xuất thông tin",
+      "aiExtractDesc": "Tự động đọc hiểu tài liệu, trích xuất yêu cầu, kỹ năng và dự toán ngân sách.",
+      "emptyHintMobile": "Chưa có tệp nào. Bấm vào khung bên trên để tải lên tài liệu."
     }
   },
   "postJobAI": {

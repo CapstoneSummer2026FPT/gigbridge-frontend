@@ -43,6 +43,7 @@ export const normalizeProjectReceipt = (value: unknown): ProjectReceiptSummary =
     canRetry: Boolean(field(source, 'canRetry', 'CanRetry')),
     generatedAt: text(field(source, 'generatedAt', 'GeneratedAt')) || null,
     emailedAt: text(field(source, 'emailedAt', 'EmailedAt')) || null,
+    revision: number(field(source, 'revision', 'Revision'), 0),
   };
 };
 
@@ -88,6 +89,12 @@ export const receiptAPI = {
       data: response.data === undefined ? undefined : normalizeReceiptPage(response.data),
     };
   },
+
+  getStatus: async (receiptId: string): Promise<ApiResponse<ProjectReceiptSummary>> =>
+    normalizeReceiptResponse(await apiService.get<unknown>(`receipts/${receiptId}/status`)),
+
+  getStatusByContract: async (contractId: string): Promise<ApiResponse<ProjectReceiptSummary>> =>
+    normalizeReceiptResponse(await apiService.get<unknown>(`contracts/${contractId}/receipt/status`)),
 
   download: (receiptId: string): Promise<ApiResponse<Blob>> =>
     apiService.download(`receipts/${receiptId}/download`),

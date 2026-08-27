@@ -24,7 +24,7 @@ import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { esignPostAPI } from '../../../api/esignAPI/POST';
 import { profileGetAPI } from '../../../api/profileAPI';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import type { ESignDocumentDto } from '../../../types/models/ESign';
+import type { ESignDocumentStatusDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
 import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
@@ -34,7 +34,7 @@ import { getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useESignPdf } from '../hooks/useESignPdf';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
-import { useESignDocumentChangedEvent } from '../hooks/useESignDocumentChangedEvent';
+import { useESignDocumentRevisionEvent } from '../hooks/useESignDocumentRevisionEvent';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
@@ -181,7 +181,7 @@ export default function SignatureWorkflowScreen() {
 
   const [contract, setContract] = useState<ContractDto | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [document, setDocument] = useState<ESignDocumentDto | null>(null);
+  const [document, setDocument] = useState<ESignDocumentStatusDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -240,7 +240,7 @@ export default function SignatureWorkflowScreen() {
 
   const loadDocument = useCallback(async (targetContractId: string): Promise<void> => {
     try {
-      const docResponse = await esignGetAPI.getDocumentByContract(targetContractId);
+      const docResponse = await esignGetAPI.getDocumentStatusByContract(targetContractId);
       if (docResponse.success && docResponse.data) {
         setDocument(docResponse.data);
         setDocumentWarning('');
@@ -275,15 +275,15 @@ export default function SignatureWorkflowScreen() {
   );
 
   useEffect(() => {
-if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
+    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
 
-const intervalId = window.setInterval(() => {
-  if (window.document.visibilityState === 'visible') {
-    void refreshWorkflow();
-  }
-}, ESIGN_STATUS_FALLBACK_POLL_MS);
+    const intervalId = window.setInterval(() => {
+      if (window.document.visibilityState === 'visible') {
+        void refreshWorkflow();
+      }
+    }, ESIGN_STATUS_FALLBACK_POLL_MS);
 
-return () => window.clearInterval(intervalId);
+    return () => window.clearInterval(intervalId);
     const fetchContractDetails = async () => {
       if (!contractId) {
         setError('contracts.invalidId');
@@ -523,29 +523,30 @@ return () => window.clearInterval(intervalId);
     return nextStatus;
   }, [contractId, loadDocument]);
 
-const handleDocumentChangedDuringSigning = useCallback((): void => {
-  if (signatureStep !== 'complete') return;
-  if (isWaitingForCounterpart) {
-    void refreshWorkflow();
-  } else if (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature) {
-    void refreshAfterSigning();
-  }
-}, [
-  contract?.status,
-  hasValidCurrentUserDraft,
-  isWaitingForCounterpart,
-  refreshAfterSigning,
-  refreshWorkflow,
-  signatureStep,
-]);
+  const handleDocumentChangedDuringSigning = useCallback((): void => {
+    if (signatureStep !== 'complete') return;
+    if (isWaitingForCounterpart) {
+      void refreshWorkflow();
+    } else if (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature) {
+      void refreshAfterSigning();
+    }
+  }, [
+    contract?.status,
+    hasValidCurrentUserDraft,
+    isWaitingForCounterpart,
+    refreshAfterSigning,
+    refreshWorkflow,
+    signatureStep,
+  ]);
 
-useESignDocumentChangedEvent(
-  contractId,
-  signatureStep === 'complete' &&
+  useESignDocumentRevisionEvent(
+    contractId,
+    signatureStep === 'complete' &&
     (isWaitingForCounterpart ||
       (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
-  handleDocumentChangedDuringSigning,
-);
+    handleDocumentChangedDuringSigning,
+  );
+
   const handleSubmitSignature = async () => {
     if (!contract || !hasSignatureForDraft) return;
     if (submittingRef.current || signingInProgress) return;
@@ -713,33 +714,30 @@ useESignDocumentChangedEvent(
 
           {/* Stepper Card */}
           <div className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-2xl bg-muted/40 border border-border/60 shrink-0 self-start md:self-auto relative z-10 overflow-x-auto">
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'review'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'review'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
               <span>{t('contracts.reviewProposal')}</span>
             </div>
 
             <ChevronRight size={13} className="text-muted-foreground shrink-0" />
 
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'capture'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'capture'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
               <span>{t('contracts.proceedToSign')}</span>
             </div>
 
             <ChevronRight size={13} className="text-muted-foreground shrink-0" />
 
-            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
-              signatureStep === 'complete'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${signatureStep === 'complete'
                 ? 'bg-[var(--brand)] text-white shadow-md shadow-[var(--brand)]/20'
                 : 'text-muted-foreground'
-            }`}>
+              }`}>
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">3</span>
               <span>{hasValidCurrentUserDraft && !isContractFinalized ? 'Waiting' : t('contracts.completed')}</span>
             </div>

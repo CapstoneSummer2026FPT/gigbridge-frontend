@@ -619,7 +619,7 @@ export default function BrowseJobsScreen() {
           <div className="browse-jobs-results space-y-5">
             {/* Search & Filter Header Box */}
             <div className="browse-jobs-glass-card p-4 browse-jobs-header-card">
-              <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <div className="browse-jobs-search-wrapper">
                   <Search size={16} className="browse-jobs-search-icon" />
                   <input
@@ -631,25 +631,27 @@ export default function BrowseJobsScreen() {
                     className="browse-jobs-search-input"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleFilterToggle}
-                  className={`browse-jobs-filter-btn ${showFilters ? 'active' : ''}`}
-                >
-                  <Filter size={16} />
-                  <span>{t('jobs.filters')}</span>
-                </button>
-                {user && isFreelancer && (
-                  <ConicBorderButton
-                    onClick={findMatchingJobs}
-                    disabled={recommendedLoading}
-                    isActive={isRecommendedView}
-                    wrapperClassName="shrink-0"
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handleFilterToggle}
+                    className={`browse-jobs-filter-btn flex-1 sm:flex-initial justify-center ${showFilters ? 'active' : ''}`}
                   >
-                    <Sparkles size={15} className="text-brand shrink-0 animate-pulse" />
-                    <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : isRecommendedView ? t('jobs.backToProfileMatches') : t('jobs.findMatchingJobs')}</span>
-                  </ConicBorderButton>
-                )}
+                    <Filter size={16} />
+                    <span>{t('jobs.filters')}</span>
+                  </button>
+                  {user && isFreelancer && (
+                    <ConicBorderButton
+                      onClick={findMatchingJobs}
+                      disabled={recommendedLoading}
+                      isActive={isRecommendedView}
+                      wrapperClassName="flex-1 sm:flex-initial shrink-0 justify-center"
+                    >
+                      <Sparkles size={15} className="text-brand shrink-0 animate-pulse" />
+                      <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : isRecommendedView ? t('jobs.backToProfileMatches') : t('jobs.findMatchingJobs')}</span>
+                    </ConicBorderButton>
+                  )}
+                </div>
               </div>
 
               {profileFallbackMessage && (
@@ -826,7 +828,7 @@ export default function BrowseJobsScreen() {
                       </div>
 
                       {/* Right Action Container */}
-                      <div className="flex md:flex-col items-center md:items-end justify-between gap-3 shrink-0 pt-2 md:pt-0">
+                      <div className="flex items-center justify-between gap-3 shrink-0 pt-3 mt-1 border-t border-[var(--border)] md:border-t-0 md:pt-0 md:mt-0 md:flex-col md:items-end w-full md:w-auto">
                         {(() => {
                           const isSaved = savedJobIds.has(job.id);
                           const isSaving = savingJobIds.has(job.id);
@@ -848,7 +850,7 @@ export default function BrowseJobsScreen() {
                                 onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
                                 disabled={!canSaveJob || isSaving}
                                 title={canSaveJob ? undefined : t('jobs.onlyFreelancersCanSave')}
-                                className={`p-2 rounded-xl border border-[var(--border)] transition-all ${isSaved ? 'browse-jobs-save-icon-active bg-amber-500/10 border-amber-500/30' : 'browse-jobs-save-icon hover:bg-[var(--surface-hover)]'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                className={`p-2.5 rounded-xl border border-[var(--border)] transition-all min-h-[40px] min-w-[40px] flex items-center justify-center ${isSaved ? 'browse-jobs-save-icon-active bg-amber-500/10 border-amber-500/30' : 'browse-jobs-save-icon hover:bg-[var(--surface-hover)]'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                               >
                                 <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
                               </button>
@@ -859,7 +861,7 @@ export default function BrowseJobsScreen() {
                         <button
                           type="button"
                           onClick={event => { event.stopPropagation(); openJob(job); }}
-                          className="px-3.5 py-2 rounded-xl bg-[var(--brand,#494be7)] text-white text-xs font-bold shadow-sm hover:bg-[var(--brand-hover,#3f41d0)] transition-all cursor-pointer"
+                          className="px-4 py-2 rounded-xl bg-[var(--brand,#494be7)] text-white text-xs font-bold shadow-sm hover:bg-[var(--brand-hover,#3f41d0)] transition-all cursor-pointer min-h-[40px] inline-flex items-center justify-center"
                         >
                           {t('jobs.viewJob')}
                         </button>

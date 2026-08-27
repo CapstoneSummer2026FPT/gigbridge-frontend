@@ -102,9 +102,9 @@ export function ManageMilestone({
       }`}
     >
       {/* Professional Milestone Management Header */}
-      <div className="glass-header px-6 py-3.5 border-b border-border flex flex-wrap items-center justify-between gap-4 shrink-0">
+      <div className="glass-header px-4 sm:px-6 py-3 sm:py-3.5 border-b border-border flex flex-wrap items-center justify-between gap-3 sm:gap-4 shrink-0">
         {/* Left Title & Status */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           {isLeftPanelCollapsed && (
             <button
               type="button"
@@ -115,17 +115,17 @@ export function ManageMilestone({
               <PanelLeftOpen size={16} />
             </button>
           )}
-          <div className="w-9 h-9 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0 shadow-2xs">
-            <CreditCard size={18} />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0 shadow-2xs">
+            <CreditCard size={17} />
           </div>
-          <div>
-            <h2 className="text-sm font-black text-text-primary tracking-tight">{t('workspace.milestoneManagement')}</h2>
-            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-text-muted font-medium">
+          <div className="min-w-0">
+            <h2 className="text-xs sm:text-sm font-black text-text-primary tracking-tight truncate">{t('workspace.milestoneManagement')}</h2>
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 text-[10px] sm:text-[11px] text-text-muted font-medium flex-wrap">
               <span>{t('workspace.totalMilestones')}: <strong className="text-text-primary">{project.milestones.length}</strong></span>
               <span>•</span>
               <span className="flex items-center gap-1.5">
                 <span>{t('workspace.projectProgress')}:</span>
-                <span className="w-16 bg-surface-muted h-1.5 rounded-full overflow-hidden inline-block align-middle">
+                <span className="w-12 sm:w-16 bg-surface-muted h-1.5 rounded-full overflow-hidden inline-block align-middle">
                   <span className="bg-brand h-full rounded-full block transition-all duration-300" style={{ width: `${project.progress}%` }} />
                 </span>
                 <strong className="text-text-primary">{project.progress}%</strong>
@@ -135,7 +135,7 @@ export function ManageMilestone({
         </div>
 
         {/* Right Stats & Actions */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-black shadow-2xs">
             <span className="text-[10px] uppercase tracking-wider text-white/90">{t('workspace.paidAmount')}:</span>
             <GigCoinAmount amount={project.paidAmount || 0} />
@@ -185,7 +185,7 @@ export function ManageMilestone({
       </div>
 
       {/* Milestones timeline & completion cards scrollable area */}
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative space-y-6">
+      <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 custom-scrollbar relative space-y-4 sm:space-y-6">
         {showFreelancerPayoutCard && (
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-lg relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -242,7 +242,9 @@ export function ManageMilestone({
               const isLast = idx === project.milestones.length - 1;
               const previousMilestone = idx > 0 ? project.milestones[idx - 1] : null;
               const isPreviousMilestoneStarted = idx === 0 || (previousMilestone && previousMilestone.status !== 'pending');
-              const isConsecutiveEarlyStart = isPending && isPreviousMilestoneStarted;
+              const isPreviousMilestoneApproved = idx === 0 || (previousMilestone && (previousMilestone.status === 'approved' || previousMilestone.status === 'completed'));
+              const hasApprovedEarlyStart = (earlyStartRequests || []).some(request => request.milestoneId === milestone.id && Number(request.status) === 1);
+              const isConsecutiveEarlyStart = isPending && (isPreviousMilestoneApproved || hasApprovedEarlyStart);
               const canUnlockOrStartMilestone = isInProgress || isConsecutiveEarlyStart;
 
               const isLineFilled = isCompleted || isInProgress || isSubmitted;
@@ -271,11 +273,11 @@ export function ManageMilestone({
               const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
 
               return (
-                <div key={milestone.id || idx} className="flex items-stretch gap-4 sm:gap-6 group">
+                <div key={milestone.id || idx} className="flex items-stretch gap-2.5 sm:gap-6 group">
                   {/* Left Timeline Column */}
-                  <div className="flex flex-col items-center shrink-0 w-8 sm:w-10 relative">
+                  <div className="flex flex-col items-center shrink-0 w-7 sm:w-10 relative">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 z-10 shrink-0 ${
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 z-10 shrink-0 ${
                         isCompleted || isInProgress || isSubmitted
                           ? 'bg-brand text-brand-foreground shadow-md ring-4 ring-brand/20'
                           : isConsecutiveEarlyStart
@@ -284,11 +286,11 @@ export function ManageMilestone({
                       }`}
                     >
                       {isCompleted ? (
-                        <CheckCircle size={16} />
+                        <CheckCircle size={15} />
                       ) : isInProgress || isSubmitted ? (
-                        <span>{idx + 1}</span>
+                        <span className="text-[11px] sm:text-xs">{idx + 1}</span>
                       ) : (
-                        <Clock size={14} />
+                        <Clock size={13} />
                       )}
                     </div>
 
@@ -302,15 +304,15 @@ export function ManageMilestone({
                   </div>
 
                   {/* Right Content Card */}
-                  <div className="flex-1 bg-surface-card/60 hover:bg-surface-card border border-border rounded-2xl p-4 sm:p-5 transition-all duration-200 shadow-2xs hover:shadow-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-brand">
+                  <div className="flex-1 min-w-0 bg-surface-card/60 hover:bg-surface-card border border-border rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-2xs hover:shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-2.5 sm:gap-3 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <span className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-brand">
                             {t('workspace.milestoneLabel', { number: idx + 1, defaultValue: `Milestone ${idx + 1}` })}
                           </span>
                           <span
-                            className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            className={`text-[8.5px] sm:text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
                               isCompleted
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                                 : isSubmitted
@@ -333,15 +335,15 @@ export function ManageMilestone({
                                     : t('workspace.milestonePending', { defaultValue: 'Pending' })}
                           </span>
                         </div>
-                        <h3 className="font-extrabold text-sm sm:text-base text-text-primary mt-1">{milestone.title}</h3>
+                        <h3 className="font-extrabold text-xs sm:text-base text-text-primary mt-1 break-words">{milestone.title}</h3>
                       </div>
 
-                      <div className="text-right">
-                        <div className="text-sm sm:text-base font-black text-text-primary flex items-center justify-end gap-1">
+                      <div className="text-right shrink-0">
+                        <div className="text-xs sm:text-base font-black text-text-primary flex items-center justify-end gap-1">
                           <GigCoinAmount amount={milestone.amount} />
                         </div>
                         {milestone.releasedAmount > 0 && (
-                          <div className="text-[10px] text-emerald-600 font-bold mt-0.5">
+                          <div className="text-[9.5px] sm:text-[10px] text-emerald-600 font-bold mt-0.5">
                             {t('workspace.releasedAmount', { defaultValue: 'Released' })}: <GigCoinAmount amount={milestone.releasedAmount} />
                           </div>
                         )}
@@ -367,7 +369,7 @@ export function ManageMilestone({
                             return (
                               <div
                                 key={targetWorkItemId || item.title}
-                                className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border text-xs transition-all ${
+                                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 rounded-xl border text-xs transition-all ${
                                   isDone
                                     ? 'bg-emerald-500/5 border-emerald-500/20 text-text-primary'
                                     : isItemInProgress
@@ -387,7 +389,7 @@ export function ManageMilestone({
                                 </div>
 
                                 {canToggleWorkItem && (
-                                  <div className="flex items-center gap-1.5 shrink-0">
+                                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
                                     {(isTodo || isRevisionRequired) && (
                                       <button
                                         type="button"
@@ -449,8 +451,8 @@ export function ManageMilestone({
 
                     {/* Freelancer Submit Banner */}
                     {canFreelancerSubmit && (
-                      <div className="mt-4 p-3 rounded-xl bg-brand/5 border border-brand/20 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
+                      <div className="mt-3.5 p-3 rounded-xl bg-brand/5 border border-brand/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
                           <CheckCircle size={16} className="text-brand shrink-0" />
                           <span className="text-xs font-bold text-text-primary">
                             {t('workspace.allWorkItemsCompletedNotice', { defaultValue: 'Tất cả công việc đã hoàn thành! Sẵn sàng nộp sản phẩm.' })}
@@ -459,7 +461,7 @@ export function ManageMilestone({
                         <button
                           type="button"
                           onClick={() => setSubmitModal({ milestoneId: milestone.id, title: milestone.title })}
-                          className="bg-brand hover:bg-brand-hover text-brand-foreground font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
+                          className="w-full sm:w-auto bg-brand hover:bg-brand-hover text-brand-foreground font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
                           <Upload size={14} />
                           <span>{t('workspace.submitDeliverables', { defaultValue: 'Nộp sản phẩm' })}</span>
@@ -469,8 +471,8 @@ export function ManageMilestone({
 
                     {/* Client Review Banner */}
                     {canClientReview && (
-                      <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
+                      <div className="mt-3.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
                           <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span className="text-xs font-bold text-text-primary">
                             {t('workspace.deliverablesSubmittedNotice', { defaultValue: 'Freelancer đã nộp sản phẩm. Vui lòng kiểm tra và duyệt giải ngân.' })}
@@ -479,7 +481,7 @@ export function ManageMilestone({
                         <button
                           type="button"
                           onClick={() => navigate(`/contracts/${activeProjectId}/milestones/${milestone.id}/approve`)}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
+                          className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
                           <CheckCircle size={14} />
                           <span>{t('workspace.approveMilestone', { defaultValue: 'Duyệt & Giải ngân' })}</span>

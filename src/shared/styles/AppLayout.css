@@ -3,11 +3,18 @@
 .app-layout {
   min-height: 100vh;
   background: var(--background);
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .app-layout-content {
   display: flex;
   padding-top: 4rem;
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .app-layout-content.no-top-nav {
@@ -20,6 +27,10 @@
   position: relative;
   z-index: auto;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .app-layout-main.no-top-nav {
@@ -31,12 +42,12 @@
 }
 
 .app-layout-main.with-sidebar.full-width {
-  padding: 0;
+  padding: 0 !important;
 }
 
 /* Desktop: Add left margin when sidebar exists (but controlled by toggle state in component) */
 @media (min-width: 768px) {
-  .app-layout-main.with-sidebar {
+  .app-layout-main.with-sidebar:not(.full-width) {
     padding: 1.5rem;
   }
 
