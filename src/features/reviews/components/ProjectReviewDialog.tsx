@@ -25,7 +25,7 @@ function TrustDial({ score }: { score: number }) {
   const dashOffset = circumference * (1 - fillRatio);
 
   return (
-    <div className="relative w-36 h-36 flex items-center justify-center">
+    <div className="relative w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 flex items-center justify-center">
       <svg className="w-full h-full -rotate-90 absolute" viewBox="0 0 100 100">
         {/* Track */}
         <circle
@@ -48,10 +48,10 @@ function TrustDial({ score }: { score: number }) {
         />
       </svg>
       <div className="relative z-10 flex flex-col items-center leading-none">
-        <span className="text-4xl font-black text-brand tabular-nums">
+        <span className="text-3xl sm:text-4xl font-black text-brand tabular-nums">
           {score > 0 ? score.toFixed(1) : '—'}
         </span>
-        <span className="text-xs font-bold text-text-muted mt-1">/ 5.0</span>
+        <span className="text-[10px] sm:text-xs font-bold text-text-muted mt-1">/ 5.0</span>
       </div>
     </div>
   );
@@ -175,7 +175,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
   return (
     <div
       role="presentation"
-      className="review-dialog-backdrop fixed inset-0 z-[1200] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto"
+      className="review-dialog-backdrop fixed inset-0 z-[1200] flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
       {/* Decorative blobs */}
@@ -187,17 +187,17 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
         aria-modal="true"
         aria-labelledby="project-review-title"
         onClick={e => e.stopPropagation()}
-        className="review-dialog relative z-10 w-full max-w-3xl max-h-[90vh] sm:max-h-[88vh] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto overflow-y-auto lg:overflow-hidden"
+        className="review-dialog relative z-10 w-full max-w-3xl max-h-[92vh] sm:max-h-[88vh] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
       >
-        {/* ═══ LEFT COLUMN: Context ═══════════════════════════════════════ */}
-        <div className="review-dialog-left w-full lg:w-5/12 p-5 sm:p-6 lg:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
+        {/* ═══ DESKTOP LEFT COLUMN: Context (Visible on lg+) ════════════════ */}
+        <div className="review-dialog-left hidden lg:flex lg:w-5/12 p-6 lg:p-7 flex-col justify-between border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           <div className="relative z-10">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-4 sm:mb-6">
               <BadgeCheck size={13} />
-              Project Completed
+              {t('reviews.projectCompletedBadge', { defaultValue: 'Project Completed' })}
             </div>
 
             <h1 id="project-review-title" className="text-xl sm:text-2xl font-black text-text-primary mb-1">
@@ -231,7 +231,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
           <div className="relative z-10 rounded-xl sm:rounded-2xl border border-border/70 bg-surface-card p-3.5 sm:p-4">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand mb-1.5">
               <BriefcaseBusiness size={13} />
-              Project Details
+              {t('reviews.projectDetails', { defaultValue: 'Project Details' })}
             </div>
             <p className="text-xs sm:text-sm font-bold text-text-primary leading-snug truncate">{projectTitle}</p>
             {contract.startDate && (
@@ -241,132 +241,171 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
               </div>
             )}
           </div>
-
-          {/* Close button (mobile) */}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('common.close')}
-            className="absolute top-4 right-4 lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer z-20"
-          >
-            <X size={16} />
-          </button>
         </div>
 
-        {/* ═══ RIGHT COLUMN: Interactive Form ════════════════════════════ */}
-        <div className="review-dialog-right w-full lg:w-7/12 p-5 sm:p-6 lg:p-8 bg-background relative flex flex-col overflow-y-auto max-h-[75vh] lg:max-h-full">
+        {/* ═══ RIGHT COLUMN: Interactive Form + Mobile Header Bar ═════════ */}
+        <div className="review-dialog-right w-full lg:w-7/12 flex flex-col flex-1 overflow-hidden bg-background relative">
           {/* Desktop close */}
           <button
             type="button"
             onClick={onClose}
             aria-label={t('common.close')}
-            className="hidden lg:flex absolute top-4 right-4 p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer z-20"
+            className="hidden lg:flex absolute top-4 right-4 p-1.5 rounded-xl border border-border/80 hover:bg-surface-hover text-text-muted hover:text-text-primary cursor-pointer z-20 transition"
           >
             <X size={16} />
           </button>
 
-          <form className="flex flex-col h-full max-w-lg mx-auto gap-5 sm:gap-6" onSubmit={e => e.preventDefault()}>
-            {/* Trust Dial */}
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                {t('reviews.overallScore')}
-              </span>
-              <TrustDial score={criteriaAverage} />
-            </div>
-
-            {/* Sliders */}
-            <div className="space-y-5 sm:space-y-6" role="group" aria-label="Rating criteria">
-              <fieldset className="border-none p-0 m-0">
-                <legend className="sr-only">{t('reviews.communication')}</legend>
-                <SliderRow
-                  label={t('reviews.communication')}
-                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
-                  value={communicationRating}
-                  ariaLabel={t('reviews.communication')}
-                  onChange={setCommunicationRating}
-                />
-              </fieldset>
-
-              <fieldset className="border-none p-0 m-0">
-                <legend className="sr-only">{t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}</legend>
-                <SliderRow
-                  label={t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}
-                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
-                  value={qualityRating}
-                  ariaLabel={t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}
-                  onChange={setQualityRating}
-                />
-              </fieldset>
-
-              <fieldset className="border-none p-0 m-0">
-                <legend className="sr-only">{t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}</legend>
-                <SliderRow
-                  label={t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}
-                  icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
-                  value={timelinessRating}
-                  ariaLabel={t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}
-                  onChange={setTimelinessRating}
-                />
-              </fieldset>
-            </div>
-
-            {/* Feedback textarea */}
-            <div className="relative group">
-              <div className="relative bg-surface-card rounded-xl sm:rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
-                <label htmlFor="review-feedback" className="sr-only">{t('reviews.comment')}</label>
-                <textarea
-                  id="review-feedback"
-                  value={comment}
-                  maxLength={1000}
-                  rows={3}
-                  onChange={e => setComment(e.target.value)}
-                  placeholder={t(isClient ? 'reviews.clientCommentPlaceholder' : 'reviews.freelancerCommentPlaceholder')}
-                  className="w-full bg-transparent border-none resize-none p-3.5 sm:p-4 text-xs sm:text-sm font-bold text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-0 font-sans"
-                />
-                <div className="flex items-center justify-between px-3.5 sm:px-4 pb-2.5">
-                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-text-muted font-semibold">
-                    <ShieldCheck size={13} className="text-brand" />
-                    {t('reviews.identityNotice')}
-                  </div>
-                  <span className="review-count text-[10px] sm:text-[11px] text-text-muted font-bold">{comment.length}/1000</span>
+          {/* Mobile Header & Partner Summary Strip (Mobile Only: < lg) */}
+          <div className="lg:hidden px-4 py-3 sm:px-5 sm:py-3.5 border-b border-border/60 bg-surface-card/60 shrink-0">
+            <div className="flex items-center justify-between gap-3 mb-2.5">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[9px] font-black uppercase tracking-wider mb-0.5">
+                  <BadgeCheck size={11} />
+                  {t('reviews.projectCompletedBadge', { defaultValue: 'Project Completed' })}
                 </div>
+                <h1 className="text-sm sm:text-base font-black text-text-primary truncate">
+                  {t('reviews.title')}
+                </h1>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t('common.close')}
+                className="p-1.5 rounded-xl border border-border/80 hover:bg-surface-hover text-text-muted hover:text-text-primary cursor-pointer shrink-0 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Compact Partner + Project Info Strip on Mobile */}
+            <div className="flex items-center gap-2.5 p-2 rounded-xl border border-border/60 bg-background/80">
+              <div className="relative w-9 h-9 rounded-full overflow-hidden ring-2 ring-brand/20 shrink-0">
+                <UserAvatar
+                  name={revieweeName ?? ''}
+                  src={revieweeAvatarUrl}
+                  size="md"
+                  className="!w-full !h-full !text-sm !rounded-none"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-text-primary truncate">{revieweeName}</span>
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-brand/10 text-brand uppercase shrink-0">
+                    {revieweeRole}
+                  </span>
+                </div>
+                <p className="text-[10px] font-medium text-text-muted truncate mt-0.5">{projectTitle}</p>
               </div>
             </div>
+          </div>
 
-            {/* Error */}
-            {error && (
-              <p className="review-error text-xs sm:text-sm font-bold text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3.5 py-2.5" role="alert">
-                {error}
-              </p>
-            )}
+          {/* Scrollable Form Content */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
+            <form className="flex flex-col h-full max-w-lg mx-auto gap-4 sm:gap-6" onSubmit={e => e.preventDefault()}>
+              {/* Trust Dial */}
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                  {t('reviews.overallScore')}
+                </span>
+                <TrustDial score={criteriaAverage} />
+              </div>
 
-            {/* Actions */}
-            <div className="review-form-actions flex items-center gap-3 mt-auto pt-1">
-              <button
-                type="button"
-                className="review-cancel px-5 py-3 rounded-xl text-xs font-black text-brand bg-brand/10 hover:bg-brand/15 border border-brand/20 transition-all duration-200 cursor-pointer w-1/3"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="review-submit flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-black text-brand-foreground bg-brand hover:bg-brand-hover shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer w-2/3 group disabled:opacity-50"
-                onClick={submitReview}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    {t('reviews.submit')}
-                    <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              {/* Sliders */}
+              <div className="space-y-4 sm:space-y-6" role="group" aria-label="Rating criteria">
+                <fieldset className="border-none p-0 m-0">
+                  <legend className="sr-only">{t('reviews.communication')}</legend>
+                  <SliderRow
+                    label={t('reviews.communication')}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
+                    value={communicationRating}
+                    ariaLabel={t('reviews.communication')}
+                    onChange={setCommunicationRating}
+                  />
+                </fieldset>
+
+                <fieldset className="border-none p-0 m-0">
+                  <legend className="sr-only">{t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}</legend>
+                  <SliderRow
+                    label={t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
+                    value={qualityRating}
+                    ariaLabel={t(isClient ? 'reviews.workQuality' : 'reviews.requirementClarity')}
+                    onChange={setQualityRating}
+                  />
+                </fieldset>
+
+                <fieldset className="border-none p-0 m-0">
+                  <legend className="sr-only">{t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}</legend>
+                  <SliderRow
+                    label={t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                    value={timelinessRating}
+                    ariaLabel={t(isClient ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}
+                    onChange={setTimelinessRating}
+                  />
+                </fieldset>
+              </div>
+
+              {/* Feedback textarea */}
+              <div className="relative group">
+                <div className="relative bg-surface-card rounded-xl sm:rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
+                  <label htmlFor="review-feedback" className="sr-only">{t('reviews.comment')}</label>
+                  <textarea
+                    id="review-feedback"
+                    value={comment}
+                    maxLength={1000}
+                    rows={3}
+                    onChange={e => setComment(e.target.value)}
+                    placeholder={t(isClient ? 'reviews.clientCommentPlaceholder' : 'reviews.freelancerCommentPlaceholder')}
+                    className="w-full bg-transparent border-none resize-none p-3 sm:p-4 text-xs sm:text-sm font-bold text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-0 font-sans"
+                  />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-3.5 sm:px-4 py-2.5 border-t border-border/40 bg-surface-muted/30 rounded-b-xl sm:rounded-b-2xl">
+                    <div className="flex items-start gap-1.5 text-[10px] sm:text-[11px] text-text-muted font-medium leading-relaxed flex-1">
+                      <ShieldCheck size={13} className="text-brand shrink-0 mt-0.5" />
+                      <span>{t('reviews.identityNotice')}</span>
+                    </div>
+                    <span className="review-count text-[10px] sm:text-[11px] text-text-muted font-bold shrink-0 self-end sm:self-auto">
+                      {comment.length}/1000
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <p className="review-error text-xs sm:text-sm font-bold text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3.5 py-2.5" role="alert">
+                  {error}
+                </p>
+              )}
+
+              {/* Actions */}
+              <div className="review-form-actions flex items-center gap-2.5 sm:gap-3 mt-auto pt-1">
+                <button
+                  type="button"
+                  className="review-cancel px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl text-xs font-black text-brand bg-brand/10 hover:bg-brand/15 border border-brand/20 transition-all duration-200 cursor-pointer w-1/3"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="review-submit flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl text-xs font-black text-brand-foreground bg-brand hover:bg-brand-hover shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer w-2/3 group disabled:opacity-50"
+                  onClick={submitReview}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {t('reviews.submit')}
+                      <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

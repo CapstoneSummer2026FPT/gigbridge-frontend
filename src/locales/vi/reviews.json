@@ -2,6 +2,8 @@
   "reviews": {
     "title": "Đánh giá đối tác dự án",
     "subtitle": "Phản hồi của bạn giúp xây dựng uy tín sau khi dự án hoàn thành.",
+    "projectCompletedBadge": "Dự án hoàn tất",
+    "projectDetails": "Chi tiết dự án",
     "loading": "Đang tải thông tin đánh giá...",
     "loadError": "Không thể tải dự án đã hoàn thành.",
     "contractRequired": "Cần có hợp đồng để gửi đánh giá.",

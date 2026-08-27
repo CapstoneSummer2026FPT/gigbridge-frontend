@@ -1,8 +1,10 @@
 import {
+  Award,
   CreditCard,
   CheckCircle,
   PanelLeftOpen,
   PanelRightOpen,
+  Sparkles,
   Star,
   Wallet,
   Clock,
@@ -186,6 +188,68 @@ export function ManageMilestone({
 
       {/* Milestones timeline & completion cards scrollable area */}
       <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 custom-scrollbar relative space-y-4 sm:space-y-6">
+        {/* ALL MILESTONES COMPLETED BANNER (CLIENT) */}
+        {allMilestonesApproved && activeContract?.status !== ContractStatus.Completed && isClient && (
+          <div className="mms-completion-banner">
+            <div className="mms-completion-accent" />
+            <div className="mms-completion-header">
+              <div className="mms-completion-icon-wrap">
+                <Sparkles size={18} />
+              </div>
+              <div className="mms-completion-title-group">
+                <div className="mms-completion-top-row">
+                  <span className="mms-completion-badge">
+                    <CheckCircle size={11} />
+                    <span>{t('workspace.milestonesAllApprovedBadgeClient')}</span>
+                  </span>
+                </div>
+                <h3 className="mms-completion-title">
+                  {t('workspace.milestonesAllApprovedClientTitle')}
+                </h3>
+              </div>
+            </div>
+            <p className="mms-completion-desc">
+              {t('workspace.milestonesAllApprovedClientDesc')}
+            </p>
+            <div className="mms-completion-cta-wrap">
+              <button
+                type="button"
+                onClick={openEndProjectDialog}
+                className="mms-btn-end-project-cta"
+              >
+                <CheckCircle size={16} className="mms-btn-icon" />
+                <span>{t('workspace.endProjectNow')}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ALL MILESTONES COMPLETED BANNER (FREELANCER) */}
+        {allMilestonesApproved && activeContract?.status !== ContractStatus.Completed && !isClient && (
+          <div className="mms-completion-banner">
+            <div className="mms-completion-accent" />
+            <div className="mms-completion-header">
+              <div className="mms-completion-icon-wrap">
+                <Award size={18} />
+              </div>
+              <div className="mms-completion-title-group">
+                <div className="mms-completion-top-row">
+                  <span className="mms-completion-badge">
+                    <Clock size={11} />
+                    <span>{t('workspace.milestonesAllApprovedBadgeFreelancer')}</span>
+                  </span>
+                </div>
+                <h3 className="mms-completion-title">
+                  {t('workspace.milestonesAllApprovedFreelancerTitle')}
+                </h3>
+              </div>
+            </div>
+            <p className="mms-completion-desc">
+              {t('workspace.milestonesAllApprovedFreelancerDesc')}
+            </p>
+          </div>
+        )}
+
         {showFreelancerPayoutCard && (
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-lg relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
