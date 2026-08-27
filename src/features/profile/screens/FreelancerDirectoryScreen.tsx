@@ -71,7 +71,7 @@ export function FreelancerDirectoryScreen() {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-  const [sortBy] = useState<FreelancerDirectorySort>('featured');
+  const [sortBy, setSortBy] = useState<FreelancerDirectorySort>('featured');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(20);
   const [layoutMode, setLayoutMode] = useState<'grid' | 'compact'>('grid');

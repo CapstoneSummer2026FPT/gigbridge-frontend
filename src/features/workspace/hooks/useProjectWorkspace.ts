@@ -1048,6 +1048,21 @@ export function useProjectWorkspace(initialContractId: string) {
     };
   };
 
+  const handleClaimFinalPayout = async (): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || isClient || activeContract?.status !== ContractStatus.Completed) {
+      return { success: false, message: 'Final payout is not available.' };
+    }
+
+    const response = await contractPostAPI.claimFinalPayout(activeProjectId);
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to claim final payout.' };
+    }
+
+    await reloadActiveWorkspace();
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    return { success: true, message: response.message };
+  };
+
   const handleSubmitProductHandoff = async (
     payload: SubmitProductHandoffPayload,
     lifecycle: WorkspaceUploadLifecycle = {},
@@ -1128,6 +1143,7 @@ export function useProjectWorkspace(initialContractId: string) {
     handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,
+    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,

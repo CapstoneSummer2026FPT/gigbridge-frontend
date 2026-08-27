@@ -299,6 +299,16 @@ export interface EndProjectResponse {
   completedAt?: string | null;
 }
 
+export interface ClaimFinalPayoutResponse {
+  contractId: string;
+  releasedAmountVnd: number;
+  releasedTokens: number;
+  escrowReleasedAmountVnd: number;
+  escrowStatus: number;
+  alreadyClaimed: boolean;
+  claimedAt?: string | null;
+}
+
 export interface WithdrawMilestoneResponse {
   contractId: string;
   milestoneId: string;

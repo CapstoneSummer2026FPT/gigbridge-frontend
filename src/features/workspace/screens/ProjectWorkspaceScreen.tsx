@@ -1,8 +1,8 @@
 import { useState, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, Ban, Send, Plus,
-  Paperclip, Smile, CheckCircle, Circle, Download,
+  ArrowLeft, Ban, Send,
+  Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
   Upload, Link2, X, AlertCircle, Loader2, Wallet
 } from 'lucide-react';
@@ -89,7 +89,6 @@ export default function ProjectWorkspaceScreen() {
     isPartnerOnline,
     projectMessages,
     handleSendMessage,
-    handleSimulateAttachment,
     handleRequestMilestoneUnlock,
     handleUpdateWorkItem,
     handleRespondEarlyStart,
@@ -183,7 +182,7 @@ export default function ProjectWorkspaceScreen() {
 
     const result = await handleSubmitMilestoneDeliverable(submitModal.milestoneId, {
       description: trimmedDescription,
-      file: submitFile,
+      files: [submitFile],
     });
 
     if (!result.success) {
@@ -315,7 +314,7 @@ export default function ProjectWorkspaceScreen() {
 
     const response = await walletGetAPI.getMyWallet();
     if (response.success && response.data) {
-      setEndProjectBalance(response.data.availableTokens);
+      setEndProjectBalance(response.data.totalSpendableGigCoin);
     } else {
       setEndProjectError(response.message || t('workspace.unableLoadGigCoinBalance'));
     }
@@ -952,13 +951,6 @@ export default function ProjectWorkspaceScreen() {
 
                       <div className="flex justify-between items-center px-3 pb-2">
                         <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={handleSimulateAttachment}
-                            className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                            title={t('workspace.attachFile')}
-                          >
-                            <Paperclip size={14} />
-                          </button>
                           <button
                             onClick={() => setMessageInput(prev => `${prev ?? ''}😊`)}
                             className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"

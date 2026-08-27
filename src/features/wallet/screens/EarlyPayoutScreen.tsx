@@ -19,8 +19,6 @@ import {
   Copy,
   Check,
   Search,
-  ChevronRight,
-  ArrowUpRight,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { GigCoinAmount, GigCoinLogo } from '../../../shared/components/GigCoinAmount';
