@@ -335,7 +335,7 @@ export function useMessages() {
   const dealStatus = activeConv?.dealStatus ?? dealStatusMap[activeConvId] ?? 'idle';
 
   // ── UI state ─────────────────────────────────────────────────────────────
-  const [showInfo, setShowInfo] = useState(true);
+  const [showInfo, setShowInfo] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1280 : false));
   const [showDealPrice, setShowDealPrice] = useState(false);
   const [dealMilestones, setDealMilestones] = useState<NegotiationMilestoneDto[]>([]);
   const [dealAdvancedIndexes, setDealAdvancedIndexes] = useState<number[]>([]);
@@ -634,6 +634,12 @@ export function useMessages() {
 
           if (currentActiveConvId && selectableConvos.some((c: any) => c.id === currentActiveConvId)) {
             return currentActiveConvId;
+          }
+
+          // On mobile screens (< 768px), do not auto-select first conversation so user lands on Inbox & Room tabs
+          const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+          if (isMobile && !stateConvId && !stateProposalId) {
+            return '';
           }
 
           return selectableConvos[0].id;
