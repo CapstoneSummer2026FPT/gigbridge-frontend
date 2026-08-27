@@ -122,3 +122,11 @@
 .workspace-header-contract-btn:active {
   transform: scale(0.97);
 }
+
+@media (max-width: 639px) {
+  .workspace-header-action-btn,
+  .workspace-header-contract-btn {
+    padding: 0.45rem 0.55rem;
+    border-radius: 0.625rem;
+  }
+}

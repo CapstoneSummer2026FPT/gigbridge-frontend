@@ -464,9 +464,9 @@ export function NestedMilestonePlanEditor({
                 <button
                   type="button"
                   onClick={() => setIsAutoBalanceActive(!isAutoBalanceActive)}
-                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer shadow-2xs w-full sm:w-auto shrink-0 ${isAutoBalanceActive
-                      ? 'bg-[var(--brand)]/15 text-[var(--brand)] border-[var(--brand)]/35'
-                      : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs w-full sm:w-auto shrink-0 ${isAutoBalanceActive
+                      ? 'bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90 border border-transparent'
+                      : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80'
                     }`}
                 >
                   <span>
@@ -617,12 +617,12 @@ export function NestedMilestonePlanEditor({
 
                     {!readOnly && activeTargetBudget !== null && (
                       lockedIndices.has(index) ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded-md ml-auto">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded-md ml-auto shadow-2xs">
                           <Lock size={10} />
                           <span>{uiCopy.userLocked || 'Cố định'}</span>
                         </span>
                       ) : isAutoBalanceActive ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-cyan-700 dark:text-cyan-300 bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 rounded-md ml-auto">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded-md ml-auto shadow-2xs">
                           <Zap size={10} />
                           <span>{uiCopy.autoBalanced || 'Tự động'}</span>
                         </span>
@@ -676,7 +676,7 @@ export function NestedMilestonePlanEditor({
                                   type="button"
                                   onClick={() => handleToggleLock(index)}
                                   title={uiCopy.userLockedTitle || 'Mốc đang cố định (User-locked). Nhấp để mở khóa tự động cân bằng.'}
-                                  className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg hover:bg-amber-500/25 transition-all cursor-pointer shadow-2xs"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-95 px-2 py-0.5 rounded-md transition-colors cursor-pointer shadow-xs"
                                 >
                                   <Lock size={10} />
                                   <span>{uiCopy.userLocked || 'Cố định (Khóa)'}</span>
@@ -686,7 +686,7 @@ export function NestedMilestonePlanEditor({
                                   type="button"
                                   onClick={() => handleToggleLock(index)}
                                   title={uiCopy.autoBalancedTitle || 'Mốc đang tự động cân bằng. Nhấp để khóa cố định.'}
-                                  className="inline-flex items-center gap-1 text-[10px] font-extrabold text-cyan-600 dark:text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 rounded-lg hover:bg-cyan-500/25 transition-all cursor-pointer shadow-2xs"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 px-2 py-0.5 rounded-md transition-colors cursor-pointer shadow-xs"
                                 >
                                   <Zap size={10} />
                                   <span>{uiCopy.autoBalanced || 'Tự động (Mở)'}</span>

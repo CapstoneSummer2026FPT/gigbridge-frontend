@@ -1945,6 +1945,10 @@
    ──────────────────────────────────────────────── */
 @media (max-width: 899px) {
   .job-post-wizard {
+    padding-bottom: max(5rem, calc(4.5rem + env(safe-area-inset-bottom))) !important;
+  }
+
+  .job-post-wizard:has(.job-post-ai-bar-container) {
     padding-bottom: max(280px, calc(260px + env(safe-area-inset-bottom))) !important;
   }
 
@@ -1973,6 +1977,25 @@
 }
 
 @media (max-width: 640px) {
+  .job-post-wizard__footer:not(:has(.job-post-ai-bar-container)) {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    border-radius: 1rem;
+  }
+
+  .job-post-wizard__footer:not(:has(.job-post-ai-bar-container)) .job-post-wizard__footer-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .job-post-wizard__footer:not(:has(.job-post-ai-bar-container)) > div:first-child {
+    width: 100%;
+  }
+
   .job-post-ai-resize-handle {
     display: none !important;
   }
