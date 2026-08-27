@@ -14,6 +14,7 @@ import {
 } from '../../../types/models/ReportContract';
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   CheckCircle,
   ChevronRight,
@@ -288,27 +289,29 @@ export function CombinedIssueReportsModal({
             aria-modal="true"
             aria-labelledby="combined-reports-title"
             onClick={e => e.stopPropagation()}
-            className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[80vh] min-h-[540px] max-h-[720px] rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
+            className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[92dvh] lg:h-[80vh] max-h-[92dvh] lg:max-h-[720px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
           >
             {/* ═══ LEFT COLUMN: Reports List ═══════════════════════════════════ */}
-            <div className="w-full lg:w-5/12 h-full p-6 sm:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
+            <div className={`w-full lg:w-5/12 h-full p-4 sm:p-6 lg:p-7 flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0 ${
+              Boolean(selectedReportId) ? 'hidden lg:flex' : 'flex'
+            }`}>
               <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
               <div className="relative z-10 flex flex-col h-full">
                 {/* Header */}
-                <div className="mb-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[11px] font-black uppercase tracking-widest mb-3">
-                    <ShieldAlert size={14} />
+                <div className="mb-3 sm:mb-4 pr-8 lg:pr-0">
+                  <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2 sm:mb-3">
+                    <ShieldAlert size={13} />
                     {t('workspace.reportsListBadge', { defaultValue: 'Danh Sách Sự Cố' })}
                   </div>
 
                   <h1
                     id="combined-reports-title"
-                    className="text-xl sm:text-2xl font-black text-text-primary mb-1 tracking-tight"
+                    className="text-lg sm:text-2xl font-black text-text-primary mb-1 tracking-tight"
                   >
                     {t('workspace.issueReportsTitle', { defaultValue: 'Báo Cáo Sự Cố Dự Án' })}
                   </h1>
-                  <p className="text-xs font-semibold text-text-muted leading-relaxed">
+                  <p className="text-[11px] sm:text-xs font-semibold text-text-muted leading-relaxed">
                     {t('workspace.issueReportsSubtitle', {
                       defaultValue:
                         'Chọn báo cáo bên dưới để xem thông tin chi tiết và thương lượng phương án giải quyết.',
@@ -349,7 +352,7 @@ export function CombinedIssueReportsModal({
                           key={rep.id}
                           type="button"
                           onClick={() => onSelectReport(rep.id)}
-                          className={`w-full p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-2 relative group ${
+                          className={`w-full p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-2 relative group ${
                             isSelected
                               ? 'bg-brand/10 border-brand/40 shadow-xs'
                               : 'bg-background/60 border-border/60 hover:bg-surface-hover hover:border-border'
@@ -417,7 +420,7 @@ export function CombinedIssueReportsModal({
                   type="button"
                   onClick={onClose}
                   aria-label={t('common.close', { defaultValue: 'Đóng' })}
-                  className="absolute top-5 right-5 lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer"
+                  className="absolute top-4 right-4 lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -425,7 +428,29 @@ export function CombinedIssueReportsModal({
             </div>
 
             {/* ═══ RIGHT COLUMN: Issue Detail & Response Form ═════════════════ */}
-            <div className="w-full lg:w-7/12 h-full p-6 sm:p-8 lg:p-10 bg-background relative overflow-y-auto custom-scrollbar flex flex-col justify-between">
+            <div className={`w-full lg:w-7/12 flex-1 min-h-0 h-full p-4 sm:p-6 lg:p-10 bg-background relative overflow-y-auto custom-scrollbar flex-col justify-between ${
+              Boolean(selectedReportId) ? 'flex' : 'hidden lg:flex'
+            }`}>
+              {/* Mobile Back to List Button */}
+              <div className="flex lg:hidden items-center justify-between gap-2 pb-3 mb-2 border-b border-border/60 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onSelectReport('')}
+                  className="inline-flex items-center gap-1.5 text-xs font-black text-brand hover:underline cursor-pointer"
+                >
+                  <ArrowLeft size={14} />
+                  <span>{t('workspace.backToReportsList', { defaultValue: 'Danh sách sự cố' })}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label={t('common.close', { defaultValue: 'Đóng' })}
+                  className="p-1.5 rounded-lg border border-border text-text-muted hover:text-text-primary cursor-pointer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
               {/* Desktop Close */}
               <button
                 type="button"
