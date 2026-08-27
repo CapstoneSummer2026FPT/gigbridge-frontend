@@ -215,9 +215,9 @@ export function FreelancerContractDetails({
       <div className="bg-background min-h-[calc(100vh-4rem)] flex flex-col text-left font-sans text-text-primary">
 
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
+        <header className="sticky top-0 z-40 border-b border-border bg-background/80 px-3.5 py-3.5 sm:py-4 backdrop-blur-md lg:px-8">
           <div className="mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => navigate('/contracts')}
@@ -227,14 +227,14 @@ export function FreelancerContractDetails({
                 <ArrowLeft size={16} />
               </button>
               <div className="min-w-0">
-                <div className="mb-0.5 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-brand">
-                  <Sparkles size={13} />
-                  {t('contracts.contractDetailsFreelancer')}
+                <div className="mb-0.5 flex items-center gap-1.5 sm:gap-2 text-[10px] font-black uppercase tracking-wider text-brand">
+                  <Sparkles size={13} className="shrink-0" />
+                  <span className="truncate">{t('contracts.contractDetailsFreelancer')}</span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-text-primary flex flex-wrap items-center gap-2.5 truncate">
-                  <span className="truncate max-w-[200px] md:max-w-xl">{contract.title}</span>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-black text-text-primary flex flex-wrap items-center gap-2 min-w-0 break-all [overflow-wrap:anywhere]">
+                  <span>{contract.title}</span>
                   <span className="text-brand italic font-light">Details</span>
-                  <span className={`status-badge ${getContractStatusClass(contract.status)} text-[10px] py-1 px-3`}>
+                  <span className={`status-badge ${getContractStatusClass(contract.status)} text-[10px] py-0.5 sm:py-1 px-2.5 sm:px-3 shrink-0`}>
                     {t('contracts.statusLabels.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}
                   </span>
                 </h1>
@@ -246,12 +246,12 @@ export function FreelancerContractDetails({
         </header>
 
         {/* Main Content Workspace */}
-        <main className="mx-auto max-w-[1600px] w-full space-y-6 px-4 py-6 lg:px-8 flex-1">
+        <main className="mx-auto max-w-[1600px] w-full space-y-4 sm:space-y-6 px-3.5 py-4 sm:py-6 lg:px-8 flex-1 min-w-0">
 
           {/* Stepper Panel */}
-          <section className="glass-card p-4 relative overflow-hidden text-left shadow-sm">
+          <section className="glass-card p-3.5 sm:p-4 relative overflow-hidden text-left shadow-sm">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-            <div className="flex items-center gap-6 overflow-x-auto pb-1 no-scrollbar whitespace-nowrap">
+            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto pb-1.5 custom-scrollbar touch-pan-x scroll-smooth whitespace-nowrap">
               {[
                 { number: 1, label: t('contracts.reviewProjectPlan') },
                 { number: 2, label: t('contracts.esignContractDocument') },

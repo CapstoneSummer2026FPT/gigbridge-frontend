@@ -90,14 +90,14 @@ export default function FreelancerContractScreen() {
       <div ref={containerRef} className="min-h-[calc(100vh-4rem)] bg-background text-text-primary">
         
         {/* Top Header Bar */}
-        <header className="fcs-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
-          <div className="mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="fcs-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-3.5 py-3.5 sm:py-4 backdrop-blur-md lg:px-8">
+          <div className="mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-brand">
+              <div className="mb-1 flex items-center gap-2 text-[10.5px] sm:text-[11px] font-extrabold uppercase tracking-wider text-brand">
                 <Sparkles size={14} />
                 {t('contracts.contractPortal')}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-text-primary">
                 {t('contracts.myContracts')} <span className="text-brand italic font-light">Portal</span>
               </h1>
               <p className="mt-0.5 text-xs font-semibold text-text-muted">{t('contracts.manageSubtitle')}</p>
@@ -109,68 +109,75 @@ export default function FreelancerContractScreen() {
         </header>
 
         {/* Main Workspace */}
-        <main className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 lg:px-8">
+        <main className="mx-auto max-w-[1600px] space-y-4 sm:space-y-6 px-3.5 py-4 sm:py-6 lg:px-8">
           
           {/* Summary Metric Cards */}
-          <section aria-label="Contract Metrics" className="fcs-gsap-metrics grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.active')}</p>
-                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{stats.activeCount}</p>
+          <section aria-label="Contract Metrics" className="fcs-gsap-metrics grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
+            <article className="rounded-2xl border border-border bg-background p-3.5 sm:p-4 shadow-sm transition hover:border-brand/40 min-w-0">
+              <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-text-muted truncate">{t('contracts.active')}</p>
+                  <p className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-black tracking-tight text-text-primary">{stats.activeCount}</p>
                 </div>
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <Zap size={20} />
+                <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Zap size={18} />
                 </span>
               </div>
             </article>
 
-            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.tabPending')}</p>
-                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{stats.pendingCount}</p>
+            <article className="rounded-2xl border border-border bg-background p-3.5 sm:p-4 shadow-sm transition hover:border-brand/40 min-w-0">
+              <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-text-muted truncate">{t('contracts.tabPending')}</p>
+                  <p className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-black tracking-tight text-text-primary">{stats.pendingCount}</p>
                 </div>
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Clock size={20} />
+                <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Clock size={18} />
                 </span>
               </div>
             </article>
 
-            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.completed')}</p>
-                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{stats.completedCount}</p>
+            <article className="rounded-2xl border border-border bg-background p-3.5 sm:p-4 shadow-sm transition hover:border-brand/40 min-w-0">
+              <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-text-muted truncate">{t('contracts.completed')}</p>
+                  <p className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-black tracking-tight text-text-primary">{stats.completedCount}</p>
                 </div>
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                  <Award size={20} />
+                <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <Award size={18} />
                 </span>
               </div>
             </article>
 
-            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.totalValue')}</p>
-                  <p className="mt-1 text-2xl font-black tracking-tight text-brand">{formatContractAmount(stats.totalValue)}</p>
+            <article className="rounded-2xl border border-border bg-background p-3.5 sm:p-4 shadow-sm transition hover:border-brand/40 min-w-0">
+              <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-text-muted truncate">{t('contracts.totalValue')}</p>
+                  <p className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-black tracking-tight text-brand truncate">{formatContractAmount(stats.totalValue)}</p>
                 </div>
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                  <TrendingUp size={20} />
+                <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                  <TrendingUp size={18} />
                 </span>
               </div>
             </article>
           </section>
 
           {/* Main Controls & Contracts List */}
-          <section className="fcs-gsap-main rounded-2xl border border-border bg-background shadow-sm overflow-hidden min-h-[600px] flex flex-col justify-between">
+          <section className="fcs-gsap-main rounded-2xl border border-border bg-background shadow-sm overflow-hidden min-h-[500px] flex flex-col justify-between">
             
             {/* Search, Filter Pills & Sort Toolbar */}
-            <div className="border-b border-border p-4 space-y-4 shrink-0">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="border-b border-border p-3.5 sm:p-4 space-y-3.5 sm:space-y-4 shrink-0 min-w-0">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
                 
-                {/* Horizontal Selectable Status Pills */}
-                <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+                {/* Horizontal Selectable Status Pills with Smooth Scroll */}
+                <div
+                  onWheel={e => {
+                    if (e.deltaY !== 0) {
+                      e.currentTarget.scrollLeft += e.deltaY;
+                    }
+                  }}
+                  className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 pt-0.5 custom-scrollbar flex-nowrap w-full min-w-0 max-w-full touch-pan-x scroll-smooth"
+                >
                   {statusPills.map(pill => {
                     const isSelected = selectedStatus === pill.value;
                     const count = pill.value === 'All'
@@ -182,15 +189,15 @@ export default function FreelancerContractScreen() {
                         key={String(pill.value)}
                         type="button"
                         onClick={() => setSelectedStatus(pill.value)}
-                        className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                        className={`shrink-0 inline-flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
                           isSelected
                             ? pill.colorClass
                             : 'border border-border bg-surface-muted/40 text-text-muted hover:border-brand/40 hover:text-text-primary'
                         }`}
                       >
                         {pill.icon}
-                        {pill.label}
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
+                        <span>{pill.label}</span>
+                        <span className={`rounded-full px-1.5 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
                           {count}
                         </span>
                       </button>
@@ -199,7 +206,7 @@ export default function FreelancerContractScreen() {
                 </div>
 
                 {/* Search & Sort Controls */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center w-full lg:w-auto">
                   <label className="relative min-w-0 flex-1 sm:w-64">
                     <span className="sr-only">{t('contracts.searchPlaceholder')}</span>
                     <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
@@ -223,7 +230,7 @@ export default function FreelancerContractScreen() {
                     </button>
                   )}
 
-                  <div className="w-full sm:w-44">
+                  <div className="w-full sm:w-44 shrink-0">
                     <CustomSelect
                       value={sortBy}
                       ariaLabel={t('contracts.sortByDate')}
@@ -389,34 +396,34 @@ function ContractCardItem({
   }
 
   return (
-    <article className="rounded-2xl border border-border bg-background p-5 shadow-sm transition hover:border-brand/40 space-y-4">
+    <article className="rounded-2xl border border-border bg-background p-3.5 sm:p-5 shadow-sm transition hover:border-brand/40 space-y-3.5 sm:space-y-4">
       {/* Card Top Row */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <h3 className="truncate text-base font-extrabold text-text-primary">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3 border-b border-border/60 pb-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm sm:text-base font-extrabold text-text-primary break-all [overflow-wrap:anywhere]">
               {contract.title || t('contracts.contract')}
             </h3>
             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] ${badgeClass(status)}`}>
               {getContractStatusLabel(status)}
             </span>
           </div>
-          <p className="mt-1 text-xs text-text-muted font-semibold flex flex-wrap items-center gap-2">
+          <p className="mt-1 text-[11px] sm:text-xs text-text-muted font-semibold flex flex-wrap items-center gap-2">
             <span>ID: <strong className="text-text-primary font-mono">{contract.contractsId}</strong></span>
             <span>·</span>
             <span>Created: <strong className="text-text-primary font-bold">{formatContractDate(contract.createdAt)}</strong></span>
           </p>
         </div>
 
-        <div className="text-right">
-          <p className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('contracts.totalValue')}</p>
-          <p className="text-lg font-black text-brand">{formatContractAmount(contract.totalBudget)}</p>
+        <div className="sm:text-right text-left shrink-0">
+          <p className="text-[10.5px] sm:text-xs font-bold text-text-muted uppercase tracking-wider">{t('contracts.totalValue')}</p>
+          <p className="text-base sm:text-lg font-black text-brand">{formatContractAmount(contract.totalBudget)}</p>
         </div>
       </div>
 
       {/* Progress Bar & Milestone Info */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 items-center">
+        <div className="space-y-1.5 min-w-0">
           <div className="flex items-center justify-between text-xs font-bold">
             <span className="text-text-muted">{t('contracts.milestoneCompletion')}</span>
             <span className="text-brand font-black">{progressPercent}%</span>
@@ -426,27 +433,27 @@ function ContractCardItem({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 text-xs font-bold text-text-muted">
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 size={14} />
+        <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-xs font-bold text-text-muted">
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 sm:px-3 py-1.5 text-emerald-600 dark:text-emerald-400 text-[11px] sm:text-xs">
+            <CheckCircle2 size={13} />
             {t('contracts.milestonesPaidCount', { milestonesPaid: completedMilestones })}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-muted/50 px-3 py-1.5 text-text-primary">
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-muted/50 px-2.5 sm:px-3 py-1.5 text-text-primary text-[11px] sm:text-xs">
             {t('contracts.milestones')}: {totalMilestones}
           </span>
         </div>
       </div>
 
       {/* Action Buttons Footer */}
-      <div className="flex flex-wrap items-center justify-between border-t border-border/60 pt-4 gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between border-t border-border/60 pt-3.5 sm:pt-4 gap-2.5 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Primary Action Button (e.g. Go to Workspace for Active) */}
           <button
             type="button"
             onClick={() => onNavigate(primaryAction.path)}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition cursor-pointer ${primaryAction.styleClass}`}
+            className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-extrabold transition cursor-pointer text-center ${primaryAction.styleClass}`}
           >
-            {primaryAction.icon} {primaryAction.label}
+            {primaryAction.icon} <span>{primaryAction.label}</span>
           </button>
 
           {/* Secondary View Details Button */}
@@ -454,9 +461,9 @@ function ContractCardItem({
             <button
               type="button"
               onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 sm:px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer text-center"
             >
-              <Eye size={14} /> {t('contracts.viewDetails')}
+              <Eye size={14} /> <span>{t('contracts.viewDetails')}</span>
             </button>
           )}
         </div>
@@ -464,7 +471,7 @@ function ContractCardItem({
         <button
           type="button"
           onClick={onToggleExpand}
-          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-brand hover:underline cursor-pointer"
+          className="self-end sm:self-auto inline-flex items-center gap-1.5 text-xs font-extrabold text-brand hover:underline cursor-pointer py-1"
         >
           {expanded ? t('contracts.collapse') : t('contracts.milestoneBreakdown')}
           <ChevronDown className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} size={14} />
