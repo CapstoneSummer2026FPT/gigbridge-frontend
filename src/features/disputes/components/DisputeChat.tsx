@@ -7,9 +7,9 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { ConversationStatus, MessageType } from '../../../types/models/Message';
 import { DisputeStatus } from '../../../types/models/Dispute';
 import { UserRole } from '../../../types/models/User';
-import { createChatHubConnection } from '../../messages/services/chatHubConnection';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { onChatHubReconnected, retainChatHubConnection } from '../../../shared/realtime/chatHubConnection';
 
 interface DisputeChatProps {
   disputeId: string;
@@ -68,7 +68,8 @@ export function DisputeChat({ disputeId, disputeStatus }: DisputeChatProps) {
     const token = localStorage.getItem('access_token');
     if (!token) return;
     let disposed = false;
-    const connection = createChatHubConnection();
+    const lease = retainChatHubConnection();
+    const connection = lease.connection;
     const refreshMessages = (payload: Record<string, unknown>) => {
       const eventConversationId = String(payload.conversationId ?? payload.conversationsId ?? payload.ConversationsId ?? '');
       if (eventConversationId !== conversationId) return;
@@ -82,14 +83,18 @@ export function DisputeChat({ disputeId, disputeStatus }: DisputeChatProps) {
       });
     };
     connection.on('ReceiveMessage', refreshMessages);
-    connection.onreconnected(() => void connection.invoke('JoinConversation', conversationId));
-    void connection.start()
-      .then(() => disposed ? connection.stop() : connection.invoke('JoinConversation', conversationId))
+    const stopReconnect = onChatHubReconnected(() => {
+      if (!disposed) void connection.invoke('JoinConversation', conversationId);
+    });
+    void lease.ready
+      .then(() => disposed ? undefined : connection.invoke('JoinConversation', conversationId))
       .catch(() => undefined);
     return () => {
       disposed = true;
       connection.off('ReceiveMessage', refreshMessages);
-      void connection.stop();
+      stopReconnect();
+      void connection.invoke('LeaveConversation', conversationId).catch(() => undefined);
+      lease.release();
     };
   }, [conversationId]);
 

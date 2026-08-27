@@ -129,7 +129,7 @@ export function ContractLegalCard({
                   {t('contracts.legal.esignDocument')}
                 </p>
                 <p className="mt-0.5 text-xs font-bold text-muted-foreground">
-                  {document.documentCode || t('contracts.legal.contractDocument')}
+                  {t('contracts.legal.contractDocument')}
                 </p>
               </div>
               <div className={`esign-poll-badge-wrapper ${documentState.isLoading ? 'is-polling' : ''}`}>

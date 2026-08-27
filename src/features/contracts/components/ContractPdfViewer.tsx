@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, ExternalLink, FileText, LoaderCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
-import type { ESignDocumentDto } from '../../../types/models/ESign';
+import type { ESignDocumentDto, ESignDocumentStatusDto } from '../../../types/models/ESign';
 import {
   downloadESignPdfBlob,
   getESignPdfBlob,
@@ -10,7 +10,7 @@ import {
 import '../styles/contract-pdf-viewer.css';
 
 interface ContractPdfViewerProps {
-  document: ESignDocumentDto;
+  document: ESignDocumentDto | ESignDocumentStatusDto;
   title?: string;
   sourceBlob?: Blob;
   hideHeaderToolbar?: boolean;

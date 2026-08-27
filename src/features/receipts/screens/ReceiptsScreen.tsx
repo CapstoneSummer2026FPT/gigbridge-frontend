@@ -9,6 +9,7 @@ import type { ProjectReceiptSummary } from '../../../types/models/Receipt';
 import { ReceiptDetailDialog } from '../components/ReceiptDetailDialog';
 import { ReceiptStatusBadge } from '../components/ReceiptStatusBadge';
 import { receiptFileName, saveReceiptBlob } from '../utils/receiptDownload';
+import { useProjectReceiptRevisionEvent } from '../hooks/useProjectReceiptRevisionEvent';
 
 const PAGE_SIZE = 10;
 
@@ -41,14 +42,22 @@ export default function ReceiptsScreen() {
 
   useEffect(() => { void loadReceipts(); }, [loadReceipts]);
 
-  useEffect(() => {
-    const hasWorkInProgress = receipts.some(receipt =>
-      !receipt.canRetry && (!receipt.downloadReady || receipt.emailStatus !== 'Delivered'),
-    );
-    if (!hasWorkInProgress) return undefined;
-    const interval = window.setInterval(() => void loadReceipts(true), 4_000);
-    return () => window.clearInterval(interval);
-  }, [loadReceipts, receipts]);
+  useProjectReceiptRevisionEvent(
+    event => {
+      const current = receipts.find(receipt => receipt.receiptId === event.receiptId);
+      if (!current || event.revision <= current.revision) return;
+      if (event.changeKind === 'deleted') {
+        setReceipts(items => items.filter(item => item.receiptId !== event.receiptId));
+        return;
+      }
+      void receiptAPI.getStatus(event.receiptId).then(response => {
+        if (!response.success || !response.data) return;
+        const updated = response.data;
+        setReceipts(items => items.map(item => item.receiptId === event.receiptId ? updated : item));
+      });
+    },
+    () => void loadReceipts(true),
+  );
 
   useEffect(() => {
     const requestedId = searchParams.get('receiptId');
@@ -158,3 +167,4 @@ export default function ReceiptsScreen() {
     </AppLayout>
   );
 }
+

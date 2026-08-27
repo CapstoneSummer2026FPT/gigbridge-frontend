@@ -6,14 +6,13 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import type { ProjectReceiptSummary } from '../../../types/models/Receipt';
 import { ReceiptDetailDialog } from './ReceiptDetailDialog';
 import { ReceiptStatusBadge } from './ReceiptStatusBadge';
+import { useProjectReceiptRevisionEvent } from '../hooks/useProjectReceiptRevisionEvent';
 import { receiptFileName, saveReceiptBlob } from '../utils/receiptDownload';
 
 interface ProjectReceiptCardProps {
   contractId: string;
   className?: string;
 }
-
-const POLL_INTERVAL_MS = 4_000;
 
 export function ProjectReceiptCard({ contractId, className }: ProjectReceiptCardProps) {
   const { t } = useTranslation();
@@ -25,14 +24,21 @@ export function ProjectReceiptCard({ contractId, className }: ProjectReceiptCard
   const initialContractId = useRef(contractId);
 
   const refresh = useCallback(async () => {
-    const response = await receiptAPI.getMine(1, 50);
-    if (!response.success || !response.data) return;
-    const currentReceipt = response.data.items.find(item => item.contractId === contractId);
-    if (currentReceipt) {
-      setReceipt(currentReceipt);
+    const response = await receiptAPI.getStatusByContract(contractId);
+    if (response.success && response.data) {
+      setReceipt(response.data);
       setError(null);
     }
   }, [contractId]);
+
+  useProjectReceiptRevisionEvent(
+    event => {
+      if (event.contractId !== contractId || event.revision <= (receipt?.revision ?? 0)) return;
+      if (event.changeKind === 'deleted') setReceipt(null);
+      else void refresh();
+    },
+    () => void refresh(),
+  );
 
   useEffect(() => {
     let active = true;
@@ -53,14 +59,6 @@ export function ProjectReceiptCard({ contractId, className }: ProjectReceiptCard
 
     return () => { active = false; };
   }, [contractId, t]);
-
-  useEffect(() => {
-    if (!receipt || (receipt.downloadReady && receipt.emailStatus === 'Delivered') || receipt.canRetry) {
-      return undefined;
-    }
-    const interval = window.setInterval(() => void refresh(), POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [receipt, refresh]);
 
   const download = async () => {
     if (!receipt) return;

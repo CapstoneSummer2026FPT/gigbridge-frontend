@@ -71,7 +71,7 @@ export function FreelancerDirectoryScreen() {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-  const [sortBy] = useState<FreelancerDirectorySort>('featured');
+  const [sortBy, setSortBy] = useState<FreelancerDirectorySort>('featured');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(20);
   const [layoutMode, setLayoutMode] = useState<'grid' | 'compact'>('grid');
@@ -382,7 +382,23 @@ export function FreelancerDirectoryScreen() {
                   )}
                 </div>
 
-                {/* 2. Page Size Selector */}
+                {/* 2. Sort Selector */}
+                <select
+                  value={sortBy}
+                  onChange={e => {
+                    setSortBy(e.target.value as FreelancerDirectorySort);
+                    setPage(1);
+                  }}
+                  className="rounded-xl border border-border bg-surface-muted px-3 py-2 text-xs font-bold text-text-primary outline-none transition focus:border-brand/40 hover:border-brand/30 cursor-pointer"
+                  title={isVietnamese ? 'Sắp xếp theo' : 'Sort by'}
+                >
+                  <option value="featured">{isVietnamese ? 'Nổi bật' : 'Featured'}</option>
+                  <option value="rating">{isVietnamese ? 'Đánh giá cao' : 'Top Rated'}</option>
+                  <option value="elo">{isVietnamese ? 'Điểm ELO' : 'Top ELO'}</option>
+                  <option value="newest">{isVietnamese ? 'Mới nhất' : 'Newest'}</option>
+                </select>
+
+                {/* 3. Page Size Selector */}
                 <div className="flex items-center rounded-xl border border-border bg-surface-muted p-0.5 gap-0.5">
                   {([10, 20, 50] as const).map(size => (
                     <button

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { createChatHubConnection } from '../../messages/services/chatHubConnection';
+import { useEffect, useRef } from 'react';
+import { subscribeChatHubEvent } from './chatHubConnection';
 
 const CONTRACT_READY_EVENT = 'ContractReadyForEscrowFunding';
 
@@ -13,32 +13,24 @@ export function useContractReadyForEscrowEvent(
   enabled: boolean,
   onReady: () => void | Promise<void>
 ): void {
+  const readyRef = useRef(onReady);
+
+  useEffect(() => {
+    readyRef.current = onReady;
+  }, [onReady]);
+
   useEffect(() => {
     if (!enabled || !contractId || !localStorage.getItem('access_token')) {
       return;
     }
 
-    let disposed = false;
-    const connection = createChatHubConnection();
-
     const handleReady = (payload: ContractReadyForEscrowPayload): void => {
       const eventContractId = payload.contractId ?? payload.ContractId;
-      if (!disposed && eventContractId === contractId) {
-        void onReady();
+      if (eventContractId === contractId) {
+        void readyRef.current();
       }
     };
 
-    connection.on(CONTRACT_READY_EVENT, handleReady);
-    connection.start().catch(error => {
-      if (!disposed) {
-        console.warn('[ContractEscrowSignalR] connection failed', error);
-      }
-    });
-
-    return () => {
-      disposed = true;
-      connection.off(CONTRACT_READY_EVENT, handleReady);
-      void connection.stop().catch(() => undefined);
-    };
-  }, [contractId, enabled, onReady]);
+    return subscribeChatHubEvent(CONTRACT_READY_EVENT, handleReady);
+  }, [contractId, enabled]);
 }

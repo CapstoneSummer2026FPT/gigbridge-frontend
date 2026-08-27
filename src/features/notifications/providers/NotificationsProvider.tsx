@@ -13,7 +13,7 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(nul
  */
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useApp();
-  const value = useUserNotifications(user, { pageSize: 20, pollMs: 45_000 });
+  const value = useUserNotifications(user, { pageSize: 20 });
 
   return (
     <NotificationsContext.Provider value={value}>
