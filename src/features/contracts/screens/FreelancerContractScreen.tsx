@@ -7,12 +7,14 @@ import {
   ChevronDown,
   Clock,
   Eye,
+  FileCheck2,
   Layers,
   ListChecks,
   PenTool,
   RotateCcw,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
   Sparkles,
   TrendingUp,
   Zap,
@@ -22,7 +24,9 @@ import { getContractStatusLabel, formatContractAmount, formatContractDate } from
 import { MilestoneDetailCard } from '../components/MilestoneDetailCard';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
-import { CustomSelect } from '../../../shared/components/CustomSelect';
+import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useFreelancerContracts, type ContractWithMilestones } from '../hooks/useFreelancerContracts';
@@ -34,6 +38,7 @@ const badgeClass = (status: number) => {
   if (status === ContractStatus.Completed) return 'border border-blue-500/40 bg-blue-500/20 text-text-primary font-black';
   if (status === ContractStatus.Cancelled || status === ContractStatus.Disputed) return 'border border-rose-500/40 bg-rose-500/15 text-text-primary font-black';
   if (status === ContractStatus.Draft) return 'border border-border bg-slate-500/15 text-text-primary font-black';
+  if (status === ContractStatus.PendingContractConfirmation) return 'border border-sky-500/40 bg-sky-500/15 text-text-primary font-black';
   return 'border border-amber-500/40 bg-amber-500/15 text-text-primary font-black';
 };
 
@@ -75,14 +80,40 @@ export default function FreelancerContractScreen() {
     ],
   });
 
-  const statusPills: Array<{ value: ContractStatus | 'All'; label: string; icon: React.ReactNode; colorClass: string }> = [
+  const primaryPills: Array<{ value: ContractStatus; label: string; icon: React.ReactNode; colorClass: string }> = [
+    { value: ContractStatus.PendingContractConfirmation, label: t('contracts.pendingContractConfirmation', { defaultValue: 'Pending Contract Confirmation' }), icon: <FileCheck2 size={14} />, colorClass: 'bg-sky-600 text-white shadow-sm' },
     { value: ContractStatus.PendingSignature, label: t('contracts.pendingSignature'), icon: <Clock size={14} />, colorClass: 'bg-amber-500 text-white shadow-sm' },
     { value: ContractStatus.PendingEscrow, label: t('contracts.pendingEscrow'), icon: <ShieldAlert size={14} />, colorClass: 'bg-purple-600 text-white shadow-sm' },
     { value: ContractStatus.Active, label: t('contracts.active'), icon: <Zap size={14} />, colorClass: 'bg-emerald-600 text-white shadow-sm' },
-    { value: ContractStatus.Completed, label: t('contracts.completed'), icon: <CheckCircle2 size={14} />, colorClass: 'bg-blue-600 text-white shadow-sm' },
-    { value: ContractStatus.Draft, label: t('contracts.legal.status.draft'), icon: <PenTool size={14} />, colorClass: 'bg-slate-600 text-white shadow-sm' },
-    { value: ContractStatus.Disputed, label: t('contracts.disputeTerms'), icon: <ShieldAlert size={14} />, colorClass: 'bg-rose-600 text-white shadow-sm' },
-    { value: 'All', label: t('contracts.allContracts'), icon: <Layers size={14} />, colorClass: 'bg-brand text-white shadow-sm' },
+  ];
+
+  const isMoreSelected = selectedStatus === 'All' || selectedStatus === ContractStatus.Completed || selectedStatus === ContractStatus.Draft || selectedStatus === ContractStatus.Disputed;
+
+  const moreOptions: SelectOption[] = [
+    {
+      value: 'All',
+      label: t('contracts.allContracts'),
+      icon: <Layers size={14} className="text-brand" />,
+      badge: String(stats.totalCount),
+    },
+    {
+      value: String(ContractStatus.Completed),
+      label: t('contracts.completed'),
+      icon: <CheckCircle2 size={14} className="text-blue-600 dark:text-blue-400" />,
+      badge: String(contracts.filter(c => Number(c.status) === ContractStatus.Completed).length),
+    },
+    {
+      value: String(ContractStatus.Draft),
+      label: t('contracts.legal.status.draft'),
+      icon: <PenTool size={14} className="text-slate-500 dark:text-slate-400" />,
+      badge: String(contracts.filter(c => Number(c.status) === ContractStatus.Draft).length),
+    },
+    {
+      value: String(ContractStatus.Disputed),
+      label: t('contracts.disputeTerms'),
+      icon: <ShieldAlert size={14} className="text-rose-600 dark:text-rose-400" />,
+      badge: String(contracts.filter(c => Number(c.status) === ContractStatus.Disputed).length),
+    },
   ];
 
   return (
@@ -162,27 +193,25 @@ export default function FreelancerContractScreen() {
             </article>
           </section>
 
-          {/* Main Controls & Contracts List */}
-          <section className="fcs-gsap-main rounded-2xl border border-border bg-background shadow-sm overflow-hidden min-h-[500px] flex flex-col justify-between">
+          {/* Main Controls & Contracts Table/List */}
+          <section className="fcs-gsap-main rounded-2xl border border-border bg-background shadow-sm min-h-[500px] flex flex-col justify-between">
             
             {/* Search, Filter Pills & Sort Toolbar */}
-            <div className="border-b border-border p-3.5 sm:p-4 space-y-3.5 sm:space-y-4 shrink-0 min-w-0">
+            <div className="relative z-30 border-b border-border p-3.5 sm:p-4 space-y-3.5 sm:space-y-4 shrink-0 min-w-0">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
                 
-                {/* Horizontal Selectable Status Pills with Smooth Scroll */}
+                {/* Horizontal Selectable Status Track with Smooth Scroll (4 Primary Pills + More CustomSelect) */}
                 <div
                   onWheel={e => {
                     if (e.deltaY !== 0) {
                       e.currentTarget.scrollLeft += e.deltaY;
                     }
                   }}
-                  className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 pt-0.5 custom-scrollbar flex-nowrap w-full min-w-0 max-w-full touch-pan-x scroll-smooth"
+                  className="filter-scroll-track flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 pt-0.5 custom-scrollbar flex-nowrap w-full min-w-0 max-w-full flex-1 touch-pan-x scroll-smooth"
                 >
-                  {statusPills.map(pill => {
+                  {primaryPills.map(pill => {
                     const isSelected = selectedStatus === pill.value;
-                    const count = pill.value === 'All'
-                      ? stats.totalCount
-                      : contracts.filter(c => Number(c.status) === pill.value).length;
+                    const count = contracts.filter(c => Number(c.status) === pill.value).length;
 
                     return (
                       <button
@@ -197,12 +226,25 @@ export default function FreelancerContractScreen() {
                       >
                         {pill.icon}
                         <span>{pill.label}</span>
-                        <span className={`rounded-full px-1.5 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
+                        <span className={`rounded-full px-1.5 py-0.2 text-[9.5px] sm:text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
                           {count}
                         </span>
                       </button>
                     );
                   })}
+
+                  {/* "More" CustomSelect Dropdown (aligned right so popover never goes offscreen on mobile) */}
+                  <CustomSelect
+                    value={isMoreSelected ? String(selectedStatus) : ''}
+                    options={moreOptions}
+                    onChange={val => setSelectedStatus(val === 'All' ? 'All' : Number(val) as ContractStatus)}
+                    placeholder={t('contracts.moreStatuses', { defaultValue: 'More' })}
+                    leftIcon={<SlidersHorizontal size={14} />}
+                    searchable={false}
+                    popoverAlign="right"
+                    variant="pill"
+                    className="shrink-0"
+                  />
                 </div>
 
                 {/* Search & Sort Controls */}
@@ -405,7 +447,7 @@ function ContractCardItem({
               {contract.title || t('contracts.contract')}
             </h3>
             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] ${badgeClass(status)}`}>
-              {getContractStatusLabel(status)}
+              {getContractStatusLabel(status, t)}
             </span>
           </div>
           <p className="mt-1 text-[11px] sm:text-xs text-text-muted font-semibold flex flex-wrap items-center gap-2">
@@ -417,7 +459,11 @@ function ContractCardItem({
 
         <div className="sm:text-right text-left shrink-0">
           <p className="text-[10.5px] sm:text-xs font-bold text-text-muted uppercase tracking-wider">{t('contracts.totalValue')}</p>
-          <p className="text-base sm:text-lg font-black text-brand">{formatContractAmount(contract.totalBudget)}</p>
+          <div className="flex items-center sm:justify-end gap-1.5 mt-0.5">
+            <GCoinIcon size={16} />
+            <span className="text-base sm:text-lg font-black text-brand">{formatGigCoinNumber(contract.totalBudget)}</span>
+          </div>
+          <p className="text-[10.5px] font-semibold text-text-muted">≈ {formatGigCoinToVnd(contract.totalBudget)}</p>
         </div>
       </div>
 

@@ -27,11 +27,15 @@ export const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay =
   };
 };
 
+let cachedManageContracts: ContractWithMilestones[] | null = null;
+let lastManageContractsFetchTime = 0;
+const CACHE_TTL_MS = 60_000; // 1 minute
+
 export function useManageContracts() {
   const navigate = useNavigate();
   const { t } = useTranslation(['contracts', 'common']);
-  const [contracts, setContracts] = useState<ContractWithMilestones[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [contracts, setContracts] = useState<ContractWithMilestones[]>(() => cachedManageContracts || []);
+  const [loading, setLoading] = useState(() => !cachedManageContracts);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<ContractStatus | 'All'>('All');
@@ -40,9 +44,11 @@ export function useManageContracts() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const loadContracts = useCallback(async () => {
+  const loadContracts = useCallback(async (isSilent = Boolean(cachedManageContracts)) => {
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError(null);
 
       const params: ContractQueryParams = {
@@ -53,7 +59,7 @@ export function useManageContracts() {
       const response = await contractGetAPI.getMyContracts(params);
 
       if (!response.success) {
-        setContracts([]);
+        if (!cachedManageContracts) setContracts([]);
         setError(response.message || t('contracts.unableToLoadContract'));
         return;
       }
@@ -71,17 +77,24 @@ export function useManageContracts() {
         })
       );
 
+      cachedManageContracts = contractsWithMilestones;
+      lastManageContractsFetchTime = Date.now();
       setContracts(contractsWithMilestones);
     } catch {
-      setError(t('contracts.alerts.errorOccurred'));
-      setContracts([]);
+      if (!cachedManageContracts) {
+        setError(t('contracts.alerts.errorOccurred'));
+        setContracts([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
-    void loadContracts();
+    const isFresh = cachedManageContracts && (Date.now() - lastManageContractsFetchTime < CACHE_TTL_MS);
+    if (!isFresh || !cachedManageContracts) {
+      void loadContracts(Boolean(cachedManageContracts));
+    }
   }, [loadContracts]);
 
   // Reset pagination when search or status filter changes

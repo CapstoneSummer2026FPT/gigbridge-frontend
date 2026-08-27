@@ -28,11 +28,15 @@ export const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay =
   };
 };
 
+let cachedFreelancerContracts: ContractWithMilestones[] | null = null;
+let lastFreelancerContractsFetchTime = 0;
+const CACHE_TTL_MS = 60_000; // 1 minute
+
 export function useFreelancerContracts() {
   const navigate = useNavigate();
   const { t } = useTranslation(['contracts', 'common']);
-  const [contracts, setContracts] = useState<ContractWithMilestones[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [contracts, setContracts] = useState<ContractWithMilestones[]>(() => cachedFreelancerContracts || []);
+  const [loading, setLoading] = useState(() => !cachedFreelancerContracts);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<ContractStatus | 'All'>('All');
@@ -41,9 +45,11 @@ export function useFreelancerContracts() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const loadContracts = useCallback(async () => {
+  const loadContracts = useCallback(async (isSilent = Boolean(cachedFreelancerContracts)) => {
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError(null);
 
       const params: ContractQueryParams = {
@@ -54,7 +60,7 @@ export function useFreelancerContracts() {
       const response = await contractGetAPI.getMyContracts(params);
 
       if (!response.success) {
-        setContracts([]);
+        if (!cachedFreelancerContracts) setContracts([]);
         setError(response.message || t('contracts.unableToLoadContract'));
         return;
       }
@@ -72,17 +78,24 @@ export function useFreelancerContracts() {
         })
       );
 
+      cachedFreelancerContracts = contractsWithMilestones;
+      lastFreelancerContractsFetchTime = Date.now();
       setContracts(contractsWithMilestones);
     } catch {
-      setError(t('contracts.alerts.errorOccurred'));
-      setContracts([]);
+      if (!cachedFreelancerContracts) {
+        setError(t('contracts.alerts.errorOccurred'));
+        setContracts([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
-    void loadContracts();
+    const isFresh = cachedFreelancerContracts && (Date.now() - lastFreelancerContractsFetchTime < CACHE_TTL_MS);
+    if (!isFresh || !cachedFreelancerContracts) {
+      void loadContracts(Boolean(cachedFreelancerContracts));
+    }
   }, [loadContracts]);
 
   // Reset pagination when search, status, or sort changes

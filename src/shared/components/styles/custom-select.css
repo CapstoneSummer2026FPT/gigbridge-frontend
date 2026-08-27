@@ -245,3 +245,29 @@
   right: 0;
   left: auto;
 }
+
+/* Pill variant for horizontal filter bars */
+.cs-container.cs-pill {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.cs-container.cs-pill .cs-trigger {
+  height: 38px;
+  border-radius: 12px;
+  background: var(--gb-bg-tertiary, var(--surface-muted, #f1f1f3));
+  border: 1px solid var(--gb-border, var(--border, #ededf0));
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.cs-container.cs-pill .cs-trigger:hover:not(:disabled) {
+  border-color: var(--brand, #494be7);
+}
+
+.cs-container.cs-pill .cs-popover {
+  min-width: 220px;
+}
