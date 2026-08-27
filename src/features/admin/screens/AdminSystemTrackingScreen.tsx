@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import * as signalR from '@microsoft/signalr';
 import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
@@ -12,7 +11,7 @@ import type { AdminJobPostListResponse, JobPostSummaryDto } from '../../../types
 import type { ProposalDto } from '../../../types/models/Proposal';
 import type { AdminAuditLog, PageResult } from '../../../types/models/AdminPhase1';
 import type { SystemTrackingSnapshot } from '../../../types/systemTracking';
-import { getSystemTrackingHubUrl } from '../../../service/apiService';
+import { createSystemTrackingHubConnection } from '../services/systemTrackingHubConnection';
 import '../styles/admin-users-screen.css';
 
 type TabType = 'overview' | 'audit' | 'errors' | 'alerts' | 'ai-usage';
@@ -327,12 +326,7 @@ export default function AdminSystemTrackingScreen() {
   useEffect(() => {
     let disposed = false;
     let refreshTimer: number | undefined;
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(getSystemTrackingHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
-      .build();
+    const connection = createSystemTrackingHubConnection();
 
     const scheduleRefresh = () => {
       window.clearTimeout(refreshTimer);

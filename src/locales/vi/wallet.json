@@ -27,6 +27,8 @@
       "updateBtn": "Cập nhật tài khoản",
       "cancelBtn": "Hủy sửa",
       "savedAccountsTitle": "Tài khoản đã lưu",
+      "formSubtitle": "Liên kết ngân hàng chính chủ để rút tiền tự động 24/7",
+      "savedSubtitle": "Đã liên kết {{count}} tài khoản ngân hàng",
       "loadingAccounts": "Đang tải tài khoản...",
       "noAccounts": "Chưa có tài khoản ngân hàng.",
       "noBanksFound": "Không tìm thấy ngân hàng phù hợp.",
@@ -48,6 +50,8 @@
       "deleteError": "Không thể xóa tài khoản đang dùng cho lệnh rút tiền.",
       "errorLoadAccounts": "Không thể tải tài khoản ngân hàng.",
       "errorLoadBanks": "Không thể tải danh sách ngân hàng.",
+      "directoryUnavailable": "Danh mục ngân hàng VietQR đang tạm thời không khả dụng. Vui lòng thử lại sau.",
+      "directoryUnavailableExisting": "Danh mục ngân hàng VietQR đang tạm thời không khả dụng. Bạn vẫn có thể rút tiền bằng tài khoản hợp lệ đã lưu.",
       "errorSaveAccount": "Không thể lưu tài khoản ngân hàng.",
       "errorDefaultAccount": "Không thể đặt tài khoản mặc định."
     },

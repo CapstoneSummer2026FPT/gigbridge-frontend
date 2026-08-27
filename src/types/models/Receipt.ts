@@ -15,6 +15,7 @@ export interface ProjectReceiptSummary {
   canRetry: boolean;
   generatedAt?: string | null;
   emailedAt?: string | null;
+  revision: number;
 }
 
 export interface ProjectReceiptPage {

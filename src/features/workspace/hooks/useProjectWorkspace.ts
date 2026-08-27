@@ -14,9 +14,9 @@ import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Mil
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import {
-  getChatHubUrl,
   type UploadTransferProgress,
 } from '../../../service/apiService';
+import { onChatHubReconnected, retainChatHubConnection } from '../../../shared/realtime/chatHubConnection';
 import {
   buildMilestoneSubmissionFormData,
   type MilestoneSubmissionPayload,
@@ -618,13 +618,8 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(getChatHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const lease = retainChatHubConnection();
+    const connection = lease.connection;
 
     const joinCurrentConversation = async (): Promise<void> => {
       const conversationId = conversationIdRef.current;
@@ -730,22 +725,16 @@ export function useProjectWorkspace(initialContractId: string) {
       connection.on(evt, handleProductHandoffEvent);
     });
 
-    connection.onreconnected(() => {
+    const stopReconnect = onChatHubReconnected(() => {
       if (!disposed) {
         void joinCurrentConversation();
         void reloadActiveWorkspace();
       }
     });
-    connection.onclose(error => {
-      if (!disposed && error) console.warn('[WorkspaceChatHub] disconnected', error);
-    });
 
-    void connection.start()
+    void lease.ready
       .then(() => {
-        if (disposed) {
-          void connection.stop();
-          return;
-        }
+        if (disposed) return;
         chatConnectionRef.current = connection;
         void joinCurrentConversation();
       })
@@ -764,8 +753,9 @@ export function useProjectWorkspace(initialContractId: string) {
       productHandoffEvents.forEach(evt => {
         connection.off(evt, handleProductHandoffEvent);
       });
+      stopReconnect();
       if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
-      void connection.stop();
+      lease.release();
     };
   }, [user?.id, debouncedReloadActiveWorkspace]);
 
@@ -1089,6 +1079,21 @@ export function useProjectWorkspace(initialContractId: string) {
     };
   };
 
+  const handleClaimFinalPayout = async (): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || isClient || activeContract?.status !== ContractStatus.Completed) {
+      return { success: false, message: 'Final payout is not available.' };
+    }
+
+    const response = await contractPostAPI.claimFinalPayout(activeProjectId);
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to claim final payout.' };
+    }
+
+    await reloadActiveWorkspace();
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    return { success: true, message: response.message };
+  };
+
   const handleSubmitProductHandoff = async (
     payload: SubmitProductHandoffPayload,
     lifecycle: WorkspaceUploadLifecycle = {},
@@ -1169,6 +1174,7 @@ export function useProjectWorkspace(initialContractId: string) {
     handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,
+    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,

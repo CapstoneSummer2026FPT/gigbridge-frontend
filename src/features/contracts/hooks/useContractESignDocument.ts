@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { ContractStatus } from '../../../types/models/Contract';
-import { ESignDocumentStatus, type ESignDocumentDto } from '../../../types/models/ESign';
-import { useESignDocumentChangedEvent } from './useESignDocumentChangedEvent';
+import type { ESignDocumentStatusDto } from '../../../types/models/ESign';
+import { useESignDocumentRevisionEvent } from './useESignDocumentRevisionEvent';
 
-const WATCHDOG_INTERVAL_MS = 120_000;
+const SUSPENDED_TAB_RESYNC_MS = 30_000;
 
 export interface ContractESignDocumentState {
-  document: ESignDocumentDto | null;
+  document: ESignDocumentStatusDto | null;
   isLoading: boolean;
   isNotFound: boolean;
   error: string | null;
@@ -28,111 +28,123 @@ export function useContractESignDocument(
   contractId: string | null | undefined,
   enabled: boolean
 ): ContractESignDocumentState {
-  const [document, setDocument] = useState<ESignDocumentDto | null>(null);
+  const [document, setDocument] = useState<ESignDocumentStatusDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isNotFound, setIsNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [requestVersion, setRequestVersion] = useState(0);
-  const pendingPushRef = useRef<ESignDocumentDto | null>(null);
+  const documentRef = useRef<ESignDocumentStatusDto | null>(null);
+  const activeRequestRef = useRef<Promise<void> | null>(null);
+  const pendingRefreshRef = useRef(false);
+  const pendingRevisionRef = useRef<number | null>(null);
+  const generationRef = useRef(0);
+  const hiddenAtRef = useRef<number | null>(null);
 
-  const retry = useCallback(() => {
-    setRequestVersion(version => version + 1);
-  }, []);
-
-  useEffect(() => {
-    let isCancelled = false;
-    pendingPushRef.current = null;
-
-    if (!enabled || !contractId) {
-      setDocument(null);
-      setIsLoading(false);
-      setIsNotFound(false);
-      setError(null);
-      return () => {
-        isCancelled = true;
-      };
+  const loadStatus = useCallback((showLoading = false, requestedRevision?: number): Promise<void> => {
+    if (!enabled || !contractId) return Promise.resolve();
+    if (activeRequestRef.current) {
+      if (requestedRevision === undefined) {
+        pendingRefreshRef.current = true;
+      } else if (requestedRevision > (pendingRevisionRef.current ?? documentRef.current?.revision ?? -1)) {
+        pendingRevisionRef.current = requestedRevision;
+      }
+      return activeRequestRef.current;
     }
 
-    const loadDocument = async (): Promise<void> => {
-      setIsLoading(true);
-      if (!document) {
-        setIsNotFound(false);
-        setError(null);
-      }
+    const generation = generationRef.current;
+    if (showLoading || !documentRef.current) setIsLoading(true);
 
-      const response = await esignGetAPI.getDocumentByContract(contractId);
-      if (isCancelled) return;
-
-      if (response.success && response.data) {
-        const pending = pendingPushRef.current;
-        pendingPushRef.current = null;
-        const resolved =
-          pending && (pending.contentRevision ?? 0) > (response.data.contentRevision ?? 0)
-            ? { ...pending, renderedHtmlContent: response.data.renderedHtmlContent }
-            : response.data;
-        setDocument(resolved);
-        setIsLoading(false);
-        setError(null);
-        setIsNotFound(false);
-        return;
-      }
-
-      setIsLoading(false);
-      if (!document) {
-        setDocument(null);
-        if (response.statusCode === 404) {
-          setIsNotFound(true);
+    const request = esignGetAPI.getDocumentStatusByContract(contractId)
+      .then(response => {
+        if (generation !== generationRef.current) return;
+        if (response.success && response.data) {
+          documentRef.current = response.data;
+          setDocument(response.data);
+          setError(null);
+          setIsNotFound(false);
           return;
         }
 
-        setError(response.message || 'Failed to load the E-sign contract document.');
-      }
-    };
+        if (response.statusCode === 404) {
+          documentRef.current = null;
+          setDocument(null);
+          setIsNotFound(true);
+          setError(null);
+          return;
+        }
 
-    void loadDocument();
+        setError(response.message || 'Failed to load the E-sign contract status.');
+      })
+      .finally(() => {
+        if (activeRequestRef.current !== request) return;
+        if (generation === generationRef.current) setIsLoading(false);
+        activeRequestRef.current = null;
+        const pendingRevision = pendingRevisionRef.current;
+        pendingRevisionRef.current = null;
+        const revisionStillMissing = pendingRevision !== null &&
+          pendingRevision > (documentRef.current?.revision ?? -1);
+        if ((pendingRefreshRef.current || revisionStillMissing) && generation === generationRef.current) {
+          pendingRefreshRef.current = false;
+          void loadStatus(false);
+        }
+      });
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [contractId, enabled, requestVersion]);
-
-  const isAwaitingSignatures =
-    document?.status === ESignDocumentStatus.PendingSignatures ||
-    document?.status === ESignDocumentStatus.PartiallySigned;
+    activeRequestRef.current = request;
+    return request;
+  }, [contractId, enabled]);
 
   useEffect(() => {
-    if (!enabled || !contractId || !isAwaitingSignatures) {
-      return undefined;
-    }
+    generationRef.current += 1;
+    activeRequestRef.current = null;
+    pendingRefreshRef.current = false;
+    pendingRevisionRef.current = null;
+    documentRef.current = null;
+    setDocument(null);
+    setError(null);
+    setIsNotFound(false);
+    setIsLoading(false);
 
-    const watchdogTimer = window.setInterval(() => {
-      if (window.document.visibilityState === 'visible') {
-        setRequestVersion(version => version + 1);
+    if (enabled && contractId) void loadStatus(true);
+  }, [contractId, enabled, loadStatus]);
+
+  const retry = useCallback(() => {
+    void loadStatus(true);
+  }, [loadStatus]);
+
+  const handleRevisionChanged = useCallback((event: { revision: number; changeKind: 'upsert' | 'deleted' }) => {
+    const currentRevision = documentRef.current?.revision ?? -1;
+    if (event.revision <= currentRevision) return;
+    void loadStatus(false, event.revision);
+  }, [loadStatus]);
+
+  const handleReconnect = useCallback(() => {
+    void loadStatus(false);
+  }, [loadStatus]);
+
+  useESignDocumentRevisionEvent(
+    contractId,
+    enabled,
+    handleRevisionChanged,
+    handleReconnect,
+  );
+
+  useEffect(() => {
+    if (!enabled || !contractId) return undefined;
+    const handleVisibilityChange = (): void => {
+      if (window.document.visibilityState === 'hidden') {
+        hiddenAtRef.current = Date.now();
+        return;
       }
-    }, WATCHDOG_INTERVAL_MS);
 
-    return () => window.clearInterval(watchdogTimer);
-  }, [contractId, enabled, isAwaitingSignatures]);
-
-  const handleDocumentChanged = useCallback((status: ESignDocumentDto) => {
-    setDocument(previous => {
-      if (!previous) {
-        const pending = pendingPushRef.current;
-        if (!pending || (status.contentRevision ?? 0) > (pending.contentRevision ?? 0)) {
-          pendingPushRef.current = status;
-        }
-        return previous;
+      const hiddenAt = hiddenAtRef.current;
+      hiddenAtRef.current = null;
+      if (hiddenAt !== null && Date.now() - hiddenAt >= SUSPENDED_TAB_RESYNC_MS) {
+        void loadStatus(false);
       }
-      const previousRevision = previous.contentRevision ?? 0;
-      const incomingRevision = status.contentRevision ?? 0;
-      if (incomingRevision <= previousRevision) {
-        return previous;
-      }
-      return { ...status, renderedHtmlContent: previous.renderedHtmlContent };
-    });
-  }, []);
+    };
 
-  useESignDocumentChangedEvent(contractId, enabled, handleDocumentChanged);
+    window.document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => window.document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [contractId, enabled, loadStatus]);
 
   return { document, isLoading, isNotFound, error, retry };
 }

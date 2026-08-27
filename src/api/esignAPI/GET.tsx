@@ -2,10 +2,12 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
   ESignDocumentDto,
+  ESignDocumentStatusDto,
   ESignDocumentListItemDto,
   ESignDocumentListPageDto,
   ESignDocumentListQueryParams,
   ESignSignatureDto,
+  ESignSignatureStatusDto,
   SignatureAuditTrail,
 } from '../../types/models/ESign';
 
@@ -89,6 +91,41 @@ interface BackendESignDocumentResponse {
   CreatedAt?: string;
   updatedAt?: string | null;
   UpdatedAt?: string | null;
+  signatures?: BackendESignSignatureResponse[];
+  Signatures?: BackendESignSignatureResponse[];
+}
+
+interface BackendESignDocumentStatusResponse {
+  documentId?: string;
+  DocumentId?: string;
+  contractId?: string | null;
+  ContractId?: string | null;
+  status?: number;
+  Status?: number;
+  revision?: number;
+  Revision?: number;
+  createdAt?: string;
+  CreatedAt?: string;
+  updatedAt?: string | null;
+  UpdatedAt?: string | null;
+  expiresAt?: string | null;
+  ExpiresAt?: string | null;
+  finalizedAt?: string | null;
+  FinalizedAt?: string | null;
+  currentUserSignerRole?: number | null;
+  CurrentUserSignerRole?: number | null;
+  canCurrentUserSign?: boolean;
+  CanCurrentUserSign?: boolean;
+  hasDocxArtifact?: boolean;
+  HasDocxArtifact?: boolean;
+  hasPdfArtifact?: boolean;
+  HasPdfArtifact?: boolean;
+  pdfSizeBytes?: number | null;
+  PdfSizeBytes?: number | null;
+  semanticHash?: string | null;
+  SemanticHash?: string | null;
+  signatureCount?: number;
+  SignatureCount?: number;
   signatures?: BackendESignSignatureResponse[];
   Signatures?: BackendESignSignatureResponse[];
 }
@@ -223,6 +260,53 @@ export const normalizeESignDocument = (
   };
 };
 
+const normalizeESignSignatureStatus = (
+  signature: BackendESignSignatureResponse
+): ESignSignatureStatusDto => {
+  const source = signature as Record<string, unknown>;
+  return {
+    signatureId: String(getValue(source, 'signatureId', 'SignatureId') ?? ''),
+    documentId: String(getValue(source, 'documentId', 'DocumentId') ?? ''),
+    userId: String(getValue(source, 'userId', 'UserId') ?? ''),
+    signerRole: Number(getValue(source, 'signerRole', 'SignerRole') ?? 0),
+    status: Number(getValue(source, 'status', 'Status') ?? 0),
+    isDraftValid: Boolean(getValue<boolean>(source, 'isDraftValid', 'IsDraftValid') ?? false),
+    signedAt: getValue<string | null>(source, 'signedAt', 'SignedAt') ?? null,
+    draftSubmittedAt: getValue<string | null>(source, 'draftSubmittedAt', 'DraftSubmittedAt') ?? null,
+    signatureImageUrl: getValue<string | null>(source, 'signatureImageUrl', 'SignatureImageUrl') ?? null,
+    signatureWidth: getValue<number | null>(source, 'signatureWidth', 'SignatureWidth') ?? null,
+    signatureHeight: getValue<number | null>(source, 'signatureHeight', 'SignatureHeight') ?? null,
+    identityOrTaxCode: getValue<string | null>(source, 'identityOrTaxCode', 'IdentityOrTaxCode') ?? null,
+  };
+};
+
+export const normalizeESignDocumentStatus = (
+  document: BackendESignDocumentStatusResponse
+): ESignDocumentStatusDto => {
+  const source = document as Record<string, unknown>;
+  const signatures = getValue<BackendESignSignatureResponse[]>(source, 'signatures', 'Signatures') ?? [];
+  const signerRole = getValue<number>(source, 'currentUserSignerRole', 'CurrentUserSignerRole');
+
+  return {
+    documentId: String(getValue(source, 'documentId', 'DocumentId') ?? ''),
+    contractId: getValue<string | null>(source, 'contractId', 'ContractId') ?? null,
+    status: Number(getValue(source, 'status', 'Status') ?? 0),
+    revision: Number(getValue(source, 'revision', 'Revision') ?? 0),
+    createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
+    updatedAt: getValue<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
+    expiresAt: getValue<string | null>(source, 'expiresAt', 'ExpiresAt') ?? null,
+    finalizedAt: getValue<string | null>(source, 'finalizedAt', 'FinalizedAt') ?? null,
+    currentUserSignerRole: signerRole === undefined ? null : Number(signerRole),
+    canCurrentUserSign: Boolean(getValue<boolean>(source, 'canCurrentUserSign', 'CanCurrentUserSign') ?? false),
+    hasDocxArtifact: Boolean(getValue<boolean>(source, 'hasDocxArtifact', 'HasDocxArtifact') ?? false),
+    hasPdfArtifact: Boolean(getValue<boolean>(source, 'hasPdfArtifact', 'HasPdfArtifact') ?? false),
+    pdfSizeBytes: getValue<number | null>(source, 'pdfSizeBytes', 'PdfSizeBytes') ?? null,
+    semanticHash: getValue<string | null>(source, 'semanticHash', 'SemanticHash') ?? null,
+    signatureCount: Number(getValue(source, 'signatureCount', 'SignatureCount') ?? signatures.length),
+    signatures: signatures.map(normalizeESignSignatureStatus),
+  };
+};
+
 const normalizeESignDocumentListItem = (
   document: BackendESignDocumentListItemResponse
 ): ESignDocumentListItemDto => {
@@ -278,6 +362,13 @@ const normalizeDocumentResponse = (
 ): ApiResponse<ESignDocumentDto> => ({
   ...response,
   data: response.data ? normalizeESignDocument(response.data) : undefined,
+});
+
+const normalizeDocumentStatusResponse = (
+  response: ApiResponse<BackendESignDocumentStatusResponse>
+): ApiResponse<ESignDocumentStatusDto> => ({
+  ...response,
+  data: response.data ? normalizeESignDocumentStatus(response.data) : undefined,
 });
 
 const normalizeSignaturesResponse = (
@@ -339,6 +430,16 @@ export const esignGetAPI = {
       `${esignUrl}/documents/by-contract/${contractId}`
     );
     return normalizeDocumentResponse(response);
+  },
+
+  /** GET /api/ESign/documents/by-contract/{contractId}/status */
+  getDocumentStatusByContract: async (
+    contractId: string
+  ): Promise<ApiResponse<ESignDocumentStatusDto>> => {
+    const response = await apiService.get<BackendESignDocumentStatusResponse>(
+      `${esignUrl}/documents/by-contract/${contractId}/status`
+    );
+    return normalizeDocumentStatusResponse(response);
   },
 
   /** GET /api/ESign/documents/my */

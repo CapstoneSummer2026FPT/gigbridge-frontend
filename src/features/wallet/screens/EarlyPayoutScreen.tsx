@@ -15,6 +15,10 @@ import {
   Sparkles,
   Wallet,
   XCircle,
+  Zap,
+  Copy,
+  Check,
+  Search,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { GigCoinAmount, GigCoinLogo } from '../../../shared/components/GigCoinAmount';
@@ -29,9 +33,11 @@ import type {
   WithdrawalSettingsResponse,
 } from '../../../types';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { toast } from 'sonner';
 import '../styles/early-payout-screen.css';
 
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000, 5000];
+const PERCENTAGE_PRESETS = [0.25, 0.5, 0.75, 1];
 
 function formatVnd(amount: number): string {
   return `${new Intl.NumberFormat('vi-VN').format(Math.round(amount))} đ`;
@@ -57,37 +63,37 @@ function getStatusMeta(status: WithdrawalStatus, t: any) {
     case WithdrawalStatus.Pending:
       return {
         label: t('withdrawalsScreen.statusPending', { defaultValue: 'Đang xử lý' }),
-        badgeClass: 'bg-amber-600 text-white shadow-xs',
+        badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30',
       };
     case WithdrawalStatus.Processing:
       return {
         label: t('withdrawalsScreen.statusProcessing', { defaultValue: 'Đang xử lý tự động' }),
-        badgeClass: 'bg-blue-600 text-white shadow-xs',
+        badgeClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30',
       };
     case WithdrawalStatus.SyncRequired:
       return {
         label: t('withdrawalsScreen.statusSyncRequired', { defaultValue: 'Đồng bộ lại' }),
-        badgeClass: 'bg-indigo-600 text-white shadow-xs',
+        badgeClass: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30',
       };
     case WithdrawalStatus.Success:
       return {
         label: t('withdrawalsScreen.statusSuccess', { defaultValue: 'Thành công' }),
-        badgeClass: 'bg-emerald-600 text-white shadow-xs',
+        badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30',
       };
     case WithdrawalStatus.Failed:
       return {
         label: t('withdrawalsScreen.statusFailed', { defaultValue: 'Thất bại' }),
-        badgeClass: 'bg-rose-600 text-white shadow-xs',
+        badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30',
       };
     case WithdrawalStatus.Cancelled:
       return {
         label: t('withdrawalsScreen.statusCancelled', { defaultValue: 'Đã hủy' }),
-        badgeClass: 'bg-zinc-700 text-white shadow-xs',
+        badgeClass: 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border border-zinc-500/30',
       };
     default:
       return {
         label: t('withdrawalsScreen.statusProcessing', { defaultValue: 'Đang xử lý' }),
-        badgeClass: 'bg-blue-600 text-white shadow-xs',
+        badgeClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30',
       };
   }
 }
@@ -111,6 +117,9 @@ export default function EarlyPayoutScreen() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'success' | 'processing' | 'failed'>('all');
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
   const withdrawalDraftRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   const activeBankAccounts = useMemo(
@@ -137,7 +146,8 @@ export default function EarlyPayoutScreen() {
   const withdrawableTokens = wallet?.withdrawableGigCoin ?? 0;
   const nonWithdrawableTokens = depositedTokens;
   const feeVnd = settings?.fixedFeeVnd ?? 0;
-  const vndAmount = amountValue * (settings?.vndPerToken ?? 1000);
+  const vndPerToken = settings?.vndPerToken ?? 1000;
+  const vndAmount = amountValue * vndPerToken;
   const netVnd = Math.max(0, vndAmount - feeVnd);
   const hasEnoughBalance = wallet ? amountValue <= withdrawableTokens : false;
   const withdrawMax = Math.min(settings?.maxTokens ?? withdrawableTokens, settings?.dailyMaxTokens ?? withdrawableTokens, withdrawableTokens);
@@ -246,32 +256,70 @@ export default function EarlyPayoutScreen() {
     setSyncingId(null);
   };
 
+  const handleApplyPercentage = (pct: number) => {
+    if (withdrawMax <= 0) return;
+    const computed = Math.floor(withdrawMax * pct);
+    setAmount(String(computed));
+  };
+
+  const handleCopyOrderId = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedOrderId(code);
+    toast.success(t('common.copied', { defaultValue: 'Đã sao chép mã giao dịch' }));
+    setTimeout(() => setCopiedOrderId(null), 2000);
+  };
+
+  // Filtered History Records
+  const filteredWithdrawals = useMemo(() => {
+    return withdrawals.filter(w => {
+      // Tab status filter
+      if (historyFilter === 'success' && w.status !== WithdrawalStatus.Success) return false;
+      if (historyFilter === 'failed' && (w.status !== WithdrawalStatus.Failed && w.status !== WithdrawalStatus.Cancelled)) return false;
+      if (historyFilter === 'processing' && (w.status !== WithdrawalStatus.Pending && w.status !== WithdrawalStatus.Processing && w.status !== WithdrawalStatus.SyncRequired)) return false;
+
+      // Query filter
+      if (historySearchQuery.trim()) {
+        const q = historySearchQuery.toLowerCase().trim();
+        const matchCode = (w.providerOrderCode || w.withdrawalId).toLowerCase().includes(q);
+        const matchBank = w.bankName.toLowerCase().includes(q);
+        const matchAccount = w.bankAccountNumberMasked.toLowerCase().includes(q);
+        const matchHolder = w.bankAccountName.toLowerCase().includes(q);
+        return matchCode || matchBank || matchAccount || matchHolder;
+      }
+
+      return true;
+    });
+  }, [withdrawals, historyFilter, historySearchQuery]);
+
   return (
     <AppLayout>
-      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+      <div className="eps-container">
         {/* Header Section */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-6">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2">
+        <div className="eps-header">
+          <div className="eps-header-left">
+            <div className="eps-header-badges">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="p-1.5 rounded-xl border border-border bg-surface-card hover:bg-surface-muted text-text-muted hover:text-text-primary transition cursor-pointer"
-                title="Go back"
+                className="p-1.5 rounded-xl border border-border bg-surface hover:bg-surface-muted text-text-muted hover:text-text-primary transition cursor-pointer"
+                title="Quay lại"
               >
                 <ArrowLeft size={16} />
               </button>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
-                <Sparkles size={12} /> {t('withdrawalsScreen.badgeLabel', { defaultValue: 'Withdrawal Center' })}
+              <span className="eps-badge-pill eps-badge-primary">
+                <Sparkles size={12} /> {t('withdrawalsScreen.badgeLabel', { defaultValue: 'Trung Tâm Rút Tiền' })}
               </span>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
-                <Coins size={11} /> {t('withdrawalsScreen.rateNotice', { defaultValue: '1 GigCoin = 1,000 VNĐ' })}
+              <span className="eps-badge-pill eps-badge-rate">
+                <Coins size={12} /> {t('withdrawalsScreen.rateNotice', { defaultValue: '1 GigCoin = 1,000 VNĐ' })}
+              </span>
+              <span className="eps-badge-pill eps-badge-secondary hidden sm:inline-flex">
+                <Zap size={12} /> NAPAS 24/7 Auto Payout
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">
+            <h1 className="eps-title">
               {t('withdrawalsScreen.title', { defaultValue: 'Rút Tiền Về Ngân Hàng' })}
             </h1>
-            <p className="text-xs text-text-muted font-medium">
+            <p className="eps-subtitle">
               {t('withdrawalsScreen.subtitle', { defaultValue: 'Chuyển thu nhập GigCoin đã kiếm được về tài khoản ngân hàng chính chủ của bạn 24/7.' })}
             </p>
           </div>
@@ -280,10 +328,10 @@ export default function EarlyPayoutScreen() {
             type="button"
             onClick={() => void loadData()}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-surface-card text-xs font-black text-text-primary hover:bg-surface-muted transition cursor-pointer shadow-2xs disabled:opacity-50"
+            className="eps-refresh-btn"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin text-brand' : 'text-brand'} />
-            {t('withdrawalsScreen.refreshData', { defaultValue: 'Làm mới dữ liệu' })}
+            <span>{t('withdrawalsScreen.refreshData', { defaultValue: 'Làm mới dữ liệu' })}</span>
           </button>
         </div>
 
@@ -314,199 +362,140 @@ export default function EarlyPayoutScreen() {
           </div>
         ) : (
           <>
-            {/* Wallet Balance Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Earned (Withdrawable) Balance Card */}
-              <div className="group relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-[var(--surface-card,#ffffff)] to-[var(--surface-card,#ffffff)] p-5 space-y-3 shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
-                    <Banknote size={13} /> {t('withdrawalsScreen.statEarned', { defaultValue: 'Có thể rút (Earned)' })}
+            {/* Wallet Balance Hero Bento Grid */}
+            <div className="eps-balance-grid">
+              {/* Earned (Withdrawable) Balance Hero Card */}
+              <div className="eps-hero-card">
+                <div className="eps-hero-top">
+                  <span className="eps-hero-badge">
+                    <Banknote size={13} /> {t('withdrawalsScreen.statEarned', { defaultValue: 'Thu nhập có thể rút' })}
                   </span>
-                  <span className="flex h-2.5 w-2.5 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  <span className="eps-live-dot">
+                    <span className="eps-live-dot-ping" />
+                    <span className="eps-live-dot-core" />
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 pt-1">
-                  <GigCoinLogo size={24} />
-                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-                    {withdrawableTokens.toLocaleString('vi-VN')}
-                  </span>
-                  <span className="text-xs font-black text-emerald-600/70">GigCoin</span>
+
+                <div>
+                  <div className="eps-hero-amount-row">
+                    <GigCoinLogo size={26} />
+                    <span className="eps-hero-amount">
+                      {withdrawableTokens.toLocaleString('vi-VN')}
+                    </span>
+                    <span className="eps-hero-currency">GigCoin</span>
+                  </div>
                 </div>
-                <div className="pt-2 border-t border-emerald-500/20 flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-text-muted">Giá trị VNĐ</span>
-                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-600/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                    {formatVnd(wallet?.withdrawableGigCoinVnd ?? 0)}
+
+                <div className="eps-hero-bottom">
+                  <span className="eps-hero-vnd-badge">
+                    ≈ {formatVnd(wallet?.withdrawableGigCoinVnd ?? 0)}
                   </span>
+                  {withdrawableTokens > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(withdrawMax))}
+                      className="eps-hero-withdraw-all-btn"
+                    >
+                      <Zap size={11} />
+                      <span>Rút tối đa</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Deposited Pool Card */}
-              <div className="group relative overflow-hidden rounded-3xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/10 via-[var(--surface-card,#ffffff)] to-[var(--surface-card,#ffffff)] p-5 space-y-3 shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
-                    <Wallet size={13} /> {t('withdrawalsScreen.statDeposited', { defaultValue: 'Đã nạp (Deposited)' })}
+              <div className="eps-metric-card">
+                <div className="eps-metric-top">
+                  <span className="eps-metric-badge eps-metric-badge-indigo">
+                    <Wallet size={12} /> {t('withdrawalsScreen.statDeposited', { defaultValue: 'Đã nạp' })}
                   </span>
+                  <span className="text-[10px] font-bold text-text-muted">{t('withdrawalsScreen.statDepositedNote', { defaultValue: '(Không rút)' })}</span>
                 </div>
-                <div className="flex items-baseline gap-2 pt-1">
-                  <GigCoinLogo size={24} />
-                  <span className="text-2xl font-black text-text-primary tracking-tight">
+                <div className="eps-metric-amount-row">
+                  <GigCoinLogo size={20} />
+                  <span className="eps-metric-amount">
                     {depositedTokens.toLocaleString('vi-VN')}
                   </span>
-                  <span className="text-xs font-black text-text-muted">GigCoin</span>
                 </div>
-                <div className="pt-2 border-t border-indigo-500/20 flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-bold text-text-muted">Giá trị VNĐ</span>
-                  <span className="text-xs font-bold text-text-muted">
-                    {formatVnd(wallet?.depositedGigCoinVnd ?? 0)} <span className="text-[10px] text-text-muted/70">{t('withdrawalsScreen.statDepositedNote', { defaultValue: '(Không rút)' })}</span>
-                  </span>
+                <div className="eps-metric-bottom">
+                  <span>Giá trị VNĐ</span>
+                  <span className="font-bold text-text-primary">{formatVnd(wallet?.depositedGigCoinVnd ?? 0)}</span>
                 </div>
               </div>
 
               {/* Escrow Held Card */}
-              <div className="group relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-amber-500/10 via-[var(--surface-card,#ffffff)] to-[var(--surface-card,#ffffff)] p-5 space-y-3 shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
-                    <ShieldCheck size={13} /> {t('withdrawalsScreen.statEscrow', { defaultValue: 'Escrow Bảo Chứng' })}
+              <div className="eps-metric-card">
+                <div className="eps-metric-top">
+                  <span className="eps-metric-badge eps-metric-badge-amber">
+                    <ShieldCheck size={12} /> {t('withdrawalsScreen.statEscrow', { defaultValue: 'Ký quỹ Escrow' })}
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 pt-1">
-                  <GigCoinLogo size={24} />
-                  <span className="text-2xl font-black text-text-primary tracking-tight">
+                <div className="eps-metric-amount-row">
+                  <GigCoinLogo size={20} />
+                  <span className="eps-metric-amount">
                     {(wallet?.heldGigCoin || 0).toLocaleString('vi-VN')}
                   </span>
-                  <span className="text-xs font-black text-text-muted">GigCoin</span>
                 </div>
-                <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-text-muted">Đang tạm giữ</span>
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                    {formatVnd(wallet?.heldGigCoinVnd || 0)}
-                  </span>
+                <div className="eps-metric-bottom">
+                  <span>Đang bảo chứng</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">{formatVnd(wallet?.heldGigCoinVnd || 0)}</span>
                 </div>
               </div>
 
               {/* Pending Withdrawal Card */}
-              <div className="group relative overflow-hidden rounded-3xl border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-[var(--surface-card,#ffffff)] to-[var(--surface-card,#ffffff)] p-5 space-y-3 shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
-                    <Clock size={13} /> {t('withdrawalsScreen.statPending', { defaultValue: 'Đang Chờ Xử Lý' })}
+              <div className="eps-metric-card">
+                <div className="eps-metric-top">
+                  <span className="eps-metric-badge eps-metric-badge-blue">
+                    <Clock size={12} /> {t('withdrawalsScreen.statPending', { defaultValue: 'Đang xử lý' })}
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 pt-1">
-                  <GigCoinLogo size={24} />
-                  <span className="text-2xl font-black text-text-primary tracking-tight">
+                <div className="eps-metric-amount-row">
+                  <GigCoinLogo size={20} />
+                  <span className="eps-metric-amount">
                     {(wallet?.pendingWithdrawalGigCoin || 0).toLocaleString('vi-VN')}
                   </span>
-                  <span className="text-xs font-black text-text-muted">GigCoin</span>
                 </div>
-                <div className="pt-2 border-t border-blue-500/20 flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-text-muted">Chờ giải ngân</span>
-                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                    {formatVnd(wallet?.pendingWithdrawalGigCoinVnd || 0)}
-                  </span>
+                <div className="eps-metric-bottom">
+                  <span>Chờ giải ngân</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">{formatVnd(wallet?.pendingWithdrawalGigCoinVnd || 0)}</span>
                 </div>
               </div>
             </div>
 
-            {/* SECTION 1: BANK ACCOUNT MANAGER (Full Width Spacious Container) */}
+            {/* SECTION 1: BANK ACCOUNT MANAGER (Full Width Hub) */}
             <section className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
-                  <CreditCard size={16} className="text-brand" />
-                  {t('withdrawalsScreen.bankManagerTitle', { defaultValue: 'Quản Lý Tài Khoản Ngân Hàng Nhận Tiền' })}
-                </h3>
-                <span className="text-[11px] font-bold text-text-muted">{t('withdrawalsScreen.bankManagerSubtitle', { defaultValue: 'Thêm & chọn ngân hàng liên kết nhận tiền' })}</span>
-              </div>
-              
-              <div className="rounded-3xl border border-border/80 bg-surface-card p-6 shadow-md overflow-hidden">
-                <BankAccountManager onBankAccountsChange={setBankAccounts} />
-              </div>
+              <BankAccountManager onBankAccountsChange={setBankAccounts} />
             </section>
 
-            {/* SECTION 2: CREATE WITHDRAWAL REQUEST & SUMMARY GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Form Column (8 cols) */}
-              <div className="lg:col-span-8 space-y-6">
-                <div className="rounded-3xl border border-border/80 bg-surface-card p-6 shadow-md space-y-5">
-                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-3 flex items-center gap-2">
-                    <Send size={16} className="text-brand" />
-                    {t('withdrawalsScreen.formTitle', { defaultValue: 'Tạo Lệnh Rút Tiền Về Ngân Hàng' })}
-                  </h3>
-
-                  {/* Quick Amount Tiles */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-black uppercase tracking-wider text-text-muted">
-                      {t('withdrawalsScreen.selectQuick', { defaultValue: 'Chọn nhanh số GigCoin' })}
-                    </label>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {QUICK_AMOUNTS.map(quickAmount => {
-                        const isDisabled =
-                          !settings?.enabled ||
-                          quickAmount > withdrawableTokens ||
-                          quickAmount > Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0);
-                        const isSelected = amountValue === quickAmount;
-
-                        return (
-                          <button
-                            key={quickAmount}
-                            type="button"
-                            disabled={isDisabled}
-                            onClick={() => setAmount(String(quickAmount))}
-                            className={`rounded-2xl py-2.5 px-2 text-center text-xs font-black transition-all cursor-pointer border ${
-                              isSelected
-                                ? 'border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-xs ring-2 ring-emerald-500/20'
-                                : 'border-border/80 bg-surface-card hover:bg-surface-muted text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'
-                            }`}
-                          >
-                            <GigCoinAmount amount={quickAmount} />
-                          </button>
-                        );
-                      })}
-                    </div>
+            {/* SECTION 2: CREATE WITHDRAWAL & SUMMARY WORKSPACE GRID */}
+            <div className="eps-workspace-grid">
+              {/* Form Column (Left) */}
+              <div className="space-y-6">
+                <div className="eps-section-card">
+                  <div className="eps-section-header">
+                    <h3 className="eps-section-title">
+                      <Send size={18} className="text-brand" />
+                      <span>{t('withdrawalsScreen.formTitle', { defaultValue: 'Tạo Lệnh Rút Tiền Về Ngân Hàng' })}</span>
+                    </h3>
                   </div>
 
-                  {/* Custom Amount Input */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-text-muted">
-                      <label htmlFor="withdraw-amount-input">{t('withdrawalsScreen.customAmountLabel', { defaultValue: 'Số GigCoin muốn rút' })}</label>
-                      <span>{t('withdrawalsScreen.maxWithdrawNotice', { max: withdrawMax.toLocaleString('vi-VN'), defaultValue: `Tối đa có thể rút: ${withdrawMax.toLocaleString('vi-VN')} G-coin` })}</span>
+                  {/* Step 1: Pick Destination Bank */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                        <CreditCard size={14} className="text-brand" />
+                        <span>{t('withdrawalsScreen.bankPickerLabel', { defaultValue: '1. Chọn tài khoản ngân hàng nhận tiền' })}</span>
+                      </label>
+                      <span className="text-[11px] font-bold text-text-muted">{activeBankAccounts.length} tài khoản khả dụng</span>
                     </div>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-brand text-sm font-extrabold">
-                        <GigCoinLogo size={18} />
-                      </span>
-                      <input
-                        id="withdraw-amount-input"
-                        type="number"
-                        value={amount}
-                        min={settings?.minTokens ?? 1}
-                        max={withdrawMax}
-                        step="0.0001"
-                        onChange={event => setAmount(event.target.value)}
-                        placeholder={t('withdrawalsScreen.customAmountPlaceholder', { defaultValue: 'Nhập số GigCoin...' })}
-                        className="w-full h-12 rounded-2xl border border-border/80 bg-surface-muted/30 pl-12 pr-4 text-sm font-bold text-text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-                      />
-                    </div>
-                    {nonWithdrawableTokens > 0 && (
-                      <p className="text-[11px] font-semibold text-text-muted italic px-1">
-                        {t('withdrawalsScreen.depositedNonWithdrawNotice', { amount: nonWithdrawableTokens.toLocaleString('vi-VN'), defaultValue: `* ${nonWithdrawableTokens.toLocaleString('vi-VN')} GigCoin từ nguồn đã nạp chỉ dùng thanh toán trong ứng dụng, không thể rút.` })}
-                      </p>
-                    )}
-                  </div>
 
-                  {/* Selected Bank Picker */}
-                  <div className="space-y-2 pt-2 border-t border-border/60">
-                    <label className="block text-xs font-black uppercase tracking-wider text-text-muted">
-                      {t('withdrawalsScreen.bankPickerLabel', { defaultValue: 'Tài khoản ngân hàng nhận tiền' })}
-                    </label>
                     {activeBankAccounts.length === 0 ? (
                       <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-3">
                         <AlertTriangle size={18} className="shrink-0" />
                         <span>{t('withdrawalsScreen.noBankWarning', { defaultValue: 'Chưa có tài khoản ngân hàng liên kết. Hãy thêm tài khoản ở phần trên trước khi tạo lệnh rút.' })}</span>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="eps-bank-picker-grid">
                         {activeBankAccounts.map(account => {
                           const isSelected = account.bankAccountId === selectedBankId;
                           return (
@@ -514,11 +503,7 @@ export default function EarlyPayoutScreen() {
                               key={account.bankAccountId}
                               type="button"
                               onClick={() => setSelectedBankId(account.bankAccountId)}
-                              className={`rounded-2xl p-4 text-left border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                                isSelected
-                                  ? 'border-brand bg-brand/10 shadow-xs ring-2 ring-brand/20'
-                                  : 'border-border/80 bg-surface-card hover:border-brand/40 hover:bg-surface-muted/40'
-                              }`}
+                              className={`eps-bank-select-card ${isSelected ? 'is-active' : ''}`}
                             >
                               <div className="flex items-center justify-between">
                                 <strong className="text-xs font-black text-text-primary">{account.bankName}</strong>
@@ -529,7 +514,7 @@ export default function EarlyPayoutScreen() {
                                 )}
                               </div>
                               <div className="text-xs text-text-muted font-medium">
-                                <div>{account.accountName}</div>
+                                <div className="font-bold text-text-primary">{account.accountName}</div>
                                 <div className="font-mono text-text-primary font-bold mt-0.5">{account.accountNumberMasked}</div>
                               </div>
                             </button>
@@ -538,87 +523,245 @@ export default function EarlyPayoutScreen() {
                       </div>
                     )}
                   </div>
+
+                  {/* Step 2: Withdrawal Amount Inputs */}
+                  <div className="space-y-4 pt-3 border-t border-border">
+                    <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-text-muted">
+                      <label htmlFor="withdraw-amount-input" className="flex items-center gap-1.5">
+                        <Coins size={14} className="text-brand" />
+                        <span>{t('withdrawalsScreen.customAmountLabel', { defaultValue: '2. Số GigCoin muốn rút' })}</span>
+                      </label>
+                      <span>{t('withdrawalsScreen.maxWithdrawNotice', { max: withdrawMax.toLocaleString('vi-VN'), defaultValue: `Tối đa có thể rút: ${withdrawMax.toLocaleString('vi-VN')} G-coin` })}</span>
+                    </div>
+
+                    {/* Percentage Preset Pills */}
+                    <div className="eps-quick-pills-row">
+                      {PERCENTAGE_PRESETS.map(pct => {
+                        const targetAmount = Math.floor(withdrawMax * pct);
+                        const isSelected = amountValue > 0 && amountValue === targetAmount;
+                        return (
+                          <button
+                            key={pct}
+                            type="button"
+                            disabled={withdrawMax <= 0}
+                            onClick={() => handleApplyPercentage(pct)}
+                            className={`eps-percentage-btn ${isSelected ? 'is-active' : ''}`}
+                          >
+                            {pct === 1 ? '100% (Tất cả)' : `${pct * 100}%`}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Quick Amount Tiles */}
+                    <div className="space-y-2">
+                      <span className="block text-[11px] font-bold text-text-muted">Hoặc chọn nhanh mệnh giá:</span>
+                      <div className="eps-quick-grid">
+                        {QUICK_AMOUNTS.map(quickAmount => {
+                          const isDisabled =
+                            !settings?.enabled ||
+                            quickAmount > withdrawableTokens ||
+                            quickAmount > Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0);
+                          const isSelected = amountValue === quickAmount;
+
+                          return (
+                            <button
+                              key={quickAmount}
+                              type="button"
+                              disabled={isDisabled}
+                              onClick={() => setAmount(String(quickAmount))}
+                              className={`eps-quick-amount-btn ${isSelected ? 'is-selected' : ''}`}
+                            >
+                              <GigCoinAmount amount={quickAmount} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Currency Input Box */}
+                    <div className="eps-input-container">
+                      <span className="eps-input-icon">
+                        <GigCoinLogo size={20} />
+                      </span>
+                      <input
+                        id="withdraw-amount-input"
+                        type="number"
+                        value={amount}
+                        min={settings?.minTokens ?? 1}
+                        max={withdrawMax}
+                        step="0.0001"
+                        onChange={event => setAmount(event.target.value)}
+                        placeholder={t('withdrawalsScreen.customAmountPlaceholder', { defaultValue: 'Nhập số GigCoin...' })}
+                        className="eps-amount-input"
+                      />
+                      <span className="eps-input-badge-vnd">
+                        ≈ {formatVnd(vndAmount || 0)}
+                      </span>
+                    </div>
+
+                    {nonWithdrawableTokens > 0 && (
+                      <p className="text-[11px] font-semibold text-text-muted italic px-1">
+                        {t('withdrawalsScreen.depositedNonWithdrawNotice', { amount: nonWithdrawableTokens.toLocaleString('vi-VN'), defaultValue: `* ${nonWithdrawableTokens.toLocaleString('vi-VN')} GigCoin từ nguồn đã nạp chỉ dùng thanh toán trong ứng dụng, không thể rút.` })}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Summary Column (4 cols Sticky) */}
-              <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
-                <div className="rounded-3xl border border-border/80 bg-surface-card p-6 shadow-xl space-y-5">
-                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-3 flex items-center gap-2">
-                    <Sparkles size={15} className="text-brand" />
-                    {t('withdrawalsScreen.summaryTitle', { defaultValue: 'Tóm Tắt Lệnh Rút' })}
-                  </h3>
+              {/* Summary Sticky Column (Right) */}
+              <div className="eps-summary-sticky">
+                <div className="eps-summary-card">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <h3 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles size={16} className="text-brand" />
+                      <span>{t('withdrawalsScreen.summaryTitle', { defaultValue: 'Tóm Tắt Lệnh Rút' })}</span>
+                    </h3>
+                    <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      NAPAS 24/7
+                    </span>
+                  </div>
 
-                  <div className="space-y-3 text-xs">
-                    <div className="flex justify-between items-center text-text-muted font-medium">
+                  <div className="eps-summary-rows">
+                    <div className="eps-summary-row">
                       <span>{t('withdrawalsScreen.summaryAmount', { defaultValue: 'Số GigCoin rút' })}</span>
-                      <span className="text-text-primary font-black text-sm">{amountValue.toLocaleString('vi-VN')} G-coin</span>
+                      <span className="eps-summary-row-val">{amountValue.toLocaleString('vi-VN')} G-coin</span>
                     </div>
-                    <div className="flex justify-between items-center text-text-muted font-medium">
+                    <div className="eps-summary-row">
                       <span>{t('withdrawalsScreen.summaryVnd', { defaultValue: 'Quy đổi VNĐ (1k/coin)' })}</span>
-                      <span className="text-text-primary font-bold">{formatVnd(vndAmount || 0)}</span>
+                      <span className="eps-summary-row-val">{formatVnd(vndAmount || 0)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-text-muted font-medium">
+                    <div className="eps-summary-row">
                       <span>{t('withdrawalsScreen.summaryFee', { defaultValue: 'Phí xử lý giao dịch' })}</span>
-                      <span className="text-rose-500 font-bold">{formatVnd(feeVnd)}</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {feeVnd === 0 ? 'Miễn phí (0đ)' : formatVnd(feeVnd)}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center text-text-muted font-medium pt-2 border-t border-border/50">
-                      <span className="font-black text-text-primary">{t('withdrawalsScreen.summaryNet', { defaultValue: 'Thực nhận về ngân hàng' })}</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-base">{formatVnd(netVnd || 0)}</span>
+
+                    {selectedBank && (
+                      <div className="p-2.5 rounded-xl bg-surface-muted/60 border border-border text-xs space-y-1">
+                        <div className="text-[10px] font-bold text-text-muted uppercase">Ngân hàng thụ hưởng</div>
+                        <div className="font-bold text-text-primary">{selectedBank.bankName}</div>
+                        <div className="text-text-muted font-mono">{selectedBank.accountNumberMasked} · {selectedBank.accountName}</div>
+                      </div>
+                    )}
+
+                    <div className="eps-summary-total">
+                      <span className="eps-summary-total-label">{t('withdrawalsScreen.summaryNet', { defaultValue: 'Thực nhận về ngân hàng' })}</span>
+                      <span className="eps-summary-net-amount">{formatVnd(netVnd || 0)}</span>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-border/60 bg-surface-muted/30 p-3.5 flex items-center gap-2.5 text-xs text-text-muted font-medium">
-                    <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
-                    <span>{t('withdrawalsScreen.summaryNote', { defaultValue: 'Lệnh rút được xử lý tự động qua cổng PayOS Out 24/7.' })}</span>
+                  <div className="eps-security-notice">
+                    <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
+                    <span>{t('withdrawalsScreen.summaryNote', { defaultValue: 'Lệnh rút được xử lý tự động qua cổng PayOS Out 24/7 trong 1-3 phút.' })}</span>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => void handleCreateWithdrawal()}
                     disabled={submitting || !amountValid || !selectedBank || withdrawableTokens <= 0}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 px-5 text-xs font-black text-white shadow-lg hover:bg-emerald-700 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="eps-submit-btn"
                   >
                     {submitting ? (
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 size={18} className="animate-spin" />
                     ) : (
-                      <Send size={16} />
+                      <Send size={18} />
                     )}
-                    {withdrawableTokens <= 0
-                      ? t('withdrawalsScreen.submitNoBalance', { defaultValue: 'Chưa có GigCoin có thể rút' })
-                      : t('withdrawalsScreen.submitBtn', { defaultValue: 'Tạo Yêu Cầu Rút Tiền' })}
+                    <span>
+                      {withdrawableTokens <= 0
+                        ? t('withdrawalsScreen.submitNoBalance', { defaultValue: 'Chưa có GigCoin có thể rút' })
+                        : t('withdrawalsScreen.submitBtn', { defaultValue: 'Tạo Yêu Cầu Rút Tiền' })}
+                    </span>
                   </button>
                 </div>
               </div>
             </div>
 
             {/* SECTION 3: WITHDRAWAL HISTORY */}
-            <section className="space-y-4 pt-4">
-              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <section className="eps-history-section">
+              <div className="eps-history-header">
                 <div>
-                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider">{t('withdrawalsScreen.historyTitle', { defaultValue: 'Lịch Sử Rút Tiền' })}</h3>
-                  <p className="text-xs text-text-muted font-medium mt-0.5">{t('withdrawalsScreen.historySubtitle', { defaultValue: 'Tự động chi tiền 24/7 qua cổng PayOS.' })}</p>
+                  <h3 className="text-base font-black text-text-primary uppercase tracking-tight flex items-center gap-2">
+                    <Clock size={18} className="text-brand" />
+                    <span>{t('withdrawalsScreen.historyTitle', { defaultValue: 'Lịch Sử Rút Tiền' })}</span>
+                  </h3>
+                  <p className="text-xs text-text-muted font-medium mt-0.5">
+                    {t('withdrawalsScreen.historySubtitle', { defaultValue: 'Tự động chi tiền 24/7 qua cổng PayOS.' })}
+                  </p>
                 </div>
-                <span className="rounded-full bg-zinc-800 text-white border border-zinc-700 px-3 py-1 text-xs font-bold shadow-xs">
-                  {t('withdrawalsScreen.historyCount', { count: withdrawals.length, defaultValue: `${withdrawals.length} giao dịch` })}
-                </span>
+
+                {/* Filter Tabs & Search Box */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="eps-history-tabs">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter('all')}
+                      className={`eps-history-tab ${historyFilter === 'all' ? 'is-active' : ''}`}
+                    >
+                      Tất cả ({withdrawals.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter('processing')}
+                      className={`eps-history-tab ${historyFilter === 'processing' ? 'is-active' : ''}`}
+                    >
+                      Đang xử lý
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter('success')}
+                      className={`eps-history-tab ${historyFilter === 'success' ? 'is-active' : ''}`}
+                    >
+                      Thành công
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter('failed')}
+                      className={`eps-history-tab ${historyFilter === 'failed' ? 'is-active' : ''}`}
+                    >
+                      Thất bại
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                    <input
+                      type="text"
+                      value={historySearchQuery}
+                      onChange={e => setHistorySearchQuery(e.target.value)}
+                      placeholder="Tìm mã lệnh / ngân hàng..."
+                      className="h-8.5 pl-8 pr-3 text-xs rounded-xl border border-border bg-surface font-medium outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* Transactions List */}
               <div className="space-y-3">
-                {withdrawals.map(withdrawal => {
+                {filteredWithdrawals.map(withdrawal => {
                   const status = getStatusMeta(withdrawal.status, t);
+                  const orderCode = withdrawal.providerOrderCode || withdrawal.withdrawalId;
 
                   return (
                     <div
                       key={withdrawal.withdrawalId}
-                      className="rounded-2xl border border-border/80 bg-surface-card p-4.5 transition-all flex flex-wrap items-center justify-between gap-4 shadow-2xs hover:border-brand/40"
+                      className="eps-history-item"
                     >
                       <div className="space-y-1 min-w-[200px]">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black border ${status.badgeClass}`}>
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black ${status.badgeClass}`}>
                             {status.label}
                           </span>
-                          <span className="text-[11px] font-bold text-text-muted">Mã: {withdrawal.providerOrderCode || withdrawal.withdrawalId}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyOrderId(orderCode)}
+                            className="text-[11px] font-bold text-text-muted hover:text-brand flex items-center gap-1 transition"
+                            title="Sao chép mã"
+                          >
+                            <span>Mã: {orderCode.slice(0, 16)}...</span>
+                            {copiedOrderId === orderCode ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                          </button>
                         </div>
                         <div className="flex items-baseline gap-2">
                           <GigCoinLogo size={16} />
@@ -633,7 +776,7 @@ export default function EarlyPayoutScreen() {
 
                       <div className="text-xs space-y-0.5 text-text-muted font-medium min-w-[180px]">
                         <div className="font-bold text-text-primary">{withdrawal.bankName}</div>
-                        <div>{withdrawal.bankAccountName} · {withdrawal.bankAccountNumberMasked}</div>
+                        <div>{withdrawal.bankAccountName} · <span className="font-mono">{withdrawal.bankAccountNumberMasked}</span></div>
                       </div>
 
                       <div className="text-xs text-right space-y-1 shrink-0">
@@ -642,17 +785,17 @@ export default function EarlyPayoutScreen() {
                           <div className="text-emerald-600 dark:text-emerald-400 font-bold">Hoàn tất: {formatDate(withdrawal.completedAt)}</div>
                         )}
                         {withdrawal.failureReason && (
-                          <div className="text-rose-500 font-bold text-[11px]">{withdrawal.failureReason}</div>
+                          <div className="text-rose-500 font-bold text-[11px] max-w-xs">{withdrawal.failureReason}</div>
                         )}
                         {!isTerminalStatus(withdrawal.status) && (
                           <button
                             type="button"
                             onClick={() => void handleSyncWithdrawal(withdrawal.withdrawalId)}
                             disabled={syncingId === withdrawal.withdrawalId}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-muted px-3 py-1 text-[11px] font-bold text-text-primary hover:bg-border/60 transition cursor-pointer"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-muted px-3 py-1.5 text-[11px] font-bold text-text-primary hover:bg-border/60 transition cursor-pointer"
                           >
-                            {syncingId === withdrawal.withdrawalId ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                            {t('withdrawalsScreen.checkStatus', { defaultValue: 'Kiểm tra trạng thái' })}
+                            {syncingId === withdrawal.withdrawalId ? <Loader2 size={13} className="animate-spin text-brand" /> : <RefreshCw size={13} />}
+                            <span>{t('withdrawalsScreen.checkStatus', { defaultValue: 'Kiểm tra trạng thái' })}</span>
                           </button>
                         )}
                       </div>
@@ -660,8 +803,8 @@ export default function EarlyPayoutScreen() {
                   );
                 })}
 
-                {withdrawals.length === 0 && (
-                  <div className="rounded-3xl border border-border/80 bg-surface-card p-12 text-center text-xs text-text-muted space-y-2">
+                {filteredWithdrawals.length === 0 && (
+                  <div className="rounded-3xl border border-border/80 bg-surface p-12 text-center text-xs text-text-muted space-y-2">
                     <XCircle size={36} className="mx-auto text-text-muted/40" />
                     <p className="font-bold text-text-primary text-sm">{t('withdrawalsScreen.historyEmpty', { defaultValue: 'Chưa có yêu cầu rút tiền nào.' })}</p>
                   </div>
