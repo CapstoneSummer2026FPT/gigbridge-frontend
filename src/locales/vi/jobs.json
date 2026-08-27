@@ -467,7 +467,10 @@
       "totalChars": "Tổng số: {{count}} / 15.000 ký tự",
       "cappedAt15k": "(tối đa 15k)",
       "removeAll": "Xóa tất cả",
-      "placeholderWithDoc": "Thêm yêu cầu hoặc hướng dẫn bổ sung cho tài liệu đính kèm..."
+      "placeholderWithDoc": "Thêm yêu cầu hoặc hướng dẫn bổ sung cho tài liệu đính kèm...",
+      "aiExtractTitle": "AI Tự động trích xuất thông tin",
+      "aiExtractDesc": "Tự động đọc hiểu tài liệu, trích xuất yêu cầu, kỹ năng và dự toán ngân sách.",
+      "emptyHintMobile": "Chưa có tệp nào. Bấm vào khung bên trên để tải lên tài liệu."
     }
   },
   "postJobAI": {

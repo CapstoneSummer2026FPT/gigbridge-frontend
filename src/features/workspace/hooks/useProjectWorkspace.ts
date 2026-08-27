@@ -702,9 +702,7 @@ export function useProjectWorkspace(initialContractId: string) {
     });
 
     void lease.ready
-    void lease.ready
       .then(() => {
-        if (disposed) return;
         if (disposed) return;
         chatConnectionRef.current = connection;
         void joinCurrentConversation();
@@ -726,7 +724,6 @@ export function useProjectWorkspace(initialContractId: string) {
       });
       stopReconnect();
       if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
-      lease.release();
       lease.release();
     };
   }, [user?.id, debouncedReloadActiveWorkspace]);

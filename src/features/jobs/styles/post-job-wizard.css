@@ -210,7 +210,7 @@
 .job-post-wizard__footer {
   position: sticky;
   bottom: .75rem;
-  z-index: 90;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -728,34 +728,116 @@
 
 @media (max-width: 639px) {
   .job-post-wizard {
-    padding-inline: .75rem;
+    padding-inline: 1rem;
+    padding-top: 1rem;
+    padding-bottom: 6rem;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
   }
 
   .job-post-wizard__header {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
+    gap: 0.85rem;
+    min-width: 0;
+  }
+
+  .job-post-wizard__header h1 {
+    font-size: 1.45rem;
+    word-break: break-word;
+  }
+
+  .job-post-wizard__header p {
+    font-size: 0.82rem;
+    word-break: break-word;
+  }
+
+  .job-post-wizard__header .conic-border-wrap {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .job-post-wizard__header .conic-border-wrap .conic-border-btn {
+    width: 100% !important;
+    min-height: 2.65rem !important;
+    justify-content: center !important;
+  }
+
+  .job-post-section {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .job-post-section__header {
+    padding: 0.85rem 1rem;
+  }
+
+  .job-post-section__body {
+    padding: 0.85rem 1rem;
+    gap: 0.85rem;
   }
 
   .job-post-grid {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .job-post-image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .job-post-image-card img {
+    height: 5.5rem;
   }
 
   .job-post-wizard__footer {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--card) 95%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    border-radius: 1.25rem 1.25rem 0 0;
+    margin-inline: -1rem;
+    width: calc(100% + 2rem);
+    max-width: calc(100% + 2rem);
+    box-sizing: border-box;
+    box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.12);
     align-items: stretch;
     flex-direction: column;
-    bottom: 0;
-    border-radius: .9rem .9rem 0 0;
+    gap: 0.65rem;
   }
 
   .job-post-wizard__footer-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
     width: 100%;
     margin: 0;
   }
 
+  .job-post-button {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.75rem;
+    min-height: 2.5rem;
+    justify-content: center;
+  }
+
   .job-post-wizard__footer>div:first-child:not(:empty) {
     width: 100%;
+  }
+
+  .job-post-wizard__footer>div:first-child:not(:empty) button {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -1217,9 +1299,9 @@
 }
 
 .job-post-ai-bar__textarea {
-  flex: 1;
-  width: 100%;
-  height: 100%;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  width: 100% !important;
   border: none;
   background: transparent;
   color: var(--text-primary);
@@ -1228,10 +1310,11 @@
   line-height: 1.55;
   outline: none;
   resize: none;
-  padding: 0.5rem 0.6rem 0.5rem 0.2rem;
+  padding: 0.25rem 0.4rem 0.25rem 0;
   min-height: 2.4rem;
   max-height: none;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .job-post-ai-bar__textarea::-webkit-scrollbar {
@@ -1259,17 +1342,32 @@
 }
 
 .job-post-ai-bar__clear-btn {
-  color: var(--text-muted);
-  padding: 0.35rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 0.15rem;
-  transition: background 0.15s, color 0.15s;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  max-width: 24px !important;
+  max-height: 24px !important;
+  border-radius: 50% !important;
+  flex: 0 0 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0.15rem 0 0 0 !important;
+  color: var(--text-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  transition: background 0.15s, color 0.15s, transform 0.1s !important;
 }
 
-.job-post-ai-bar__clear-btn:hover {
-  background: var(--surface-muted);
-  color: var(--text-primary);
+.job-post-ai-bar__clear-btn:hover,
+.job-post-ai-bar__clear-btn:active {
+  background: var(--surface-muted) !important;
+  color: var(--text-primary) !important;
+  transform: scale(1.08) !important;
 }
 
 /* Prompt Toolbar inside the bar container */
@@ -1307,14 +1405,21 @@
 .job-post-ai-bar__generate {
   display: grid;
   place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 50%;
-  flex-shrink: 0;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  max-width: 34px !important;
+  max-height: 34px !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
   background: var(--brand);
   color: #fff;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 10px color-mix(in srgb, var(--brand) 25%, transparent);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .job-post-ai-bar__generate:disabled {
@@ -1331,6 +1436,11 @@
 
 .job-post-ai-bar__generate:not(:disabled):active {
   transform: scale(0.95);
+}
+
+.job-post-ai-bar__generate--pause {
+  background: color-mix(in srgb, var(--brand) 85%, var(--card)) !important;
+  box-shadow: 0 0 15px color-mix(in srgb, var(--brand) 40%, transparent) !important;
 }
 
 /* Prompt bar locked state styling */
@@ -1581,13 +1691,13 @@
 /* Prompt Mode Header & Body */
 .job-post-ai-morph__prompt-header {
   position: absolute;
-  left: 20px;
   top: 10px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 0.6rem;
+  overflow: hidden;
 }
 
 .job-post-ai-morph__badge {
@@ -1595,98 +1705,118 @@
   align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .job-post-ai-morph__prompt-body {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  top: 54px;
-  bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 0;
+  position: absolute !important;
+  left: 20px !important;
+  right: 36px !important;
+  top: 50px !important;
+  bottom: 14px !important;
+  width: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
 }
 
 .job-post-ai-morph__input-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 0.5rem !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
 }
 
 .job-post-ai-morph__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 0.2rem;
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-top: 0.35rem !important;
+  padding-right: 2px !important;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent) !important;
+  box-sizing: border-box !important;
 }
 
-/* File Import Mode Layout */
+/* File Import Mode 2-Part Layout */
 .job-post-ai-morph__file-left-col {
   position: absolute;
+  left: 20px;
   top: 58px;
-  left: 18px;
-  width: 200px;
-  bottom: 44px;
+  bottom: 48px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   z-index: 10;
-}
-
-.job-post-ai-morph__file-right-col {
-  position: absolute;
-  top: 10px;
-  left: 242px;
-  right: 18px;
-  bottom: 44px;
-  display: flex;
-  align-items: flex-start;
-  overflow: visible;
-}
-
-.job-post-ai-morph__toolbar--file {
-  position: absolute;
-  bottom: 8px;
-  left: 18px;
-  right: 18px;
-  height: 32px;
-}
-
-.job-post-ai-morph__dropzone {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.4rem 0.65rem;
-  border: 1.5px dashed color-mix(in srgb, var(--brand) 40%, var(--border));
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--brand) 4%, var(--card));
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
 }
 
-.job-post-ai-morph__dropzone--compact {
+.job-post-ai-morph__dropzone {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px dashed color-mix(in srgb, var(--brand) 35%, var(--border));
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--brand) 3%, var(--card));
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
   width: 100%;
-  max-width: 200px;
-  flex-shrink: 0;
+  height: auto;
+  min-height: 48px;
 }
 
 .job-post-ai-morph__dropzone:hover {
   border-color: var(--brand);
   background: color-mix(in srgb, var(--brand) 8%, var(--card));
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
 .job-post-ai-morph__dropzone--active {
   border-color: var(--brand);
-  background: color-mix(in srgb, var(--brand) 14%, var(--card));
-  transform: scale(1.01);
+  background: color-mix(in srgb, var(--brand) 15%, var(--card));
+  transform: scale(1.02);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+
+.job-post-ai-morph__file-right-col {
+  position: absolute;
+  top: 12px;
+  bottom: 50px;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.job-post-ai-morph__toolbar--file {
+  position: absolute;
+  left: 20px;
+  right: 36px;
+  width: auto !important;
+  bottom: 12px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  padding-top: 0.35rem;
+  box-sizing: border-box;
+  z-index: 10;
 }
 
 .job-post-ai-morph__quick-note-input {
@@ -1706,63 +1836,139 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 15%, transparent);
 }
 
+/* Explicit File Item & Locked Remove Button Rules */
+.job-post-ai-morph__file-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.5rem !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 0.65rem !important;
+  border-radius: 0.75rem !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+.job-post-ai-morph__file-item-name {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  text-align: left !important;
+}
+
+.job-post-ai-morph__file-remove-btn {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  border-radius: 50% !important;
+  flex: 0 0 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 0 0 auto !important;
+  background: color-mix(in srgb, var(--muted-foreground, #64748b) 18%, transparent) !important;
+  color: var(--text-muted, #64748b) !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  transition: background 0.2s, color 0.2s, transform 0.15s !important;
+}
+
+.job-post-ai-morph__file-remove-btn:hover,
+.job-post-ai-morph__file-remove-btn:active {
+  background: var(--destructive, #ef4444) !important;
+  color: #ffffff !important;
+  transform: scale(1.1) !important;
+}
+
+/* Floating Error Banner (Placed completely above the AI Input Card) */
+.job-post-ai-error-banner {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.6rem !important;
+  padding: 0.45rem 0.75rem !important;
+  background: color-mix(in srgb, var(--destructive) 14%, var(--card)) !important;
+  border: 1px solid color-mix(in srgb, var(--destructive) 35%, transparent) !important;
+  border-radius: 0.75rem !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  z-index: 150 !important;
+}
+
+.job-post-ai-error-close-btn {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  border-radius: 50% !important;
+  flex: 0 0 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  color: var(--destructive) !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+}
+
+.job-post-ai-error-close-btn:hover {
+  background: color-mix(in srgb, var(--destructive) 20%, transparent) !important;
+}
+
 /* ────────────────────────────────────────────────
    CONTAINER QUERIES & MOBILE-FIRST RESPONSIVE DESIGN
    ──────────────────────────────────────────────── */
-@container ai-bar (max-width: 640px) {
-  .job-post-ai-resize-handle {
-    display: none !important;
+@media (max-width: 899px) {
+  .job-post-wizard {
+    padding-bottom: max(280px, calc(260px + env(safe-area-inset-bottom))) !important;
   }
 
-  .job-post-ai-morph__prompt-header {
-    left: 16px;
-    top: 8px;
+  .job-post-wizard__footer:has(.job-post-ai-bar-container) {
+    position: fixed !important;
+    bottom: max(0.65rem, env(safe-area-inset-bottom)) !important;
+    left: 0.65rem !important;
+    right: 0.65rem !important;
+    width: auto !important;
+    max-width: calc(100vw - 1.3rem) !important;
+    margin: 0 auto !important;
+    z-index: 95 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
-  .job-post-ai-morph__prompt-body {
-    top: 50px;
-    left: 16px;
-    right: 16px;
-    bottom: 8px;
-  }
-
-  .job-post-ai-morph__file-left-col {
-    top: 56px;
-    left: 16px;
-    right: 16px;
-    width: auto;
-    height: 44px;
-    bottom: auto;
-  }
-
-  .job-post-ai-morph__dropzone--compact {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    padding: 0.45rem 0.75rem;
-    border-radius: 0.85rem;
-  }
-
-  .job-post-ai-morph__file-right-col {
-    top: 108px;
-    left: 16px;
-    right: 16px;
-    bottom: 44px;
-  }
-
-  .job-post-ai-morph__toolbar--file {
-    left: 16px;
-    right: 16px;
-    bottom: 8px;
-  }
-
-  .job-post-ai-morph__tab-btn {
-    height: 40px;
-  }
-
-  .job-post-ai-morph__tab-content {
-    padding: 0 0.35rem;
-    gap: 0.3rem;
+  .job-post-ai-bar-container {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
@@ -1773,57 +1979,113 @@
 
   .job-post-ai-morph-wrapper {
     aspect-ratio: auto;
-    min-height: 220px;
+    min-height: 215px !important;
   }
 
   .job-post-ai-morph__prompt-header {
-    left: 16px;
+    left: 14px;
     top: 8px;
+    height: 32px;
   }
 
   .job-post-ai-morph__prompt-body {
-    top: 50px;
-    left: 16px;
-    right: 16px;
-    bottom: 8px;
+    top: 48px;
+    left: 14px;
+    right: 34px;
+    bottom: 12px;
+    box-sizing: border-box;
   }
 
   .job-post-ai-morph__file-left-col {
-    top: 56px;
-    left: 16px;
-    right: 16px;
-    width: auto;
-    height: 44px;
-    bottom: auto;
-  }
-
-  .job-post-ai-morph__dropzone--compact {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    padding: 0.45rem 0.75rem;
-    border-radius: 0.85rem;
+    left: 14px;
+    top: 54px;
+    bottom: 46px;
+    justify-content: center;
   }
 
   .job-post-ai-morph__file-right-col {
-    top: 108px;
-    left: 16px;
-    right: 16px;
-    bottom: 44px;
+    top: 10px;
+    right: 34px;
+    bottom: 46px;
   }
 
   .job-post-ai-morph__toolbar--file {
-    left: 16px;
-    right: 16px;
-    bottom: 8px;
+    left: 14px;
+    right: 34px;
+    width: auto !important;
+    bottom: 10px;
+  }
+
+  .job-post-ai-morph__dropzone {
+    width: 100%;
+    height: auto;
+    min-height: 44px;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.75rem;
+  }
+
+  .job-post-ai-bar__textarea {
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+    padding: 2px 2px 4px 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    flex: 1 1 0% !important;
+  }
+
+  .job-post-ai-morph__toolbar {
+    padding-top: 0.3rem;
+  }
+
+  .job-post-ai-bar__generate {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
   }
 
   .job-post-ai-morph__tab-btn {
-    height: 40px;
+    height: 38px;
   }
 
   .job-post-ai-morph__tab-content {
-    padding: 0 0.35rem;
-    gap: 0.3rem;
+    padding: 0 0.3rem;
+    gap: 0.25rem;
   }
+
+  .job-post-ai-morph__tab-content span {
+    font-size: 11px !important;
+  }
+
+  .job-post-ai-morph__badge span {
+    font-size: 11.5px !important;
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--brand) 25%, var(--border));
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Safety: Hide floating AI Assistant Chatbot widget whenever AI Job Generation prompt bar is active */
+body:has(.job-post-ai-morph-wrapper) .ai-widget,
+body:has(.job-post-ai-morph-wrapper) .ai-fab-wrap,
+body:has(.job-post-ai) .ai-widget,
+body:has(.job-post-ai) .ai-fab-wrap {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
