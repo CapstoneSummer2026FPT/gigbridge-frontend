@@ -147,28 +147,26 @@ export function FreelancerDashboardOverview({
         <p className="max-w-md text-left text-xs text-text-secondary sm:text-right font-medium leading-relaxed">
           {t('dashboard.freelancerWorkPulseDescription', 'Live monitoring of proposals, milestone deliveries, and reputation velocity.')}
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-12 lg:items-stretch">
+      </div>      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-12 xl:items-stretch">
         {/* Card 1: Job Pipeline & Status */}
-        <article className="bento-spotlight-card flex h-full flex-col justify-between p-6 md:col-span-2 lg:col-span-5 relative group">
+        <article className="bento-spotlight-card flex h-full flex-col justify-between p-5 sm:p-6 md:col-span-2 xl:col-span-5 relative group min-w-0">
           <div className="absolute top-0 right-0 w-36 h-36 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:bg-brand/20 transition-all duration-500" />
 
-          <header className="mb-4 flex items-start justify-between gap-4 relative z-10">
-            <div>
+          <header className="mb-4 flex items-start justify-between gap-3 relative z-10">
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <Flame size={13} className="text-brand" />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">
+                <Flame size={13} className="text-brand shrink-0" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand truncate">
                   {t('dashboard.freelancerJobPipeline', 'Pipeline')}
                 </span>
               </div>
-              <h3 className="mt-0.5 text-base font-black text-text-primary tracking-tight">
+              <h3 className="mt-0.5 text-base font-black text-text-primary tracking-tight truncate">
                 {t('dashboard.freelancerJobStatus', 'Job Distribution')}
               </h3>
             </div>
             <button
               type="button"
-              className="freelancer-dash-overview-link group/link cursor-pointer"
+              className="freelancer-dash-overview-link group/link cursor-pointer shrink-0"
               onClick={onOpenProposals}
             >
               <span>{t('dashboard.viewAll', 'View All')}</span>
@@ -176,9 +174,9 @@ export function FreelancerDashboardOverview({
             </button>
           </header>
 
-          <div className="grid flex-1 grid-cols-1 items-center gap-6 sm:grid-cols-[minmax(160px,1fr)_minmax(170px,1.2fr)] relative z-10">
+          <div className="grid flex-1 grid-cols-1 @[380px]:grid-cols-[auto_1fr] items-center gap-5 sm:gap-6 relative z-10">
             <div
-              className="relative mx-auto h-36 w-36 sm:h-44 sm:w-44"
+              className="relative mx-auto h-32 w-32 sm:h-36 sm:w-36 shrink-0"
               role="img"
               aria-label={t('dashboard.freelancerJobChartAria', {
                 defaultValue: '{{pending}} pending jobs, {{active}} active jobs, and {{completed}} completed jobs',
@@ -186,7 +184,7 @@ export function FreelancerDashboardOverview({
               })}
             >
               {isLoading ? (
-                <div className="absolute inset-4 animate-spin rounded-full border-[10px] border-surface-muted border-t-brand" />
+                <div className="absolute inset-4 animate-spin rounded-full border-[8px] border-surface-muted border-t-brand" />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -196,10 +194,10 @@ export function FreelancerDashboardOverview({
                       nameKey="label"
                       cx="50%"
                       cy="50%"
-                      innerRadius={54}
-                      outerRadius={74}
+                      innerRadius={44}
+                      outerRadius={62}
                       paddingAngle={trackedWorkCount > 0 ? 4 : 0}
-                      cornerRadius={6}
+                      cornerRadius={5}
                       stroke="none"
                       isAnimationActive={trackedWorkCount > 0}
                     >
@@ -224,7 +222,7 @@ export function FreelancerDashboardOverview({
                 </ResponsiveContainer>
               )}
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                <strong className="text-3xl sm:text-4xl font-black leading-none tracking-tight text-text-primary">
+                <strong className="text-2xl sm:text-3xl font-black leading-none tracking-tight text-text-primary">
                   {isLoading ? '—' : trackedWorkCount}
                 </strong>
                 <span className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-muted">
@@ -233,23 +231,23 @@ export function FreelancerDashboardOverview({
               </div>
             </div>
 
-            <div className="flex w-full flex-col gap-2.5">
+            <div className="flex w-full flex-col gap-2 min-w-0">
               {workChartData.map(item => (
                 <div
                   key={item.key}
-                  className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface-muted/40 hover:bg-surface-muted/80 px-3.5 py-2 transition-all duration-200 group/pill"
+                  className="flex min-h-10 items-center justify-between gap-2.5 rounded-2xl border border-border/80 bg-surface-muted/40 hover:bg-surface-muted/80 px-3 py-1.5 transition-all duration-200 group/pill min-w-0"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <span
-                      className="h-3 w-3 shrink-0 rounded-full shadow-sm group-hover/pill:scale-125 transition-transform"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm group-hover/pill:scale-125 transition-transform"
                       style={{ backgroundColor: item.color }}
                     />
                     <div className="min-w-0">
                       <span className="block truncate text-xs font-black text-text-primary">{item.label}</span>
-                      <span className="block truncate text-[9px] font-medium text-text-muted">{item.detail}</span>
+                      <span className="block truncate text-[8px] sm:text-[9px] font-medium text-text-muted">{item.detail}</span>
                     </div>
                   </div>
-                  <strong className="text-sm font-black text-text-primary px-2.5 py-0.5 rounded-lg bg-surface-muted/80 border border-border/50">
+                  <strong className="text-xs sm:text-sm font-black text-text-primary px-2 py-0.5 rounded-lg bg-surface-muted/80 border border-border/50 shrink-0">
                     {isLoading ? '—' : item.value}
                   </strong>
                 </div>
@@ -259,16 +257,16 @@ export function FreelancerDashboardOverview({
         </article>
 
         {/* Card 2: Delivery Pipeline & Milestones */}
-        <article className="bento-spotlight-card flex h-full min-h-[300px] flex-col justify-between p-6 lg:col-span-4 relative group">
+        <article className="bento-spotlight-card flex h-full min-h-[300px] flex-col justify-between p-5 sm:p-6 md:col-span-1 xl:col-span-4 relative group min-w-0">
           <div className="absolute top-0 right-0 w-36 h-36 bg-purple/10 blur-3xl rounded-full pointer-events-none group-hover:bg-purple/20 transition-all duration-500" />
 
           <div>
             <header className="flex items-start justify-between gap-3 relative z-10">
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">
+              <div className="min-w-0">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand truncate block">
                   {t('dashboard.deliveryPipeline', 'Deliveries')}
                 </span>
-                <h3 className="mt-0.5 text-base font-black text-text-primary tracking-tight">
+                <h3 className="mt-0.5 text-base font-black text-text-primary tracking-tight truncate">
                   {isMilestoneListOpen
                     ? t('dashboard.milestoneListView', 'Milestone Matrix')
                     : t('dashboard.milestonesAwaitingCompletion', 'Milestones in Progress')}
@@ -277,7 +275,7 @@ export function FreelancerDashboardOverview({
               <button
                 type="button"
                 onClick={() => setIsMilestoneListOpen(open => !open)}
-                className="flex items-center gap-1.5 rounded-xl border border-brand/25 bg-brand/10 hover:bg-brand/20 px-3 py-1 text-xs font-black text-brand transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl border border-brand/25 bg-brand/10 hover:bg-brand/20 px-2.5 py-1 text-xs font-black text-brand transition-colors cursor-pointer shrink-0"
               >
                 <ListChecks size={14} aria-hidden="true" />
                 <span>{isLoading ? '—' : `${pendingMilestoneItems.length} active`}</span>
@@ -285,8 +283,8 @@ export function FreelancerDashboardOverview({
             </header>
 
             <div className="flex items-center gap-1.5 mt-2 text-[9px] font-semibold text-text-muted">
-              <Clock size={11} className="text-text-muted" />
-              <span>{t('dashboard.freelancerActiveContractMilestonesOnly', 'Counted from active contracts')}</span>
+              <Clock size={11} className="text-text-muted shrink-0" />
+              <span className="truncate">{t('dashboard.freelancerActiveContractMilestonesOnly', 'Counted from active contracts')}</span>
             </div>
 
             {isMilestoneListOpen ? (
@@ -306,7 +304,7 @@ export function FreelancerDashboardOverview({
                   </div>
                 ) : (
                   <div className="max-h-48 overflow-auto custom-scrollbar">
-                    <table className="w-full min-w-[440px] border-collapse text-left">
+                    <table className="w-full min-w-[400px] border-collapse text-left">
                       <thead className="sticky top-0 z-10 bg-surface-muted/90 backdrop-blur-md">
                         <tr className="text-[8px] font-black uppercase tracking-wider text-text-muted">
                           <th className="px-3 py-2.5">{t('dashboard.milestoneJobColumn', 'Job')}</th>
@@ -346,22 +344,22 @@ export function FreelancerDashboardOverview({
                 )}
               </div>
             ) : (
-              <div className="my-4 flex min-h-36 flex-1 items-center justify-between gap-5 rounded-2xl border border-brand/25 bg-gradient-to-br from-brand/12 via-brand/5 to-transparent px-5 py-4 relative overflow-hidden">
-                <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand/30 bg-brand/20 text-brand shadow-[0_0_20px_rgba(73,75,231,0.25)]">
-                    <ListChecks size={26} aria-hidden="true" />
+              <div className="my-4 flex flex-col @[280px]:flex-row min-h-36 flex-1 items-start @[280px]:items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-gradient-to-br from-brand/12 via-brand/5 to-transparent p-4 sm:px-5 sm:py-4 relative overflow-hidden min-w-0">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  <div className="flex h-11 w-11 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl border border-brand/30 bg-brand/20 text-brand shadow-[0_0_20px_rgba(73,75,231,0.25)]">
+                    <ListChecks size={24} aria-hidden="true" />
                   </div>
                   <div className="min-w-0">
-                    <strong className="block text-4xl sm:text-5xl font-black leading-none tracking-tighter text-text-primary">
+                    <strong className="block text-3xl sm:text-4xl font-black leading-none tracking-tight text-text-primary">
                       {isLoading ? '—' : pendingMilestoneItems.length}
                     </strong>
-                    <span className="mt-1.5 block text-[9px] font-black uppercase tracking-widest text-text-muted">
+                    <span className="mt-1 block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-text-muted truncate">
                       {t('dashboard.pendingMilestoneOverviewLabel', 'Pending Milestones')}
                     </span>
                   </div>
                 </div>
-                <div className="text-right pl-3 border-l border-border/60">
-                  <strong className="block text-2xl font-black text-text-primary">{isLoading ? '—' : milestoneGroups.length}</strong>
+                <div className="text-left @[280px]:text-right @[280px]:pl-3 pt-2 @[280px]:pt-0 border-t @[280px]:border-t-0 @[280px]:border-l border-border/60 w-full @[280px]:w-auto shrink-0">
+                  <strong className="block text-xl sm:text-2xl font-black text-text-primary leading-tight">{isLoading ? '—' : milestoneGroups.length}</strong>
                   <span className="block text-[8px] font-black uppercase tracking-wider text-text-muted">
                     {t('dashboard.activeJobsWithMilestones', 'Active Contracts')}
                   </span>
@@ -386,7 +384,7 @@ export function FreelancerDashboardOverview({
             </button>
             <button
               type="button"
-              className="freelancer-dash-overview-link group/link cursor-pointer"
+              className="freelancer-dash-overview-link group/link cursor-pointer shrink-0"
               onClick={onOpenContracts}
             >
               <span>{t('dashboard.openContracts', 'Open Contracts')}</span>
@@ -396,17 +394,17 @@ export function FreelancerDashboardOverview({
         </article>
 
         {/* Card 3: Elo Point Reputation Velocity */}
-        <article className="bento-spotlight-card flex h-full min-h-[300px] flex-col justify-between p-6 lg:col-span-3 relative group">
+        <article className="bento-spotlight-card flex h-full min-h-[300px] flex-col justify-between p-5 sm:p-6 md:col-span-1 xl:col-span-3 relative group min-w-0">
           <div className="absolute top-0 right-0 w-36 h-36 bg-cyan/10 blur-3xl rounded-full pointer-events-none group-hover:bg-cyan/20 transition-all duration-500" />
 
           <header className="flex items-center justify-between gap-3 relative z-10">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-brand/15 border border-brand/30 flex items-center justify-center text-brand shadow-sm">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-brand/15 border border-brand/30 flex items-center justify-center text-brand shadow-sm shrink-0">
                 <ShieldCheck size={16} aria-hidden="true" />
               </div>
-              <h3 className="text-sm font-black text-text-primary tracking-tight">{t('dashboard.eloPoint', 'Elo Point')}</h3>
+              <h3 className="text-sm font-black text-text-primary tracking-tight truncate">{t('dashboard.eloPoint', 'Elo Point')}</h3>
             </div>
-            <span className="inline-flex items-center gap-1 rounded-lg border border-brand/30 bg-brand/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-brand shadow-xs">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-brand/30 bg-brand/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-brand shadow-xs shrink-0">
               <Sparkles size={10} />
               {isLoading
                 ? t('dashboard.eloSyncing', 'Syncing')
@@ -418,13 +416,13 @@ export function FreelancerDashboardOverview({
 
           <div className="flex flex-1 flex-col items-center justify-center py-2 relative z-10">
             <div
-              className="relative h-36 w-36 sm:h-40 sm:w-40"
+              className="relative h-32 w-32 sm:h-36 sm:w-36 shrink-0 flex items-center justify-center"
               role="img"
               aria-label={t('dashboard.eloScoreAria', { defaultValue: 'Current Elo score: {{score}}', score: eloScore ?? 0 })}
             >
               <svg className="h-full w-full -rotate-90" viewBox="0 0 200 200" aria-hidden="true">
                 <defs>
-                  <linearGradient id="freelancerEloRingGradient" x1="0" y1="0" x2="1" y2="1">
+                  <linearGradient id="freelancerEloRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#494be7" />
                     <stop offset="50%" stopColor="#8b5cf6" />
                     <stop offset="100%" stopColor="#06b6d4" />
@@ -445,7 +443,7 @@ export function FreelancerDashboardOverview({
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <strong className="text-3xl sm:text-4xl font-black leading-none tracking-tight text-text-primary">
+                <strong className="text-2xl sm:text-3xl font-black leading-none tracking-tight text-text-primary">
                   {isLoading || eloScore == null ? '—' : eloScore.toLocaleString()}
                 </strong>
                 <span className="mt-1 text-[8px] font-black uppercase tracking-widest text-brand">Elo Score</span>
@@ -453,7 +451,7 @@ export function FreelancerDashboardOverview({
             </div>
 
             {eloSummary && (
-              <div className="mt-2 flex items-center gap-2 text-[10px] font-black">
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black">
                 <span className="flex items-center gap-0.5 text-success bg-success/10 px-2 py-0.5 rounded-md border border-success/20">
                   <TrendingUp size={11} />
                   +{eloSummary.totalGained.toLocaleString()}
