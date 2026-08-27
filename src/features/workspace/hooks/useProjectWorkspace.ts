@@ -387,29 +387,47 @@ export function useProjectWorkspace(initialContractId: string) {
     };
   }, []);
 
-  // Optimized single workspace loader with instant in-memory caching
+  const getSessionCachedWorkspace = (id: string) => {
+    try {
+      const raw = sessionStorage.getItem(`gb_workspace_cache_${id}`);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const setSessionCachedWorkspace = (id: string, data: any) => {
+    try {
+      sessionStorage.setItem(`gb_workspace_cache_${id}`, JSON.stringify(data));
+    } catch {
+      /* ignore storage quota/security error */
+    }
+  };
+
+  // Optimized single workspace loader with instant in-memory caching & progressive hydration
   useEffect(() => {
     let current = true;
 
     const loadWorkspace = async (): Promise<void> => {
       if (!activeProjectId) return;
 
-      // ⚡ INSTANT CACHE: If workspace was previously loaded, display cached data IMMEDIATELY (0ms delay!)
-      const cached = workspaceCacheRef.current.get(activeProjectId);
+      // ⚡ INSTANT CACHE: If workspace was previously loaded or in sessionStorage, display cached data IMMEDIATELY (0ms delay!)
+      const cached = workspaceCacheRef.current.get(activeProjectId) || getSessionCachedWorkspace(activeProjectId);
       if (cached) {
         setActiveContract(cached.contract);
         setProject(cached.project);
-        setProductHandoffs(cached.productHandoffs);
-        setCurrentProductHandoff(getCurrentProductHandoffFromList(cached.productHandoffs));
-        setEarlyStartRequests(cached.earlyStartRequests);
-        setProjectMessages(cached.messages);
+        setProductHandoffs(cached.productHandoffs || []);
+        setCurrentProductHandoff(getCurrentProductHandoffFromList(cached.productHandoffs || []));
+        setEarlyStartRequests(cached.earlyStartRequests || []);
+        setProjectMessages(cached.messages || []);
         setIsWorkspaceLoading(false);
       } else {
         setIsWorkspaceLoading(true);
       }
 
       try {
-        // ⚡ OPTIMIZATION: Only fetch workspace-specific data (pruned unnecessary global calls)
+        // ⚡ OPTIMIZATION: Only fetch workspace-specific data in parallel
         const [contractResponse, milestonesResponse, productHandoffsResponse, earlyStartResponse] = await Promise.all([
           contractGetAPI.getContractById(activeProjectId),
           contractGetAPI.getMilestonesByContract(activeProjectId),
@@ -435,14 +453,9 @@ export function useProjectWorkspace(initialContractId: string) {
         const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
         const nextEarlyStarts = earlyStartResponse.data || [];
 
-        let nextMessages: Message[] = cached ? cached.messages : [];
-        if (nextContract.conversationId) {
-          const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
-          if (current && messagesResponse.success && messagesResponse.data) {
-            nextMessages = messagesResponse.data.map(mapWorkspaceMessage);
-          }
-        }
+        let nextMessages: Message[] = cached ? (cached.messages || []) : [];
 
+        // ⚡ PROGRESSIVE HYDRATION: Display milestone & contract data IMMEDIATELY without waiting for chat!
         if (current) {
           setActiveContract(nextContract);
           setProject(nextProject);
@@ -450,15 +463,33 @@ export function useProjectWorkspace(initialContractId: string) {
           setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
           setEarlyStartRequests(nextEarlyStarts);
           setProjectMessages(nextMessages);
+          setIsWorkspaceLoading(false); // UI is now fully interactive!
+        }
 
-          // ⚡ Save to in-memory cache for instant switching next time
-          workspaceCacheRef.current.set(activeProjectId, {
+        // Asynchronously fetch conversation messages in background without holding UI
+        if (nextContract.conversationId) {
+          try {
+            const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
+            if (current && messagesResponse.success && messagesResponse.data) {
+              nextMessages = messagesResponse.data.map(mapWorkspaceMessage);
+              setProjectMessages(nextMessages);
+            }
+          } catch (msgErr) {
+            console.warn('[useProjectWorkspace] Chat messages background fetch failed:', msgErr);
+          }
+        }
+
+        if (current) {
+          const snapshot = {
             contract: nextContract,
             project: nextProject,
             productHandoffs: nextProductHandoffs,
             earlyStartRequests: nextEarlyStarts,
             messages: nextMessages,
-          });
+          };
+          // ⚡ Save to in-memory cache & sessionStorage for instant switching next time
+          workspaceCacheRef.current.set(activeProjectId, snapshot);
+          setSessionCachedWorkspace(activeProjectId, snapshot);
         }
       } catch (err) {
         console.error('Failed to load workspace:', err);
