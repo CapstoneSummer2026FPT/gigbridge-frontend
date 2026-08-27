@@ -117,17 +117,17 @@ export default function PostJobMilestonesScreen() {
       milestoneTotalWeeks={milestoneTotalWeeks}
       expectedDurationWeeks={expectedDurationWeeks}
       backAction={(
-        <BrandSweepBackButton onClick={() => navigateWizard('/jobs/post')}>
+        <BrandSweepBackButton onClick={() => navigateWizard('/jobs/post')} className="w-full sm:w-auto justify-center">
           <ArrowLeft size={15} />{t('postJobWizard.backDetails')}
         </BrandSweepBackButton>
       )}
       secondaryAction={(
-        <button type="button" className="job-post-button job-post-button--secondary" disabled={isActionDisabled} onClick={() => submitDraftFlow('draft')}>
+        <button type="button" className="job-post-button job-post-button--secondary w-full sm:w-auto justify-center" disabled={isActionDisabled} onClick={() => submitDraftFlow('draft')}>
           <Save size={15} />{renderSubmitLabel('draft', t('postJobWizard.saveExit'))}
         </button>
       )}
       primaryAction={(
-        <button type="button" className="job-post-button job-post-button--primary" disabled={isActionDisabled} onClick={() => submitDraftFlow('review')}>
+        <button type="button" className="job-post-button job-post-button--primary w-full sm:w-auto justify-center" disabled={isActionDisabled} onClick={() => submitDraftFlow('review')}>
           {renderSubmitLabel('review', t('postJobWizard.reviewContinue'))}
         </button>
       )}
@@ -156,17 +156,17 @@ export default function PostJobMilestonesScreen() {
     >
       <section className="job-post-section">
         <button type="button" className="job-post-section__header job-post-accordion__trigger" onClick={() => setMilestonesOpen(current => !current)} aria-expanded={milestonesOpen}>
-          <span className="job-post-section__heading">
-            <span className="job-post-section__icon"><ListChecks size={17} /></span>
-            <span><h2>{t('postJobWizard.plan.milestones')}</h2><p>{t('postJobWizard.plan.milestonesHint')}</p></span>
+          <span className="job-post-section__heading min-w-0 flex-1">
+            <span className="job-post-section__icon shrink-0"><ListChecks size={17} /></span>
+            <span className="min-w-0 flex-1"><h2 className="text-sm sm:text-base font-bold truncate">{t('postJobWizard.plan.milestones')}</h2><p className="text-xs text-muted-foreground line-clamp-1 sm:line-clamp-none">{t('postJobWizard.plan.milestonesHint')}</p></span>
           </span>
-          <span className="flex items-center gap-3">
-            <small className="text-muted-foreground">{completeMilestones}/{milestonePlans.length} {t('postJobWizard.complete')}</small>
-            <ChevronDown size={17} className={`transition-transform ${milestonesOpen ? 'rotate-180' : ''}`} />
+          <span className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <small className="text-muted-foreground text-[11px] sm:text-xs">{completeMilestones}/{milestonePlans.length} {t('postJobWizard.complete')}</small>
+            <ChevronDown size={17} className={`transition-transform duration-200 ${milestonesOpen ? 'rotate-180' : ''}`} />
           </span>
         </button>
         {milestonesOpen && (
-          <div className="job-post-section__body">
+          <div className="job-post-section__body p-3.5 sm:p-5">
             <NestedMilestonePlanEditor
               value={milestonePlansWithDeadlines as EditableMilestonePlan[]}
               onChange={plans => {
@@ -259,24 +259,24 @@ export default function PostJobMilestonesScreen() {
       {/* SECTION: INTERVIEW QUESTIONS */}
       <section className="job-post-section">
         <button type="button" className="job-post-section__header job-post-accordion__trigger" onClick={() => setQuestionsOpen(current => !current)} aria-expanded={questionsOpen}>
-          <span className="job-post-section__heading">
-            <span className="job-post-section__icon bg-gradient-to-br from-[var(--brand)]/15 to-purple-500/15 text-[var(--brand)]">
+          <span className="job-post-section__heading min-w-0 flex-1">
+            <span className="job-post-section__icon bg-gradient-to-br from-[var(--brand)]/15 to-purple-500/15 text-[var(--brand)] shrink-0">
               <HelpCircle size={18} />
             </span>
-            <span>
-              <h2>{t('postJob.questionsForInterview', 'Câu hỏi sàng lọc ứng viên (Vetting Questions)')}</h2>
-              <p>{t('postJob.questionsGuideDesc', 'Tùy chọn. Đặt câu hỏi để sàng lọc ứng viên nhanh chóng và hỗ trợ AI Phỏng vấn.')}</p>
+            <span className="min-w-0 flex-1">
+              <h2 className="text-sm sm:text-base font-bold truncate">{t('postJob.questionsForInterview', 'Câu hỏi sàng lọc ứng viên (Vetting Questions)')}</h2>
+              <p className="text-xs text-muted-foreground line-clamp-1 sm:line-clamp-none">{t('postJob.questionsGuideDesc', 'Tùy chọn. Đặt câu hỏi để sàng lọc ứng viên nhanh chóng và hỗ trợ AI Phỏng vấn.')}</p>
             </span>
           </span>
-          <span className="flex items-center gap-3">
-            <span className="rounded-full bg-[var(--brand)]/10 px-3 py-1 text-xs font-extrabold text-[var(--brand)] border border-[var(--brand)]/20">
+          <span className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <span className="rounded-full bg-[var(--brand)]/10 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-[var(--brand)] border border-[var(--brand)]/20 whitespace-nowrap">
               {questionCount} {t('postJobWizard.plan.questionsAdded', 'câu hỏi')}
             </span>
             <ChevronDown size={18} className={`text-muted-foreground transition-transform duration-200 ${questionsOpen ? 'rotate-180 text-[var(--brand)]' : ''}`} />
           </span>
         </button>
         {questionsOpen && (
-          <div className="job-post-section__body space-y-4 p-5">
+          <div className="job-post-section__body space-y-4 p-3.5 sm:p-5">
             {/* GUIDE & BENEFIT CARD (AI & STANDARD INTERVIEW) */}
             <div className="rounded-2xl border border-[var(--brand)]/25 bg-gradient-to-br from-[var(--brand)]/10 via-purple-500/5 to-muted/30 p-4 sm:p-5 space-y-3.5 shadow-2xs">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-3">
@@ -418,19 +418,19 @@ export default function PostJobMilestonesScreen() {
                 onDragStart={event => handleDragStart(event, index)}
                 onDragOver={event => handleDragOver(event, index)}
                 onDragEnd={handleDragEnd}
-                className={`rounded-2xl border p-4.5 transition-all shadow-sm ${draggedIndex === index
+                className={`rounded-2xl border p-3.5 sm:p-4.5 transition-all shadow-sm ${draggedIndex === index
                     ? 'border-[var(--brand)] ring-2 ring-[var(--brand)]/20 opacity-60 bg-[var(--brand)]/5'
                     : 'border-border/80 bg-card hover:border-[var(--brand)]/60'
                   }`}
               >
-                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-xs font-black text-foreground">
-                    <GripVertical size={16} className="text-muted-foreground cursor-grab active:cursor-grabbing" />
-                    <span className="rounded-full bg-[var(--brand)] text-white px-3 py-0.5 text-[11px] font-black">
+                <div className="mb-2.5 flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 sm:gap-2 text-xs font-black text-foreground">
+                    <GripVertical size={16} className="text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                    <span className="rounded-full bg-[var(--brand)] text-white px-2.5 sm:px-3 py-0.5 text-[10.5px] sm:text-[11px] font-black">
                       {t('postJobWizard.plan.questionLabel', 'Câu hỏi {{number}}', { number: index + 1 })}
                     </span>
                   </span>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <QuestionRequiredToggle
                       isRequired={question.isRequired}
                       questionNumber={index + 1}
@@ -448,16 +448,16 @@ export default function PostJobMilestonesScreen() {
                 </div>
                 <textarea
                   data-question-index={index}
-                  className="w-full rounded-xl border border-border/80 bg-muted/20 focus:bg-background p-3.5 text-sm font-medium text-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15 transition-all"
+                  className="w-full rounded-xl border border-border/80 bg-muted/20 focus:bg-background p-3 sm:p-3.5 text-sm font-medium text-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/15 transition-all"
                   rows={3}
                   maxLength={MAX_QUESTION_LENGTH}
                   value={question.questionText}
                   onChange={event => updateQuestion(index, { questionText: event.target.value })}
                   placeholder={t('postJob.questionPlaceholder', 'Nhập câu hỏi bạn muốn ứng viên trả lời khi nộp hồ sơ...')}
                 />
-                <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground font-semibold">
+                <div className="mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-muted-foreground font-semibold">
                   <span className="italic">{t('postJobWizard.plan.questionHint', 'Freelancers sẽ trả lời câu hỏi này khi gửi proposal.')}</span>
-                  <span>{question.questionText.length}/{MAX_QUESTION_LENGTH}</span>
+                  <span className="self-end sm:self-auto">{question.questionText.length}/{MAX_QUESTION_LENGTH}</span>
                 </div>
               </article>
             ))}

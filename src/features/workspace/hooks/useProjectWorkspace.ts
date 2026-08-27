@@ -14,13 +14,13 @@ import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Mil
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import {
-  getChatHubUrl,
   type UploadTransferProgress,
 } from '../../../service/apiService';
 import {
   buildMilestoneSubmissionFormData,
   type MilestoneSubmissionPayload,
 } from '../utils/milestoneUpload';
+import { createChatHubConnection } from '../../messages/services/chatHubConnection';
 
 interface WorkspaceMilestone {
   id: string;
@@ -587,13 +587,7 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(getChatHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const connection = createChatHubConnection();
 
     const joinCurrentConversation = async (): Promise<void> => {
       const conversationId = conversationIdRef.current;

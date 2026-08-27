@@ -131,13 +131,60 @@
       }
     },
     "complete": {
-      "eyebrow": "Interview complete",
-      "title": "Thank you for using our AI interview",
-      "message": "Your responses have been submitted successfully. You’ll receive a notification soon if your application is accepted.",
+      "eyebrow": "Interview completed",
+      "title": "Thank you for taking the AI interview",
+      "message": "Your responses have been submitted. You’ll hear back soon if you’re moving forward.",
       "inAppTitle": "In-app notification",
-      "inAppDescription": "We’ll update you inside GigBridge.",
-      "emailTitle": "Email update",
-      "emailDescription": "We’ll also send the decision to your email."
+      "inAppDescription": "We’ll keep you updated here in GigBridge.",
+      "emailTitle": "Email updates",
+      "emailDescription": "We’ll also email you the outcome."
+    }
+  },
+  "aiAssistant": {
+    "brandTitle": "GIGBRIDGE AI",
+    "statusReady": "Ready",
+    "statusThinking": "Analyzing…",
+    "toggleAria": "Open GigBridge AI",
+    "closeAria": "Close",
+    "resetTitle": "Reset conversation",
+    "expandTitle": "Expand Studio",
+    "minimizeTitle": "Minimize",
+    "welcomeHeadline": "Hello {{name}}! 👋",
+    "welcomeSubtitle": "I am your GIGBRIDGE AI assistant. Choose a strategic analysis category below or ask anything directly.",
+    "placeholder": "Ask a question or request guidance from GIGBRIDGE AI…",
+    "copied": "Copied",
+    "copy": "Copy",
+    "sendTitle": "Send message",
+    "thinkingStatus": "Connecting neural matrix & analyzing data…",
+    "senderYou": "YOU",
+    "senderAI": "GIGBRIDGE AI",
+    "guestName": "Guest",
+    "roleFreelancer": "Freelancer Workspace",
+    "roleClient": "Client Workspace",
+    "roleMember": "GigBridge Member",
+    "promptTiles": {
+      "matchTitle": "Analyze Job Opportunities",
+      "matchDesc": "Filter open projects matching your skillset and market rate",
+      "matchPrompt": "Analyze the open job opportunities on the platform best matching my skills and profile.",
+      "matchCategory": "Market Intelligence",
+      "proposalTitle": "Draft Winning Proposal",
+      "proposalDesc": "Build a persuasive proposal structure to maximize win rate",
+      "proposalPrompt": "Guide and suggest a professional proposal structure to convince clients and win contracts.",
+      "proposalCategory": "Proposal Strategy",
+      "escrowTitle": "Audit Contract & Escrow Terms",
+      "escrowDesc": "Review milestone delivery progress and Escrow protection mechanics",
+      "escrowPrompt": "Explain the secure Escrow deposit mechanism and milestone release flow on GigBridge.",
+      "escrowCategory": "Contract & Escrow",
+      "eloTitle": "Reputation & Elo Strategy",
+      "eloDesc": "Action plan to increase Elo score and profile prestige",
+      "eloPrompt": "Share effective strategies to increase Elo reputation score and stand out in the GigBridge community.",
+      "eloCategory": "Reputation Growth"
+    },
+    "errors": {
+      "maxLength": "Message exceeds the 5,000 character limit",
+      "noResponse": "Unable to generate a response at this moment.",
+      "serviceUnavailable": "AI service is currently under maintenance. Please try again later.",
+      "networkError": "Network connection error. Please check your connection."
     }
   }
 }

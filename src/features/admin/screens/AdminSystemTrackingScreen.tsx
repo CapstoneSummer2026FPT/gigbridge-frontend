@@ -12,7 +12,7 @@ import type { AdminJobPostListResponse, JobPostSummaryDto } from '../../../types
 import type { ProposalDto } from '../../../types/models/Proposal';
 import type { AdminAuditLog, PageResult } from '../../../types/models/AdminPhase1';
 import type { SystemTrackingSnapshot } from '../../../types/systemTracking';
-import { getSystemTrackingHubUrl } from '../../../service/apiService';
+import { createSystemTrackingHubConnection } from '../services/systemTrackingHubConnection';
 import '../styles/admin-users-screen.css';
 
 type TabType = 'overview' | 'audit' | 'errors' | 'alerts' | 'ai-usage';
@@ -347,12 +347,7 @@ export default function AdminSystemTrackingScreen() {
   useEffect(() => {
     let disposed = false;
     let refreshTimer: number | undefined;
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(getSystemTrackingHubUrl(), {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
-      .build();
+    const connection = createSystemTrackingHubConnection();
 
     const scheduleRefresh = () => {
       window.clearTimeout(refreshTimer);
@@ -605,11 +600,10 @@ export default function AdminSystemTrackingScreen() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
                     ? 'bg-cyan/20 text-cyan border border-cyan'
                     : 'glass-button text-secondary hover:text-primary'
-                }`}
+                  }`}
               >
                 {tab.icon}
                 {tab.label}
@@ -909,7 +903,7 @@ export default function AdminSystemTrackingScreen() {
 
               {/* Audit Logs List */}
               <div className="space-y-3">
-                  {filteredAuditLogs.map(log => (
+                {filteredAuditLogs.map(log => (
                   <div key={log.id} className="glass-card p-4 hover:bg-white/5 transition-all">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -933,7 +927,7 @@ export default function AdminSystemTrackingScreen() {
                     </div>
                   </div>
                 ))}
-                  {!isLoadingTracking && filteredAuditLogs.length === 0 && (
+                {!isLoadingTracking && filteredAuditLogs.length === 0 && (
                   <div className="glass-card text-center py-12">
                     <FileText size={48} className="mx-auto mb-4 text-muted" />
                     <p className="text-primary font-medium mb-2">No audit activity found</p>
@@ -948,13 +942,12 @@ export default function AdminSystemTrackingScreen() {
           {activeTab === 'errors' && (
             <div className="space-y-4">
               {errorMonitoring && (
-                <div className={`glass-card p-4 border ${
-                  errorMonitoring.available
+                <div className={`glass-card p-4 border ${errorMonitoring.available
                     ? 'border-green/30'
                     : errorMonitoring.configured
                       ? 'border-red/30'
                       : 'border-amber/30'
-                }`}>
+                  }`}>
                   <div className="flex items-start gap-3">
                     {errorMonitoring.available
                       ? <CheckCircle size={18} className="text-green mt-0.5" />
