@@ -162,26 +162,26 @@ export function SubmitMilestoneModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" role="presentation">
-      <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title" aria-busy={isSubmitting}>
-        <div className="p-6 border-b border-border/60 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0">
-              <Upload size={20} />
+    <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn" role="presentation">
+      <div className="bg-background border border-border/80 w-full max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title" aria-busy={isSubmitting}>
+        <div className="p-4 sm:p-6 border-b border-border/60 flex items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0">
+              <Upload size={18} />
             </div>
-            <div>
-              <h3 id="workspace-submit-title" className="text-base font-black text-text-primary tracking-tight">
+            <div className="min-w-0">
+              <h3 id="workspace-submit-title" className="text-sm sm:text-base font-black text-text-primary tracking-tight truncate">
                 {t('workspace.submitDeliverableModalTitle')}
               </h3>
-              <p className="text-xs font-bold text-brand mt-0.5">{milestoneTitle}</p>
+              <p className="text-[11px] sm:text-xs font-bold text-brand mt-0.5 truncate">{milestoneTitle}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={isSubmitting} className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" title={t('common.close')}>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="p-1.5 sm:p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0" title={t('common.close')}>
             <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto custom-scrollbar">
           {error && (
             <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" /><span>{error}</span>

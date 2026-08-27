@@ -25,6 +25,30 @@
   background: #f7f8fc;
 }
 
+/* ── Schedule Modal Responsive ── */
+.schedule-modal-shell {
+  width: 100%;
+  max-width: 36rem;
+  max-height: 92dvh;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+.schedule-datetime-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color-scheme: light dark;
+}
+
+@media (max-width: 640px) {
+  .schedule-modal-shell {
+    max-height: 95dvh;
+    border-radius: 1.25rem !important;
+  }
+}
+
 /* Room accordion */
 .msg-room-header {
   display: flex;
@@ -221,84 +245,137 @@
   background: var(--muted-foreground);
 }
 
-@media (max-width: 1024px) {
-  .messages-page {
-    height: calc(100dvh - 5rem) !important;
-    min-height: 0;
-    overflow: hidden !important;
-  }
+/* ─── Responsive & Mobile-First Layout Optimization ────────────────────────── */
 
-  .messages-page > .flex.flex-1 {
-    position: relative;
-    flex-direction: row;
-    min-width: 0;
-    overflow: hidden !important;
-  }
+/* Mobile Backdrop Overlay for Column 3 Info Drawer */
+.messages-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 110;
+  animation: fadeIn 0.2s ease-in-out;
+}
 
-  .messages-page > .flex.flex-1 > section {
-    min-height: 0;
-  }
-
-  .messages-page > .flex.flex-1 > section:first-child:not(.is-collapsed) {
-    width: 18rem !important;
-    max-height: none;
-    flex: 0 0 18rem;
-    border-right: 1px solid var(--border);
-  }
-
-  .messages-page > .flex.flex-1 > section:nth-child(2) {
-    width: auto !important;
-    min-width: 0;
-    min-height: 0;
-    flex: 1 1 auto;
-  }
-
-  .messages-page > .flex.flex-1 > aside {
-    position: fixed;
-    top: 5rem;
-    right: 0;
-    bottom: 0;
-    z-index: 80;
-    width: min(18rem, 85vw) !important;
-    max-height: calc(100dvh - 5rem);
-    border-left: 1px solid var(--border);
-    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
-  }
-
-  .messages-page > .flex.flex-1 > aside.w-0 {
-    display: none;
+@media (min-width: 768px) {
+  .messages-drawer-backdrop {
+    display: none !important;
   }
 }
 
-@media (max-width: 640px) {
+/* Tablet & Desktop (>= 768px) */
+@media (min-width: 768px) {
   .messages-page {
-    padding-top: 0.5rem;
+    height: calc(100vh - 5rem);
   }
 
-  .messages-page > header {
-    align-items: flex-start;
-    padding: 0.75rem 1rem;
+  .messages-conversation-list {
+    width: 23rem !important;
+    max-width: 24rem;
+    flex-shrink: 0;
+    display: flex !important;
   }
 
-  .messages-page > .flex.flex-1 > section:first-child:not(.is-collapsed) {
-    width: 12rem !important;
-    flex-basis: 12rem;
+  .messages-chat-pane {
+    flex: 1 1 0% !important;
+    display: flex !important;
+    min-width: 0;
   }
 
-  .messages-page > .flex.flex-1 > section:nth-child(2) > div:first-child,
-  .messages-page > .flex.flex-1 > section:nth-child(2) > div:nth-child(2),
-  .messages-page > .flex.flex-1 > section:nth-child(2) > div:nth-child(3) {
-    padding-left: 1rem;
-    padding-right: 1rem;
+  .messages-context-panel {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Mobile Devices (< 768px) - Master Detail Flow */
+@media (max-width: 767px) {
+  /* Hide AI Assistant Floating Widget on Mobile Messages Screen */
+  .ai-widget {
+    display: none !important;
+  }
+
+  .messages-page {
+    height: calc(100dvh - 5.5rem) !important;
+    padding-top: 1.25rem !important;
+    overflow: hidden !important;
+  }
+
+  .messages-pane-toggle.desktop-only {
+    display: none !important;
+  }
+
+  /* When no conversation is active: show List full width */
+  .messages-page.view-list .messages-conversation-list {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    border-right: none !important;
+    display: flex !important;
+  }
+
+  .messages-page.view-list .messages-chat-pane {
+    display: none !important;
+  }
+
+  /* When a conversation is active: show Chat full width */
+  .messages-page.view-chat .messages-conversation-list {
+    display: none !important;
+  }
+
+  .messages-page.view-chat .messages-chat-pane {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    display: flex !important;
+    min-width: 0;
+  }
+
+  /* Column 3 Info Drawer on Mobile: Slide-over overlay */
+  .messages-context-panel {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: 100dvh !important;
+    width: min(320px, 88vw) !important;
+    max-width: 88vw !important;
+    z-index: 120 !important;
+    box-shadow: -15px 0 40px rgba(0, 0, 0, 0.4) !important;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease !important;
+  }
+
+  .messages-context-panel.is-open {
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .messages-context-panel:not(.is-open) {
+    transform: translateX(100%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Mobile message chat history & bubbles */
+  .messages-chat-pane .messages-custom-scroll {
+    padding: 0.875rem !important;
+    gap: 0.875rem !important;
   }
 
   .messages-page .max-w-\[80\%\] {
-    max-width: 94% !important;
+    max-width: 88% !important;
   }
 
   .msg-deal-card {
-    width: min(480px, calc(100vw - 3rem));
-    max-width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .msg-conv-settings-menu {
@@ -307,20 +384,8 @@
     width: min(14rem, calc(100vw - 2rem)) !important;
   }
 
-  .messages-page textarea {
-    min-height: 3rem;
-  }
-
-  .messages-chat-pane > div:first-child {
-    min-width: 0;
-    gap: 0.5rem;
-  }
-
   #btn-send-message {
-    padding-inline: 0.75rem;
-  }
-
-  #btn-send-message span {
-    display: none;
+    padding-inline: 0.875rem !important;
+    height: 2.25rem !important;
   }
 }

@@ -185,29 +185,29 @@ export function RaiseIssueModal({
         aria-modal="true"
         aria-labelledby="rc-raise-issue-title"
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-full max-w-5xl h-[85vh] min-h-[600px] max-h-[820px] rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
+        className="relative z-10 w-full max-w-5xl h-[92dvh] lg:h-[85vh] max-h-[92dvh] lg:max-h-[820px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
       >
         {/* ═══ LEFT COLUMN: Context Hero ═══════════════════════════════════ */}
-        <div className="w-full lg:w-5/12 h-full p-6 sm:p-8 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
+        <div className="w-full lg:w-5/12 p-4 sm:p-6 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-surface-card/50 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
-          <div className="relative z-10">
+          <div className="relative z-10 pr-8 lg:pr-0">
             {/* Top Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[11px] font-black uppercase tracking-widest mb-6 sm:mb-8">
-              <ShieldCheck size={14} />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2 sm:mb-4 lg:mb-8">
+              <ShieldCheck size={13} />
               {t('workspace.reportCategoryBadge', { defaultValue: 'Báo Cáo Sự Cố' })}
             </div>
 
-            <h1 id="rc-raise-issue-title" className="text-2xl font-black text-text-primary mb-2 tracking-tight">
+            <h1 id="rc-raise-issue-title" className="text-base sm:text-xl lg:text-2xl font-black text-text-primary mb-1 sm:mb-2 tracking-tight">
               {t('workspace.reportCreateTitle', { defaultValue: 'Tạo Yêu Cầu Xử Lý Sự Cố' })}
             </h1>
-            <p className="text-xs sm:text-sm font-semibold text-text-muted leading-relaxed">
+            <p className="text-[11px] sm:text-xs lg:text-sm font-semibold text-text-muted leading-relaxed line-clamp-2 sm:line-clamp-none">
               {t('workspace.reportCreatedDesc', { defaultValue: 'Gửi báo cáo vấn đề trực tiếp đến đối phương và bộ phận hỗ trợ GigBridge để bảo vệ quyền lợi.' })}
             </p>
           </div>
 
-          {/* Center Simple Site Logo Icon Box */}
-          <div className="relative z-10 flex flex-col items-center my-6 lg:my-8 text-center space-y-3">
+          {/* Center Simple Site Logo Icon Box - Desktop only */}
+          <div className="relative z-10 hidden lg:flex flex-col items-center my-6 lg:my-8 text-center space-y-3">
             <div className="w-20 h-20 rounded-full bg-background border border-border flex items-center justify-center p-3.5 shadow-md">
               <img src="/img/logo.png" alt="GigBridge Logo" className="w-full h-full object-contain" />
             </div>
@@ -222,7 +222,7 @@ export function RaiseIssueModal({
           </div>
 
           {/* Project Details Card */}
-          <div className="relative z-10 rounded-2xl border border-border/70 bg-surface-card p-4 space-y-1">
+          <div className="relative z-10 hidden sm:block rounded-2xl border border-border/70 bg-surface-card p-3 sm:p-4 space-y-1 mt-2 lg:mt-0">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand">
               <BriefcaseBusiness size={13} />
               <span>Contract ID</span>
@@ -236,14 +236,14 @@ export function RaiseIssueModal({
             onClick={handleClose}
             disabled={isSubmitting}
             aria-label={t('common.close', { defaultValue: 'Đóng' })}
-            className="absolute top-5 right-5 lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer"
+            className="absolute top-4 right-4 lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* ═══ RIGHT COLUMN: Interactive Form ════════════════════════════ */}
-        <div className="w-full lg:w-7/12 h-full p-6 sm:p-8 lg:p-10 bg-background relative overflow-y-auto custom-scrollbar flex flex-col justify-between">
+        <div className="w-full lg:w-7/12 flex-1 min-h-0 p-4 sm:p-6 lg:p-10 bg-background relative overflow-y-auto custom-scrollbar flex flex-col justify-between">
           {/* Close button (Desktop) */}
           <button
             type="button"
@@ -255,7 +255,7 @@ export function RaiseIssueModal({
             <X size={16} />
           </button>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5">
             {error && (
               <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-extrabold flex items-center gap-2.5 shadow-xs" role="alert">
                 <AlertCircle size={16} className="shrink-0" />

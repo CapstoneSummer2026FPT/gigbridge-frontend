@@ -192,7 +192,7 @@ export function ChatAndInfoPanel({
         <button
           type="button"
           onClick={() => setActiveTab('chat')}
-          className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeTab === 'chat'
               ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-black'
               : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -205,7 +205,7 @@ export function ChatAndInfoPanel({
         <button
           type="button"
           onClick={() => setActiveTab('files')}
-          className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeTab === 'files'
               ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-black'
               : 'border-transparent text-muted-foreground hover:text-foreground'

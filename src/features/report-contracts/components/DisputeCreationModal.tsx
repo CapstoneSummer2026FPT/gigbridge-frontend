@@ -148,23 +148,23 @@ export function DisputeCreationModal({
         aria-modal="true"
         aria-labelledby="rc-dispute-creation-title"
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[80vh] min-h-[540px] max-h-[720px] rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
+        className="relative z-10 w-full max-w-4xl lg:max-w-5xl h-[92dvh] lg:h-[80vh] max-h-[92dvh] lg:max-h-[720px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto"
       >
         {/* ═══ LEFT COLUMN: Context Hero & Summary ════════════════════════ */}
-        <div className="w-full lg:w-5/12 h-full p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/30 bg-surface-muted/40 relative overflow-hidden shrink-0">
+        <div className="w-full lg:w-5/12 p-4 sm:p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/30 bg-surface-muted/40 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
-          <div className="relative z-10">
+          <div className="relative z-10 pr-8 lg:pr-0">
             {/* Top Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[11px] font-black uppercase tracking-widest mb-6">
-              <ShieldAlert size={14} />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2 sm:mb-4 lg:mb-6">
+              <ShieldAlert size={13} />
               {t('workspace.disputeCreationKicker', { defaultValue: 'Tranh Chấp Trực Tuyến' })}
             </div>
 
-            <h1 id="rc-dispute-creation-title" className="text-xl sm:text-2xl font-black text-text-primary mb-2 tracking-tight">
+            <h1 id="rc-dispute-creation-title" className="text-base sm:text-xl lg:text-2xl font-black text-text-primary mb-1 sm:mb-2 tracking-tight">
               {t('workspace.disputeCreationTitle', { defaultValue: 'Nộp Hồ Sơ Tranh Chấp Admin' })}
             </h1>
-            <p className="text-xs sm:text-sm font-semibold text-text-muted leading-relaxed">
+            <p className="text-[11px] sm:text-xs lg:text-sm font-semibold text-text-muted leading-relaxed line-clamp-2 sm:line-clamp-none">
               {t('workspace.disputeCreationSubtitle', {
                 defaultValue: 'Cung cấp thông tin và bằng chứng chi tiết để Bộ phận Quản trị GigBridge đưa ra quyết định xử lý khách quan nhất.',
               })}
@@ -172,7 +172,7 @@ export function DisputeCreationModal({
           </div>
 
           {/* Contract & Report Summary Grid */}
-          <div className="relative z-10 rounded-2xl border border-border/60 bg-background/60 p-4 space-y-3 my-4 text-xs">
+          <div className="relative z-10 hidden sm:block rounded-2xl border border-border/60 bg-background/60 p-3 sm:p-4 space-y-2 sm:space-y-3 my-2 lg:my-4 text-xs">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand border-b border-border/50 pb-2">
               <BriefcaseBusiness size={14} />
               <span>{t('workspace.disputeSummaryHeader', { defaultValue: 'Tóm Tắt Sự Cố' })}</span>
