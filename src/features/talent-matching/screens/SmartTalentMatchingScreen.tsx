@@ -114,7 +114,7 @@ export default function SmartTalentMatchingScreen() {
 
   return (
     <AppLayout>
-      <div className="max-w-[1500px] mx-auto px-4 py-8">
+      <div className="max-w-[1500px] mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-8">
 
         {/* Header */}
         <TalentMatchingHeader
@@ -154,10 +154,10 @@ export default function SmartTalentMatchingScreen() {
         )}
 
         {/* Main 2-column layout (Expanded main content taking full left space) */}
-        <div className="grid grid-cols-12 gap-5 items-start">
+        <div className="grid grid-cols-12 gap-4 lg:gap-6 items-start">
 
           {/* Main Content Area (Expanded to col-span-12 lg:col-span-9) */}
-          <main className="col-span-12 lg:col-span-9 space-y-4">
+          <main className="col-span-12 lg:col-span-9 space-y-4 min-w-0">
 
             {/* Consolidated Filter & Search Header Toolbar */}
             <TalentMatchingFilterBar

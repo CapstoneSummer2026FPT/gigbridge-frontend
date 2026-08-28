@@ -5,9 +5,9 @@
 /* Landing Nav Floating Base Container */
 .top-nav-landing-container {
   position: fixed;
-  left: 0.75rem;
-  right: 0.75rem;
-  top: 0.75rem;
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+  right: calc(0.75rem + env(safe-area-inset-right, 0px));
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
   height: 4rem;
   z-index: 35;
   border: none;
@@ -16,9 +16,9 @@
 
 @media (min-width: 640px) {
   .top-nav-landing-container {
-    left: 1.5rem;
-    right: 1.5rem;
-    top: 1rem;
+    left: calc(1.5rem + env(safe-area-inset-left, 0px));
+    right: calc(1.5rem + env(safe-area-inset-right, 0px));
+    top: calc(1rem + env(safe-area-inset-top, 0px));
   }
 }
 
@@ -330,9 +330,9 @@
 
 .top-nav-standard-container {
   position: fixed;
-  left: 0.75rem;
-  right: 0.75rem;
-  top: 0.75rem;
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+  right: calc(0.75rem + env(safe-area-inset-right, 0px));
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
   height: 4rem;
   border: none;
   display: flex;
@@ -344,9 +344,9 @@
 
 @media (min-width: 640px) {
   .top-nav-standard-container {
-    left: 1.5rem;
-    right: 1.5rem;
-    top: 1rem;
+    left: calc(1.5rem + env(safe-area-inset-left, 0px));
+    right: calc(1.5rem + env(safe-area-inset-right, 0px));
+    top: calc(1rem + env(safe-area-inset-top, 0px));
   }
 }
 
