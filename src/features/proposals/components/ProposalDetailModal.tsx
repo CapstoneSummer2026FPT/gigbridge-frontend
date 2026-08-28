@@ -132,9 +132,13 @@ export function ProposalDetailModal({
           ...(qa.technical_reasoning?.evidence || []),
         ].map((e: any) => e.claim).filter(Boolean);
 
+        const qIdx = qa.question_index ?? (idx + 1);
+        const displayNumber = typeof qa.question_index === 'number' && qa.question_index > 0 ? qa.question_index : (idx + 1);
+
         return {
-          questionIndex: qa.question_index ?? 0,
-          questionText: qa.question_text || `Question #${(qa.question_index ?? 0) + 1}`,
+          questionIndex: qIdx,
+          displayNumber,
+          questionText: qa.question_text || `Question #${displayNumber}`,
           candidateAnswer: qa.candidate_answer || 'No answer provided',
           overallScore: weightedScore,
           subcriteria: {
@@ -527,7 +531,7 @@ export function ProposalDetailModal({
                           {/* Question Title & Overall Weighted Score */}
                           <div className="flex justify-between items-start gap-4">
                             <h5 className="text-xs font-black text-text-primary leading-snug">
-                              {q.questionIndex + 1}. {q.questionText}
+                              {q.displayNumber}. {q.questionText}
                             </h5>
                             <span className={`shrink-0 rounded-full px-3 py-0.5 text-xs font-black ${getScoreColorClass(q.overallScore)}`}>
                               {q.overallScore}/100
