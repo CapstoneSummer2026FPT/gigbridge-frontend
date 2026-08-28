@@ -150,6 +150,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     allThemes.forEach(t => root.classList.remove(t));
     root.classList.add(theme);
     localStorage.setItem('gigbridge_theme', theme);
+
+    const bgColor = theme === 'white' ? '#ffffff' : '#09090e';
+    root.style.backgroundColor = bgColor;
+    document.body.style.backgroundColor = bgColor;
+
+    const metaTags = document.querySelectorAll('meta[name="theme-color"]');
+    if (metaTags.length > 0) {
+      metaTags.forEach(meta => meta.setAttribute('content', bgColor));
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = bgColor;
+      document.head.appendChild(meta);
+    }
   }, [theme]);
 
   const isAuthenticated = !!user;
