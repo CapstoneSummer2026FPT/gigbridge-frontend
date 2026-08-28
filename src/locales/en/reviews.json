@@ -2,6 +2,8 @@
   "reviews": {
     "title": "Review your project partner",
     "subtitle": "Your feedback helps build trust after a completed project.",
+    "projectCompletedBadge": "Project Completed",
+    "projectDetails": "Project Details",
     "loading": "Loading review details...",
     "loadError": "Unable to load the completed project.",
     "contractRequired": "A contract is required to submit a review.",

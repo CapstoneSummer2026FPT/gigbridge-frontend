@@ -69,6 +69,7 @@ export default function FreelancerProposalsScreen() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [withdrawTarget, setWithdrawTarget] = useState<ProposalItem | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -119,6 +120,7 @@ export default function FreelancerProposalsScreen() {
           );
           if (submittedProposal) {
             setActiveProposalId(submittedProposal.proposalsId);
+            setMobileView('detail');
             setMessage(submittedProposal.hasAiInterview && !submittedProposal.aiInterviewCompleted
               ? t('aiInterview.proposal.submittedWithInterview')
               : t('aiInterview.proposal.submitted'));
@@ -308,20 +310,20 @@ export default function FreelancerProposalsScreen() {
       <div ref={containerRef} className="flex flex-col h-[calc(100vh-4rem)] bg-background text-text-primary overflow-hidden">
 
         {/* ── Top Chrome Header Bar ─────────────────────────────────────────── */}
-        <header className="fps-gsap-header sticky top-0 z-40 flex items-center justify-between px-6 py-3.5 border-b border-border bg-background/80 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-4 min-w-0">
+        <header className="fps-gsap-header sticky top-0 z-40 flex items-center justify-between px-3.5 sm:px-6 py-3 sm:py-3.5 border-b border-border bg-background/80 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
               type="button"
               onClick={() => navigate('/freelancer/dashboard')}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border text-text-secondary transition-colors hover:border-brand/40 hover:text-brand cursor-pointer"
+              className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl border border-border text-text-secondary transition-colors hover:border-brand/40 hover:text-brand cursor-pointer"
             >
               <ArrowLeft size={16} />
             </button>
             <div className="min-w-0">
-              <h1 className="text-lg font-black tracking-tight text-text-primary sm:text-xl truncate">
+              <h1 className="text-base sm:text-xl font-black tracking-tight text-text-primary truncate">
                 {t('inbox.titleWord1')} <span className="text-brand italic font-light">{t('inbox.titleWord2')}</span>
               </h1>
-              <p className="text-xs font-semibold text-text-muted truncate">
+              <p className="text-[11px] sm:text-xs font-semibold text-text-muted truncate">
                 {t('inbox.subtitle')}
               </p>
             </div>
@@ -329,52 +331,52 @@ export default function FreelancerProposalsScreen() {
         </header>
 
         {/* ── Quick Stats Ribbon ───────────────────────────────────────────── */}
-        <div className="fps-gsap-stats px-6 py-2.5 bg-surface-muted/40 border-b border-border/80 shrink-0 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs">
-            <div className="p-2 rounded-lg bg-brand/10 text-brand">
-              <FileText size={16} />
+        <div className="fps-gsap-stats px-3 sm:px-6 py-2 sm:py-2.5 bg-surface-muted/40 border-b border-border/80 shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 text-xs">
+          <div className="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-brand/10 text-brand shrink-0">
+              <FileText size={15} />
             </div>
-            <div>
-              <span className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                {t('inbox.statsTotal', { defaultValue: 'Tổng đơn ứng tuyển' })}
+            <div className="min-w-0 flex-1">
+              <span className="block text-[9.5px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">
+                {t('inbox.statsTotal', { defaultValue: 'Tổng đơn' })}
               </span>
-              <strong className="text-sm font-black text-text-primary">{stats.total}</strong>
+              <strong className="text-xs sm:text-sm font-black text-text-primary">{stats.total}</strong>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs">
-            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
-              <Clock size={16} />
+          <div className="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-amber-500/10 text-amber-500 shrink-0">
+              <Clock size={15} />
             </div>
-            <div>
-              <span className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                {t('inbox.statsPending', { defaultValue: 'Đang chờ & Phỏng vấn' })}
+            <div className="min-w-0 flex-1">
+              <span className="block text-[9.5px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">
+                {t('inbox.statsPending', { defaultValue: 'Đang chờ' })}
               </span>
-              <strong className="text-sm font-black text-amber-600 dark:text-amber-400">{stats.pending}</strong>
+              <strong className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400">{stats.pending}</strong>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-              <CheckCircle2 size={16} />
+          <div className="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-500/10 text-emerald-500 shrink-0">
+              <CheckCircle2 size={15} />
             </div>
-            <div>
-              <span className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                {t('inbox.statsAccepted', { defaultValue: 'Đã chấp nhận' })}
+            <div className="min-w-0 flex-1">
+              <span className="block text-[9.5px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">
+                {t('inbox.statsAccepted', { defaultValue: 'Đã nhận' })}
               </span>
-              <strong className="text-sm font-black text-emerald-600 dark:text-emerald-400">{stats.accepted}</strong>
+              <strong className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">{stats.accepted}</strong>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs">
-            <div className="p-2 rounded-lg bg-brand/10 text-brand">
-              <Coins size={16} />
+          <div className="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-background/80 border border-border/60 shadow-2xs min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-brand/10 text-brand shrink-0">
+              <Coins size={15} />
             </div>
-            <div>
-              <span className="block text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                {t('inbox.statsTotalValue', { defaultValue: 'Tổng giá trị chào thầu' })}
+            <div className="min-w-0 flex-1">
+              <span className="block text-[9.5px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">
+                {t('inbox.statsTotalValue', { defaultValue: 'Tổng giá trị' })}
               </span>
-              <strong className="text-sm font-black text-brand">
+              <strong className="text-xs sm:text-sm font-black text-brand truncate block">
                 <GigCoinAmount amount={stats.totalBid} />
               </strong>
             </div>
@@ -383,7 +385,7 @@ export default function FreelancerProposalsScreen() {
 
         {/* Message Banner */}
         {message && (
-          <div className="mx-6 mt-3 p-4 rounded-2xl bg-emerald-600 text-white shadow-md flex items-center justify-between gap-3 text-xs font-bold shrink-0">
+          <div className="mx-3.5 sm:mx-6 mt-3 p-3.5 sm:p-4 rounded-2xl bg-emerald-600 text-white shadow-md flex items-center justify-between gap-3 text-xs font-bold shrink-0">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 size={18} className="shrink-0" />
               <span>{message}</span>
@@ -395,17 +397,20 @@ export default function FreelancerProposalsScreen() {
         )}
 
         {/* ── Main Layout Workspace ─────────────────────────────────────────── */}
-        <div className="flex flex-1 overflow-hidden p-4 gap-4">
+        <div className="flex flex-1 overflow-hidden p-2.5 sm:p-4 gap-3 sm:gap-4 min-w-0">
 
           {/* Left Column: Proposals Sidebar List & Filters */}
-          <section className="fps-gsap-sidebar w-full md:w-96 lg:w-[420px] flex flex-col rounded-2xl border border-border bg-background shrink-0 overflow-hidden shadow-sm">
+          <section className={`fps-gsap-sidebar w-full md:w-96 lg:w-[420px] flex flex-col rounded-2xl border border-border bg-background shrink-0 overflow-hidden shadow-sm ${mobileView === 'detail' ? 'hidden md:flex' : 'flex'}`}>
             
             {/* Searchable Job Quick Selector CustomSelect */}
             <div className="p-3 border-b border-border bg-surface-muted/30 space-y-3 shrink-0">
               <CustomSelect
                 value={activeProposalId || ''}
                 options={jobSelectOptions}
-                onChange={val => setActiveProposalId(val)}
+                onChange={val => {
+                  setActiveProposalId(val);
+                  if (val) setMobileView('detail');
+                }}
                 leftIcon={<Search size={14} />}
                 searchable={true}
                 placeholder={t('inbox.selectJobPlaceholder', { defaultValue: 'Tìm & chọn nhanh công việc...' })}
@@ -485,7 +490,10 @@ export default function FreelancerProposalsScreen() {
                   return (
                     <div
                       key={proposal.proposalsId}
-                      onClick={() => setActiveProposalId(proposal.proposalsId)}
+                      onClick={() => {
+                        setActiveProposalId(proposal.proposalsId);
+                        setMobileView('detail');
+                      }}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-2.5 ${
                         isActive
                           ? 'border-brand bg-brand/5 dark:bg-brand/10 shadow-md ring-2 ring-brand/20'
@@ -493,7 +501,7 @@ export default function FreelancerProposalsScreen() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-xs font-extrabold text-text-primary line-clamp-2 leading-snug">
+                        <h3 className="text-xs font-extrabold text-text-primary line-clamp-2 leading-snug break-all [overflow-wrap:anywhere]">
                           {proposal.jobTitle || 'Đề xuất ứng tuyển'}
                         </h3>
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase ${statusBadgeClass(proposal.status)}`}>
@@ -515,7 +523,7 @@ export default function FreelancerProposalsScreen() {
 
                       <div className="flex items-center gap-2 pt-1 border-t border-border/40 text-[10px]">
                         {proposal.hasAiInterview && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-extrabold border border-purple-500/20">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand/10 text-brand font-extrabold border border-brand/20">
                             <Bot size={11} /> AI Interview
                           </span>
                         )}
@@ -558,26 +566,40 @@ export default function FreelancerProposalsScreen() {
           </section>
 
           {/* Right Column: Active Proposal Detail Workspace */}
-          <section className="fps-gsap-detail flex-1 rounded-2xl border border-border bg-background shadow-sm overflow-hidden flex flex-col p-6 overflow-y-auto custom-scrollbar">
+          <section className={`fps-gsap-detail flex-1 rounded-2xl border border-border bg-background shadow-sm overflow-hidden flex flex-col p-3.5 sm:p-6 overflow-y-auto custom-scrollbar ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
             {activeProposal ? (
               <div className="space-y-6">
+                {/* Mobile Back Button */}
+                <div className="md:hidden flex items-center justify-between pb-3 border-b border-border">
+                  <button
+                    type="button"
+                    onClick={() => setMobileView('list')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-muted hover:bg-surface-hover text-xs font-bold text-text-primary cursor-pointer transition shadow-2xs"
+                  >
+                    <ArrowLeft size={14} /> Danh sách đề xuất
+                  </button>
+                  <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${statusBadgeClass(activeProposal.status)}`}>
+                    {getStatusLabel(activeProposal.status)}
+                  </span>
+                </div>
+
                 {/* Proposal Header Banner */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-border pb-5">
-                  <div className="space-y-1">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 border-b border-border pb-4 sm:pb-5">
+                  <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-black text-text-primary leading-snug">
+                      <h2 className="text-base sm:text-lg font-black text-text-primary leading-snug break-all [overflow-wrap:anywhere]">
                         {activeProposal.jobTitle || 'Đề xuất ứng tuyển'}
                       </h2>
                       <button
                         type="button"
                         onClick={() => navigate(`/jobs/${activeProposal.jobPostsId}`)}
-                        className="p-1 rounded-lg text-text-muted hover:text-brand hover:bg-surface-muted transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-text-muted hover:text-brand hover:bg-surface-muted transition-colors cursor-pointer shrink-0"
                         title="Xem bài đăng tuyển"
                       >
                         <ExternalLink size={15} />
                       </button>
                     </div>
-                    <p className="text-xs font-semibold text-text-muted flex items-center gap-2">
+                    <p className="text-[11px] sm:text-xs font-semibold text-text-muted flex flex-wrap items-center gap-2">
                       <span>{t('inbox.submittedOn', {
                         date: activeProposal.submittedAt
                           ? new Date(activeProposal.submittedAt).toLocaleDateString()
@@ -588,18 +610,18 @@ export default function FreelancerProposalsScreen() {
                       )}
                     </p>
                   </div>
-                  <span className={`self-start rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider ${statusBadgeClass(activeProposal.status)}`}>
+                  <span className={`hidden sm:inline-flex self-start rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider shrink-0 ${statusBadgeClass(activeProposal.status)}`}>
                     {getStatusLabel(activeProposal.status)}
                   </span>
                 </div>
 
                 {/* Actions Toolbar */}
-                <div className="flex flex-wrap items-center gap-2.5 pb-2">
+                <div className="flex flex-wrap items-center gap-2 pb-2">
                   {canEditProposal(activeProposal.status) && (
                     <button
                       type="button"
                       onClick={() => navigate(`/proposals/${activeProposal.proposalsId}/edit`)}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition-all hover:opacity-90 hover:-translate-y-0.5 cursor-pointer"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-extrabold text-white transition-all hover:opacity-90 hover:-translate-y-0.5 cursor-pointer"
                       style={{ background: 'var(--brand)', boxShadow: '0 4px 14px -2px rgba(73,75,231,0.3)' }}
                     >
                       <Edit3 size={14} />
@@ -611,7 +633,7 @@ export default function FreelancerProposalsScreen() {
                     <button
                       type="button"
                       onClick={() => void answersModal.openModal(activeProposal.proposalsId, activeProposal.jobTitle, activeProposal.status, activeProposal.jobPostsId)}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-bold text-text-primary hover:border-brand/40 hover:text-brand transition-all cursor-pointer"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 sm:px-4 py-2 text-xs font-bold text-text-primary hover:border-brand/40 hover:text-brand transition-all cursor-pointer"
                     >
                       <FileText size={14} />
                       <span>{t('inbox.viewAnswers')}</span>
@@ -623,7 +645,7 @@ export default function FreelancerProposalsScreen() {
                       type="button"
                       onClick={() => openAcceptedNegotiation(activeProposal)}
                       disabled={openingNegotiationId === activeProposal.proposalsId}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm cursor-pointer"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm cursor-pointer"
                     >
                       <MessageSquare size={14} />
                       <span>
@@ -645,7 +667,7 @@ export default function FreelancerProposalsScreen() {
                           proposalId: activeProposal.proposalsId,
                         },
                       })}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition-all hover:opacity-90 cursor-pointer"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-extrabold text-white transition-all hover:opacity-90 cursor-pointer"
                       style={{ background: 'var(--brand)' }}
                     >
                       <Bot size={14} />
@@ -661,7 +683,7 @@ export default function FreelancerProposalsScreen() {
                     <button
                       type="button"
                       onClick={() => setWithdrawTarget(activeProposal)}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/5 px-3.5 sm:px-4 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
                     >
                       <XCircle size={14} />
                       <span>{t('inbox.withdraw')}</span>
@@ -670,45 +692,51 @@ export default function FreelancerProposalsScreen() {
                 </div>
 
                 {/* Segmented Tab Switcher Navigation */}
-                <div className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl border border-border/80 bg-surface-muted/50 dark:bg-surface-muted/30 backdrop-blur-md shadow-xs text-xs">
+                <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-border/80 bg-surface-muted/50 dark:bg-surface-muted/30 backdrop-blur-md shadow-xs text-xs overflow-x-auto custom-scrollbar w-full sm:w-auto max-w-full">
                   <button
                     type="button"
                     onClick={() => setDetailTab('overview')}
-                    className={`relative px-4 py-2 rounded-xl font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
+                    className={`flex-1 sm:flex-initial shrink-0 relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap text-center text-xs ${
                       detailTab === 'overview'
                         ? 'bg-brand text-white shadow-md shadow-brand/25 scale-[1.02] ring-1 ring-white/20'
                         : 'text-text-secondary hover:text-text-primary hover:bg-background/60 font-extrabold'
                     }`}
                   >
-                    <Sparkles size={14} className={detailTab === 'overview' ? 'animate-pulse' : 'text-brand'} />
-                    <span>{t('inbox.tabOverview', { defaultValue: 'Tổng quan & Giải pháp' })}</span>
+                    <Sparkles size={14} className={detailTab === 'overview' ? 'animate-pulse shrink-0' : 'text-brand shrink-0'} />
+                    <span>
+                      {t('inbox.tabOverviewShort', { defaultValue: 'Tổng quan' })}
+                      <span className="hidden sm:inline"> &amp; {t('inbox.tabOverviewRest', { defaultValue: 'Giải pháp' })}</span>
+                    </span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDetailTab('milestones')}
-                    className={`relative px-4 py-2 rounded-xl font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
+                    className={`flex-1 sm:flex-initial shrink-0 relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap text-center text-xs ${
                       detailTab === 'milestones'
                         ? 'bg-brand text-white shadow-md shadow-brand/25 scale-[1.02] ring-1 ring-white/20'
                         : 'text-text-secondary hover:text-text-primary hover:bg-background/60 font-extrabold'
                     }`}
                   >
-                    <Layers size={14} className={detailTab === 'milestones' ? '' : 'text-brand'} />
-                    <span>{t('inbox.tabMilestones', { defaultValue: 'Milestones & Chi phí' })}</span>
+                    <Layers size={14} className={detailTab === 'milestones' ? 'shrink-0' : 'text-brand shrink-0'} />
+                    <span>
+                      {t('inbox.tabMilestonesShort', { defaultValue: 'Milestones' })}
+                      <span className="hidden sm:inline"> &amp; {t('inbox.tabMilestonesRest', { defaultValue: 'Chi phí' })}</span>
+                    </span>
                   </button>
 
                   {activeProposal.hasAiInterview && (
                     <button
                       type="button"
                       onClick={() => setDetailTab('aiInterview')}
-                      className={`relative px-4 py-2 rounded-xl font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
+                      className={`flex-1 sm:flex-initial shrink-0 relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-black transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap text-center text-xs ${
                         detailTab === 'aiInterview'
-                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/25 scale-[1.02] ring-1 ring-white/20'
-                          : 'text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 font-extrabold'
+                          ? 'bg-gradient-to-r from-brand to-indigo-600 text-white shadow-md shadow-brand/25 scale-[1.02] ring-1 ring-white/20'
+                          : 'text-brand hover:bg-brand/10 font-extrabold'
                       }`}
                     >
-                      <Bot size={14} className={detailTab === 'aiInterview' ? 'animate-bounce' : ''} />
-                      <span>{t('inbox.tabAiInterview', { defaultValue: 'AI Assistant' })}</span>
+                      <Bot size={14} className={detailTab === 'aiInterview' ? 'animate-bounce shrink-0' : 'shrink-0'} />
+                      <span>{t('inbox.tabAiInterviewShort', { defaultValue: 'Trợ lý AI' })}</span>
                     </button>
                   )}
                 </div>
@@ -730,7 +758,7 @@ export default function FreelancerProposalsScreen() {
                         <FileText size={14} className="text-brand" />
                         {t('createProposal.coverLetterLabel')}
                       </h4>
-                      <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-4 shadow-2xs">
+                      <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-3.5 sm:p-4 shadow-2xs break-all [overflow-wrap:anywhere]">
                         {activeDetail?.coverLetter || activeProposal.coverLetter || 'Chưa cung cấp thư giới thiệu.'}
                       </div>
                     </div>
@@ -742,7 +770,7 @@ export default function FreelancerProposalsScreen() {
                           <Sparkles size={14} className="text-brand" />
                           {t('createProposal.solutionStrategyLabel')}
                         </h4>
-                        <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-4 shadow-2xs">
+                        <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-3.5 sm:p-4 shadow-2xs break-all [overflow-wrap:anywhere]">
                           {activeDetail.solutionApproach || activeDetail.analysisSummary}
                         </div>
                       </div>
@@ -755,21 +783,21 @@ export default function FreelancerProposalsScreen() {
                           <CheckCircle2 size={14} className="text-emerald-500" />
                           {t('createProposal.overallDeliverables')}
                         </h4>
-                        <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-4 shadow-2xs">
+                        <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-3.5 sm:p-4 shadow-2xs break-all [overflow-wrap:anywhere]">
                           {activeDetail.deliverables}
                         </div>
                       </div>
                     )}
 
                     {/* Key Assumptions & Out of Scope Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {activeDetail?.assumptions && (
                         <div className="space-y-2">
                           <h4 className="text-xs font-extrabold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
                             <AlertCircle size={14} className="text-amber-500" />
                             {t('createProposal.keyAssumptions')}
                           </h4>
-                          <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-4 shadow-2xs">
+                          <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-3.5 sm:p-4 shadow-2xs break-all [overflow-wrap:anywhere]">
                             {activeDetail.assumptions}
                           </div>
                         </div>
@@ -781,7 +809,7 @@ export default function FreelancerProposalsScreen() {
                             <Ban size={14} className="text-rose-500" />
                             {t('createProposal.outOfScope')}
                           </h4>
-                          <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-4 shadow-2xs">
+                          <div className="text-xs font-medium text-text-primary leading-relaxed whitespace-pre-wrap rounded-2xl border border-border bg-surface-muted/30 p-3.5 sm:p-4 shadow-2xs break-all [overflow-wrap:anywhere]">
                             {activeDetail.outOfScope}
                           </div>
                         </div>
@@ -794,18 +822,18 @@ export default function FreelancerProposalsScreen() {
                 {detailTab === 'milestones' && (
                   <div className="space-y-5">
                     {/* Financial Summary Bento Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="rounded-2xl border border-border bg-surface-muted/40 p-4 shadow-2xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="rounded-2xl border border-border bg-surface-muted/40 p-3.5 sm:p-4 shadow-2xs">
                         <span className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted flex items-center gap-1.5 mb-1">
                           <Briefcase size={13} className="text-brand" />
                           {t('inbox.yourBid')}
                         </span>
-                        <p className="text-xl font-black text-brand">
+                        <p className="text-lg sm:text-xl font-black text-brand">
                           <GigCoinAmount amount={activeProposal.proposedBudget} />
                         </p>
                       </div>
 
-                      <div className="rounded-2xl border border-border bg-surface-muted/40 p-4 shadow-2xs">
+                      <div className="rounded-2xl border border-border bg-surface-muted/40 p-3.5 sm:p-4 shadow-2xs">
                         <span className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted flex items-center gap-1.5 mb-1">
                           <Clock size={13} className="text-brand" />
                           {t('inbox.duration')}
@@ -826,8 +854,8 @@ export default function FreelancerProposalsScreen() {
                       {activeDetail?.milestonePlans && activeDetail.milestonePlans.length > 0 ? (
                         <div className="space-y-3">
                           {activeDetail.milestonePlans.map((m: ProposalMilestonePlanDto, idx: number) => (
-                            <div key={m.id || idx} className="rounded-2xl border border-border/80 bg-surface-muted/30 p-4 space-y-2 shadow-2xs">
-                              <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
+                            <div key={m.id || idx} className="rounded-2xl border border-border/80 bg-surface-muted/30 p-3.5 sm:p-4 space-y-2 shadow-2xs">
+                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
                                 <span className="text-xs font-extrabold text-text-primary">
                                   {idx + 1}. {m.title || `Milestone ${idx + 1}`}
                                 </span>
@@ -836,10 +864,10 @@ export default function FreelancerProposalsScreen() {
                                 </span>
                               </div>
                               {m.description && (
-                                <p className="text-xs text-text-secondary leading-relaxed">{m.description}</p>
+                                <p className="text-xs text-text-secondary leading-relaxed break-all [overflow-wrap:anywhere]">{m.description}</p>
                               )}
                               {m.deliverables && (
-                                <p className="text-[11px] font-semibold text-text-muted">
+                                <p className="text-[11px] font-semibold text-text-muted break-all [overflow-wrap:anywhere]">
                                   🎯 Sản phẩm bàn giao: {m.deliverables}
                                 </p>
                               )}
@@ -863,8 +891,8 @@ export default function FreelancerProposalsScreen() {
                 {/* TAB 3: AI ASSISTANT & VETTING */}
                 {detailTab === 'aiInterview' && activeProposal.hasAiInterview && (
                   <div className="space-y-4">
-                    <div className="flex items-start gap-3 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 shadow-2xs">
-                      <Bot size={24} className="mt-0.5 shrink-0 text-purple-600 dark:text-purple-400" />
+                    <div className="flex flex-col sm:flex-row items-start gap-3 rounded-2xl border border-brand/20 bg-brand/10 p-4 sm:p-5 shadow-2xs">
+                      <Bot size={24} className="mt-0.5 shrink-0 text-brand" />
                       <div className="space-y-1">
                         <p className="text-sm font-black text-text-primary">
                           {activeProposal.aiInterviewCompleted
@@ -889,7 +917,7 @@ export default function FreelancerProposalsScreen() {
                                   proposalId: activeProposal.proposalsId,
                                 },
                               })}
-                              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white bg-purple-600 hover:bg-purple-700 transition-all cursor-pointer shadow-sm"
+                              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white bg-brand hover:bg-brand-hover transition-all cursor-pointer shadow-sm"
                             >
                               <Bot size={15} />
                               <span>

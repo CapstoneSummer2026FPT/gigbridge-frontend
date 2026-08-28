@@ -4,7 +4,39 @@ import { formatGigCoin } from './gigcoin';
 /**
  * Get human-readable status label for contract status enum
  */
-export const getContractStatusLabel = (status: ContractStatus | number): string => {
+export const getContractStatusLabel = (
+  status: ContractStatus | number,
+  t?: (key: string, options?: any) => string
+): string => {
+  if (t) {
+    switch (Number(status)) {
+      case ContractStatus.Draft:
+        return t('contracts.legal.status.draft', { defaultValue: 'Draft' });
+      case ContractStatus.PendingFreelancerSelection:
+        return t('contracts.pendingFreelancerSelection', { defaultValue: 'Pending Freelancer Selection' });
+      case ContractStatus.InNegotiation:
+        return t('contracts.inNegotiation', { defaultValue: 'In Negotiation' });
+      case ContractStatus.PendingContractDetails:
+        return t('contracts.pendingContractDetails', { defaultValue: 'Pending Contract Details' });
+      case ContractStatus.PendingContractConfirmation:
+        return t('contracts.pendingContractConfirmation', { defaultValue: 'Pending Contract Confirmation' });
+      case ContractStatus.PendingEscrow:
+        return t('contracts.pendingEscrow', { defaultValue: 'Pending Escrow' });
+      case ContractStatus.PendingSignature:
+        return t('contracts.pendingSignature', { defaultValue: 'Pending Signature' });
+      case ContractStatus.Active:
+        return t('contracts.active', { defaultValue: 'Active' });
+      case ContractStatus.Completed:
+        return t('contracts.completed', { defaultValue: 'Completed' });
+      case ContractStatus.Cancelled:
+        return t('contracts.statusLabels.cancelled', { defaultValue: 'Cancelled' });
+      case ContractStatus.Disputed:
+        return t('contracts.disputeTerms', { defaultValue: 'Disputed' });
+      default:
+        return t('common.unknown', { defaultValue: 'Unknown' });
+    }
+  }
+
   const statusMap: Record<number, string> = {
     0: 'Draft',
     1: 'Pending Freelancer Selection',
@@ -58,7 +90,35 @@ export const formatContractDate = (date: string | Date | null | undefined): stri
   }).format(new Date(date));
 };
 
-export const getMilestoneStatusLabel = (status: MilestoneStatus | number): string => {
+export const getMilestoneStatusLabel = (
+  status: MilestoneStatus | number,
+  t?: (key: string, options?: any) => string
+): string => {
+  if (t) {
+    switch (Number(status)) {
+      case MilestoneStatus.Pending:
+        return t('contracts.statusLabels.pending', { defaultValue: 'Pending' });
+      case MilestoneStatus.InProgress:
+        return t('contracts.statusLabels.inProgress', { defaultValue: 'In Progress' });
+      case MilestoneStatus.Submitted:
+        return t('contracts.statusLabels.submitted', { defaultValue: 'Submitted' });
+      case MilestoneStatus.Approved:
+        return t('contracts.statusLabels.approved', { defaultValue: 'Approved' });
+      case MilestoneStatus.PaymentProofUploaded:
+        return t('contracts.statusLabels.proofUploaded', { defaultValue: 'Payment Proof Uploaded' });
+      case MilestoneStatus.PaymentConfirmed:
+        return t('contracts.statusLabels.confirmed', { defaultValue: 'Payment Confirmed' });
+      case MilestoneStatus.Disputed:
+        return t('contracts.statusLabels.disputed', { defaultValue: 'Disputed' });
+      case MilestoneStatus.Cancelled:
+        return t('contracts.statusLabels.cancelled', { defaultValue: 'Cancelled' });
+      case MilestoneStatus.Completed:
+        return t('contracts.statusLabels.completed', { defaultValue: 'Completed' });
+      default:
+        return t('common.unknown', { defaultValue: 'Unknown' });
+    }
+  }
+
   const statusMap: Record<number, string> = {
     0: 'Pending',
     1: 'In Progress',
