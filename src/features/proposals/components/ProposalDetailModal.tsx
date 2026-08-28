@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  AlertTriangle,
   Brain,
   BriefcaseBusiness,
   Check,
@@ -136,6 +137,15 @@ export function ProposalDetailModal({
             const qIdx = qa.question_index ?? (idx + 1);
             const displayNumber = typeof qa.question_index === 'number' && qa.question_index > 0 ? qa.question_index : (idx + 1);
 
+            const qualitativeFeedback =
+              qa.qualitative_feedback ||
+              (evidenceAssessment && evidenceAssessment !== 'Correct' && evidenceAssessment !== 'Incorrect'
+                ? evidenceAssessment
+                : 'Đánh giá kỹ thuật chi tiết dựa trên mức độ chính xác, tính thực tiễn và lập luận của ứng viên.');
+
+            const isAiGenerated = Boolean(qa.is_ai_generated);
+            const aiDetectionReason = qa.ai_detection_reason || null;
+
             return {
               questionIndex: qIdx,
               displayNumber,
@@ -150,6 +160,9 @@ export function ProposalDetailModal({
                 examples: Math.round(examples),
               },
               evidenceAssessment,
+              qualitativeFeedback,
+              isAiGenerated,
+              aiDetectionReason,
               claims,
             };
           });
@@ -619,13 +632,26 @@ export function ProposalDetailModal({
                             </div>
                           </div>
 
-                          {/* AI Technical Evidence Assessment */}
-                          <div className="rounded-xl bg-surface-card border border-border/70 p-3 text-xs space-y-1 shadow-2xs">
+                          {/* AI Generator Detection Warning Badge (If flagged) */}
+                          {q.isAiGenerated && (
+                            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300 space-y-1 shadow-2xs">
+                              <div className="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                                <AlertTriangle size={15} className="text-rose-500" />
+                                <span>⚠️ Cảnh báo: Phát hiện dấu hiệu câu trả lời do AI (ChatGPT/Claude) tạo</span>
+                              </div>
+                              <p className="text-[11px] font-medium leading-relaxed">
+                                {q.aiDetectionReason || 'Câu trả lời có dấu hiệu sao chép từ AI generator (định dạng lý thuyết, thiếu ví dụ thực tế hoặc trải nghiệm cá nhân).'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* AI Technical Evidence Assessment & Detailed Feedback */}
+                          <div className="rounded-xl bg-surface-card border border-border/70 p-3.5 text-xs space-y-1.5 shadow-2xs">
                             <span className="block text-[10px] font-black uppercase text-brand tracking-wider">
                               🧠 Đánh giá & Phản hồi Kỹ thuật của AI
                             </span>
-                            <p className="text-text-primary leading-relaxed font-medium">
-                              {q.evidenceAssessment}
+                            <p className="text-text-primary leading-relaxed font-medium whitespace-pre-wrap">
+                              {q.qualitativeFeedback || q.evidenceAssessment}
                             </p>
                           </div>
                         </div>
