@@ -34,14 +34,14 @@ export function TalentMatchingRightSidebar({ isDirectoryStage }: TalentMatchingR
   ];
 
   return (
-    <aside className="col-span-12 lg:col-span-3 space-y-4 lg:sticky lg:top-24">
+    <aside className="col-span-12 lg:col-span-3 space-y-4 lg:sticky lg:top-24 min-w-0">
       <div className="text-[10px] uppercase tracking-[0.2em] font-black text-text-muted px-1">
         {t('talentMatching.sponsoredTag')}
       </div>
       <SponsoredPromotionCard promotionType="freelancer" />
 
       <div
-        className="rounded-2xl border border-border bg-surface-card/70 p-5"
+        className="rounded-2xl border border-border bg-surface-card/70 p-4 sm:p-5"
         style={{ backdropFilter: 'blur(14px)' }}
       >
         {isDirectoryStage ? (
