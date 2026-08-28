@@ -64,12 +64,12 @@ const getScoreColorClass = (score?: number | null) => {
 const renderDetailSection = (title: string, text?: string | null) => {
   if (!text || !text.trim()) return null;
   return (
-    <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-4.5 space-y-2 shadow-2xs">
+    <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-3.5 sm:p-4.5 space-y-2 shadow-2xs">
       <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-brand" />
         {title}
       </h4>
-      <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap">{text.trim()}</p>
+      <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">{text.trim()}</p>
     </div>
   );
 };
@@ -244,15 +244,15 @@ export function ProposalDetailModal({
       {/* Main Dialog Container matching Review Dialog style */}
       <div
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-[98vw] max-w-[1780px] h-[94dvh] lg:h-[95vh] max-h-[94dvh] lg:max-h-[1050px] rounded-2xl sm:rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all my-auto"
+        className="relative z-10 w-[98vw] max-w-[1780px] h-[94dvh] lg:h-[95vh] max-h-[94dvh] lg:max-h-[1050px] rounded-2xl sm:rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all my-auto min-h-0"
       >
         {/* ═══ LEFT COLUMN: Candidate Hero & Proposal Context ═══════════ */}
-        <div className="w-full lg:w-[340px] xl:w-[390px] p-4 sm:p-6 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
+        <div className="w-full lg:w-[340px] xl:w-[390px] p-3.5 sm:p-5 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-y-auto lg:overflow-hidden shrink-0 max-h-[32vh] lg:max-h-none min-h-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           {/* Top Header Eyebrow */}
           <div className="relative z-10 pr-8 lg:pr-0">
-            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2 sm:mb-3">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-1.5 sm:mb-3">
               <Sparkles size={13} />
               Proposal Review
             </div>
@@ -265,45 +265,45 @@ export function ProposalDetailModal({
           </div>
 
           {/* Candidate Avatar Hero Section - Responsive horizontal on mobile, vertical on desktop */}
-          <div className="relative z-10 flex flex-row sm:flex-col items-center gap-3 sm:gap-0 my-2.5 sm:my-6 text-left sm:text-center">
+          <div className="relative z-10 flex flex-row sm:flex-col items-center gap-3 sm:gap-0 my-2 sm:my-6 text-left sm:text-center">
             <div className="relative mb-0 sm:mb-4 flex-shrink-0 flex items-center justify-center">
               <div className="absolute -inset-2 sm:-inset-4 rounded-full bg-brand/25 blur-xl animate-pulse pointer-events-none" />
               <UserAvatar
                 name={freelancerName}
                 userId={freelancerUserId}
                 size="lg"
-                className="!w-14 !h-14 sm:!w-24 sm:!h-24 lg:!w-32 lg:!h-32 text-lg sm:text-2xl lg:text-4xl shadow-xl relative z-10 ring-2 sm:ring-4 ring-brand/20"
+                className="!w-12 !h-12 sm:!w-24 sm:!h-24 lg:!w-32 lg:!h-32 text-base sm:text-2xl lg:text-4xl shadow-xl relative z-10 ring-2 sm:ring-4 ring-brand/20"
               />
             </div>
 
             <div className="min-w-0 flex-1 sm:flex-initial">
-              <h2 className="text-base sm:text-xl font-black text-text-primary tracking-tight truncate">{freelancerName}</h2>
-              <span className={`inline-flex rounded-full px-2.5 sm:px-3.5 py-0.5 text-[10px] sm:text-xs font-black mt-1 sm:mt-2 ${badgeClass(currentStatus)}`}>
+              <h2 className="text-sm sm:text-xl font-black text-text-primary tracking-tight truncate">{freelancerName}</h2>
+              <span className={`inline-flex rounded-full px-2 sm:px-3.5 py-0.5 text-[9.5px] sm:text-xs font-black mt-0.5 sm:mt-2 ${badgeClass(currentStatus)}`}>
                 {getStatusLabel(currentStatus)}
               </span>
             </div>
           </div>
 
           {/* Offer Summary Details Card */}
-          <div className="relative z-10 rounded-xl sm:rounded-2xl border border-border/60 bg-surface-card p-3 sm:p-4 space-y-2 sm:space-y-3 shadow-2xs">
+          <div className="relative z-10 rounded-xl sm:rounded-2xl border border-border/60 bg-surface-card p-2.5 sm:p-4 space-y-1.5 sm:space-y-3 shadow-2xs">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand">
               <BriefcaseBusiness size={13} />
               Offer Breakdown
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-surface-muted/60 p-2 sm:p-3 rounded-xl border border-border/40 text-center">
-                <span className="block text-[9.5px] sm:text-[10px] font-black uppercase text-text-muted">Giá đề xuất</span>
-                <strong className="text-brand font-black text-sm sm:text-base block mt-0.5">{formatGigCoin(proposedBudget)}</strong>
-                <span className="block text-[10px] sm:text-[11px] font-bold text-text-primary mt-0.5">≈ {formatGigCoinToVnd(proposedBudget)}</span>
+              <div className="bg-surface-muted/60 p-1.5 sm:p-3 rounded-xl border border-border/40 text-center">
+                <span className="block text-[9px] sm:text-[10px] font-black uppercase text-text-muted">Giá đề xuất</span>
+                <strong className="text-brand font-black text-xs sm:text-base block mt-0.5">{formatGigCoin(proposedBudget)}</strong>
+                <span className="block text-[9.5px] sm:text-[11px] font-bold text-text-primary mt-0.5">≈ {formatGigCoinToVnd(proposedBudget)}</span>
               </div>
-              <div className="bg-surface-muted/60 p-2 sm:p-3 rounded-xl border border-border/40 text-center flex flex-col justify-center">
-                <span className="block text-[9.5px] sm:text-[10px] font-black uppercase text-text-muted">Thời gian</span>
+              <div className="bg-surface-muted/60 p-1.5 sm:p-3 rounded-xl border border-border/40 text-center flex flex-col justify-center">
+                <span className="block text-[9px] sm:text-[10px] font-black uppercase text-text-muted">Thời gian</span>
                 <strong className="text-text-primary font-black text-xs sm:text-sm block mt-0.5 truncate">{detail?.proposedDuration || activeProposal?.proposedDuration || '—'}</strong>
               </div>
             </div>
 
-            <p className="text-[9.5px] sm:text-[10px] font-semibold text-text-muted text-center pt-1 border-t border-border/40">
+            <p className="text-[9px] sm:text-[10px] font-semibold text-text-muted text-center pt-1 border-t border-border/40">
               (1 G-coin = 1.000 VNĐ)
             </p>
           </div>
@@ -316,14 +316,14 @@ export function ProposalDetailModal({
               onClose();
             }}
             aria-label="Close modal"
-            className="absolute top-4 right-4 lg:hidden p-2 rounded-xl border border-border bg-background text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer z-50 shadow-xs"
+            className="absolute top-3.5 right-3.5 lg:hidden p-2 rounded-xl border border-border bg-background text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer z-50 shadow-xs"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* ═══ RIGHT COLUMN: Tabbed Content & Decision Toolbar ════════════════════════ */}
-        <div className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 bg-background flex flex-col justify-between relative">
+        <div className="flex-1 min-w-0 min-h-0 p-3.5 sm:p-5 lg:p-8 bg-background flex flex-col relative overflow-hidden">
           {/* Desktop Close Button */}
           <button
             type="button"
@@ -385,7 +385,7 @@ export function ProposalDetailModal({
           </div>
 
           {/* Tab Content Box (Fixed Height Scrollable Content Area) */}
-          <div className="flex-1 overflow-y-auto my-4 pr-1 space-y-4 custom-scrollbar min-h-0">
+          <div className="flex-1 overflow-y-auto my-3 sm:my-4 pr-1 space-y-4 custom-scrollbar min-h-0 overscroll-contain">
             {/* TAB 1: PROPOSAL DETAILS */}
             {modalTab === 'proposalDetails' && (
               <div className="space-y-4">
@@ -665,7 +665,7 @@ export function ProposalDetailModal({
           </div>
 
           {/* Bottom Actions Row - Buttons aligned to the right */}
-          <div className="pt-3 sm:pt-4 border-t border-border/60 flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
+          <div className="pt-3 sm:pt-4 border-t border-border/60 flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0 mt-auto bg-background/95 backdrop-blur-sm z-20">
             {activeId && !selectedJobCanNegotiate && (
               <span className="text-xs font-extrabold text-amber-600 mr-auto w-full sm:w-auto text-center sm:text-left">
                 Dự án này đã đóng nhận proposal.
