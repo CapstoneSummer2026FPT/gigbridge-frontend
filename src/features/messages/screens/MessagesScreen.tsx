@@ -1267,17 +1267,17 @@ export default function MessagesScreen() {
                   <div
                     key={msg.id ?? idx}
                     id={`message-${msg.id}`}
-                    className={`flex items-end gap-3 max-w-[80%] ${mine ? 'self-end flex-row-reverse' : 'self-start'}`}
+                    className={`flex items-end gap-2 sm:gap-3 max-w-[95%] sm:max-w-[85%] md:max-w-[80%] min-w-0 ${mine ? 'self-end flex-row-reverse' : 'self-start'}`}
                     style={highlightedMessageId === msg.id ? { outline: '3px solid color-mix(in srgb, var(--gb-cyan) 45%, transparent)', borderRadius: 18, transition: 'outline 1s ease' } : undefined}
                   >
                     {!mine && (
                       <img
                         src={msg.senderAvatar || '/img/avatar-fallback.png'}
                         alt={msg.senderName || 'Message sender'}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover flex-shrink-0"
                       />
                     )}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 min-w-0 max-w-full">
 
                       {/* ── File message ───────────────────────────────────── */}
                       {msg.type === 'schedule' && msg.schedule ? (

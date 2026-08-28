@@ -2,11 +2,12 @@ import { CheckCircle2, Clock, AlertCircle, Upload, Calendar } from 'lucide-react
 import type { Milestone } from '../../../types/models/Contract';
 import { MilestoneStatus } from '../../../types/models/Contract';
 import {
-  formatContractAmount,
   formatContractDate,
   getMilestoneStatusLabel,
   canSubmitMilestoneDeliverable,
 } from '../../../shared/utils/contractUtils';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/milestone-detail-card.css';
 
@@ -43,7 +44,13 @@ export function MilestoneDetailCard({
 
         <div className="milestone-detail-info">
           <h5 className="milestone-detail-title">{milestone.title}</h5>
-          <p className="milestone-detail-amount">{formatContractAmount(milestone.amount)}</p>
+          <div className="milestone-detail-amount flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 font-black text-text-primary">
+              <GCoinIcon size={14} />
+              <span>{formatGigCoinNumber(milestone.amount)}</span>
+            </span>
+            <span className="text-[11px] font-semibold text-text-muted">(≈ {formatGigCoinToVnd(milestone.amount)})</span>
+          </div>
         </div>
 
         <div className="milestone-detail-status">
