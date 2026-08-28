@@ -26,6 +26,7 @@ import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ContractChangeControlPanel } from './ContractChangeControlPanel';
+import { CancelContractButton } from './CancelContractButton';
 import { ContractLegalCard } from './ContractLegalCard';
 import {
   contractStatusMayHaveESignDocument,
@@ -371,6 +372,13 @@ export function FreelancerContractDetails({
                 role="freelancer"
                 milestones={milestones}
                 onApplied={onRefresh}
+              />
+
+              <CancelContractButton
+                contractId={contract.contractsId}
+                contractStatus={contract.status}
+                contractCreatedAt={contract.createdAt}
+                onCancelled={onRefresh}
               />
 
               {/* Step 1A: PendingContractDetails */}
