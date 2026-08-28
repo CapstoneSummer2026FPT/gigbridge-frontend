@@ -126,24 +126,24 @@ export default function ClientDashboardScreen() {
                   : `${openRolesCount} open role${openRolesCount === 1 ? '' : 's'}, ${pendingProposals.length} pending proposal${pendingProposals.length === 1 ? '' : 's'}, and ${projects.length} active contract${projects.length === 1 ? '' : 's'}.`}
               </p>
             </div>
-            <div className="flex flex-wrap gap-4 shrink-0">
+            <div className="flex flex-wrap gap-3 sm:gap-4 shrink-0">
               <button
-                className="group glass-card h-16 px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm cursor-pointer"
+                className="group glass-card h-14 sm:h-16 px-5 sm:px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm cursor-pointer whitespace-nowrap shrink-0"
                 onClick={() => navigate(premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing')}
               >
-                <Crown size={17} className="text-purple" />
-                <span className="font-bold text-xs uppercase tracking-widest">
+                <Crown size={17} className="text-purple shrink-0" />
+                <span className="font-bold text-xs uppercase tracking-widest whitespace-nowrap">
                   {premiumStatus.isPremium ? 'Premium Hub' : 'Upgrade'}
                 </span>
               </button>
               <button
-                className="group glass-card !border-brand text-brand hover:!border-brand-hover hover:text-brand-hover hover:bg-brand-soft h-16 px-10 rounded-2xl font-bold transition-all duration-300 shadow-sm flex items-center gap-3 cursor-pointer"
+                className="group glass-card !border-brand text-brand hover:!border-brand-hover hover:text-brand-hover hover:bg-brand-soft h-14 sm:h-16 px-6 sm:px-8 rounded-2xl font-bold transition-all duration-300 shadow-sm flex items-center gap-3 cursor-pointer whitespace-nowrap shrink-0"
                 onClick={() => navigate('/jobs/post')}
               >
-                <span className="text-xs uppercase tracking-widest">
+                <span className="text-xs uppercase tracking-widest whitespace-nowrap">
                   {t('jobs.postJob', 'Open New Role')}
                 </span>
-                <PlusCircle size={18} className="transition-transform group-hover:scale-110" />
+                <PlusCircle size={18} className="transition-transform group-hover:scale-110 shrink-0" />
               </button>
             </div>
           </section>
@@ -172,30 +172,30 @@ export default function ClientDashboardScreen() {
 
           {/* Main Matrix Grid */}
           <section className="space-y-6" aria-labelledby="client-workflow-title">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
               {/* Left Column (col-span-7) */}
-              <div className="lg:col-span-7 space-y-8">
+              <div className="xl:col-span-7 space-y-8 min-w-0">
                 {/* Work In Progress / Hiring Portfolio Bento */}
-                <div className="bento-spotlight-card p-7 sm:p-8 min-h-72 flex flex-col justify-between group relative overflow-hidden">
+                <div className="bento-spotlight-card p-6 sm:p-8 min-h-72 flex flex-col justify-between group relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-36 h-36 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:bg-brand/20 transition-all duration-500" />
 
-                  <div className="flex justify-between items-start gap-5 relative z-10">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-brand/15 rounded-2xl flex items-center justify-center text-brand shadow-[0_0_20px_rgba(73,75,231,0.25)] shrink-0 border border-brand/30">
+                  <div className="flex flex-wrap justify-between items-start gap-4 relative z-10">
+                    <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-brand/15 rounded-2xl flex items-center justify-center text-brand shadow-[0_0_20px_rgba(73,75,231,0.25)] shrink-0 border border-brand/30">
                         <Briefcase size={24} />
                       </div>
-                      <div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand block truncate">
                           {t('dashboard.currentWork', 'Current Work')}
                         </span>
-                        <h2 id="client-workflow-title" className="text-xl sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5 font-display-sm">
+                        <h2 id="client-workflow-title" className="text-lg sm:text-2xl font-black tracking-tight text-text-primary uppercase mt-0.5 font-display-sm truncate">
                           {t('dashboard.workInProgress', 'Hiring Portfolio')}
                         </h2>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="block text-4xl sm:text-5xl font-black text-text-primary leading-none tracking-tight">{openRolesCount}</span>
-                      <span className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-1 block">Open roles</span>
+                    <div className="text-right shrink-0">
+                      <span className="block text-3xl sm:text-5xl font-black text-text-primary leading-none tracking-tight">{openRolesCount}</span>
+                      <span className="text-[8px] sm:text-[9px] font-black text-text-muted uppercase tracking-widest mt-1 block">Open roles</span>
                     </div>
                   </div>
 
@@ -214,7 +214,7 @@ export default function ClientDashboardScreen() {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                       {[
                         { value: myJobs.length, label: 'All Roles', color: 'text-text-primary' },
                         { value: draftRolesCount, label: 'Drafts', color: 'text-text-secondary' },
@@ -223,10 +223,10 @@ export default function ClientDashboardScreen() {
                       ].map(item => (
                         <div
                           key={item.label}
-                          className="text-center bg-surface-muted/50 hover:bg-surface-muted/80 p-3.5 rounded-2xl border border-border/70 transition-all duration-200"
+                          className="text-center bg-surface-muted/50 hover:bg-surface-muted/80 p-3 sm:p-3.5 rounded-2xl border border-border/70 transition-all duration-200 min-w-0"
                         >
-                          <span className={`block text-2xl font-black leading-none ${item.color}`}>{item.value}</span>
-                          <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-2">{item.label}</span>
+                          <span className={`block text-xl sm:text-2xl font-black leading-none ${item.color}`}>{item.value}</span>
+                          <span className="text-[8px] text-text-muted font-black uppercase tracking-wider block mt-1.5 truncate">{item.label}</span>
                         </div>
                       ))}
                     </div>
@@ -236,14 +236,14 @@ export default function ClientDashboardScreen() {
                 {/* Talent Matching Bento Banner */}
                 <div className="bento-spotlight-card p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-cyan/10 blur-3xl rounded-full pointer-events-none group-hover:bg-cyan/20 transition-all duration-500" />
-                  <div className="relative z-10 flex items-center gap-4">
+                  <div className="relative z-10 flex items-center gap-4 min-w-0">
                     <div className="w-12 h-12 rounded-2xl bg-cyan/15 border border-cyan/30 flex items-center justify-center text-cyan shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
                       <UserCheck size={22} />
                     </div>
-                    <div>
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Talent Discovery</span>
-                      <h4 className="text-lg font-black text-text-primary tracking-tight mt-0.5">Find Top-Tier Freelancers</h4>
-                      <p className="text-xs text-text-secondary mt-0.5">AI-powered candidate sourcing for open and upcoming projects.</p>
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan block truncate">Talent Discovery</span>
+                      <h4 className="text-base sm:text-lg font-black text-text-primary tracking-tight mt-0.5 truncate">Find Top-Tier Freelancers</h4>
+                      <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">AI-powered candidate sourcing for open and upcoming projects.</p>
                     </div>
                   </div>
                   <button
@@ -269,9 +269,9 @@ export default function ClientDashboardScreen() {
                     </h3>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Financial Control Carousel Card (Funds Released & Wallet) */}
-                    <div className="bento-spotlight-card p-6 flex flex-col justify-between min-h-[320px] relative group">
+                    <div className="bento-spotlight-card p-5 sm:p-6 flex flex-col justify-between min-h-[320px] relative group">
                       {/* Carousel Header Controls */}
                       <div className="flex items-center justify-between mb-3 relative z-10">
                         <div className="flex items-center gap-1.5 bg-surface-muted/60 p-1 rounded-xl border border-border">
@@ -317,22 +317,23 @@ export default function ClientDashboardScreen() {
                             style={overviewCardStyle}
                           >
                             <div className="relative flex flex-col items-center justify-center py-2">
-                              <div className="relative w-36 h-36 flex items-center justify-center">
+                              <div className="relative w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center">
                                 <svg className="w-full h-full transform -rotate-90">
-                                  <circle cx="72" cy="72" r="58" className="stroke-surface-muted/60 fill-none" strokeWidth="8" />
+                                  <circle cx="64" cy="64" r="50" className="stroke-surface-muted/60 fill-none" strokeWidth="8" viewBox="0 0 128 128" />
                                   <circle
-                                    cx="72"
-                                    cy="72"
-                                    r="58"
+                                    cx="64"
+                                    cy="64"
+                                    r="50"
                                     className="stroke-brand fill-none freelancer-dash-gauge-ring"
                                     strokeWidth="8"
-                                    strokeDasharray={2 * Math.PI * 58}
-                                    strokeDashoffset={2 * Math.PI * 58 * (1 - financialProgress / 100)}
+                                    strokeDasharray={2 * Math.PI * 50}
+                                    strokeDashoffset={2 * Math.PI * 50 * (1 - financialProgress / 100)}
                                     strokeLinecap="round"
+                                    viewBox="0 0 128 128"
                                   />
                                 </svg>
                                 <div className="absolute text-center">
-                                  <span className="text-3xl font-black text-text-primary tracking-tighter">
+                                  <span className="text-2xl sm:text-3xl font-black text-text-primary tracking-tighter">
                                     {isFinancialLoading ? '—' : `${financialProgress}%`}
                                   </span>
                                   <span className="block text-[8px] font-bold text-text-muted uppercase mt-0.5 tracking-wider">
@@ -342,18 +343,18 @@ export default function ClientDashboardScreen() {
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/60">
-                              <div className="text-center">
-                                <span className="block text-[8px] uppercase font-black text-text-muted">Released</span>
-                                <GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-xs font-bold text-text-primary" />
+                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-3 border-t border-border/60">
+                              <div className="text-center min-w-0">
+                                <span className="block text-[8px] uppercase font-black text-text-muted truncate">Released</span>
+                                <GigCoinAmount amount={financialOverview?.progressAmount ?? 0} className="text-xs font-bold text-text-primary truncate" />
                               </div>
-                              <div className="text-center">
-                                <span className="block text-[8px] uppercase font-black text-text-muted">Value</span>
-                                <GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-xs font-bold text-text-primary" />
+                              <div className="text-center min-w-0">
+                                <span className="block text-[8px] uppercase font-black text-text-muted truncate">Value</span>
+                                <GigCoinAmount amount={financialOverview?.totalContractValue ?? 0} className="text-xs font-bold text-text-primary truncate" />
                               </div>
-                              <div className="text-center">
-                                <span className="block text-[8px] uppercase font-black text-text-muted">Fees</span>
-                                <GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-xs font-bold text-text-primary" />
+                              <div className="text-center min-w-0">
+                                <span className="block text-[8px] uppercase font-black text-text-muted truncate">Fees</span>
+                                <GigCoinAmount amount={financialOverview?.totalServiceFeePaid ?? 0} className="text-xs font-bold text-text-primary truncate" />
                               </div>
                             </div>
                           </div>
@@ -377,15 +378,15 @@ export default function ClientDashboardScreen() {
                             </div>
                             <div className="my-2 relative z-10">
                               <span className="block text-[9px] uppercase text-text-muted tracking-wider font-bold mb-0.5">Available Funds</span>
-                              <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} className="text-3xl font-black tracking-tight text-text-primary" />
+                              <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary" />
                               <span className="block text-xs text-text-secondary mt-1 font-medium">Held in Escrow: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} /></span>
                             </div>
-                            <div className="flex items-center justify-between relative z-10 gap-2 pt-2.5 border-t border-border/60">
-                              <div className="min-w-0">
+                            <div className="flex flex-wrap items-center justify-between relative z-10 gap-2 pt-2.5 border-t border-border/60">
+                              <div className="min-w-0 flex-1">
                                 <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">Account Holder</span>
                                 <span className="block truncate text-xs font-bold text-text-secondary">{displayName}</span>
                               </div>
-                              <button className="py-2.5 px-4 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-all shadow-sm border border-transparent shrink-0 cursor-pointer">
+                              <button className="py-2 px-3.5 bg-brand text-primary-foreground hover:bg-brand-hover font-bold text-xs tracking-wider uppercase rounded-xl transition-all shadow-sm border border-transparent shrink-0 cursor-pointer">
                                 Deposit
                               </button>
                             </div>
@@ -409,15 +410,15 @@ export default function ClientDashboardScreen() {
                     </div>
 
                     {/* Spend Chart Card */}
-                    <div className="bento-spotlight-card p-6 flex flex-col justify-between min-h-[320px] relative group">
-                      <div className="flex items-center justify-between mb-3 relative z-10">
-                        <div>
-                          <h4 className="text-text-primary font-black text-base tracking-tight">
+                    <div className="bento-spotlight-card p-5 sm:p-6 flex flex-col justify-between min-h-[320px] relative group overflow-hidden">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 relative z-10">
+                        <div className="min-w-0">
+                          <h4 className="text-text-primary font-black text-base tracking-tight truncate">
                             {chartPeriod === 'monthly' ? 'Monthly Spend' : 'Yearly Spend'}
                           </h4>
-                          <p className="text-xs text-text-secondary font-medium">Confirmed contract releases</p>
+                          <p className="text-xs text-text-secondary font-medium truncate">Confirmed contract releases</p>
                         </div>
-                        <div className="fl-chart-header-tabs flex">
+                        <div className="fl-chart-header-tabs flex shrink-0">
                           <button
                             className={`fl-chart-tab-btn cursor-pointer ${chartPeriod === 'monthly' ? 'active' : ''}`}
                             onClick={() => setChartPeriod('monthly')}
@@ -433,7 +434,7 @@ export default function ClientDashboardScreen() {
                         </div>
                       </div>
 
-                      <div className="w-full flex-1 flex items-center justify-center min-h-[190px] relative z-10">
+                      <div className="w-full flex-1 flex items-center justify-center min-h-[190px] relative z-10 overflow-hidden">
                         {isFinancialLoading ? (
                           <p className="text-sm text-text-muted animate-pulse font-medium">Loading spending flow…</p>
                         ) : financialError ? (
@@ -478,19 +479,19 @@ export default function ClientDashboardScreen() {
               </div>
 
               {/* Right Column (col-span-5) */}
-              <div className="lg:col-span-5 space-y-8">
+              <div className="xl:col-span-5 space-y-8 min-w-0">
                 {/* AI Copilot Job Drafting Bento */}
                 <div className="bento-spotlight-card p-6 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-36 h-36 bg-brand/15 blur-3xl rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500" />
                   <div className="relative z-10 flex flex-col gap-3.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-11 h-11 rounded-2xl bg-brand/20 flex items-center justify-center text-brand shrink-0 border border-brand/30 shadow-[0_0_15px_rgba(73,75,231,0.3)]">
                           <Bot size={22} className="animate-pulse" />
                         </div>
-                        <div>
-                          <span className="block text-[8px] font-black uppercase tracking-widest text-brand">AI Copilot</span>
-                          <h4 className="text-base font-black text-text-primary tracking-tight">AI-Assisted Job Drafting</h4>
+                        <div className="min-w-0">
+                          <span className="block text-[8px] font-black uppercase tracking-widest text-brand truncate">AI Copilot</span>
+                          <h4 className="text-base font-black text-text-primary tracking-tight truncate">AI-Assisted Job Drafting</h4>
                         </div>
                       </div>
                       <button
@@ -522,7 +523,7 @@ export default function ClientDashboardScreen() {
                     projects.slice(0, 2).map(project => (
                       <div
                         key={project.id}
-                        className="bento-spotlight-card rounded-3xl p-7 border border-brand/20 relative group hover:-translate-y-1 transition-all duration-300"
+                        className="bento-spotlight-card rounded-3xl p-6 sm:p-7 border border-brand/20 relative group hover:-translate-y-1 transition-all duration-300"
                       >
                         <div className="absolute top-0 right-0 w-32 h-32 bg-brand/15 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform pointer-events-none" />
                         <div className="flex justify-between items-start mb-4 relative z-10">

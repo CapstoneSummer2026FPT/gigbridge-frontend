@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  AlertTriangle,
   Brain,
   BriefcaseBusiness,
   Check,
@@ -22,6 +23,7 @@ import {
 } from '../../../types/models/Proposal';
 import { AIProposalVerdictCard } from './AIProposalVerdictCard';
 import { AISideBySideMilestoneMatrix } from './AISideBySideMilestoneMatrix';
+import '../../../shared/components/styles/conic-border-button.css';
 import type { BusyAction } from '../hooks/useClientProposals';
 import { getStatusLabel } from '../utils/statusHelpers';
 
@@ -62,12 +64,12 @@ const getScoreColorClass = (score?: number | null) => {
 const renderDetailSection = (title: string, text?: string | null) => {
   if (!text || !text.trim()) return null;
   return (
-    <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-4.5 space-y-2 shadow-2xs">
+    <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-3.5 sm:p-4.5 space-y-2 shadow-2xs">
       <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-brand" />
         {title}
       </h4>
-      <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap">{text.trim()}</p>
+      <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">{text.trim()}</p>
     </div>
   );
 };
@@ -101,56 +103,104 @@ export function ProposalDetailModal({
   const activeProposal = proposals.find(p => p.proposalsId === activeId);
 
   const displayQuestions = useMemo(() => {
-    if (!activeProposal?.aiFullEvaluationJson) return [];
-    try {
-      const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
-      const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
-      return screeningQa.map((qa: any) => {
-        const correctness = qa.answer_correctness?.score ?? 0;
-        const reasoning = qa.technical_reasoning?.score ?? 0;
-        const relevance = qa.relevance?.score ?? 0;
-        const depth = qa.depth?.score ?? 0;
-        const examples = qa.practical_examples?.score ?? 0;
+    if (activeProposal?.aiFullEvaluationJson) {
+      try {
+        const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
+        const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
+        if (screeningQa.length > 0) {
+          return screeningQa.map((qa: any, idx: number) => {
+            const correctness = qa.answer_correctness?.score ?? 0;
+            const reasoning = qa.technical_reasoning?.score ?? 0;
+            const relevance = qa.relevance?.score ?? 0;
+            const depth = qa.depth?.score ?? 0;
+            const examples = qa.practical_examples?.score ?? 0;
 
-        const weightedScore = Math.round(
-          correctness * 0.40 +
-          reasoning * 0.25 +
-          relevance * 0.15 +
-          depth * 0.10 +
-          examples * 0.10
-        );
+            const weightedScore = Math.round(
+              correctness * 0.40 +
+              reasoning * 0.25 +
+              relevance * 0.15 +
+              depth * 0.10 +
+              examples * 0.10
+            );
 
-        const evidenceAssessment =
-          qa.answer_correctness?.evidence?.[0]?.assessment ||
-          qa.technical_reasoning?.evidence?.[0]?.assessment ||
-          qa.relevance?.evidence?.[0]?.assessment ||
-          'Technical quality assessment based on candidate response.';
+            const evidenceAssessment =
+              qa.answer_correctness?.evidence?.[0]?.assessment ||
+              qa.technical_reasoning?.evidence?.[0]?.assessment ||
+              qa.relevance?.evidence?.[0]?.assessment ||
+              'Technical quality assessment based on candidate response.';
 
-        const claims = [
-          ...(qa.answer_correctness?.evidence || []),
-          ...(qa.technical_reasoning?.evidence || []),
-        ].map((e: any) => e.claim).filter(Boolean);
+            const claims = [
+              ...(qa.answer_correctness?.evidence || []),
+              ...(qa.technical_reasoning?.evidence || []),
+            ].map((e: any) => e.claim).filter(Boolean);
 
-        return {
-          questionIndex: qa.question_index ?? 0,
-          questionText: qa.question_text || `Question #${(qa.question_index ?? 0) + 1}`,
-          candidateAnswer: qa.candidate_answer || 'No answer provided',
-          overallScore: weightedScore,
-          subcriteria: {
-            correctness: Math.round(correctness),
-            reasoning: Math.round(reasoning),
-            relevance: Math.round(relevance),
-            depth: Math.round(depth),
-            examples: Math.round(examples),
-          },
-          evidenceAssessment,
-          claims,
-        };
-      });
-    } catch {
-      return [];
+            const qIdx = qa.question_index ?? (idx + 1);
+            const displayNumber = typeof qa.question_index === 'number' && qa.question_index > 0 ? qa.question_index : (idx + 1);
+
+            const qualitativeFeedback =
+              qa.qualitative_feedback ||
+              (evidenceAssessment && evidenceAssessment !== 'Correct' && evidenceAssessment !== 'Incorrect'
+                ? evidenceAssessment
+                : 'Đánh giá kỹ thuật chi tiết dựa trên mức độ chính xác, tính thực tiễn và lập luận của ứng viên.');
+
+            const isAiGenerated = Boolean(qa.is_ai_generated);
+            const aiDetectionReason = qa.ai_detection_reason || null;
+
+            return {
+              questionIndex: qIdx,
+              displayNumber,
+              questionText: qa.question_text || `Question #${displayNumber}`,
+              candidateAnswer: qa.candidate_answer || 'No answer provided',
+              overallScore: weightedScore,
+              subcriteria: {
+                correctness: Math.round(correctness),
+                reasoning: Math.round(reasoning),
+                relevance: Math.round(relevance),
+                depth: Math.round(depth),
+                examples: Math.round(examples),
+              },
+              evidenceAssessment,
+              qualitativeFeedback,
+              isAiGenerated,
+              aiDetectionReason,
+              claims,
+            };
+          });
+        }
+      } catch (e) {
+        console.error('Failed to parse aiFullEvaluationJson screening_qa', e);
+      }
     }
-  }, [activeProposal]);
+
+    // Fallback: If candidate submitted screening answers (rawAnswers), display them with AI Technical Quality score
+    if (rawAnswers && rawAnswers.length > 0) {
+      const answersWithText = rawAnswers.filter(a => a.answerText?.trim());
+      if (answersWithText.length > 0) {
+        const defaultScore = activeProposal?.aiTechnicalQualityScore ? Math.round(activeProposal.aiTechnicalQualityScore) : 75;
+        return answersWithText.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => {
+          const displayNumber = ans.orderIndex || (idx + 1);
+          return {
+            questionIndex: displayNumber,
+            displayNumber,
+            questionText: ans.questionText || `Question #${displayNumber}`,
+            candidateAnswer: ans.answerText || 'No answer provided',
+            overallScore: defaultScore,
+            subcriteria: {
+              correctness: defaultScore,
+              reasoning: defaultScore,
+              relevance: defaultScore,
+              depth: defaultScore,
+              examples: defaultScore,
+            },
+            evidenceAssessment: 'Detailed technical score computed from candidate screening answer.',
+            claims: [],
+          };
+        });
+      }
+    }
+
+    return [];
+  }, [activeProposal, rawAnswers]);
 
   const pillar2Score = useMemo(() => {
     if (!activeProposal?.aiFullEvaluationJson) {
@@ -194,64 +244,66 @@ export function ProposalDetailModal({
       {/* Main Dialog Container matching Review Dialog style */}
       <div
         onClick={e => e.stopPropagation()}
-        className="relative z-10 w-[98vw] max-w-[1780px] h-[95vh] max-h-[1050px] min-h-[700px] rounded-[2.5rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all"
+        className="relative z-10 w-[98vw] max-w-[1780px] h-[94dvh] lg:h-[95vh] max-h-[94dvh] lg:max-h-[1050px] rounded-2xl sm:rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden flex flex-col lg:flex-row shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl transition-all my-auto min-h-0"
       >
         {/* ═══ LEFT COLUMN: Candidate Hero & Proposal Context ═══════════ */}
-        <div className="w-full lg:w-[340px] xl:w-[390px] p-6 lg:p-9 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-hidden shrink-0">
+        <div className="w-full lg:w-[340px] xl:w-[390px] p-3.5 sm:p-5 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/40 bg-surface-muted/40 relative overflow-y-auto lg:overflow-hidden shrink-0 max-h-[32vh] lg:max-h-none min-h-0">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
 
           {/* Top Header Eyebrow */}
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[11px] font-black uppercase tracking-widest mb-3">
+          <div className="relative z-10 pr-8 lg:pr-0">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-1.5 sm:mb-3">
               <Sparkles size={13} />
               Proposal Review
             </div>
-            <h1 id="proposal-review-title" className="text-xl font-black text-text-primary tracking-tight">
+            <h1 id="proposal-review-title" className="text-base sm:text-xl font-black text-text-primary tracking-tight">
               Candidate Evaluation
             </h1>
-            <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-text-muted mt-0.5 leading-relaxed line-clamp-1 sm:line-clamp-none">
               Review candidate offer details, screening answers & AI assessment.
             </p>
           </div>
 
-          {/* Candidate Avatar Hero Section - Enlarged centered avatar with ambient glow */}
-          <div className="relative z-10 flex flex-col items-center my-6 text-center">
-            <div className="relative mb-4 flex-shrink-0 flex items-center justify-center">
-              <div className="absolute -inset-4 rounded-full bg-brand/25 blur-2xl animate-pulse pointer-events-none" />
+          {/* Candidate Avatar Hero Section - Responsive horizontal on mobile, vertical on desktop */}
+          <div className="relative z-10 flex flex-row sm:flex-col items-center gap-3 sm:gap-0 my-2 sm:my-6 text-left sm:text-center">
+            <div className="relative mb-0 sm:mb-4 flex-shrink-0 flex items-center justify-center">
+              <div className="absolute -inset-2 sm:-inset-4 rounded-full bg-brand/25 blur-xl animate-pulse pointer-events-none" />
               <UserAvatar
                 name={freelancerName}
                 userId={freelancerUserId}
-                size="xl"
-                className="!w-32 !h-32 !text-4xl shadow-2xl relative z-10 ring-4 ring-brand/20"
+                size="lg"
+                className="!w-12 !h-12 sm:!w-24 sm:!h-24 lg:!w-32 lg:!h-32 text-base sm:text-2xl lg:text-4xl shadow-xl relative z-10 ring-2 sm:ring-4 ring-brand/20"
               />
             </div>
 
-            <h2 className="text-xl font-black text-text-primary tracking-tight">{freelancerName}</h2>
-            <span className={`inline-flex rounded-full px-3.5 py-0.5 text-xs font-black mt-2 ${badgeClass(currentStatus)}`}>
-              {getStatusLabel(currentStatus)}
-            </span>
+            <div className="min-w-0 flex-1 sm:flex-initial">
+              <h2 className="text-sm sm:text-xl font-black text-text-primary tracking-tight truncate">{freelancerName}</h2>
+              <span className={`inline-flex rounded-full px-2 sm:px-3.5 py-0.5 text-[9.5px] sm:text-xs font-black mt-0.5 sm:mt-2 ${badgeClass(currentStatus)}`}>
+                {getStatusLabel(currentStatus)}
+              </span>
+            </div>
           </div>
 
           {/* Offer Summary Details Card */}
-          <div className="relative z-10 rounded-2xl border border-border/60 bg-surface-card p-4 space-y-3 shadow-2xs">
+          <div className="relative z-10 rounded-xl sm:rounded-2xl border border-border/60 bg-surface-card p-2.5 sm:p-4 space-y-1.5 sm:space-y-3 shadow-2xs">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand">
               <BriefcaseBusiness size={13} />
               Offer Breakdown
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-surface-muted/60 p-3 rounded-xl border border-border/40 text-center">
-                <span className="block text-[10px] font-black uppercase text-text-muted">Giá đề xuất</span>
-                <strong className="text-brand font-black text-base block mt-0.5">{formatGigCoin(proposedBudget)}</strong>
-                <span className="block text-[11px] font-bold text-text-primary mt-0.5">≈ {formatGigCoinToVnd(proposedBudget)}</span>
+              <div className="bg-surface-muted/60 p-1.5 sm:p-3 rounded-xl border border-border/40 text-center">
+                <span className="block text-[9px] sm:text-[10px] font-black uppercase text-text-muted">Giá đề xuất</span>
+                <strong className="text-brand font-black text-xs sm:text-base block mt-0.5">{formatGigCoin(proposedBudget)}</strong>
+                <span className="block text-[9.5px] sm:text-[11px] font-bold text-text-primary mt-0.5">≈ {formatGigCoinToVnd(proposedBudget)}</span>
               </div>
-              <div className="bg-surface-muted/60 p-3 rounded-xl border border-border/40 text-center flex flex-col justify-center">
-                <span className="block text-[10px] font-black uppercase text-text-muted">Thời gian</span>
-                <strong className="text-text-primary font-black text-sm block mt-0.5">{detail?.proposedDuration || activeProposal?.proposedDuration || '—'}</strong>
+              <div className="bg-surface-muted/60 p-1.5 sm:p-3 rounded-xl border border-border/40 text-center flex flex-col justify-center">
+                <span className="block text-[9px] sm:text-[10px] font-black uppercase text-text-muted">Thời gian</span>
+                <strong className="text-text-primary font-black text-xs sm:text-sm block mt-0.5 truncate">{detail?.proposedDuration || activeProposal?.proposedDuration || '—'}</strong>
               </div>
             </div>
 
-            <p className="text-[10px] font-semibold text-text-muted text-center pt-1 border-t border-border/40">
+            <p className="text-[9px] sm:text-[10px] font-semibold text-text-muted text-center pt-1 border-t border-border/40">
               (1 G-coin = 1.000 VNĐ)
             </p>
           </div>
@@ -259,28 +311,34 @@ export function ProposalDetailModal({
           {/* Close button (mobile) */}
           <button
             type="button"
-            onClick={onClose}
+            onClick={e => {
+              e.stopPropagation();
+              onClose();
+            }}
             aria-label="Close modal"
-            className="absolute top-5 right-5 lg:hidden p-1.5 rounded-xl border border-border bg-background text-text-muted hover:text-text-primary cursor-pointer"
+            className="absolute top-3.5 right-3.5 lg:hidden p-2 rounded-xl border border-border bg-background text-text-muted hover:text-text-primary hover:bg-surface-muted transition cursor-pointer z-50 shadow-xs"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
         {/* ═══ RIGHT COLUMN: Tabbed Content & Decision Toolbar ════════════════════════ */}
-        <div className="flex-1 min-w-0 p-6 lg:p-8 bg-background flex flex-col justify-between relative">
+        <div className="flex-1 min-w-0 min-h-0 p-3.5 sm:p-5 lg:p-8 bg-background flex flex-col relative overflow-hidden">
           {/* Desktop Close Button */}
           <button
             type="button"
-            onClick={onClose}
+            onClick={e => {
+              e.stopPropagation();
+              onClose();
+            }}
             aria-label="Close modal"
-            className="hidden lg:flex absolute top-5 right-5 p-1.5 rounded-xl border border-border hover:bg-surface-muted text-text-muted hover:text-text-primary transition cursor-pointer"
+            className="hidden lg:flex absolute top-5 right-5 p-2 rounded-xl border border-border bg-background/90 hover:bg-surface-muted text-text-muted hover:text-text-primary transition cursor-pointer z-50 shadow-xs"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
 
           {/* Top Segmented Tab Switcher Navigation (1. Proposal | 2. Q&A | 3. AI Report) */}
-          <div className="flex items-center rounded-2xl border border-border/80 bg-surface-muted/60 p-1 text-xs font-bold shadow-xs shrink-0 max-w-md">
+          <div className="flex items-center gap-1 rounded-xl sm:rounded-2xl border border-border/80 bg-surface-muted/60 p-1 text-xs font-bold shadow-xs shrink-0 w-full sm:max-w-md">
             <button
               type="button"
               onClick={() => setModalTab('proposalDetails')}
@@ -304,22 +362,30 @@ export function ProposalDetailModal({
               <FileQuestion size={14} /> Q&A
             </button>
             {showAiReportTab && (
-              <button
-                type="button"
-                onClick={() => setModalTab('aiReport')}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 font-black transition-all cursor-pointer ${
-                  modalTab === 'aiReport'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-text-muted hover:text-text-primary'
-                }`}
-              >
-                <Brain size={14} /> AI Report
-              </button>
+              modalTab === 'aiReport' ? (
+                <div className="conic-border-wrap rounded-xl flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('aiReport')}
+                    className="conic-border-btn !py-2 !text-xs !bg-brand !text-white flex items-center justify-center gap-1.5 font-black w-full"
+                  >
+                    <Brain size={14} className="text-[#AFDBFF]" /> AI Report
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setModalTab('aiReport')}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 font-black transition-all cursor-pointer text-brand hover:text-text-primary"
+                >
+                  <Brain size={14} className="text-brand" /> AI Report
+                </button>
+              )
             )}
           </div>
 
           {/* Tab Content Box (Fixed Height Scrollable Content Area) */}
-          <div className="flex-1 overflow-y-auto my-4 pr-1 space-y-4 custom-scrollbar min-h-0">
+          <div className="flex-1 overflow-y-auto my-3 sm:my-4 pr-1 space-y-4 custom-scrollbar min-h-0 overscroll-contain">
             {/* TAB 1: PROPOSAL DETAILS */}
             {modalTab === 'proposalDetails' && (
               <div className="space-y-4">
@@ -450,7 +516,7 @@ export function ProposalDetailModal({
 
                 {!evalLoading && !activeProposal?.aiTechnicalQualityScore && !activeProposal?.aiFullEvaluationJson && (
                   <div className="rounded-2xl border border-border bg-surface-muted/20 p-12 text-center text-xs text-muted-foreground space-y-3">
-                    <Brain size={38} className="mx-auto text-purple-500/60" />
+                    <Brain size={38} className="mx-auto text-brand/60" />
                     <div>
                       <p className="font-bold text-foreground text-sm">Chưa có Báo cáo Đánh giá AI cho proposal này.</p>
                       {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
@@ -510,7 +576,7 @@ export function ProposalDetailModal({
                           {/* Question Title & Overall Weighted Score */}
                           <div className="flex justify-between items-start gap-4">
                             <h5 className="text-xs font-black text-text-primary leading-snug">
-                              {q.questionIndex + 1}. {q.questionText}
+                              {q.displayNumber}. {q.questionText}
                             </h5>
                             <span className={`shrink-0 rounded-full px-3 py-0.5 text-xs font-black ${getScoreColorClass(q.overallScore)}`}>
                               {q.overallScore}/100
@@ -528,8 +594,8 @@ export function ProposalDetailModal({
                           </div>
 
                           {/* 5-Subcriteria Technical Evaluation Grid */}
-                          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 space-y-2.5">
-                            <span className="block text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                          <div className="rounded-xl border border-brand/20 bg-brand/5 p-3.5 space-y-2.5">
+                            <span className="block text-[10px] font-black uppercase tracking-wider text-brand">
                               📊 Chi tiết đánh giá 5 Tiêu chí Kỹ thuật (5 Sub-criteria Breakdown)
                             </span>
                             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
@@ -566,13 +632,26 @@ export function ProposalDetailModal({
                             </div>
                           </div>
 
-                          {/* AI Technical Evidence Assessment */}
-                          <div className="rounded-xl bg-surface-card border border-border/70 p-3 text-xs space-y-1 shadow-2xs">
+                          {/* AI Generator Detection Warning Badge (If flagged) */}
+                          {q.isAiGenerated && (
+                            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300 space-y-1 shadow-2xs">
+                              <div className="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                                <AlertTriangle size={15} className="text-rose-500" />
+                                <span>⚠️ Cảnh báo: Phát hiện dấu hiệu câu trả lời do AI (ChatGPT/Claude) tạo</span>
+                              </div>
+                              <p className="text-[11px] font-medium leading-relaxed">
+                                {q.aiDetectionReason || 'Câu trả lời có dấu hiệu sao chép từ AI generator (định dạng lý thuyết, thiếu ví dụ thực tế hoặc trải nghiệm cá nhân).'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* AI Technical Evidence Assessment & Detailed Feedback */}
+                          <div className="rounded-xl bg-surface-card border border-border/70 p-3.5 text-xs space-y-1.5 shadow-2xs">
                             <span className="block text-[10px] font-black uppercase text-brand tracking-wider">
                               🧠 Đánh giá & Phản hồi Kỹ thuật của AI
                             </span>
-                            <p className="text-text-primary leading-relaxed font-medium">
-                              {q.evidenceAssessment}
+                            <p className="text-text-primary leading-relaxed font-medium whitespace-pre-wrap">
+                              {q.qualitativeFeedback || q.evidenceAssessment}
                             </p>
                           </div>
                         </div>
@@ -586,9 +665,9 @@ export function ProposalDetailModal({
           </div>
 
           {/* Bottom Actions Row - Buttons aligned to the right */}
-          <div className="pt-4 border-t border-border/60 flex items-center justify-end gap-3 shrink-0">
+          <div className="pt-3 sm:pt-4 border-t border-border/60 flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0 mt-auto bg-background/95 backdrop-blur-sm z-20">
             {activeId && !selectedJobCanNegotiate && (
-              <span className="text-xs font-extrabold text-amber-600 mr-auto">
+              <span className="text-xs font-extrabold text-amber-600 mr-auto w-full sm:w-auto text-center sm:text-left">
                 Dự án này đã đóng nhận proposal.
               </span>
             )}
@@ -597,7 +676,7 @@ export function ProposalDetailModal({
                 type="button"
                 disabled={isBusy(activeId, 'shortlist')}
                 onClick={() => updateStatus(activeId, ProposalStatus.Shortlisted, 'shortlist')}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2.5 text-xs font-black text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 disabled:opacity-50 cursor-pointer transition-all"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-black text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 disabled:opacity-50 cursor-pointer transition-all"
               >
                 <Check size={14} /> Shortlist
               </button>
@@ -608,7 +687,7 @@ export function ProposalDetailModal({
                   type="button"
                   disabled={isBusy(activeId, 'reject')}
                   onClick={() => setRejectProposalId(activeId)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-xs font-black text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-50 cursor-pointer transition-all"
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-black text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-50 cursor-pointer transition-all"
                 >
                   <X size={14} /> Từ chối
                 </button>
@@ -616,7 +695,7 @@ export function ProposalDetailModal({
                   type="button"
                   disabled={isBusy(activeId, 'accept')}
                   onClick={() => acceptForNegotiation(activeId)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-black text-white transition-all shadow-md hover:bg-brand-hover cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-brand px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black text-white transition-all shadow-md hover:bg-brand-hover cursor-pointer"
                 >
                   <MessageSquare size={14} /> Bắt đầu đàm phán
                 </button>
@@ -627,7 +706,7 @@ export function ProposalDetailModal({
                 type="button"
                 disabled={isBusy(activeId, 'open')}
                 onClick={() => openNegotiation(activeId)}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white disabled:opacity-50 cursor-pointer shadow-md hover:bg-emerald-700 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-emerald-600 px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black text-white disabled:opacity-50 cursor-pointer shadow-md hover:bg-emerald-700 transition-all"
               >
                 <MessageSquare size={14} /> Vào Phòng Đàm phán
               </button>

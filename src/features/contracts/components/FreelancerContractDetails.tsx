@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import {
   AlertCircle, CheckCircle, Clock,
   FileText, Calendar, ArrowLeft, Shield,
-  ListChecks, Copy, Check, FileCheck, ChevronDown,
-  Star, ShieldAlert, Edit3, Sparkles, Eye, Mail, LoaderCircle, RefreshCw, Users, Zap, ChevronRight, Briefcase, ExternalLink, ArrowRight,
+  ListChecks, Copy, Check, ChevronDown,
+  Star, ShieldAlert, Edit3, Sparkles, Eye, Mail, LoaderCircle, RefreshCw, Users, Zap, ChevronRight, Briefcase, ExternalLink, ArrowRight, Send,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
@@ -17,14 +17,16 @@ import { ESignDocumentStatus } from '../../../types/models/ESign';
 import {
   getContractStatusLabel,
   getContractStatusClass,
-  formatContractAmount,
   formatContractDate,
   getMilestoneStatusLabel
 } from '../../../shared/utils/contractUtils';
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ContractChangeControlPanel } from './ContractChangeControlPanel';
+import { CancelContractButton } from './CancelContractButton';
 import { ContractLegalCard } from './ContractLegalCard';
 import {
   contractStatusMayHaveESignDocument,
@@ -181,28 +183,37 @@ export function FreelancerContractDetails({
           <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.milestoneBreakdown')} ({milestones.length})</h2>
         </div>
         <div className="flex flex-wrap gap-2">
-          <span className="px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-extrabold">
-            {t('contracts.sum')}: {formatContractAmount(milestonesTotal)}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-extrabold">
+            <span>{t('contracts.sum')}:</span>
+            <GCoinIcon size={14} />
+            <span>{formatGigCoinNumber(milestonesTotal)}</span>
+            <span className="text-[10.5px] font-semibold opacity-85">(≈ {formatGigCoinToVnd(milestonesTotal)})</span>
           </span>
         </div>
       </div>
       <div className="flex flex-col gap-3">
         {milestones.map((milestone, index) => (
           <div key={milestone.id} className="border border-border bg-background hover:border-brand/40 rounded-2xl p-4 transition duration-300 flex justify-between items-center gap-4 shadow-xs">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/20 font-black text-xs">
                 {index + 1}
               </div>
-              <div className="flex flex-col">
-                <h3 className="text-xs font-extrabold text-text-primary">{milestone.title}</h3>
+              <div className="flex flex-col min-w-0">
+                <h3 className="text-xs font-extrabold text-text-primary truncate">{milestone.title}</h3>
                 <span className="text-[11px] text-text-muted mt-0.5 font-semibold flex items-center gap-1.5">
                   <Calendar size={12} />
                   {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-sm font-black text-text-primary block">{formatContractAmount(milestone.amount)}</span>
+            <div className="text-right shrink-0 flex flex-col items-end">
+              <div className="flex items-center gap-1.5 text-sm font-black text-text-primary">
+                <GCoinIcon size={15} />
+                <span>{formatGigCoinNumber(milestone.amount)}</span>
+              </div>
+              <span className="text-[11px] font-semibold text-text-muted">
+                ≈ {formatGigCoinToVnd(milestone.amount)}
+              </span>
             </div>
           </div>
         ))}
@@ -215,9 +226,9 @@ export function FreelancerContractDetails({
       <div className="bg-background min-h-[calc(100vh-4rem)] flex flex-col text-left font-sans text-text-primary">
 
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
+        <header className="sticky top-0 z-40 border-b border-border bg-background/80 px-3.5 py-3.5 sm:py-4 backdrop-blur-md lg:px-8">
           <div className="mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => navigate('/contracts')}
@@ -227,15 +238,15 @@ export function FreelancerContractDetails({
                 <ArrowLeft size={16} />
               </button>
               <div className="min-w-0">
-                <div className="mb-0.5 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-brand">
-                  <Sparkles size={13} />
-                  {t('contracts.contractDetailsFreelancer')}
+                <div className="mb-0.5 flex items-center gap-1.5 sm:gap-2 text-[10px] font-black uppercase tracking-wider text-brand">
+                  <Sparkles size={13} className="shrink-0" />
+                  <span className="truncate">{t('contracts.contractDetailsFreelancer')}</span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-text-primary flex flex-wrap items-center gap-2.5 truncate">
-                  <span className="truncate max-w-[200px] md:max-w-xl">{contract.title}</span>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-black text-text-primary flex flex-wrap items-center gap-2 min-w-0 break-all [overflow-wrap:anywhere]">
+                  <span>{contract.title}</span>
                   <span className="text-brand italic font-light">Details</span>
-                  <span className={`status-badge ${getContractStatusClass(contract.status)} text-[10px] py-1 px-3`}>
-                    {t('contracts.statusLabels.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}
+                  <span className={`status-badge ${getContractStatusClass(contract.status)} text-[10px] py-0.5 sm:py-1 px-2.5 sm:px-3 shrink-0`}>
+                    {getContractStatusLabel(contract.status, t)}
                   </span>
                 </h1>
               </div>
@@ -246,12 +257,12 @@ export function FreelancerContractDetails({
         </header>
 
         {/* Main Content Workspace */}
-        <main className="mx-auto max-w-[1600px] w-full space-y-6 px-4 py-6 lg:px-8 flex-1">
+        <main className="mx-auto max-w-[1600px] w-full space-y-4 sm:space-y-6 px-3.5 py-4 sm:py-6 lg:px-8 flex-1 min-w-0">
 
           {/* Stepper Panel */}
-          <section className="glass-card p-4 relative overflow-hidden text-left shadow-sm">
+          <section className="glass-card p-3.5 sm:p-4 relative overflow-hidden text-left shadow-sm">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-            <div className="flex items-center gap-6 overflow-x-auto pb-1 no-scrollbar whitespace-nowrap">
+            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto pb-1.5 custom-scrollbar touch-pan-x scroll-smooth whitespace-nowrap">
               {[
                 { number: 1, label: t('contracts.reviewProjectPlan') },
                 { number: 2, label: t('contracts.esignContractDocument') },
@@ -363,18 +374,38 @@ export function FreelancerContractDetails({
                 onApplied={onRefresh}
               />
 
+              <CancelContractButton
+                contractId={contract.contractsId}
+                contractStatus={contract.status}
+                contractCreatedAt={contract.createdAt}
+                onCancelled={onRefresh}
+              />
+
               {/* Step 1A: PendingContractDetails */}
               {contract.status === ContractStatus.PendingContractDetails && (
                 <>
-                  <div className="glass-card p-6 md:p-8 space-y-6">
-                    <div className="flex items-center gap-2.5 border-b border-border pb-4">
-                      <Clock size={20} className="text-amber-500" />
-                      <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.milestoneChangeRequestSent')}</h2>
+                  <div className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-6 shadow-xs relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600" />
+                    
+                    <div className="flex items-center gap-3 border-b border-border/80 pb-4">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                        <Clock size={18} />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                          {t('contracts.pendingContractDetails', { defaultValue: 'Waiting for Updates' })}
+                        </div>
+                        <h2 className="text-base sm:text-lg font-black text-text-primary">
+                          {t('contracts.milestoneChangeRequestSent')}
+                        </h2>
+                      </div>
                     </div>
 
-                    <div className="bg-background text-amber-600 dark:text-amber-400 border border-amber-500/40 p-4 rounded-2xl text-xs font-semibold leading-relaxed flex items-start gap-3 shadow-xs">
-                      <AlertCircle size={18} className="shrink-0 mt-0.5 text-amber-500" />
-                      <div>
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-4.5 flex items-start gap-3.5 shadow-xs">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <AlertCircle size={16} />
+                      </div>
+                      <div className="text-xs font-semibold text-text-primary leading-relaxed">
                         {t('contracts.waitingClientMilestones')}
                       </div>
                     </div>
@@ -382,15 +413,27 @@ export function FreelancerContractDetails({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="bg-surface-muted/30 border border-border rounded-2xl p-4">
                         <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block">{t('contracts.jobTitle')}</span>
-                        <span className="text-xs font-bold text-text-primary mt-1 block">{contract.jobTitle || contract.title}</span>
+                        <span className="text-xs font-bold text-text-primary mt-1 block truncate">{contract.jobTitle || contract.title}</span>
                       </div>
                       <div className="bg-surface-muted/30 border border-border rounded-2xl p-4">
                         <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block">{t('contracts.finalBudget')}</span>
-                        <span className="text-base font-black text-brand mt-1 block">{formatContractAmount(contract.totalBudget)}</span>
+                        <div className="flex items-center gap-1.5 mt-1 font-black text-brand text-base">
+                          <GCoinIcon size={16} />
+                          <span>{formatGigCoinNumber(contract.totalBudget)}</span>
+                        </div>
+                        <span className="text-[10.5px] font-semibold text-text-muted block mt-0.5">
+                          ≈ {formatGigCoinToVnd(contract.totalBudget)}
+                        </span>
                       </div>
                       <div className="bg-surface-muted/30 border border-border rounded-2xl p-4">
                         <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block">{t('contracts.currentMilestoneTotal')}</span>
-                        <span className="text-base font-black text-text-primary mt-1 block">{formatContractAmount(milestonesTotal)}</span>
+                        <div className="flex items-center gap-1.5 mt-1 font-black text-text-primary text-base">
+                          <GCoinIcon size={16} />
+                          <span>{formatGigCoinNumber(milestonesTotal)}</span>
+                        </div>
+                        <span className="text-[10.5px] font-semibold text-text-muted block mt-0.5">
+                          ≈ {formatGigCoinToVnd(milestonesTotal)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -406,69 +449,102 @@ export function FreelancerContractDetails({
               {/* Step 1B: PendingContractConfirmation */}
               {contract.status === ContractStatus.PendingContractConfirmation && (
                 <>
-                  <div className="rounded-2xl border border-border bg-card p-6 md:p-8 space-y-6 shadow-md">
-                    <div className="flex items-center gap-2.5 border-b border-border pb-4">
-                      <Shield size={20} className="text-brand" />
-                      <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.reviewProjectPlan')}</h2>
+                  <div className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-6 shadow-xs relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-500 via-brand to-emerald-500" />
+                    
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-500 flex items-center justify-center shrink-0">
+                          <Shield size={18} />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                            {t('contracts.pendingContractConfirmation', { defaultValue: 'Action Required' })}
+                          </div>
+                          <h2 className="text-base sm:text-lg font-black text-text-primary">
+                            {t('contracts.reviewProjectPlan')}
+                          </h2>
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-sky-500/10 border border-sky-500/30 text-sky-600 dark:text-sky-400 self-start sm:self-auto">
+                        <Sparkles size={12} /> {t('contracts.waitingConfirmation', { defaultValue: 'Awaiting Your Review' })}
+                      </span>
                     </div>
 
-                    <div className="bg-amber-500 text-white p-4.5 rounded-2xl text-xs font-bold leading-relaxed flex items-start gap-3 shadow-md">
-                      <AlertCircle size={18} className="shrink-0 mt-0.5 text-white" />
-                      <div>
-                        {t('contracts.reviewProjectPlanDesc')}
+                    {/* Notice Callout */}
+                    <div className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-4.5 flex items-start gap-3.5">
+                      <div className="w-7 h-7 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <AlertCircle size={16} />
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-extrabold text-text-primary leading-snug">
+                          {t('contracts.reviewProjectPlanDesc')}
+                        </p>
+                        <p className="text-[11px] font-medium text-text-muted">
+                          {t('contracts.reviewProjectPlanSubDesc')}
+                        </p>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <div className="flex flex-col sm:flex-row gap-3 pt-1">
                       <button
                         type="button"
                         disabled={actionLoading}
                         onClick={handleConfirmDetails}
-                        className="flex-1 py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-black cursor-pointer transition shadow-md flex items-center justify-center gap-2 border-none"
+                        className="flex-1 py-3 px-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] text-white rounded-xl text-xs font-black cursor-pointer transition shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 border-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <CheckCircle size={18} />
-                        {t('contracts.confirmProjectPlan')}
+                        {actionLoading ? <LoaderCircle size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                        <span>{t('contracts.confirmProjectPlan')}</span>
                       </button>
                       <button
                         type="button"
                         disabled={actionLoading}
-                        onClick={() => setShowChangeRequestModal(true)}
-                        className="flex-1 py-3.5 px-5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white rounded-xl text-xs font-black cursor-pointer transition shadow-md flex items-center justify-center gap-2 border-none"
+                        onClick={() => setShowChangeRequestModal(prev => !prev)}
+                        className="flex-1 py-3 px-5 bg-background hover:bg-surface-muted border border-border hover:border-amber-500/50 text-text-primary hover:text-amber-600 dark:hover:text-amber-400 active:scale-[0.99] rounded-xl text-xs font-black cursor-pointer transition shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Edit3 size={18} />
-                        {t('contracts.requestChanges')}
+                        <Edit3 size={15} />
+                        <span>{t('contracts.requestChanges')}</span>
                       </button>
                     </div>
                   </div>
 
+                  {/* Change Request Drawer Form */}
                   {showChangeRequestModal && (
-                    <div className="rounded-2xl border border-amber-500/40 bg-card p-6 space-y-4 shadow-md">
-                      <h3 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                        <Edit3 size={15} />
-                        Reason for change request
-                      </h3>
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 sm:p-6 space-y-4 animate-in fade-in-0 duration-200">
+                      <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                          <Edit3 size={15} />
+                          <span>{t('contracts.reasonForChangeRequest')}</span>
+                        </h3>
+                        <span className="text-[11px] font-semibold text-text-muted">
+                          {t('contracts.sendFeedbackToClient')}
+                        </span>
+                      </div>
                       <textarea
                         value={changeRequestReason}
                         onChange={(e) => setChangeRequestReason(e.target.value)}
-                        className="w-full p-3.5 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-amber-500"
-                        placeholder="Specify reason for requesting milestone/schedule changes..."
+                        className="w-full p-3.5 bg-background border border-border hover:border-border-hover focus:border-amber-500 rounded-xl text-xs font-semibold text-text-primary outline-none transition placeholder:text-text-muted"
+                        placeholder={t('contracts.specifyChangeReasonPlaceholder')}
                         rows={3}
                       />
-                      <div className="flex justify-end gap-2.5">
+                      <div className="flex justify-end items-center gap-2.5 pt-1">
                         <button
                           type="button"
                           onClick={() => setShowChangeRequestModal(false)}
-                          className="px-4 py-2.5 bg-surface-muted hover:bg-surface-muted/80 border border-border rounded-xl text-xs font-extrabold text-text-primary cursor-pointer transition"
+                          className="px-4 py-2.5 bg-background hover:bg-surface-muted border border-border rounded-xl text-xs font-extrabold text-text-muted hover:text-text-primary cursor-pointer transition"
                         >
-                          Cancel
+                          {t('common.cancel', { defaultValue: 'Cancel' })}
                         </button>
                         <button
                           type="button"
+                          disabled={actionLoading || !changeRequestReason.trim()}
                           onClick={handleRequestChanges}
-                          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer border-none transition"
+                          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white rounded-xl text-xs font-black shadow-sm shadow-amber-500/20 cursor-pointer border-none transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
-                          Submit Request
+                          {actionLoading ? <LoaderCircle size={14} className="animate-spin" /> : <Send size={14} />}
+                          <span>{t('contracts.submitRequest')}</span>
                         </button>
                       </div>
                     </div>
@@ -485,31 +561,6 @@ export function FreelancerContractDetails({
               {/* Step 2: PendingSignature - E-Sign */}
               {contract.status === ContractStatus.PendingSignature && (
                 <>
-                  <div className="glass-card p-6 md:p-8 space-y-6">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                      <div className="space-y-3">
-                        <div className="w-12 h-12 bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 rounded-2xl flex items-center justify-center">
-                          <FileCheck size={24} />
-                        </div>
-                        <div>
-                          <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.reviewFinalBeforeSign')}</h2>
-                          <p className="text-xs text-text-muted max-w-2xl leading-relaxed mt-1 font-semibold">
-                            {t('contracts.reviewFinalBeforeSignDesc')}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-xs font-extrabold text-white hover:bg-amber-600 transition cursor-pointer shadow-xs shrink-0"
-                      >
-                        <FileCheck size={16} />
-                        {t('contracts.proceedToEsign')}
-                      </button>
-                    </div>
-                  </div>
-
                   <ContractLegalCard
                     contractId={contract.contractsId}
                     documentState={esignDocumentState}
@@ -521,7 +572,8 @@ export function FreelancerContractDetails({
               {/* Step 3: PendingEscrow */}
               {contract.status === ContractStatus.PendingEscrow && (
                 <>
-                  <div className="glass-card p-6 md:p-8 space-y-4">
+                  <div className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-4 shadow-xs relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600" />
                     <div className="flex items-center gap-3 text-brand">
                       <Clock size={20} className="animate-pulse" />
                       <h2 className="text-base font-black uppercase tracking-tight text-text-primary">{t('contracts.waitingEscrowFunding')}</h2>
@@ -542,7 +594,7 @@ export function FreelancerContractDetails({
               {/* Step 4: Active Contract / Full View */}
               {contract.status >= ContractStatus.Active && (
                 <>
-                  <section className="glass-card p-6 md:p-8 space-y-6">
+                  <section className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-6 shadow-xs">
                     <div className="flex items-center gap-2.5 border-b border-border pb-4">
                       <FileText size={20} className="text-brand" />
                       <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.contractInfo')}</h2>
@@ -620,7 +672,7 @@ export function FreelancerContractDetails({
 
                   {/* Milestones Accordions */}
                   {milestones.length > 0 && (
-                    <section className="glass-card p-6 md:p-8 space-y-6">
+                    <section className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-6 shadow-xs">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
                         <div className="flex items-center gap-2.5">
                           <ListChecks size={20} className="text-brand" />
@@ -634,8 +686,11 @@ export function FreelancerContractDetails({
                           <span className="px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-black">
                             {t('contracts.milestonesApprovedCount', { milestonesApproved })}
                           </span>
-                          <span className="px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-black">
-                            {t('contracts.sum')}: {formatContractAmount(milestonesTotal)}
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-black">
+                            <span>{t('contracts.sum')}:</span>
+                            <GCoinIcon size={13} />
+                            <span>{formatGigCoinNumber(milestonesTotal)}</span>
+                            <span className="text-[10.5px] font-semibold opacity-85">(≈ {formatGigCoinToVnd(milestonesTotal)})</span>
                           </span>
                         </div>
                       </div>
@@ -655,8 +710,12 @@ export function FreelancerContractDetails({
                                   </span>
                                   <div className="min-w-0">
                                     <h3 className="text-xs font-extrabold text-text-primary truncate">{milestone.title}</h3>
-                                    <span className="text-[11px] font-semibold text-text-muted mt-0.5 flex items-center gap-2">
-                                      <span>{formatContractAmount(milestone.amount)}</span>
+                                    <span className="text-[11px] font-semibold text-text-muted mt-0.5 flex items-center gap-2 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 text-text-primary font-black">
+                                        <GCoinIcon size={13} />
+                                        <span>{formatGigCoinNumber(milestone.amount)}</span>
+                                      </span>
+                                      <span className="text-text-muted">(≈ {formatGigCoinToVnd(milestone.amount)})</span>
                                       <span>·</span>
                                       <span>{t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}</span>
                                     </span>
@@ -675,7 +734,13 @@ export function FreelancerContractDetails({
                                 <div className="border-t border-border bg-surface-muted/30 p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold">
                                   <div>
                                     <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">{t('contracts.amountTokens')}</span>
-                                    <span className="text-text-primary font-black">{formatContractAmount(milestone.amount)}</span>
+                                    <div className="flex items-center gap-1.5 font-black text-text-primary">
+                                      <GCoinIcon size={14} />
+                                      <span>{formatGigCoinNumber(milestone.amount)}</span>
+                                    </div>
+                                    <span className="text-[10.5px] font-semibold text-text-muted block mt-0.5">
+                                      ≈ {formatGigCoinToVnd(milestone.amount)}
+                                    </span>
                                   </div>
                                   <div>
                                     <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">{t('contracts.dueDate')}</span>
@@ -804,7 +869,13 @@ export function FreelancerContractDetails({
                   <div className="flex items-center justify-between p-3 bg-surface-muted/40 rounded-xl border border-border">
                     <div>
                       <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">{t('contracts.budget')}</span>
-                      <span className="text-base font-black text-brand mt-0.5 block">{formatContractAmount(contract.totalBudget)}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <GCoinIcon size={16} />
+                        <span className="text-base font-black text-brand">{formatGigCoinNumber(contract.totalBudget)}</span>
+                      </div>
+                      <span className="text-[10.5px] font-semibold text-text-muted block mt-0.5">
+                        ≈ {formatGigCoinToVnd(contract.totalBudget)}
+                      </span>
                     </div>
                     <div className="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
                       <GigCoinLogo size={16} />
@@ -871,7 +942,9 @@ export function FreelancerContractDetails({
 
               {/* Quick Actions Panel */}
               {Number(contract.status) !== ContractStatus.PendingSignature &&
-               Number(contract.status) !== ContractStatus.PendingEscrow && (
+               Number(contract.status) !== ContractStatus.PendingEscrow &&
+               Number(contract.status) !== ContractStatus.PendingContractConfirmation &&
+               Number(contract.status) !== ContractStatus.PendingContractDetails && (
                 <div className="relative overflow-hidden rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-md p-5 space-y-4">
                   {/* Background Ambient Glow */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--brand,#494be7)]/10 rounded-full blur-2xl pointer-events-none" />

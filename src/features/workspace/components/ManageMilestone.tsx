@@ -1,8 +1,12 @@
 import {
+  Award,
+  Briefcase,
   CreditCard,
   CheckCircle,
   PanelLeftOpen,
   PanelRightOpen,
+  PlusCircle,
+  Sparkles,
   Star,
   Wallet,
   Clock,
@@ -186,39 +190,149 @@ export function ManageMilestone({
 
       {/* Milestones timeline & completion cards scrollable area */}
       <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 custom-scrollbar relative space-y-4 sm:space-y-6">
-        {showFreelancerPayoutCard && (
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-lg relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-              <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
-                  <CreditCard size={20} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400">
-                      {t('workspace.finalPayout', { defaultValue: 'Ví GigCoin Payout' })}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-2xs">
-                      ĐÃ THANH TOÁN
-                    </span>
-                  </div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-white mt-0.5 truncate tracking-tight">
-                    {t('workspace.finalPayoutReconciliation', { defaultValue: 'Đối soát & Giải ngân dự án hoàn tất' })}
-                  </h3>
-                  <p className="text-xs text-slate-300 line-clamp-1">
-                    {t('workspace.finalPayoutNotice', { defaultValue: 'Tiền thù lao đã được chuyển trực tiếp vào ví GigCoin của bạn.' })}
-                  </p>
-                </div>
+        {/* ALL MILESTONES COMPLETED BANNER (CLIENT) */}
+        {allMilestonesApproved && activeContract?.status !== ContractStatus.Completed && isClient && (
+          <div className="mms-completion-banner">
+            <div className="mms-completion-accent" />
+            <div className="mms-completion-header">
+              <div className="mms-completion-icon-wrap">
+                <Sparkles size={18} />
               </div>
+              <div className="mms-completion-title-group">
+                <div className="mms-completion-top-row">
+                  <span className="mms-completion-badge">
+                    <CheckCircle size={11} />
+                    <span>{t('workspace.milestonesAllApprovedBadgeClient')}</span>
+                  </span>
+                </div>
+                <h3 className="mms-completion-title">
+                  {t('workspace.milestonesAllApprovedClientTitle')}
+                </h3>
+              </div>
+            </div>
+            <p className="mms-completion-desc">
+              {t('workspace.milestonesAllApprovedClientDesc')}
+            </p>
+            <div className="mms-completion-cta-wrap">
+              <button
+                type="button"
+                onClick={openEndProjectDialog}
+                className="mms-btn-end-project-cta"
+              >
+                <CheckCircle size={16} className="mms-btn-icon" />
+                <span>{t('workspace.endProjectNow')}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
+        {/* ALL MILESTONES COMPLETED BANNER (FREELANCER) */}
+        {allMilestonesApproved && activeContract?.status !== ContractStatus.Completed && !isClient && (
+          <div className="mms-completion-banner">
+            <div className="mms-completion-accent" />
+            <div className="mms-completion-header">
+              <div className="mms-completion-icon-wrap">
+                <Award size={18} />
+              </div>
+              <div className="mms-completion-title-group">
+                <div className="mms-completion-top-row">
+                  <span className="mms-completion-badge">
+                    <Clock size={11} />
+                    <span>{t('workspace.milestonesAllApprovedBadgeFreelancer')}</span>
+                  </span>
+                </div>
+                <h3 className="mms-completion-title">
+                  {t('workspace.milestonesAllApprovedFreelancerTitle')}
+                </h3>
+              </div>
+            </div>
+            <p className="mms-completion-desc">
+              {t('workspace.milestonesAllApprovedFreelancerDesc')}
+            </p>
+          </div>
+        )}
+
+        {showFreelancerPayoutCard && (
+          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-lg relative overflow-hidden flex flex-col gap-3.5">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Top Section: Icon + Eyebrow/Status + Title */}
+            <div className="flex items-start gap-3 sm:gap-3.5 relative z-10 min-w-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner mt-0.5">
+                <CreditCard size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400">
+                    {t('workspace.finalPayout', { defaultValue: 'Ví GigCoin Payout' })}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-2xs">
+                    {t('workspace.payoutStatusPaid', { defaultValue: 'ĐÃ THANH TOÁN' })}
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-sm sm:text-base text-white tracking-tight leading-snug">
+                  {t('workspace.finalPayoutReconciliation', { defaultValue: 'Đối soát & Giải ngân dự án hoàn tất' })}
+                </h3>
+              </div>
+            </div>
+
+            {/* Middle Section: Full-width description text */}
+            <p className="text-xs text-slate-300 leading-relaxed relative z-10">
+              {t('workspace.finalPayoutNotice', { defaultValue: 'Tiền thù lao đã được chuyển trực tiếp vào ví GigCoin của bạn.' })}
+            </p>
+
+            {/* Bottom Toolbar: Action Button */}
+            <div className="flex items-center justify-end pt-1 relative z-10 border-t border-emerald-500/15">
               <button
                 type="button"
                 onClick={() => navigate('/wallet/history')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-md shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2 shrink-0 active:scale-95 border-none self-start sm:self-center"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-md shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2 shrink-0 active:scale-95 border-none"
               >
                 <Wallet size={14} />
                 <span>{t('workspace.viewWalletHistory', { defaultValue: 'Xem lịch sử ví' })}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isClient && activeContract?.status === ContractStatus.Completed && (
+          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/30 text-white shadow-lg relative overflow-hidden flex flex-col gap-3.5">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Top Section: Icon + Eyebrow/Status + Title */}
+            <div className="flex items-start gap-3 sm:gap-3.5 relative z-10 min-w-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner mt-0.5">
+                <Briefcase size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400">
+                    {t('workspace.clientProjectCompletedEyebrow')}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-2xs">
+                    {t('workspace.clientProjectCompletedStatus')}
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-sm sm:text-base text-white tracking-tight leading-snug">
+                  {t('workspace.clientProjectCompletedTitle')}
+                </h3>
+              </div>
+            </div>
+
+            {/* Middle Section: Full-width description text */}
+            <p className="text-xs text-slate-300 leading-relaxed relative z-10">
+              {t('workspace.clientProjectCompletedDesc')}
+            </p>
+
+            {/* Bottom Toolbar: Action Button */}
+            <div className="flex items-center justify-end pt-1 relative z-10 border-t border-emerald-500/15">
+              <button
+                type="button"
+                onClick={() => navigate('/jobs/post')}
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-md shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2 shrink-0 active:scale-95 border-none"
+              >
+                <PlusCircle size={15} />
+                <span>{t('workspace.postNewJobNow')}</span>
               </button>
             </div>
           </div>

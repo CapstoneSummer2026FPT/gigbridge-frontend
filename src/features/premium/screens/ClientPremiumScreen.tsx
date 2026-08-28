@@ -139,7 +139,7 @@ export default function ClientPremiumScreen() {
               {(current.loading || history.loading) ? (
                 <div style={{ height: 260, borderRadius: 24, background: 'var(--card)', opacity: 0.5 }} />
               ) : (
-                <article className="cp-plan-prem" style={{ margin: 0, padding: 36 }}>
+                <article className="cp-plan-prem" style={{ margin: 0 }}>
                   <div className="cp-plan-prem-orb" aria-hidden />
 
                   <div className="cp-plan-prem-top">
@@ -164,9 +164,9 @@ export default function ClientPremiumScreen() {
                   )}
 
                   {entitled ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderTop: '1px solid var(--cp-border)', paddingTop: 20, marginTop: 12, flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <label className={`cp-toggle ${Boolean(current.data?.autoRenew) ? '' : 'off'}`} title="Tự động gia hạn gói Client Premium">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-[var(--cp-border)] pt-5 mt-3">
+                      <div className="flex items-start sm:items-center gap-3">
+                        <label className={`cp-toggle ${Boolean(current.data?.autoRenew) ? '' : 'off'} shrink-0 mt-0.5 sm:mt-0`} title="Tự động gia hạn gói Client Premium">
                           <input
                             type="checkbox"
                             checked={Boolean(current.data?.autoRenew)}
@@ -176,19 +176,19 @@ export default function ClientPremiumScreen() {
                           <span className="cp-slider" />
                         </label>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800, color: 'var(--cp-text)' }}>
+                          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-extrabold text-[var(--cp-text)]">
                             <span>{t('clientPremium.autoRenewLabel')}</span>
                             {Boolean(current.data?.autoRenew) ? (
-                              <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(16,185,129,0.15)', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 uppercase tracking-wider">
                                 ACTIVE ✦
                               </span>
                             ) : (
-                              <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(99,102,241,0.15)', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-500 uppercase tracking-wider">
                                 RECOMMENDED
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: 12, color: 'var(--cp-muted)', marginTop: 2, fontWeight: 600 }}>
+                          <div className="text-xs text-[var(--cp-muted)] mt-0.5 font-medium leading-relaxed">
                             {current.data?.autoRenew
                               ? 'Tự động gia hạn đang bật — Đảm bảo bài ghim Top #1 & phỏng vấn AI luôn hoạt động liên tục.'
                               : 'Bật tự động gia hạn để duy trì bài đăng vị trí Top #1 và công cụ phỏng vấn AI không bị gián đoạn.'}
@@ -196,23 +196,23 @@ export default function ClientPremiumScreen() {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
+                      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0 pt-2 sm:pt-0">
                         {current.data?.autoRenew && (
-                          <button className="cp-btn ghost" style={{ padding: '8px 16px', fontSize: 12 }} disabled={busy} onClick={() => setConfirmCancel(true)}>
+                          <button className="cp-btn ghost flex-1 sm:flex-initial" style={{ padding: '8px 16px', fontSize: 12 }} disabled={busy} onClick={() => setConfirmCancel(true)}>
                             {t('clientPremium.cancelRenewalBtn')}
                           </button>
                         )}
-                        <button className="cp-btn" style={{ padding: '8px 18px', fontSize: 12 }} onClick={() => navigate('/premium/client/pricing')}>
+                        <button className="cp-btn flex-1 sm:flex-initial" style={{ padding: '8px 18px', fontSize: 12 }} onClick={() => navigate('/premium/client/pricing')}>
                           <Zap size={14} /> {t('clientPremium.extend')}
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderTop: '1px solid var(--cp-border)', paddingTop: 16, marginTop: 12 }}>
-                      <div className="cp-plan-std-desc" style={{ margin: 0 }}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[var(--cp-border)] pt-4 mt-3">
+                      <div className="cp-plan-std-desc text-xs sm:text-sm" style={{ margin: 0 }}>
                         Upgrade to Client Premium to unlock top-pinned listings, AI screeners &amp; 3D Neon badge.
                       </div>
-                      <button className="cp-btn" onClick={() => navigate('/premium/client/pricing')}>
+                      <button className="cp-btn w-full sm:w-auto shrink-0" onClick={() => navigate('/premium/client/pricing')}>
                         <Zap size={14} /> {t('clientPremium.upgrade')}
                       </button>
                     </div>
@@ -408,24 +408,26 @@ export default function ClientPremiumScreen() {
           <section className="cp-studio-box">
             <h2 className="cp-card-title" style={{ fontSize: 22, marginBottom: 20 }}>{t('clientPremium.subscriptionHistory')}</h2>
             {history.data?.length ? (
-              <table className="cp-compare-table">
-                <thead>
-                  <tr>
-                    <th>Plan Name</th>
-                    <th>Period</th>
-                    <th style={{ textAlign: 'center' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.data.map(item => (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: 800 }}>{item.planName}</td>
-                      <td style={{ color: 'var(--cp-muted)' }}>{new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 800 }}>{PremiumSubscriptionStatus[item.status]}</td>
+              <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <table className="cp-compare-table">
+                  <thead>
+                    <tr>
+                      <th>Plan Name</th>
+                      <th>Period</th>
+                      <th style={{ textAlign: 'center' }}>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {history.data.map(item => (
+                      <tr key={item.id}>
+                        <td style={{ fontWeight: 800 }}>{item.planName}</td>
+                        <td style={{ color: 'var(--cp-muted)', whiteSpace: 'nowrap' }}>{new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 800 }}>{PremiumSubscriptionStatus[item.status]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <p className="cp-card-body">No subscription history found.</p>
             )}

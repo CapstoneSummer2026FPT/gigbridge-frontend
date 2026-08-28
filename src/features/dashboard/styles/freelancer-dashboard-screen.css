@@ -83,6 +83,7 @@
 /* ── Bento Spotlight Card ── */
 .bento-spotlight-card {
   position: relative;
+  container-type: inline-size;
   background: color-mix(in srgb, var(--card, #0f172a) 80%, transparent);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);

@@ -28,7 +28,11 @@ const ensureConnection = (): signalR.HubConnection => {
   if (connection) return connection;
   connection = new signalR.HubConnectionBuilder()
     .configureLogging(signalR.LogLevel.Warning)
-    .withUrl(getChatHubUrl(), { accessTokenFactory: () => localStorage.getItem('access_token') ?? '' })
+    .withUrl(getChatHubUrl(), {
+      accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+      skipNegotiation: true,
+      transport: signalR.HttpTransportType.WebSockets,
+    })
     .withAutomaticReconnect()
     .build();
   connection.onreconnecting(() => publishStatus('reconnecting'));

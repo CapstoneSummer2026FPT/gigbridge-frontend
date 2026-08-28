@@ -620,7 +620,7 @@ export default function BrowseJobsScreen() {
             {/* Search & Filter Header Box */}
             <div className="browse-jobs-glass-card p-4 browse-jobs-header-card">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="browse-jobs-search-wrapper">
+                <div className="browse-jobs-search-wrapper flex-1">
                   <Search size={16} className="browse-jobs-search-icon" />
                   <input
                     type="text"
@@ -631,11 +631,11 @@ export default function BrowseJobsScreen() {
                     className="browse-jobs-search-input"
                   />
                 </div>
-                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={handleFilterToggle}
-                    className={`browse-jobs-filter-btn flex-1 sm:flex-initial justify-center ${showFilters ? 'active' : ''}`}
+                    className={`browse-jobs-filter-btn justify-center shrink-0 w-full sm:w-auto ${showFilters ? 'active' : ''}`}
                   >
                     <Filter size={16} />
                     <span>{t('jobs.filters')}</span>
@@ -645,10 +645,13 @@ export default function BrowseJobsScreen() {
                       onClick={findMatchingJobs}
                       disabled={recommendedLoading}
                       isActive={isRecommendedView}
-                      wrapperClassName="flex-1 sm:flex-initial shrink-0 justify-center"
+                      wrapperClassName="w-full sm:w-auto shrink-0 justify-center"
+                      className="!min-h-[44px] !h-[2.875rem] !px-4 text-center justify-center w-full sm:w-auto"
                     >
                       <Sparkles size={15} className="text-brand shrink-0 animate-pulse" />
-                      <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : isRecommendedView ? t('jobs.backToProfileMatches') : t('jobs.findMatchingJobs')}</span>
+                      <span className="whitespace-nowrap font-bold text-xs sm:text-sm">
+                        {recommendedLoading ? t('jobs.findingMatchingJobs') : isRecommendedView ? t('jobs.backToProfileMatches') : t('jobs.findMatchingJobs')}
+                      </span>
                     </ConicBorderButton>
                   )}
                 </div>
