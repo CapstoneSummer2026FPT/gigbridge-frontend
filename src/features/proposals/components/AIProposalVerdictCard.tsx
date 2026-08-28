@@ -193,12 +193,12 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     if (pillarScores.technical_solution < 60) {
       reasons.push({
         type: 'negative',
-        text: `Technical solution & architecture clarity needs improvement (${pillarScores.technical_solution.toFixed(1)}/100)`,
+        text: `Solution methodology & requirement alignment needs improvement (${pillarScores.technical_solution.toFixed(1)}/100)`,
       });
     } else if (pillarScores.technical_solution >= 80) {
       reasons.push({
         type: 'positive',
-        text: `Solid technical solution & architecture proposed (${pillarScores.technical_solution.toFixed(1)}/100)`,
+        text: `Solid solution methodology & requirement alignment proposed (${pillarScores.technical_solution.toFixed(1)}/100)`,
       });
     }
 
@@ -446,22 +446,22 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
         <div className="space-y-3 text-xs">
           {/* Pillar 1 */}
           <MetricCalculationTooltip
-            title="Technical Solution & Architecture"
+            title="Solution & Delivery Methodology"
             weight="35%"
-            formula="Score = 0.25×Alignment + 0.30×Correctness + 0.20×Arch + 0.15×Feasibility + 0.10×Security"
+            formula="Score = 0.30×Alignment + 0.25×Correctness + 0.20×Workflow + 0.15×Feasibility + 0.10×Risk"
             items={[
-              { label: 'Requirement Alignment', weight: '25%', icon: '🎯' },
-              { label: 'Technical Correctness', weight: '30%', icon: '⚡' },
-              { label: 'Architecture Quality', weight: '20%', icon: '🏗️' },
-              { label: 'Implementation Feasibility', weight: '15%', icon: '🛠️' },
-              { label: 'Edge Cases & Security', weight: '10%', icon: '🔒' },
+              { label: 'Requirement Alignment', weight: '30%', icon: '🎯' },
+              { label: 'Methodological Correctness', weight: '25%', icon: '⚡' },
+              { label: 'Solution Architecture & Workflow', weight: '20%', icon: '🏗️' },
+              { label: 'Practical Feasibility', weight: '15%', icon: '🛠️' },
+              { label: 'Risk Mitigation & Quality Control', weight: '10%', icon: '🔒' },
             ]}
-            note="Evaluates proposed tech stack, architecture, and security design."
+            note="Evaluates proposed solution approach strictly against the job description for any professional domain."
           >
             <div className="p-2 rounded-xl border border-transparent hover:border-purple-500/30 hover:bg-purple-500/5 transition-all">
               <div className="flex justify-between text-[11px] font-bold mb-1">
                 <span className="text-text-primary flex items-center gap-1.5">
-                  🛠️ Technical Solution & Architecture (35%)
+                  🛠️ Solution & Delivery Methodology (35%)
                   <HelpCircle size={11} className="text-text-muted" />
                 </span>
                 <span className="font-black text-purple-600 dark:text-purple-400">

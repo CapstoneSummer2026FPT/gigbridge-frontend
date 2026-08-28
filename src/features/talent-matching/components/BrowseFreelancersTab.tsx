@@ -97,7 +97,7 @@ export function BrowseFreelancersTab({
   }
 
   return (
-    <div className={`max-h-[calc(100vh-270px)] overflow-y-auto custom-scrollbar pr-1.5 ${layoutMode === 'compact' ? 'space-y-2' : 'space-y-4'}`}>
+    <div className={`w-full ${layoutMode === 'compact' ? 'space-y-2.5' : 'space-y-4'}`}>
       {filteredFreelancers.map(freelancer => {
         const profileId = freelancer.freelancerProfilesId;
         const displayName = freelancer.userFullName || 'Freelancer';
@@ -107,7 +107,7 @@ export function BrowseFreelancersTab({
           return (
             <article
               key={profileId}
-              className="rounded-xl border border-border bg-surface-card/80 p-3 hover:border-brand/30 transition-all flex items-center justify-between gap-3"
+              className="rounded-2xl border border-border bg-surface-card/80 p-3 sm:p-3.5 hover:border-brand/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               style={{ backdropFilter: 'blur(12px)' }}
             >
               <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -121,30 +121,28 @@ export function BrowseFreelancersTab({
                   />
                 </button>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => { if (profilePath) navigate(profilePath); }}
-                      className="font-bold text-sm text-text-primary hover:text-brand transition-colors truncate"
-                    >
-                      {displayName}
-                    </button>
-                    <span className="text-xs text-brand font-semibold shrink-0">
-                      • {freelancer.title || t('talentMatching.freelancerRole')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-[11px] text-text-muted mt-0.5">
-                    {freelancer.location && <span><MapPin size={10} className="inline mr-0.5" />{freelancer.location}</span>}
-                    <span className="flex items-center gap-0.5"><Star size={10} className="text-amber-400 fill-current" />{freelancer.rating ? freelancer.rating.toFixed(1) : '—'}</span>
-                    <span className="flex items-center gap-0.5"><Zap size={10} className="text-brand" />{freelancer.eloPoints ?? 100} ELO</span>
+                  <button
+                    onClick={() => { if (profilePath) navigate(profilePath); }}
+                    className="font-bold text-xs sm:text-sm text-text-primary hover:text-brand transition-colors truncate block text-left max-w-full"
+                  >
+                    {displayName}
+                  </button>
+                  <p className="text-[11px] sm:text-xs text-brand font-semibold truncate max-w-full mt-0.5">
+                    {freelancer.title || t('talentMatching.freelancerRole')}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-[10px] sm:text-[11px] text-text-muted mt-1">
+                    {freelancer.location && <span className="truncate max-w-[140px]"><MapPin size={10} className="inline mr-0.5 shrink-0" />{freelancer.location}</span>}
+                    <span className="flex items-center gap-0.5 shrink-0"><Star size={10} className="text-amber-400 fill-current" />{freelancer.rating ? freelancer.rating.toFixed(1) : '—'}</span>
+                    <span className="flex items-center gap-0.5 shrink-0"><Zap size={10} className="text-brand" />{freelancer.eloPoints ?? 100} ELO</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
                 <button
                   disabled={savingIds.has(profileId)}
                   onClick={() => void onToggleSaved(profileId)}
-                  className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all disabled:opacity-50 ${
+                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all disabled:opacity-50 min-h-[38px] min-w-[38px] ${
                     savedIds.has(profileId)
                       ? 'border-red-400/40 bg-red-400/10 text-red-500'
                       : 'border-border hover:border-red-400/40 text-text-muted'
@@ -155,7 +153,7 @@ export function BrowseFreelancersTab({
                 </button>
                 <button
                   onClick={() => onInvite(profileId, displayName)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                  className={`flex-1 sm:flex-initial rounded-xl px-3.5 py-2 text-xs font-bold transition-all min-h-[38px] text-center ${
                     invitedIds.has(profileId)
                       ? 'bg-success/10 text-success border border-success/25'
                       : 'bg-gradient-to-r from-[var(--brand)] to-indigo-500 text-white hover:opacity-90'
@@ -171,11 +169,11 @@ export function BrowseFreelancersTab({
         return (
           <article
             key={profileId}
-            className="rounded-2xl border border-border bg-surface-card/80 p-5 hover:border-brand/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="rounded-2xl border border-border bg-surface-card/80 p-4 sm:p-5 hover:border-brand/30 hover:shadow-md transition-all duration-200"
             style={{ backdropFilter: 'blur(12px)' }}
           >
             {/* Top row */}
-            <div className="flex gap-4 items-start">
+            <div className="flex gap-3 sm:gap-4 items-start">
               <button
                 onClick={() => {
                   if (profilePath) navigate(profilePath);
@@ -186,7 +184,7 @@ export function BrowseFreelancersTab({
                   userId={freelancer.userId}
                   src={freelancer.userAvatar}
                   name={displayName}
-                  size="lg"
+                  size="md"
                   className="rounded-2xl"
                 />
               </button>
@@ -195,21 +193,21 @@ export function BrowseFreelancersTab({
                   onClick={() => {
                     if (profilePath) navigate(profilePath);
                   }}
-                  className="text-left font-black text-base text-text-primary hover:text-brand transition-colors"
+                  className="text-left font-black text-sm sm:text-base text-text-primary hover:text-brand transition-colors truncate block max-w-full"
                 >
                   {displayName}
                 </button>
-                <p className="text-sm font-semibold text-brand">
+                <p className="text-xs sm:text-sm font-semibold text-brand truncate max-w-full">
                   {freelancer.title || t('talentMatching.freelancerRole')}
                 </p>
-                <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="flex flex-wrap gap-1.5 mt-1.5 sm:mt-2">
                   {freelancer.location && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-muted border border-border text-[11px] text-text-muted">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-muted border border-border text-[10px] sm:text-[11px] text-text-muted">
                       <MapPin size={11} /> {freelancer.location}
                     </span>
                   )}
                   {freelancer.majorName && (
-                    <span className="px-2 py-0.5 rounded-full bg-surface-muted border border-border text-[11px] text-text-muted">
+                    <span className="px-2 py-0.5 rounded-full bg-surface-muted border border-border text-[10px] sm:text-[11px] text-text-muted">
                       {freelancer.majorName}
                     </span>
                   )}
@@ -218,17 +216,17 @@ export function BrowseFreelancersTab({
             </div>
 
             {freelancer.bio && (
-              <p className="mt-3 text-sm text-text-secondary line-clamp-2 leading-relaxed">
+              <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-text-secondary line-clamp-2 leading-relaxed">
                 {freelancer.bio}
               </p>
             )}
 
             {freelancer.skills.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-3">
+              <div className="flex flex-wrap gap-1.5 mt-2.5 sm:mt-3">
                 {freelancer.skills.slice(0, 7).map(skill => (
                   <span
                     key={skill.skillId}
-                    className="px-2 py-0.5 rounded-lg bg-brand/8 text-brand text-[11px] font-semibold border border-brand/15"
+                    className="px-2 py-0.5 rounded-lg bg-brand/8 text-brand text-[10px] sm:text-[11px] font-semibold border border-brand/15"
                   >
                     {skill.skillName}
                   </span>
@@ -236,22 +234,22 @@ export function BrowseFreelancersTab({
               </div>
             )}
 
-            <div className="mt-4 pt-3.5 border-t border-border/70 flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-3.5 sm:mt-4 pt-3 sm:pt-3.5 border-t border-border/70 flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-3 text-xs text-text-muted">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 font-medium">
                   <Star size={12} className="text-amber-400" fill="currentColor" />
                   {freelancer.rating ? freelancer.rating.toFixed(1) : t('talentMatching.noReviews')}
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 font-medium">
                   <Zap size={12} className="text-brand" />
                   {freelancer.eloPoints ?? 100} ELO
                 </span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
                   disabled={savingIds.has(profileId)}
                   onClick={() => void onToggleSaved(profileId)}
-                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all disabled:opacity-50 ${
+                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all disabled:opacity-50 min-h-[38px] min-w-[38px] ${
                     savedIds.has(profileId)
                       ? 'border-red-400/40 bg-red-400/10 text-red-500'
                       : 'border-border hover:border-red-400/40 hover:bg-red-400/8 text-text-muted'
@@ -262,7 +260,7 @@ export function BrowseFreelancersTab({
                 </button>
                 <button
                   onClick={() => onInvite(profileId, displayName)}
-                  className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  className={`flex-1 sm:flex-initial rounded-xl px-4 py-2 text-xs font-bold transition-all min-h-[38px] text-center ${
                     invitedIds.has(profileId)
                       ? 'bg-success/10 text-success border border-success/25'
                       : 'bg-gradient-to-r from-[var(--brand)] to-indigo-500 text-white hover:opacity-90'

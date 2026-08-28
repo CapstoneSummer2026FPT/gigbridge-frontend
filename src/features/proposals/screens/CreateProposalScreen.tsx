@@ -85,7 +85,7 @@ export default function CreateProposalScreen() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <AppLayout hideAIWidget>
         <div className="mx-auto max-w-7xl px-4 py-16 flex items-center justify-center min-h-[60vh]">
           <LemniscateBloomLoader
             label={t('createProposal.loadingEditor')}
@@ -99,7 +99,7 @@ export default function CreateProposalScreen() {
   const locked = proposal && proposal.status !== undefined && proposal.status !== null && (proposal.status as number) > 0;
 
   return (
-    <AppLayout>
+    <AppLayout hideAIWidget>
       <div ref={containerRef} className="cps-page max-w-7xl mx-auto px-4 py-6">
 
         {/* ── Top Bar & Back Button ── */}

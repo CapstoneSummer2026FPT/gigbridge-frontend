@@ -5,9 +5,9 @@
 /* Landing Nav Floating Base Container */
 .top-nav-landing-container {
   position: fixed;
-  left: 0.75rem;
-  right: 0.75rem;
-  top: 0.75rem;
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+  right: calc(0.75rem + env(safe-area-inset-right, 0px));
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
   height: 4rem;
   z-index: 35;
   border: none;
@@ -16,9 +16,9 @@
 
 @media (min-width: 640px) {
   .top-nav-landing-container {
-    left: 1.5rem;
-    right: 1.5rem;
-    top: 1rem;
+    left: calc(1.5rem + env(safe-area-inset-left, 0px));
+    right: calc(1.5rem + env(safe-area-inset-right, 0px));
+    top: calc(1rem + env(safe-area-inset-top, 0px));
   }
 }
 
@@ -330,9 +330,9 @@
 
 .top-nav-standard-container {
   position: fixed;
-  left: 0.75rem;
-  right: 0.75rem;
-  top: 0.75rem;
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+  right: calc(0.75rem + env(safe-area-inset-right, 0px));
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
   height: 4rem;
   border: none;
   display: flex;
@@ -344,9 +344,9 @@
 
 @media (min-width: 640px) {
   .top-nav-standard-container {
-    left: 1.5rem;
-    right: 1.5rem;
-    top: 1rem;
+    left: calc(1.5rem + env(safe-area-inset-left, 0px));
+    right: calc(1.5rem + env(safe-area-inset-right, 0px));
+    top: calc(1rem + env(safe-area-inset-top, 0px));
   }
 }
 
@@ -685,6 +685,22 @@
   font-weight: 900;
   color: #ffffff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.top-nav-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.125rem;
+  min-width: 1.125rem;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background-color: var(--brand, #494be7);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(73, 75, 231, 0.3);
 }
 
 .top-nav-user-trigger {

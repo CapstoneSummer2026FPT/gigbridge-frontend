@@ -11,7 +11,11 @@ const ensureConnection = (): signalR.HubConnection => {
   if (connection) return connection;
   connection = new signalR.HubConnectionBuilder()
     .configureLogging(signalR.LogLevel.Warning)
-    .withUrl(getNotificationHubUrl(), { accessTokenFactory: () => localStorage.getItem('access_token') ?? '' })
+    .withUrl(getNotificationHubUrl(), {
+      accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+      skipNegotiation: true,
+      transport: signalR.HttpTransportType.WebSockets,
+    })
     .withAutomaticReconnect()
     .build();
   connection.onreconnected(() => reconnectedHandlers.forEach(handler => handler()));
