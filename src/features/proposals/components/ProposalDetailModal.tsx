@@ -102,60 +102,92 @@ export function ProposalDetailModal({
   const activeProposal = proposals.find(p => p.proposalsId === activeId);
 
   const displayQuestions = useMemo(() => {
-    if (!activeProposal?.aiFullEvaluationJson) return [];
-    try {
-      const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
-      const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
-      return screeningQa.map((qa: any) => {
-        const correctness = qa.answer_correctness?.score ?? 0;
-        const reasoning = qa.technical_reasoning?.score ?? 0;
-        const relevance = qa.relevance?.score ?? 0;
-        const depth = qa.depth?.score ?? 0;
-        const examples = qa.practical_examples?.score ?? 0;
+    if (activeProposal?.aiFullEvaluationJson) {
+      try {
+        const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
+        const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
+        if (screeningQa.length > 0) {
+          return screeningQa.map((qa: any, idx: number) => {
+            const correctness = qa.answer_correctness?.score ?? 0;
+            const reasoning = qa.technical_reasoning?.score ?? 0;
+            const relevance = qa.relevance?.score ?? 0;
+            const depth = qa.depth?.score ?? 0;
+            const examples = qa.practical_examples?.score ?? 0;
 
-        const weightedScore = Math.round(
-          correctness * 0.40 +
-          reasoning * 0.25 +
-          relevance * 0.15 +
-          depth * 0.10 +
-          examples * 0.10
-        );
+            const weightedScore = Math.round(
+              correctness * 0.40 +
+              reasoning * 0.25 +
+              relevance * 0.15 +
+              depth * 0.10 +
+              examples * 0.10
+            );
 
-        const evidenceAssessment =
-          qa.answer_correctness?.evidence?.[0]?.assessment ||
-          qa.technical_reasoning?.evidence?.[0]?.assessment ||
-          qa.relevance?.evidence?.[0]?.assessment ||
-          'Technical quality assessment based on candidate response.';
+            const evidenceAssessment =
+              qa.answer_correctness?.evidence?.[0]?.assessment ||
+              qa.technical_reasoning?.evidence?.[0]?.assessment ||
+              qa.relevance?.evidence?.[0]?.assessment ||
+              'Technical quality assessment based on candidate response.';
 
-        const claims = [
-          ...(qa.answer_correctness?.evidence || []),
-          ...(qa.technical_reasoning?.evidence || []),
-        ].map((e: any) => e.claim).filter(Boolean);
+            const claims = [
+              ...(qa.answer_correctness?.evidence || []),
+              ...(qa.technical_reasoning?.evidence || []),
+            ].map((e: any) => e.claim).filter(Boolean);
 
-        const qIdx = qa.question_index ?? (idx + 1);
-        const displayNumber = typeof qa.question_index === 'number' && qa.question_index > 0 ? qa.question_index : (idx + 1);
+            const qIdx = qa.question_index ?? (idx + 1);
+            const displayNumber = typeof qa.question_index === 'number' && qa.question_index > 0 ? qa.question_index : (idx + 1);
 
-        return {
-          questionIndex: qIdx,
-          displayNumber,
-          questionText: qa.question_text || `Question #${displayNumber}`,
-          candidateAnswer: qa.candidate_answer || 'No answer provided',
-          overallScore: weightedScore,
-          subcriteria: {
-            correctness: Math.round(correctness),
-            reasoning: Math.round(reasoning),
-            relevance: Math.round(relevance),
-            depth: Math.round(depth),
-            examples: Math.round(examples),
-          },
-          evidenceAssessment,
-          claims,
-        };
-      });
-    } catch {
-      return [];
+            return {
+              questionIndex: qIdx,
+              displayNumber,
+              questionText: qa.question_text || `Question #${displayNumber}`,
+              candidateAnswer: qa.candidate_answer || 'No answer provided',
+              overallScore: weightedScore,
+              subcriteria: {
+                correctness: Math.round(correctness),
+                reasoning: Math.round(reasoning),
+                relevance: Math.round(relevance),
+                depth: Math.round(depth),
+                examples: Math.round(examples),
+              },
+              evidenceAssessment,
+              claims,
+            };
+          });
+        }
+      } catch (e) {
+        console.error('Failed to parse aiFullEvaluationJson screening_qa', e);
+      }
     }
-  }, [activeProposal]);
+
+    // Fallback: If candidate submitted screening answers (rawAnswers), display them with AI Technical Quality score
+    if (rawAnswers && rawAnswers.length > 0) {
+      const answersWithText = rawAnswers.filter(a => a.answerText?.trim());
+      if (answersWithText.length > 0) {
+        const defaultScore = activeProposal?.aiTechnicalQualityScore ? Math.round(activeProposal.aiTechnicalQualityScore) : 75;
+        return answersWithText.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => {
+          const displayNumber = ans.orderIndex || (idx + 1);
+          return {
+            questionIndex: displayNumber,
+            displayNumber,
+            questionText: ans.questionText || `Question #${displayNumber}`,
+            candidateAnswer: ans.answerText || 'No answer provided',
+            overallScore: defaultScore,
+            subcriteria: {
+              correctness: defaultScore,
+              reasoning: defaultScore,
+              relevance: defaultScore,
+              depth: defaultScore,
+              examples: defaultScore,
+            },
+            evidenceAssessment: 'Detailed technical score computed from candidate screening answer.',
+            claims: [],
+          };
+        });
+      }
+    }
+
+    return [];
+  }, [activeProposal, rawAnswers]);
 
   const pillar2Score = useMemo(() => {
     if (!activeProposal?.aiFullEvaluationJson) {
