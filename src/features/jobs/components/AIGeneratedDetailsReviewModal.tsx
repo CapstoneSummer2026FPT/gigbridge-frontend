@@ -5,7 +5,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 interface Props {
   isOpen: boolean;
   data?: GenerateJobDescriptionDetailsResponse | null;
-  sourceType?: 'prompt' | 'document';
+  sourceType?: 'prompt' | 'document' | 'hybrid';
   onClose?: () => void;
   onApprove?: () => void;
   onOk?: () => void;
