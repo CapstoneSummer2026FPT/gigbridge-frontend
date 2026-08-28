@@ -12,6 +12,7 @@ import {
 } from '../../api/messageAPI/GET';
 import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { TopNavNotificationDropdown } from '../../features/notifications/components/TopNavNotificationDropdown';
+import { useNotificationsContext } from '../../features/notifications/providers/NotificationsProvider';
 import { onChatHubReconnected, subscribeChatHubEvent } from '../realtime/chatHubConnection';
 import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
@@ -75,6 +76,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const isAuthenticated = appContext?.isAuthenticated || false;
   const premiumStatus = usePremiumStatus(user ? role : null);
   const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
+
+  let unreadNotificationsCount = 0;
+  try {
+    const notifsContext = useNotificationsContext();
+    unreadNotificationsCount = notifsContext.unreadCount || 0;
+  } catch {
+    unreadNotificationsCount = 0;
+  }
 
   useEffect(() => {
     if (role === 0) setSearchScope(TOP_NAV_SEARCH_SCOPE.Talent);
@@ -676,7 +685,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
           <div className="relative">
             <button
               onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); setShowSearchScopeMenu(false); }}
-              className="top-nav-user-trigger"
+              className="top-nav-user-trigger relative"
               aria-label="User Menu"
             >
               <UserAvatar
@@ -686,6 +695,10 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 premium={premiumStatus.isPremium}
                 size="sm"
               />
+              {/* Show indicator dot on avatar if there are unread notifications or unread messages */}
+              {(unreadNotificationsCount > 0 || unreadMessagesCount > 0) && (
+                <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--brand,#494be7)] ring-2 ring-[var(--surface,#ffffff)] animate-pulse lg:hidden" />
+              )}
             </button>
 
             {showUserMenu && (
@@ -823,14 +836,24 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                     type="button"
                     className="top-nav-dropdown-item justify-between"
                     onClick={() => {
-                      setShowNotifs(true);
+                      navigate('/notifications');
                       setShowUserMenu(false);
                     }}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Bell size={14} className="shrink-0" />
-                      <span className="truncate">{t('notifications.title', { defaultValue: 'Notifications' })}</span>
+                      <div className="relative flex items-center justify-center">
+                        <Bell size={14} className={unreadNotificationsCount > 0 ? 'text-[var(--brand,#494be7)]' : 'shrink-0'} />
+                        {unreadNotificationsCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[var(--brand,#494be7)] animate-pulse" />
+                        )}
+                      </div>
+                      <span className="truncate">{t('notifications.title', { defaultValue: 'Thông Báo' })}</span>
                     </div>
+                    {unreadNotificationsCount > 0 && (
+                      <span className="top-nav-badge-inline">
+                        {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                      </span>
+                    )}
                   </button>
 
                   {/* Get Premium / Premium Member Item */}
