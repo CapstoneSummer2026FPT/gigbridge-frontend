@@ -17,105 +17,71 @@ export function ProposalAnswersModal({ modalState }: ProposalAnswersModalProps) 
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        background: 'rgba(10, 10, 15, 0.75)',
-        backdropFilter: 'blur(12px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-        animation: 'fadeIn 0.2s ease',
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-fadeIn"
       onClick={closeModal}
     >
       <div
-        style={{
-          width: '100%',
-          maxWidth: 640,
-          maxHeight: '85vh',
-          borderRadius: 24,
-          background: 'var(--card, #ffffff)',
-          border: '1px solid var(--border)',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.4)',
-          padding: 28,
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
+        className="w-full max-w-[640px] max-h-[90dvh] sm:max-h-[85vh] rounded-2xl sm:rounded-3xl bg-card border border-border shadow-2xl p-4 sm:p-7 relative flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* CLOSE BUTTON */}
         <button
           type="button"
           onClick={closeModal}
-          style={{
-            position: 'absolute',
-            top: 20,
-            right: 20,
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-          }}
+          className="absolute top-3 sm:top-5 right-3 sm:right-5 h-8 w-8 rounded-xl bg-surface-muted/60 border border-border text-text-muted hover:text-text-primary hover:bg-surface-muted flex items-center justify-center cursor-pointer transition z-10"
         >
           <X size={16} />
         </button>
 
         {/* HEADER */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, paddingRight: 40 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(73,75,231,0.1)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <FileText size={22} />
+        <div className="flex items-center gap-3 mb-4 sm:mb-5 pr-10 sm:pr-12">
+          <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl sm:rounded-2xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+            <FileText size={20} />
           </div>
-          <div>
-            <h3 style={{ fontSize: 17, fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-black text-text-primary truncate">
               {t('proposalAnswers.title', { defaultValue: 'Câu trả lời câu hỏi sàng lọc' })}
             </h3>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+            <p className="text-[11px] sm:text-xs text-text-muted font-semibold truncate">
               {modalInfo.jobTitle || t('proposalAnswers.proposal', { defaultValue: 'Đề xuất' })} ·{' '}
               {modalInfo.proposalStatus !== undefined ? getStatusLabel(modalInfo.proposalStatus) : ''}
-            </span>
+            </p>
           </div>
         </div>
 
         {/* CONTENT BODY */}
-        <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-3">
           {loading ? (
-            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }} className="animate-pulse">
+            <div className="py-8 text-center text-text-muted text-xs sm:text-sm font-semibold animate-pulse">
               {t('proposalAnswers.loadingAnswers', { defaultValue: 'Đang tải danh sách câu trả lời...' })}
             </div>
           ) : error ? (
-            <div style={{ padding: 16, borderRadius: 14, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 13, fontWeight: 600 }}>
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs sm:text-sm font-semibold">
               {error}
             </div>
           ) : answers.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface-muted)' }}>
-              <FileQuestion size={32} style={{ opacity: 0.4, margin: '0 auto 8px' }} />
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
+            <div className="py-8 px-4 text-center rounded-2xl border border-border bg-surface-muted">
+              <FileQuestion size={32} className="opacity-40 mx-auto mb-2 text-text-muted" />
+              <p className="text-xs sm:text-sm text-text-muted font-semibold">
                 {t('proposalAnswers.noAnswers', { defaultValue: 'Không có câu trả lời nào được tìm thấy.' })}
               </p>
             </div>
           ) : (
             answers.map(answer => (
-              <div key={answer.jobPostQuestionsId} style={{ padding: 16, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface-muted, rgba(0,0,0,0.02))' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>
+              <div key={answer.jobPostQuestionsId} className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-border bg-surface-muted/30 space-y-2">
+                <div className="flex items-start justify-between gap-2.5">
+                  <h4 className="text-xs sm:text-sm font-extrabold text-text-primary leading-snug break-all [overflow-wrap:anywhere]">
                     {answer.orderIndex}. {answer.questionText}
                   </h4>
-                  <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999, flexShrink: 0, background: answer.isRequired ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.1)', color: answer.isRequired ? '#ef4444' : 'var(--text-muted)', border: answer.isRequired ? '1px solid rgba(239,68,68,0.2)' : '1px solid var(--border)' }}>
+                  <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full shrink-0 ${
+                    answer.isRequired
+                      ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                      : 'bg-surface-muted text-text-muted border border-border'
+                  }`}>
                     {t(answer.isRequired ? 'proposalAnswers.required' : 'proposalAnswers.optional', { defaultValue: answer.isRequired ? 'Bắt buộc' : 'Tùy chọn' })}
                   </span>
                 </div>
-                <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontWeight: 500 }}>
+                <p className="text-xs sm:text-sm text-text-primary leading-relaxed whitespace-pre-wrap font-medium break-all [overflow-wrap:anywhere]">
                   {answer.answerText?.trim() || t('proposalAnswers.noAnswerProvided', { defaultValue: 'Chưa có câu trả lời.' })}
                 </p>
               </div>
@@ -124,23 +90,21 @@ export function ProposalAnswersModal({ modalState }: ProposalAnswersModalProps) 
         </div>
 
         {/* FOOTER ACTIONS */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border)' }}>
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-end gap-2 pt-3 sm:pt-4 mt-3 sm:mt-4 border-t border-border">
           {canEdit && modalInfo.jobPostId && (
             <button
               type="button"
-              className="cp-btn"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white bg-brand hover:bg-brand-hover transition cursor-pointer"
               onClick={handleEditAnswers}
-              style={{ padding: '10px 18px', fontSize: 13 }}
             >
-              <Edit3 size={15} />
-              {t('proposalAnswers.editAnswers', { defaultValue: 'Chỉnh sửa câu trả lời' })}
+              <Edit3 size={14} />
+              <span>{t('proposalAnswers.editAnswers', { defaultValue: 'Chỉnh sửa câu trả lời' })}</span>
             </button>
           )}
           <button
             type="button"
-            className="cp-btn ghost"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-bold text-text-primary hover:bg-surface-muted transition cursor-pointer"
             onClick={closeModal}
-            style={{ padding: '10px 18px', fontSize: 13 }}
           >
             {t('proposalAnswers.close', { defaultValue: 'Đóng' })}
           </button>

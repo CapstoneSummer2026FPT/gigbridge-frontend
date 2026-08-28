@@ -115,27 +115,27 @@ export function ClientDashboardOverview({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
         {/* Card 1: Trust & Elo Reputation */}
-        <article className="bento-spotlight-card p-6 rounded-3xl flex flex-col justify-between h-full relative group">
+        <article className="bento-spotlight-card p-5 sm:p-6 rounded-3xl flex flex-col justify-between h-full relative group">
           <div className="absolute top-0 right-0 w-36 h-36 bg-brand/10 blur-3xl rounded-full pointer-events-none group-hover:bg-brand/20 transition-all duration-500" />
 
           <div className="flex flex-col justify-between h-full relative z-10">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <ShieldCheck size={13} className="text-brand" />
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">
+                  <ShieldCheck size={13} className="text-brand shrink-0" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand truncate">
                     {t('dashboard.reputation', 'Trust & Score')}
                   </span>
                 </div>
-                <h3 className="text-base font-black text-text-primary tracking-tight mt-0.5">
+                <h3 className="text-base font-black text-text-primary tracking-tight mt-0.5 truncate">
                   {t('dashboard.eloPoint', 'Client Reputation')}
                 </h3>
               </div>
               <button
                 type="button"
-                className="freelancer-dash-overview-link group/link cursor-pointer"
+                className="freelancer-dash-overview-link group/link cursor-pointer shrink-0"
                 onClick={onOpenEloHistory}
               >
                 <span>{t('dashboard.history', 'History')}</span>
@@ -143,10 +143,10 @@ export function ClientDashboardOverview({
               </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-5 my-auto py-2">
+            <div className="flex flex-col @[340px]:flex-row items-center justify-between gap-4 my-auto py-2">
               {/* Circular Gauge */}
               <div
-                className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 flex items-center justify-center"
+                className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 flex items-center justify-center"
                 role="img"
                 aria-label={t('dashboard.eloScoreAria', {
                   defaultValue: 'Current Elo score: {{score}}',
@@ -184,7 +184,7 @@ export function ClientDashboardOverview({
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                  <strong className="text-2xl sm:text-3xl font-black leading-none text-text-primary tracking-tight">
+                  <strong className="text-xl sm:text-2xl font-black leading-none text-text-primary tracking-tight">
                     {isLoading || eloScore == null ? '—' : eloScore.toLocaleString()}
                   </strong>
                   <span className="text-[8px] font-black uppercase text-brand tracking-widest mt-1">
@@ -194,25 +194,25 @@ export function ClientDashboardOverview({
               </div>
 
               {/* Status / Ledger Info */}
-              <div className="flex flex-col gap-2 w-full sm:w-auto flex-1 min-w-0">
-                <div className="flex items-center justify-between px-3.5 py-2 rounded-2xl bg-surface-muted/50 border border-border/70">
+              <div className="flex flex-col gap-2 w-full @[340px]:w-auto flex-1 min-w-0">
+                <div className="flex items-center justify-between px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-surface-muted/50 border border-border/70">
                   <span className="text-xs font-bold text-text-secondary">{t('dashboard.status', 'Status')}</span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-brand/15 text-brand border border-brand/25">
-                    <Sparkles size={10} />
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-brand/15 text-brand border border-brand/25 truncate">
+                    <Sparkles size={10} className="shrink-0" />
                     {eloSummary ? 'Verified Client' : 'Active'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between px-3.5 py-2 rounded-2xl bg-surface-muted/50 border border-border/70">
+                <div className="flex items-center justify-between px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-surface-muted/50 border border-border/70">
                   <span className="text-xs font-bold text-text-secondary">{t('dashboard.gained', 'Gained')}</span>
                   <strong className="flex items-center gap-0.5 text-xs font-black text-success">
-                    <TrendingUp size={12} />
+                    <TrendingUp size={12} className="shrink-0" />
                     +{eloSummary?.totalGained?.toLocaleString() ?? 0}
                   </strong>
                 </div>
-                <div className="flex items-center justify-between px-3.5 py-2 rounded-2xl bg-surface-muted/50 border border-border/70">
+                <div className="flex items-center justify-between px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-surface-muted/50 border border-border/70">
                   <span className="text-xs font-bold text-text-secondary">{t('dashboard.lost', 'Lost')}</span>
                   <strong className="flex items-center gap-0.5 text-xs font-black text-destructive">
-                    <TrendingDown size={12} />
+                    <TrendingDown size={12} className="shrink-0" />
                     −{eloSummary?.totalLost?.toLocaleString() ?? 0}
                   </strong>
                 </div>
@@ -222,25 +222,25 @@ export function ClientDashboardOverview({
         </article>
 
         {/* Card 2: Proposal Pipeline */}
-        <article className="bento-spotlight-card p-6 rounded-3xl flex flex-col justify-between h-full relative group">
+        <article className="bento-spotlight-card p-5 sm:p-6 rounded-3xl flex flex-col justify-between h-full relative group">
           <div className="absolute top-0 right-0 w-36 h-36 bg-purple/10 blur-3xl rounded-full pointer-events-none group-hover:bg-purple/20 transition-all duration-500" />
 
           <div className="flex flex-col justify-between h-full relative z-10">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <Flame size={13} className="text-purple" />
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">
+                  <Flame size={13} className="text-purple shrink-0" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand truncate">
                     {t('dashboard.proposalPipeline', 'Inbound')}
                   </span>
                 </div>
-                <h3 className="text-base font-black text-text-primary tracking-tight mt-0.5">
+                <h3 className="text-base font-black text-text-primary tracking-tight mt-0.5 truncate">
                   {t('dashboard.proposalStatus', 'Proposal Pipeline')}
                 </h3>
               </div>
               <button
                 type="button"
-                className="freelancer-dash-overview-link group/link cursor-pointer"
+                className="freelancer-dash-overview-link group/link cursor-pointer shrink-0"
                 onClick={onOpenProposals}
               >
                 <span>{t('dashboard.viewAll', 'View All')}</span>
@@ -248,10 +248,10 @@ export function ClientDashboardOverview({
               </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-5 my-auto py-2">
+            <div className="flex flex-col @[340px]:flex-row items-center justify-between gap-4 my-auto py-2">
               {/* Donut Ring */}
               <div
-                className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 flex items-center justify-center"
+                className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 flex items-center justify-center"
                 role="img"
                 aria-label={t(
                   'dashboard.proposalChartAria',
@@ -262,7 +262,7 @@ export function ClientDashboardOverview({
                 )}
               >
                 {isLoading ? (
-                  <div className="w-24 h-24 rounded-full border-4 border-surface-muted border-t-brand animate-spin" />
+                  <div className="w-20 h-20 rounded-full border-4 border-surface-muted border-t-brand animate-spin" />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -272,10 +272,10 @@ export function ClientDashboardOverview({
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        innerRadius={42}
-                        outerRadius={58}
+                        innerRadius={36}
+                        outerRadius={50}
                         paddingAngle={trackedProposalCount > 0 ? 4 : 0}
-                        cornerRadius={5}
+                        cornerRadius={4}
                         stroke="none"
                         isAnimationActive={trackedProposalCount > 0}
                       >
@@ -299,7 +299,7 @@ export function ClientDashboardOverview({
                   </ResponsiveContainer>
                 )}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                  <strong className="text-2xl sm:text-3xl font-black leading-none text-text-primary tracking-tight">
+                  <strong className="text-xl sm:text-2xl font-black leading-none text-text-primary tracking-tight">
                     {isLoading ? '—' : trackedProposalCount}
                   </strong>
                   <span className="text-[8px] font-black uppercase text-text-muted tracking-widest mt-1">
@@ -309,20 +309,20 @@ export function ClientDashboardOverview({
               </div>
 
               {/* 3 Status Rows */}
-              <div className="flex flex-col gap-2 w-full sm:w-auto flex-1 min-w-0" aria-label={t('dashboard.proposalBreakdown', 'Proposal breakdown')}>
+              <div className="flex flex-col gap-2 w-full @[340px]:w-auto flex-1 min-w-0" aria-label={t('dashboard.proposalBreakdown', 'Proposal breakdown')}>
                 {proposalChartData.map(item => (
                   <div
                     key={item.key}
-                    className="flex items-center justify-between px-3.5 py-2 rounded-2xl bg-surface-muted/50 border border-border/70 transition-all hover:bg-surface-muted hover:border-brand/30 group/pill"
+                    className="flex items-center justify-between px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-surface-muted/50 border border-border/70 transition-all hover:bg-surface-muted hover:border-brand/30 group/pill min-w-0"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span
                         className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm group-hover/pill:scale-125 transition-transform"
                         style={{ backgroundColor: item.color }}
                       />
                       <span className="text-xs font-bold text-text-secondary truncate">{item.name}</span>
                     </div>
-                    <strong className="text-xs font-black text-text-primary px-2 py-0.5 rounded-md bg-surface-muted/80 ml-2">
+                    <strong className="text-xs font-black text-text-primary px-2 py-0.5 rounded-md bg-surface-muted/80 ml-2 shrink-0">
                       {isLoading ? '—' : item.value}
                     </strong>
                   </div>
@@ -333,25 +333,25 @@ export function ClientDashboardOverview({
         </article>
 
         {/* Card 3: Delivery & Milestones */}
-        <article className="bento-spotlight-card p-6 rounded-3xl flex flex-col justify-between h-full relative group">
+        <article className="bento-spotlight-card p-5 sm:p-6 rounded-3xl flex flex-col justify-between h-full relative group">
           <div className="absolute top-0 right-0 w-36 h-36 bg-cyan/10 blur-3xl rounded-full pointer-events-none group-hover:bg-cyan/20 transition-all duration-500" />
 
           <div className="flex flex-col justify-between h-full relative z-10">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <ListChecks size={13} className="text-cyan" />
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">
+                  <ListChecks size={13} className="text-cyan shrink-0" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand truncate">
                     {t('dashboard.deliveryPipeline', 'Deliveries')}
                   </span>
                 </div>
-                <h3 className="text-base font-black text-text-primary tracking-tight mt-0.5">
+                <h3 className="text-base font-black text-text-primary tracking-tight mt-0.5 truncate">
                   {t('dashboard.milestonesAwaitingCompletion', 'Milestones in Delivery')}
                 </h3>
               </div>
               <button
                 type="button"
-                className="freelancer-dash-overview-link group/link cursor-pointer"
+                className="freelancer-dash-overview-link group/link cursor-pointer shrink-0"
                 onClick={onOpenContracts}
               >
                 <span>{t('dashboard.openContracts', 'Contracts')}</span>
@@ -359,30 +359,30 @@ export function ClientDashboardOverview({
               </button>
             </div>
 
-            <div className="flex flex-col gap-4 my-auto py-1">
-              <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-br from-brand/12 via-brand/5 to-transparent border border-brand/20">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-brand/20 text-brand flex items-center justify-center shrink-0 border border-brand/30 shadow-[0_0_15px_rgba(73,75,231,0.25)]">
-                    <ListChecks size={22} aria-hidden="true" />
+            <div className="flex flex-col gap-3 my-auto py-1">
+              <div className="flex flex-wrap @[300px]:flex-nowrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-brand/12 via-brand/5 to-transparent border border-brand/20 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-brand/20 text-brand flex items-center justify-center shrink-0 border border-brand/30 shadow-[0_0_15px_rgba(73,75,231,0.25)]">
+                    <ListChecks size={20} aria-hidden="true" />
                   </div>
-                  <div>
-                    <strong className="text-3xl font-black leading-none text-text-primary tracking-tight">
+                  <div className="min-w-0">
+                    <strong className="text-2xl sm:text-3xl font-black leading-none text-text-primary tracking-tight">
                       {isLoading ? '—' : pendingMilestonesCount}
                     </strong>
-                    <span className="block text-[9px] uppercase tracking-widest font-black text-text-muted mt-1">
+                    <span className="block text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-text-muted mt-1 truncate">
                       Pending Completion
                     </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="inline-block px-3 py-1 rounded-xl text-xs font-black bg-brand/15 text-brand border border-brand/25 shadow-xs">
+                <div className="text-right shrink-0">
+                  <span className="inline-block px-2.5 py-1 rounded-xl text-xs font-black bg-brand/15 text-brand border border-brand/25 shadow-xs whitespace-nowrap">
                     {milestoneProgress}% Done
                   </span>
                 </div>
               </div>
 
               {/* 3 Contract Status Badges */}
-              <div className="grid grid-cols-3 gap-2" aria-label={t('dashboard.contractStatusBreakdown', 'Contract status breakdown')}>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2" aria-label={t('dashboard.contractStatusBreakdown', 'Contract status breakdown')}>
                 {[
                   {
                     key: 'pendingEscrow',
@@ -405,13 +405,13 @@ export function ClientDashboardOverview({
                 ].map(item => (
                   <div
                     key={item.key}
-                    className="min-w-0 rounded-2xl border border-border/70 bg-surface-muted/50 px-2 py-2.5 text-center transition-all hover:bg-surface-muted hover:border-brand/30"
+                    className="min-w-0 rounded-2xl border border-border/70 bg-surface-muted/50 px-1.5 py-2 text-center transition-all hover:bg-surface-muted hover:border-brand/30"
                   >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${item.dotClass}`} />
-                      <span className="truncate text-[8px] font-black uppercase tracking-wide text-text-muted">{item.label}</span>
+                    <div className="flex items-center justify-center gap-1 min-w-0">
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.dotClass}`} />
+                      <span className="truncate text-[8px] font-black uppercase tracking-tight text-text-muted">{item.label}</span>
                     </div>
-                    <strong className="mt-1.5 block text-sm font-black leading-none text-text-primary">{isLoading ? '—' : item.value}</strong>
+                    <strong className="mt-1 block text-xs sm:text-sm font-black leading-none text-text-primary">{isLoading ? '—' : item.value}</strong>
                   </div>
                 ))}
               </div>

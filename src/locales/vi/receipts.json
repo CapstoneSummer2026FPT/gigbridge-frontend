@@ -16,6 +16,7 @@
     "download": "Tải PDF",
     "downloadError": "Không thể tải tệp PDF biên nhận.",
     "prepareError": "Không thể chuẩn bị biên nhận.",
+    "prepareErrorHint": "Đã xảy ra sự cố khi chuẩn bị biên nhận. Vui lòng bấm Thử lại để tải lại.",
     "retryError": "Không thể thử lại biên nhận.",
     "retry": "Thử lại",
     "retryGeneration": "Tạo lại PDF",

@@ -676,7 +676,7 @@ export default function ProjectWorkspaceScreen() {
           <button
             type="button"
             onClick={() => setMobileTab('milestones')}
-            className={`flex-1 py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
               mobileTab === 'milestones'
                 ? 'bg-card text-[var(--gb-cyan)] shadow-sm font-black border border-border/80'
                 : 'text-muted-foreground hover:text-foreground'
@@ -684,6 +684,9 @@ export default function ProjectWorkspaceScreen() {
           >
             <CreditCard size={13} className="shrink-0" />
             <span className="truncate">{t('workspace.milestones', { defaultValue: 'Cột mốc' })}</span>
+            {allMilestonesApproved && activeContract?.status !== ContractStatus.Completed && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            )}
           </button>
           <button
             type="button"

@@ -15,6 +15,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import type { ProposalDto } from '../../../types/models/Proposal';
+import '../../../shared/components/styles/conic-border-button.css';
 
 export interface AIProposalVerdictCardProps {
   proposal: ProposalDto;
@@ -76,26 +77,26 @@ function MetricCalculationTooltip({
 
       {/* Floating Glassmorphism Tooltip Popover (Positioned Downwards) */}
       {isOpen && (
-        <div className={`absolute ${getPositionClasses()} z-50 w-72 sm:w-80 p-3.5 rounded-2xl bg-surface-card/95 backdrop-blur-xl border border-purple-500/30 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.3)] text-text-primary text-xs space-y-2 animate-in fade-in zoom-in-95 duration-150 pointer-events-none`}>
+        <div className={`absolute ${getPositionClasses()} z-50 w-72 sm:w-80 p-3.5 rounded-2xl bg-surface-card/95 backdrop-blur-xl border border-brand/30 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.3)] text-text-primary text-xs space-y-2 animate-in fade-in zoom-in-95 duration-150 pointer-events-none`}>
           {/* Tooltip Arrow pointing up */}
           <div className={`absolute ${getArrowClasses()}`} />
 
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/50 pb-2">
             <span className="font-black text-[11px] text-brand flex items-center gap-1.5">
-              <Calculator size={13} className="text-purple-500" />
+              <Calculator size={13} className="text-brand" />
               {title}
             </span>
             {weight && (
-              <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[9px] font-black text-purple-600 dark:text-purple-300">
+              <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[9px] font-black text-brand">
                 Pillar Weight: {weight}
               </span>
             )}
           </div>
 
           {/* Formula Box */}
-          <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-2 text-[10px] font-mono font-bold text-purple-900 dark:text-purple-200 leading-relaxed">
-            <span className="block text-[9px] font-sans font-black uppercase text-purple-700 dark:text-purple-300 tracking-wider mb-0.5">
+          <div className="rounded-xl bg-brand/10 border border-brand/20 p-2 text-[10px] font-mono font-bold text-brand leading-relaxed">
+            <span className="block text-[9px] font-sans font-black uppercase text-brand tracking-wider mb-0.5">
               📐 Calculation Formula
             </span>
             {formula}
@@ -224,21 +225,21 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     switch (badge) {
       case 'top_value':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 px-3.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400 shadow-2xs">
             <Flame size={14} className="text-emerald-500 animate-pulse" />
             🔥 Top Value Candidate
           </span>
         );
       case 'top_technical':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/40 px-3.5 py-1 text-xs font-black text-purple-600 dark:text-purple-400 shadow-2xs">
-            <Zap size={14} className="text-purple-500" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 border border-brand/30 px-3.5 py-1 text-xs font-black text-brand shadow-2xs">
+            <Zap size={14} className="text-brand" />
             ⚡ Top Technical Expert
           </span>
         );
       case 'budget_saver':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 px-3.5 py-1 text-xs font-black text-amber-600 dark:text-amber-400 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1 text-xs font-black text-amber-600 dark:text-amber-400 shadow-2xs">
             <PiggyBank size={14} className="text-amber-500" />
             💰 Budget Saver Candidate
           </span>
@@ -246,7 +247,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
       case 'high_risk':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-500/20 to-pink-500/20 border border-rose-500/40 px-3.5 py-1 text-xs font-black text-rose-600 dark:text-rose-400 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 px-3.5 py-1 text-xs font-black text-rose-600 dark:text-rose-400 shadow-2xs">
             <AlertTriangle size={14} className="text-rose-500" />
             ⚠️ High Risk Candidate
           </span>
@@ -255,9 +256,10 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
   };
 
   return (
-    <div className="rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-500/5 via-surface-card/60 to-surface-card p-5 space-y-5 shadow-sm">
-      {/* Top Header Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-500/15 pb-4">
+    <div className="conic-border-wrap conic-border-card rounded-2xl w-full">
+      <div className="conic-border-card-inner rounded-[calc(1rem-1.5px)] bg-surface-card p-4 sm:p-5 space-y-5 shadow-sm w-full">
+        {/* Top Header Row */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div className="flex items-center gap-3">
           <MetricCalculationTooltip
             title="Technical Quality Score (TQ)"
@@ -615,6 +617,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           </p>
         </div>
       </MetricCalculationTooltip>
+      </div>
     </div>
   );
 }

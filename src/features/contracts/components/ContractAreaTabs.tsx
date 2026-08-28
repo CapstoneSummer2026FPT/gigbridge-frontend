@@ -26,7 +26,7 @@ export function ContractAreaTabs(): JSX.Element {
   };
 
   return (
-    <div className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl border border-border bg-card/80 backdrop-blur-md shadow-sm" role="tablist" aria-label="Contract area">
+    <div className="inline-flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-border bg-card/80 backdrop-blur-md shadow-sm w-full sm:w-auto" role="tablist" aria-label="Contract area">
       {tabs.map((tab) => {
         const isActive = location.pathname === tab.path;
 
@@ -37,7 +37,7 @@ export function ContractAreaTabs(): JSX.Element {
             role="tab"
             aria-selected={isActive}
             onClick={() => handleNavigate(tab.path)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+            className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-xs font-black transition-all cursor-pointer border whitespace-nowrap text-center ${
               isActive
                 ? 'bg-[var(--brand,#494be7)] border-[var(--brand,#494be7)] text-white shadow-md shadow-[var(--brand,#494be7)]/25'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'

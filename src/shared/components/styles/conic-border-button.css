@@ -69,6 +69,28 @@
   );
 }
 
+.conic-border-wrap.variant-amber::before {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #f59e0b 90deg,
+    #fde68a 180deg,
+    #f59e0b 270deg,
+    #fde68a 360deg
+  );
+}
+
+.conic-border-wrap.variant-rose::before {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #f43f5e 90deg,
+    #fecdd3 180deg,
+    #f43f5e 270deg,
+    #fecdd3 360deg
+  );
+}
+
 /* 2. Button Specifier (.conic-border-btn) */
 .conic-border-btn {
   position: relative;
