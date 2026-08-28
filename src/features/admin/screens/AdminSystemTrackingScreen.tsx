@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import * as signalR from '@microsoft/signalr';
 import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
