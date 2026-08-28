@@ -221,4 +221,11 @@ export const contractPostAPI = {
   completeJobPostSetup: async (contractId: string): Promise<ApiResponse<any>> => {
     return apiService.post<any>(`contracts/${contractId}/job-post-setup/complete`);
   },
+
+  /**
+   * POST /api/contracts/{contractId}/cancel
+   */
+  cancelContract: async (contractId: string): Promise<ApiResponse<ContractWorkflowResponse>> => {
+    return apiService.post<ContractWorkflowResponse>(`contracts/${contractId}/cancel`);
+  },
 };

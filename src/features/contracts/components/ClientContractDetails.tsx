@@ -31,6 +31,7 @@ import {
   useContractESignDocument,
 } from '../hooks/useContractESignDocument';
 import { ContractAreaTabs } from './ContractAreaTabs';
+import { CancelContractButton } from './CancelContractButton';
 
 
 interface AuditTrailEntry {
@@ -366,6 +367,13 @@ export function ClientContractDetails({
                 role="client"
                 milestones={milestones}
                 onApplied={onRefresh}
+              />
+
+              <CancelContractButton
+                contractId={contract.contractsId}
+                contractStatus={contract.status}
+                contractCreatedAt={contract.createdAt}
+                onCancelled={onRefresh}
               />
 
               {/* Step 1: Define project plan */}
