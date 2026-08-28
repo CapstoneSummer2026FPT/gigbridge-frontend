@@ -76,7 +76,32 @@ export function clampMilestonesToExpectedTargets(
 
   // 2. Clamp Durations (if expectedDurationWeeks > 0)
   if (expectedDurationWeeks && expectedDurationWeeks > 0) {
-    const targetWeeks = Math.max(result.length, Math.round(expectedDurationWeeks));
+    const targetWeeks = Math.max(1, Math.round(expectedDurationWeeks));
+
+    // If milestone count exceeds target weeks (minimum 1 week per milestone),
+    // merge excess trailing milestones into the last allowed milestone.
+    if (result.length > targetWeeks) {
+      const keepCount = targetWeeks;
+      const mergedResult: JobPostMilestonePlanDto[] = result.slice(0, keepCount).map(m => ({ ...m }));
+      const lastKept = mergedResult[keepCount - 1];
+
+      for (let i = keepCount; i < result.length; i++) {
+        const excess = result[i];
+        lastKept.amount = Math.round(((lastKept.amount || 0) + (excess.amount || 0)) * 100) / 100;
+        if (excess.description) {
+          lastKept.description = lastKept.description ? `${lastKept.description} | ${excess.description}` : excess.description;
+        }
+        if (excess.deliverables) {
+          lastKept.deliverables = lastKept.deliverables ? `${lastKept.deliverables} | ${excess.deliverables}` : excess.deliverables;
+        }
+        if (excess.acceptanceCriteria) {
+          lastKept.acceptanceCriteria = lastKept.acceptanceCriteria ? `${lastKept.acceptanceCriteria} | ${excess.acceptanceCriteria}` : excess.acceptanceCriteria;
+        }
+      }
+
+      result = mergedResult;
+    }
+
     const individualWeeks = result.map(m => {
       const { value, unit } = parseJobDuration(m.estimatedDuration);
       const w = durationToWeeks(value, unit);
@@ -113,6 +138,7 @@ export function clampMilestonesToExpectedTargets(
       }));
     }
   }
+
 
   return result;
 }
