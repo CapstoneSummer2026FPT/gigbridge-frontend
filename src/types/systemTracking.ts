@@ -19,6 +19,12 @@ export interface SystemErrorLog {
   message: string;
   requestId: string;
   count: number;
+  source: string;
+  externalUrl?: string | null;
+  firstObservedAt?: string | null;
+  status?: string | null;
+  environment?: string | null;
+  platform?: string | null;
 }
 
 export interface SystemAlert {
@@ -62,4 +68,10 @@ export interface SystemTrackingSnapshot {
   errors: SystemErrorLog[];
   alerts: SystemAlert[];
   aiUsage: AiUsageBaseline;
+  errorMonitoring: {
+    configured: boolean;
+    available: boolean;
+    provider: string;
+    message: string;
+  };
 }

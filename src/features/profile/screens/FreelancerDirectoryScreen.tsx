@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, type FormEvent } from 'react';
+import { useEffect, useState, useMemo, useRef, type FormEvent } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router';
 import {
   Search,
@@ -27,7 +27,7 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { profileGetAPI } from '../../../api/profileAPI';
 import { useApp } from '../../../app/providers/AppProvider';
-import { useTranslation } from '../../../hooks/useTranslation';
+import { useLanguage } from '../../../hooks/useTranslation';
 import { AuthInviteModal } from '../../../shared/components/AuthInviteModal';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { PublicFreelancerSummaryDto, FreelancerDirectorySort } from '../../../types/models/Profile';
@@ -61,7 +61,7 @@ const POPULAR_SKILLS = [
 
 export function FreelancerDirectoryScreen() {
   const { user, role, isAuthenticated } = useApp();
-  const { t, currentLanguage } = useTranslation();
+  const { currentLanguage } = useLanguage();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -220,13 +220,13 @@ export function FreelancerDirectoryScreen() {
 
   return (
     <AppLayout>
-      <div className="max-w-[1500px] mx-auto px-4 py-8">
+      <div className="max-w-[1500px] mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-8 min-w-0">
         {/* Header (Talent Matching Style with Search/Directory Context) */}
-        <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-8">
-          <div>
+        <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-brand text-[11px] font-black uppercase tracking-[0.2em] mb-2">
-              <Sparkles size={14} />
-              <span>
+              <Sparkles size={14} className="shrink-0" />
+              <span className="truncate">
                 {searchQuery
                   ? isVietnamese
                     ? 'KẾT QUẢ TÌM KIẾM FREELANCER'
@@ -236,7 +236,7 @@ export function FreelancerDirectoryScreen() {
                     : 'FREELANCER DIRECTORY'}
               </span>
             </div>
-            <h1 className="text-3xl font-black text-text-primary leading-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text-primary leading-tight">
               {searchQuery ? (
                 isVietnamese ? (
                   <>
@@ -257,7 +257,7 @@ export function FreelancerDirectoryScreen() {
                 </>
               )}
             </h1>
-            <p className="text-text-secondary text-sm mt-1.5 max-w-xl">
+            <p className="text-text-secondary text-xs sm:text-sm mt-1.5 max-w-xl leading-relaxed">
               {isVietnamese
                 ? 'Tìm kiếm hồ sơ nhân tài theo từ khóa, kỹ năng và danh mục chuyên môn để chọn đối tác phù hợp nhất.'
                 : 'Search talent profiles by keywords, core skills, and industry categories to find your ideal match.'}
@@ -274,7 +274,7 @@ export function FreelancerDirectoryScreen() {
                 }
                 navigate('/jobs/post');
               }}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--brand)] to-indigo-500 text-white text-sm font-bold shadow-md shadow-brand/25 hover:opacity-95 transition-all self-start xl:self-auto shrink-0"
+              className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[var(--brand)] to-indigo-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-brand/25 hover:opacity-95 transition-all self-start xl:self-auto shrink-0 min-h-[42px]"
             >
               <PlusCircle size={16} />
               <span>{isVietnamese ? 'Đăng tin tuyển dụng' : 'Post a Job'}</span>
@@ -283,37 +283,67 @@ export function FreelancerDirectoryScreen() {
         </header>
 
         {/* 2-Column Layout (9 cols left + 3 cols right) */}
-        <div className="grid grid-cols-12 gap-5 items-start">
+        <div className="grid grid-cols-12 gap-4 lg:gap-5 items-start min-w-0">
           {/* Main Content Area (col-span-12 lg:col-span-9 space-y-4) */}
-          <main className="col-span-12 lg:col-span-9 space-y-4">
-            {/* Filter Bar Toolbar (Exact TalentMatchingFilterBar Style) */}
+          <main className="col-span-12 lg:col-span-9 space-y-4 min-w-0">
+            {/* Filter Bar Toolbar */}
             <section
-              className="sticky top-24 z-30 rounded-2xl border border-border bg-surface-card/95 p-4 sm:p-5 shadow-sm space-y-3.5 transition-all"
+              className="relative lg:sticky lg:top-24 z-20 rounded-2xl border border-border bg-surface-card/95 p-3.5 sm:p-5 shadow-sm space-y-3 sm:space-y-3.5 transition-all"
               style={{ backdropFilter: 'blur(16px)' }}
             >
               {/* Header Info Row */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-black text-text-primary">{resultTitle}</h2>
+                    <h2 className="text-base sm:text-lg font-black text-text-primary">{resultTitle}</h2>
                     <span className="rounded-full bg-brand/10 border border-brand/20 px-2.5 py-0.5 text-[10px] font-black text-brand">
                       {isVietnamese
                         ? `${totalCount} chuyên gia`
                         : `${totalCount} freelancers`}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-xs text-text-secondary">{resultDescription}</p>
+                  <p className="mt-0.5 text-[11px] sm:text-xs text-text-secondary leading-normal">{resultDescription}</p>
                 </div>
               </div>
 
-              {/* Main Filter Controls Row */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {/* 1. Category Dropdown Popover */}
-                <div className="relative w-52 sm:w-60 shrink-0" ref={categoryDropdownRef}>
+              {/* Main Filter Controls Row: Mobile-First Responsive Layout */}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5">
+                {/* 1. Search Bar - Full width on mobile, right-aligned on tablet/desktop */}
+                <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-56 lg:w-64 sm:order-last sm:ml-auto">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                  <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={
+                      isVietnamese
+                        ? 'Tìm kiếm theo tên, kỹ năng...'
+                        : 'Search by keyword, skill...'
+                    }
+                    className="w-full rounded-xl border border-border bg-surface-muted py-2 pl-9 pr-7 text-xs font-medium outline-none transition focus:border-brand/40 focus:ring-2 focus:ring-brand/10 text-text-primary placeholder:text-text-muted min-h-[38px]"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedSkill(null);
+                        const newParams = new URLSearchParams(searchParams);
+                        newParams.delete('q');
+                        setSearchParams(newParams);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted hover:text-destructive p-1"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </form>
+
+                {/* 2. Category Dropdown Popover */}
+                <div className="relative flex-1 sm:flex-initial sm:w-52 md:w-60 min-w-[140px]" ref={categoryDropdownRef}>
                   <button
                     type="button"
                     onClick={() => setIsCategoryOpen(prev => !prev)}
-                    className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all select-none cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all select-none cursor-pointer min-h-[38px] ${
                       selectedCategory
                         ? 'border-brand/40 bg-brand/10 text-brand shadow-xs'
                         : 'border-border bg-surface-muted text-text-primary hover:border-brand/30'
@@ -331,7 +361,7 @@ export function FreelancerDirectoryScreen() {
                   {/* Category Dropdown Popover Menu */}
                   {isCategoryOpen && (
                     <div
-                      className="absolute top-full left-0 right-0 mt-2 w-full min-w-full rounded-2xl border-2 border-brand/30 bg-[var(--card,#0f172a)] p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 space-y-1 dropdown-menu animate-in fade-in zoom-in-95 duration-150"
+                      className="absolute top-full left-0 right-0 sm:w-72 mt-2 rounded-2xl border-2 border-brand/30 bg-[var(--card,#0f172a)] p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 space-y-1 dropdown-menu animate-in fade-in zoom-in-95 duration-150"
                       style={{ backdropFilter: 'blur(24px)' }}
                     >
                       <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-text-muted border-b border-border/60 mb-1.5 flex items-center justify-between">
@@ -343,7 +373,7 @@ export function FreelancerDirectoryScreen() {
                       <button
                         type="button"
                         onClick={() => handleCategorySelect(null)}
-                        className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer min-h-[36px] ${
                           !selectedCategory
                             ? 'bg-brand text-white shadow-md'
                             : 'text-text-primary hover:text-brand hover:bg-brand/10 bg-surface-muted/40'
@@ -362,7 +392,7 @@ export function FreelancerDirectoryScreen() {
                               key={cat}
                               type="button"
                               onClick={() => handleCategorySelect(isSelected ? null : cat)}
-                              className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                              className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer min-h-[36px] ${
                                 isSelected
                                   ? 'bg-brand text-white shadow-md border border-brand'
                                   : 'text-text-primary hover:text-brand hover:bg-brand/10 bg-surface-muted/40 border border-transparent'
@@ -382,81 +412,70 @@ export function FreelancerDirectoryScreen() {
                   )}
                 </div>
 
-                {/* 2. Page Size Selector */}
-                <div className="flex items-center rounded-xl border border-border bg-surface-muted p-0.5 gap-0.5">
-                  {([10, 20, 50] as const).map(size => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setPageSize(size)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                        pageSize === size
-                          ? 'bg-brand text-white shadow-xs'
-                          : 'text-text-muted hover:text-text-primary'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                {/* 3. Secondary tools row on mobile, inline on desktop */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  {/* Sort Selector */}
+                  <select
+                    value={sortBy}
+                    onChange={e => {
+                      setSortBy(e.target.value as FreelancerDirectorySort);
+                      setPage(1);
+                    }}
+                    className="flex-1 sm:flex-initial rounded-xl border border-border bg-surface-muted px-3 py-2 text-xs font-bold text-text-primary outline-none transition focus:border-brand/40 hover:border-brand/30 cursor-pointer min-h-[38px]"
+                    title={isVietnamese ? 'Sắp xếp theo' : 'Sort by'}
+                  >
+                    <option value="featured">{isVietnamese ? 'Nổi bật' : 'Featured'}</option>
+                    <option value="rating">{isVietnamese ? 'Đánh giá cao' : 'Top Rated'}</option>
+                    <option value="elo">{isVietnamese ? 'Điểm ELO' : 'Top ELO'}</option>
+                    <option value="newest">{isVietnamese ? 'Mới nhất' : 'Newest'}</option>
+                  </select>
+
+                  {/* Page Size Selector */}
+                  <div className="flex items-center rounded-xl border border-border bg-surface-muted p-0.5 gap-0.5 min-h-[38px]">
+                    {([10, 20, 50] as const).map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setPageSize(size)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          pageSize === size
+                            ? 'bg-brand text-white shadow-xs'
+                            : 'text-text-muted hover:text-text-primary'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Layout Mode Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode(mode => (mode === 'grid' ? 'compact' : 'grid'))}
+                    title={layoutMode === 'grid' ? 'Compact View' : 'Grid View'}
+                    className={`p-2 rounded-xl border transition-all shrink-0 min-h-[38px] min-w-[38px] flex items-center justify-center ${
+                      layoutMode === 'compact'
+                        ? 'border-brand bg-brand/10 text-brand'
+                        : 'border-border bg-surface-muted text-text-muted hover:text-text-primary hover:border-brand/30'
+                    }`}
+                  >
+                    {layoutMode === 'grid' ? <LayoutGrid size={16} /> : <List size={16} />}
+                  </button>
+
+                  {/* Sort Order Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setSortOrder(order => (order === 'desc' ? 'asc' : 'desc'))}
+                    title={sortOrder === 'desc' ? 'Sort Ascending' : 'Sort Descending'}
+                    className={`p-2 rounded-xl border transition-all shrink-0 min-h-[38px] min-w-[38px] flex items-center justify-center ${
+                      sortOrder === 'asc'
+                        ? 'border-brand bg-brand/10 text-brand'
+                        : 'border-border bg-surface-muted text-text-muted hover:text-text-primary hover:border-brand/30'
+                    }`}
+                  >
+                    <ArrowUpDown size={16} className={sortOrder === 'asc' ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                  </button>
                 </div>
-
-                {/* 3. Layout Mode Toggle Button */}
-                <button
-                  type="button"
-                  onClick={() => setLayoutMode(mode => (mode === 'grid' ? 'compact' : 'grid'))}
-                  title={layoutMode === 'grid' ? 'Compact View' : 'Grid View'}
-                  className={`p-2 rounded-xl border transition-all shrink-0 ${
-                    layoutMode === 'compact'
-                      ? 'border-brand bg-brand/10 text-brand'
-                      : 'border-border bg-surface-muted text-text-muted hover:text-text-primary hover:border-brand/30'
-                  }`}
-                >
-                  {layoutMode === 'grid' ? <LayoutGrid size={16} /> : <List size={16} />}
-                </button>
-
-                {/* 4. Sort Order Toggle Button */}
-                <button
-                  type="button"
-                  onClick={() => setSortOrder(order => (order === 'desc' ? 'asc' : 'desc'))}
-                  title={sortOrder === 'desc' ? 'Sort Ascending' : 'Sort Descending'}
-                  className={`p-2 rounded-xl border transition-all shrink-0 ${
-                    sortOrder === 'asc'
-                      ? 'border-brand bg-brand/10 text-brand'
-                      : 'border-border bg-surface-muted text-text-muted hover:text-text-primary hover:border-brand/30'
-                  }`}
-                >
-                  <ArrowUpDown size={16} className={sortOrder === 'asc' ? 'rotate-180 transition-transform' : 'transition-transform'} />
-                </button>
-
-                {/* 5. Shortened Search Bar placed on the right */}
-                <form onSubmit={handleSearchSubmit} className="relative w-52 sm:w-64 ml-auto">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                  <input
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder={
-                      isVietnamese
-                        ? 'Tìm kiếm theo tên, kỹ năng...'
-                        : 'Search by keyword, skill...'
-                    }
-                    className="w-full rounded-xl border border-border bg-surface-muted py-2 pl-9 pr-7 text-xs font-medium outline-none transition focus:border-brand/40 focus:ring-2 focus:ring-brand/10 text-text-primary placeholder:text-text-muted"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setSelectedSkill(null);
-                        const newParams = new URLSearchParams(searchParams);
-                        newParams.delete('q');
-                        setSearchParams(newParams);
-                      }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted hover:text-destructive"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </form>
               </div>
 
               {/* Active Filters Summary Badges */}
@@ -570,124 +589,201 @@ export function FreelancerDirectoryScreen() {
             {/* Freelancers Cards Display (Grid or Compact) */}
             {!loading && !error && freelancers.length > 0 && (
               <>
-                <div className={layoutMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-3'}>
-                  {freelancers.map((freelancer) => {
-                    const profileUrl = isAuthenticated
-                      ? `/profile/freelancer/${encodeURIComponent(freelancer.userId)}`
-                      : `/freelancers/${encodeURIComponent(freelancer.userId)}`;
+                {layoutMode === 'compact' ? (
+                  <div className="space-y-2.5">
+                    {freelancers.map((freelancer) => {
+                      const profileUrl = isAuthenticated
+                        ? `/profile/freelancer/${encodeURIComponent(freelancer.userId)}`
+                        : `/freelancers/${encodeURIComponent(freelancer.userId)}`;
 
-                    return (
-                      <article
-                        key={freelancer.userId}
-                        className="rounded-2xl border border-border bg-surface-card p-5 hover:border-brand/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between"
-                      >
-                        <div>
-                          {/* Header: Avatar, Name, Title, Rating */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <Link to={profileUrl} className="shrink-0">
-                                <UserAvatar
-                                  src={freelancer.userAvatar}
-                                  name={freelancer.userFullName || 'Freelancer'}
-                                  userId={freelancer.userId}
-                                  size="md"
-                                />
-                              </Link>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <Link
-                                    to={profileUrl}
-                                    className="font-bold text-sm text-text-primary hover:text-brand truncate transition-colors"
-                                  >
-                                    {freelancer.userFullName || 'Freelancer'}
-                                  </Link>
-                                  <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                                </div>
-                                <p className="text-xs font-semibold text-brand truncate mt-0.5">
-                                  {freelancer.title || freelancer.majorName || (isVietnamese ? 'Chuyên gia Freelancer' : 'Senior Specialist')}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Rating Badge */}
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-muted border border-border text-xs font-bold text-text-primary shrink-0">
-                              <Star size={12} className="text-amber-400 fill-amber-400" />
-                              <span>{(freelancer.rating ?? 5.0).toFixed(1)}</span>
-                            </div>
-                          </div>
-
-                          {/* Location & Major */}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted mt-3 pt-2.5 border-t border-border/50">
-                            {freelancer.location && (
-                              <div className="flex items-center gap-1 truncate">
-                                <MapPin size={12} className="shrink-0" />
-                                <span className="truncate">{freelancer.location}</span>
-                              </div>
-                            )}
-                            {freelancer.majorName && (
-                              <div className="flex items-center gap-1 truncate">
-                                <Briefcase size={12} className="shrink-0" />
-                                <span className="truncate">{freelancer.majorName}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Bio */}
-                          {freelancer.bio && (
-                            <p className="text-xs text-text-secondary mt-2 line-clamp-2 leading-relaxed">
-                              {freelancer.bio}
-                            </p>
-                          )}
-
-                          {/* Skills Pills */}
-                          {freelancer.skills && freelancer.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-3">
-                              {freelancer.skills.slice(0, 4).map((skill, sIdx) => (
-                                <button
-                                  key={sIdx}
-                                  type="button"
-                                  onClick={() => handleSkillSelect(skill.skillName)}
-                                  className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-surface-muted hover:bg-brand/10 hover:text-brand border border-border text-text-secondary transition-colors"
+                      return (
+                        <article
+                          key={freelancer.userId}
+                          className="rounded-2xl border border-border bg-surface-card/90 p-3 sm:p-3.5 hover:border-brand/40 shadow-xs hover:shadow-sm transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          style={{ backdropFilter: 'blur(12px)' }}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <Link to={profileUrl} className="shrink-0">
+                              <UserAvatar
+                                src={freelancer.userAvatar}
+                                name={freelancer.userFullName || 'Freelancer'}
+                                userId={freelancer.userId}
+                                size="sm"
+                                className="rounded-xl"
+                              />
+                            </Link>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Link
+                                  to={profileUrl}
+                                  className="font-bold text-xs sm:text-sm text-text-primary hover:text-brand truncate transition-colors block max-w-full"
                                 >
-                                  {skill.skillName}
-                                </button>
-                              ))}
-                              {freelancer.skills.length > 4 && (
-                                <span className="text-[10px] font-bold text-text-muted self-center px-1">
-                                  +{freelancer.skills.length - 4}
+                                  {freelancer.userFullName || 'Freelancer'}
+                                </Link>
+                                <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                              </div>
+                              <p className="text-[11px] sm:text-xs font-semibold text-brand truncate max-w-full mt-0.5">
+                                {freelancer.title || freelancer.majorName || (isVietnamese ? 'Chuyên gia Freelancer' : 'Senior Specialist')}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2.5 text-[10px] sm:text-[11px] text-text-muted mt-1">
+                                {freelancer.location && (
+                                  <span className="truncate max-w-[140px]">
+                                    <MapPin size={10} className="inline mr-0.5 shrink-0" />
+                                    {freelancer.location}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-0.5 shrink-0">
+                                  <Star size={10} className="text-amber-400 fill-current" />
+                                  {(freelancer.rating ?? 5.0).toFixed(1)}
                                 </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                            <Link
+                              to={profileUrl}
+                              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand/90 transition-colors min-h-[36px]"
+                            >
+                              <span>{isVietnamese ? 'Xem Hồ Sơ' : 'View Profile'}</span>
+                              <ArrowRight size={12} />
+                            </Link>
+                            {!isFreelancer && (
+                              <button
+                                type="button"
+                                onClick={() => handleInviteClick(freelancer)}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-surface-muted hover:bg-surface-hover border border-border text-text-primary text-xs font-bold transition-colors shrink-0 min-h-[36px]"
+                                title={isVietnamese ? 'Mời vào dự án' : 'Invite to Job'}
+                              >
+                                <Send size={12} />
+                                <span>{isVietnamese ? 'Mời' : 'Invite'}</span>
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {freelancers.map((freelancer) => {
+                      const profileUrl = isAuthenticated
+                        ? `/profile/freelancer/${encodeURIComponent(freelancer.userId)}`
+                        : `/freelancers/${encodeURIComponent(freelancer.userId)}`;
+
+                      return (
+                        <article
+                          key={freelancer.userId}
+                          className="rounded-2xl border border-border bg-surface-card p-4 sm:p-5 hover:border-brand/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+                        >
+                          <div>
+                            {/* Header: Avatar, Name, Title, Rating */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Link to={profileUrl} className="shrink-0">
+                                  <UserAvatar
+                                    src={freelancer.userAvatar}
+                                    name={freelancer.userFullName || 'Freelancer'}
+                                    userId={freelancer.userId}
+                                    size="md"
+                                  />
+                                </Link>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <Link
+                                      to={profileUrl}
+                                      className="font-bold text-sm text-text-primary hover:text-brand truncate transition-colors block max-w-full"
+                                    >
+                                      {freelancer.userFullName || 'Freelancer'}
+                                    </Link>
+                                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                                  </div>
+                                  <p className="text-xs font-semibold text-brand truncate max-w-full mt-0.5">
+                                    {freelancer.title || freelancer.majorName || (isVietnamese ? 'Chuyên gia Freelancer' : 'Senior Specialist')}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Rating Badge */}
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-muted border border-border text-xs font-bold text-text-primary shrink-0">
+                                <Star size={12} className="text-amber-400 fill-amber-400" />
+                                <span>{(freelancer.rating ?? 5.0).toFixed(1)}</span>
+                              </div>
+                            </div>
+
+                            {/* Location & Major */}
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted mt-3 pt-2.5 border-t border-border/50">
+                              {freelancer.location && (
+                                <div className="flex items-center gap-1 truncate max-w-[150px]">
+                                  <MapPin size={12} className="shrink-0" />
+                                  <span className="truncate">{freelancer.location}</span>
+                                </div>
+                              )}
+                              {freelancer.majorName && (
+                                <div className="flex items-center gap-1 truncate max-w-[150px]">
+                                  <Briefcase size={12} className="shrink-0" />
+                                  <span className="truncate">{freelancer.majorName}</span>
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/50">
-                          <Link
-                            to={profileUrl}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand/90 transition-colors"
-                          >
-                            <span>{isVietnamese ? 'Xem Hồ Sơ' : 'View Profile'}</span>
-                            <ArrowRight size={13} />
-                          </Link>
+                            {/* Bio */}
+                            {freelancer.bio && (
+                              <p className="text-xs text-text-secondary mt-2 line-clamp-2 leading-relaxed">
+                                {freelancer.bio}
+                              </p>
+                            )}
 
-                          {!isFreelancer && (
-                            <button
-                              type="button"
-                              onClick={() => handleInviteClick(freelancer)}
-                              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-surface-muted hover:bg-surface-hover border border-border text-text-primary text-xs font-bold transition-colors shrink-0"
-                              title={isVietnamese ? 'Mời vào dự án' : 'Invite to Job'}
+                            {/* Skills Pills */}
+                            {freelancer.skills && freelancer.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-3">
+                                {freelancer.skills.slice(0, 4).map((skill, sIdx) => (
+                                  <button
+                                    key={sIdx}
+                                    type="button"
+                                    onClick={() => handleSkillSelect(skill.skillName)}
+                                    className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-surface-muted hover:bg-brand/10 hover:text-brand border border-border text-text-secondary transition-colors"
+                                  >
+                                    {skill.skillName}
+                                  </button>
+                                ))}
+                                {freelancer.skills.length > 4 && (
+                                  <span className="text-[10px] font-bold text-text-muted self-center px-1">
+                                    +{freelancer.skills.length - 4}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/50">
+                            <Link
+                              to={profileUrl}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 sm:h-9 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand/90 transition-colors"
                             >
-                              <Send size={13} />
-                              <span>{isVietnamese ? 'Mời việc' : 'Invite'}</span>
-                            </button>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                              <span>{isVietnamese ? 'Xem Hồ Sơ' : 'View Profile'}</span>
+                              <ArrowRight size={13} />
+                            </Link>
+
+                            {!isFreelancer && (
+                              <button
+                                type="button"
+                                onClick={() => handleInviteClick(freelancer)}
+                                className="inline-flex items-center justify-center gap-1.5 h-10 sm:h-9 px-3.5 rounded-xl bg-surface-muted hover:bg-surface-hover border border-border text-text-primary text-xs font-bold transition-colors shrink-0"
+                                title={isVietnamese ? 'Mời vào dự án' : 'Invite to Job'}
+                              >
+                                <Send size={13} />
+                                <span>{isVietnamese ? 'Mời việc' : 'Invite'}</span>
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Pagination */}
                 {totalPages > 1 && (

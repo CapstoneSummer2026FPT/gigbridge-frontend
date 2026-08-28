@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   Brain,
-  CheckCircle2,
-  XCircle,
   Sparkles,
   RefreshCw,
   Check,
@@ -24,6 +22,7 @@ import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { CustomSelect } from '../../../shared/components/CustomSelect';
+import '../../../shared/components/styles/conic-border-button.css';
 
 interface ProposalJudgingListViewProps {
   jobPostId: string;
@@ -59,7 +58,7 @@ const FILTER_TABS: { key: FilterRec; label: string; colorClass: string; activeCl
     key: 'all',
     label: 'Tất cả',
     colorClass: 'text-text-muted hover:text-text-primary',
-    activeClass: 'bg-purple-600 text-white shadow-md shadow-purple-500/20',
+    activeClass: 'bg-brand text-white shadow-md shadow-brand/20',
   },
   {
     key: 'recommended',
@@ -202,21 +201,17 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
   return (
     <div className="space-y-5">
 
-      {/* ═══ 1. HERO ANALYTICS BANNER ═══════════════════════════════════ */}
-      <div className="relative overflow-hidden rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-600/10 via-indigo-500/5 to-background p-5 shadow-sm">
-        {/* Decorative blobs */}
-        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10">
+      {/* ═══ 1. HERO ANALYTICS BANNER (Styled with Default ConicBorder Brand/Mint) ═══ */}
+      <div className="conic-border-wrap conic-border-card rounded-2xl w-full">
+        <div className="conic-border-card-inner rounded-[calc(1rem-1.5px)] bg-surface-card p-4 sm:p-5 shadow-sm w-full space-y-4">
           {/* Top row: Title + Batch Button */}
-          <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2.5 mb-1">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-600/15 border border-purple-500/25">
-                  <Brain size={16} className="text-purple-500" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand/15 border border-brand/25">
+                  <Brain size={16} className="text-brand" />
                 </div>
-                <h2 className="text-base font-black bg-gradient-to-r from-purple-600 to-indigo-500 bg-clip-text text-transparent">
+                <h2 className="text-base font-black text-brand">
                   AI Judging Leaderboard
                 </h2>
               </div>
@@ -225,49 +220,51 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
               </p>
             </div>
 
-            <button
-              onClick={handleBatchJudge}
-              disabled={batchLoading || proposals.length === 0 || stats.unjudgedCount === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-purple-500/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
-            >
-              {batchLoading ? (
-                <>
-                  <RefreshCw size={13} className="animate-spin" />
-                  <span>
-                    Đang chấm ({batchProgress ? `${batchProgress.processed} xong, còn ${batchProgress.remaining}` : 'Đang khởi động...'})
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={13} />
-                  <span>
-                    {stats.unjudgedCount > 0 ? `Chấm tất cả (${stats.unjudgedCount} chưa chấm)` : 'Đã chấm xong'}
-                  </span>
-                </>
-              )}
-            </button>
+            <div className="conic-border-wrap rounded-xl cursor-pointer">
+              <button
+                onClick={handleBatchJudge}
+                disabled={batchLoading || proposals.length === 0 || stats.unjudgedCount === 0}
+                className="conic-border-btn !py-2 !px-4 !text-xs !bg-brand !text-white flex items-center gap-2 font-black shadow-md hover:!bg-brand-hover"
+              >
+                {batchLoading ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin text-[#AFDBFF]" />
+                    <span>
+                      Đang chấm ({batchProgress ? `${batchProgress.processed} xong, còn ${batchProgress.remaining}` : 'Đang khởi động...'})
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={13} className="text-[#AFDBFF]" />
+                    <span>
+                      {stats.unjudgedCount > 0 ? `Chấm tất cả (${stats.unjudgedCount} chưa chấm)` : 'Đã chấm xong'}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Stat Cards Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             {/* Total Proposals */}
             <div className="rounded-xl border border-border/60 bg-background/60 backdrop-blur-sm p-3 space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-text-muted">
                 <Users size={11} /> Tổng proposals
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-text-primary">{stats.totalCount}</span>
+                <span className="text-xl sm:text-2xl font-black text-text-primary">{stats.totalCount}</span>
                 <span className="text-[10px] font-semibold text-text-muted">({stats.judgedCount} đã chấm)</span>
               </div>
             </div>
 
             {/* Avg Score */}
-            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3 space-y-1">
-              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-purple-500/80">
+            <div className="rounded-xl border border-brand/20 bg-brand/5 p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-brand/80">
                 <BarChart2 size={11} /> Điểm TB
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-purple-600 dark:text-purple-400">{stats.avgScore}</span>
+                <span className="text-xl sm:text-2xl font-black text-brand">{stats.avgScore}</span>
                 <span className="text-xs font-bold text-text-muted">/100</span>
               </div>
             </div>
@@ -278,7 +275,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                 <Trophy size={11} /> Điểm cao nhất
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.topScore}</span>
+                <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.topScore}</span>
                 <span className="text-xs font-bold text-text-muted">/100</span>
               </div>
             </div>
@@ -289,7 +286,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                 <Star size={11} /> AI Recommended
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.recommendedCount}</span>
+                <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.recommendedCount}</span>
                 <span className="text-xs font-bold text-text-muted">ứng viên</span>
               </div>
             </div>
@@ -306,15 +303,15 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       {/* ═══ 2. FILTER & SORT TOOLBAR ════════════════════════════════════ */}
       <div className="space-y-3">
         {/* Main Toolbar Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface-muted/30 p-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 rounded-2xl border border-border/80 bg-surface-muted/30 p-2.5 sm:p-3">
           {/* Left: Filter Pill Tabs */}
-          <div className="flex items-center gap-1.5 p-0.5 rounded-xl bg-background/60 border border-border/60 shadow-xs">
+          <div className="flex items-center gap-1 sm:gap-1.5 p-0.5 rounded-xl bg-background/60 border border-border/60 shadow-xs overflow-x-auto">
             {FILTER_TABS.map(tab => (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setFilterRec(tab.key)}
-                className={`rounded-lg px-3 py-1.5 text-[11px] font-black transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial text-center whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-1.5 text-[10.5px] sm:text-[11px] font-black transition-all cursor-pointer ${
                   filterRec === tab.key ? tab.activeClass : tab.colorClass
                 }`}
               >
@@ -327,9 +324,9 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           </div>
 
           {/* Right: Search + Advanced Filters Toggle */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Search Input */}
-            <div className="relative w-44">
+            <div className="relative flex-1 sm:w-44">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
                 <Search size={13} />
               </span>
@@ -338,7 +335,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Tìm ứng viên..."
-                className="w-full rounded-xl border border-border/80 bg-background py-2 pl-7.5 pr-6 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-purple-500 transition"
+                className="w-full rounded-xl border border-border/80 bg-background py-2 pl-7.5 pr-6 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition"
               />
               {searchQuery && (
                 <button
@@ -354,16 +351,16 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
             <button
               type="button"
               onClick={() => setShowAdvanced(prev => !prev)}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-black transition cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-black transition cursor-pointer shrink-0 ${
                 showAdvanced || hasActiveFilters
-                  ? 'border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-300'
+                  ? 'border-brand/50 bg-brand/10 text-brand'
                   : 'border-border/80 bg-background text-text-muted hover:text-text-primary hover:bg-surface-muted'
               }`}
             >
               <SlidersHorizontal size={13} />
               Bộ lọc
               {hasActiveFilters && (
-                <span className="flex items-center justify-center h-4 min-w-4 rounded-full bg-purple-600 px-1 text-[9px] font-black text-white leading-none">
+                <span className="flex items-center justify-center h-4 min-w-4 rounded-full bg-brand px-1 text-[9px] font-black text-white leading-none">
                   {(minScoreFilter > 0 ? 1 : 0) + (sortBy !== 'aiScore' ? 1 : 0)}
                 </span>
               )}
@@ -373,17 +370,17 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
 
         {/* Advanced Filter Panel */}
         {showAdvanced && (
-          <div className="rounded-2xl border border-purple-500/15 bg-purple-500/5 p-4 space-y-4">
+          <div className="rounded-2xl border border-brand/15 bg-brand/5 p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 text-xs font-black text-text-primary">
-                <SlidersHorizontal size={13} className="text-purple-600" />
+                <SlidersHorizontal size={13} className="text-brand" />
                 Bộ lọc nâng cao & Sắp xếp
               </h3>
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={() => { setMinScoreFilter(0); setSortBy('aiScore'); }}
-                  className="text-[11px] font-black text-purple-600 hover:underline cursor-pointer"
+                  className="text-[11px] font-black text-brand hover:underline cursor-pointer"
                 >
                   Xoá bộ lọc
                 </button>
@@ -424,7 +421,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       {/* ═══ 3. RANKED CANDIDATE CARDS LEADERBOARD ═══════════════════════ */}
       {loading ? (
         <div className="py-16 text-center text-xs text-text-muted">
-          <Brain size={32} className="mx-auto mb-3 text-purple-500/40 animate-pulse" />
+          <Brain size={32} className="mx-auto mb-3 text-brand/40 animate-pulse" />
           <p>Đang tải bảng xếp hạng...</p>
         </div>
       ) : rankedCandidates.length === 0 ? (
@@ -439,78 +436,94 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
             const hasScore = typeof candidate.aiScore === 'number';
             const status = Number(candidate.status);
             const rankIndex = (currentPage - 1) * pageSize + index + 1;
-            const isTopThree = rankIndex <= 3;
+            const cardInnerContent = (
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 w-full">
+                {/* LEFT: Rank + Avatar + Info */}
+                <div className="flex items-start gap-3 min-w-0">
+                  {/* Rank Badge */}
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-black text-sm ${getRankBadge(rankIndex)}`}>
+                    {rankIndex <= 3 ? (
+                      <Trophy size={14} className={rankIndex === 1 ? 'text-amber-500' : rankIndex === 2 ? 'text-slate-400' : 'text-orange-500'} />
+                    ) : (
+                      <span className="text-xs">#{rankIndex}</span>
+                    )}
+                  </div>
 
-            return (
-              <div
-                key={candidate.proposalsId}
-                onClick={() => onSelectProposal(candidate.proposalsId)}
-                className={`group relative cursor-pointer rounded-2xl border bg-background p-4 transition-all hover:shadow-md ${
-                  isTopThree
-                    ? 'border-purple-500/25 hover:border-purple-500/50 hover:shadow-purple-500/5'
-                    : 'border-border/70 hover:border-border hover:shadow-border/20'
-                }`}
-              >
-                {/* Top-3 glow accent */}
-                {rankIndex === 1 && (
-                  <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 opacity-80" />
-                )}
+                  {/* Avatar + Details */}
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    {/* Name row */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <UserAvatar
+                        userId={candidate.freelancerUserId}
+                        name={candidate.freelancerName || 'Freelancer'}
+                        size="sm"
+                      />
+                      <h3 className="font-black text-sm text-text-primary truncate">
+                        <UserProfileLink userId={candidate.freelancerUserId} role="freelancer">
+                          {candidate.freelancerName || 'Freelancer'}
+                        </UserProfileLink>
+                      </h3>
 
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  {/* LEFT: Rank + Avatar + Info */}
-                  <div className="flex items-start gap-3 min-w-0">
-                    {/* Rank Badge */}
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-black text-sm ${getRankBadge(rankIndex)}`}>
-                      {rankIndex <= 3 ? (
-                        <Trophy size={14} className={rankIndex === 1 ? 'text-amber-500' : rankIndex === 2 ? 'text-slate-400' : 'text-orange-500'} />
-                      ) : (
-                        <span className="text-xs">#{rankIndex}</span>
+                      {/* Prominent Recruiter Badges (Negotiation Verdict & Money Savings) */}
+                      {hasScore && (
+                        <>
+                          {/* 1. Negotiation Verdict Badge */}
+                          {(candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60) ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 px-3 py-0.5 text-xs font-black text-rose-600 dark:text-rose-400 shadow-2xs">
+                              🚫 Not Worth Negotiating
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-0.5 text-xs font-black text-emerald-600 dark:text-emerald-400 shadow-2xs">
+                              🤝 Worth Negotiating
+                            </span>
+                          )}
+
+                          {/* 2. Money Savings Pill */}
+                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-black shadow-2xs ${
+                            (candidate.aiSavingsRatioPercent ?? 0) > 0
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-surface-muted border-border/80 text-text-muted'
+                          }`}>
+                            {(candidate.aiSavingsRatioPercent ?? 0) > 0 ? `🔥 Save ${(candidate.aiSavingsRatioPercent ?? 0).toFixed(1)}%` : '💰 0% Savings'}
+                          </span>
+                        </>
                       )}
                     </div>
 
-                    {/* Avatar + Details */}
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      {/* Name row */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <UserAvatar
-                          userId={candidate.freelancerUserId}
-                          name={candidate.freelancerName || 'Freelancer'}
-                          size="sm"
-                        />
-                        <h3 className="font-black text-sm text-text-primary truncate">
-                          <UserProfileLink userId={candidate.freelancerUserId} role="freelancer">
-                            {candidate.freelancerName || 'Freelancer'}
-                          </UserProfileLink>
-                        </h3>
+                    {/* Meta info row */}
+                    <p className="text-[11px] text-text-muted">
+                      Ngân sách: <strong className="text-text-primary font-black">{formatGigCoin(candidate.proposedBudget || 0)}</strong>
+                      {' · '}
+                      Thời gian: <strong className="text-text-primary">{candidate.proposedDuration || 'N/A'}</strong>
+                      {' · '}
+                      Nộp: {new Date(candidate.submittedAt).toLocaleDateString('vi-VN')}
+                    </p>
 
-                        {candidate.aiRecommendedHire === true && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle2 size={11} /> AI Recommended
-                          </span>
-                        )}
-                        {candidate.aiRecommendedHire === false && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/12 border border-rose-500/25 px-2 py-0.5 text-[10px] font-black text-rose-600 dark:text-rose-400">
-                            <XCircle size={11} /> Not Recommended
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Meta info row */}
-                      <p className="text-[11px] text-text-muted">
-                        Ngân sách: <strong className="text-text-primary font-black">{formatGigCoin(candidate.proposedBudget || 0)}</strong>
-                        {' · '}
-                        Thời gian: <strong className="text-text-primary">{candidate.proposedDuration || 'N/A'}</strong>
-                        {' · '}
-                        Nộp: {new Date(candidate.submittedAt).toLocaleDateString('vi-VN')}
-                      </p>
-
-                      {/* AI Summary */}
-                      {candidate.aiSummary ? (
-                        <p className="text-[11px] text-text-primary/90 leading-relaxed italic bg-purple-500/5 px-3 py-2 rounded-xl border border-purple-500/10 whitespace-pre-wrap">
-                          "{candidate.aiSummary}"
-                        </p>
+                    {/* Clean AI Executive Summary for Recruiters - Larger & Easy to Read */}
+                    {candidate.aiSummary ? (
+                        <div className={`rounded-xl border p-3.5 space-y-1 text-xs sm:text-sm leading-relaxed shadow-2xs break-all [overflow-wrap:anywhere] ${
+                          (candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60)
+                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-100 font-semibold'
+                            : 'border-brand/30 bg-brand/10 text-brand-950 dark:text-brand-100 font-medium'
+                        }`}>
+                          {candidate.aiSummary.startsWith('Technical Quality:') ? (
+                            (candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60) ? (
+                              <p>
+                                <strong className="font-black text-rose-600 dark:text-rose-400 mr-1">⚠️ High Risk Candidate:</strong>
+                                Candidate scored <span className="font-black">{candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0}/100</span> on technical quality and covers only <span className="font-black">{(candidate.aiScopeCompletenessPercent ?? 100).toFixed(0)}%</span> of required project scope deliverables.
+                              </p>
+                            ) : (
+                              <p>
+                                <strong className="font-black text-brand mr-1">💡 Candidate Assessment:</strong>
+                                Candidate evaluated with <span className="font-black">{candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0}/100</span> technical quality and <span className="font-black">{(candidate.aiSavingsRatioPercent ?? 0).toFixed(1)}%</span> cost savings vs budget.
+                              </p>
+                            )
+                          ) : (
+                            <p className="italic">"{candidate.aiSummary}"</p>
+                          )}
+                        </div>
                       ) : (
-                        <p className="text-[11px] text-text-muted italic">
+                        <p className="text-xs text-text-muted italic">
                           Chưa có đánh giá AI. Nhấn "Chấm tất cả" để chấm điểm.
                         </p>
                       )}
@@ -519,12 +532,12 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                       {((candidate.aiTechnicalSkills?.length ?? 0) > 0 || (candidate.aiSoftSkills?.length ?? 0) > 0) && (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
                           {candidate.aiTechnicalSkills?.map((s, idx) => (
-                            <span key={idx} className="rounded-lg bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                            <span key={idx} className="rounded-lg bg-brand/10 border border-brand/20 px-2 py-0.5 text-[10px] font-bold text-brand">
                               {s}
                             </span>
                           ))}
                           {candidate.aiSoftSkills?.map((s, idx) => (
-                            <span key={idx} className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                            <span key={idx} className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
                               {s}
                             </span>
                           ))}
@@ -576,6 +589,15 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                     </div>
                   </div>
                 </div>
+            );
+
+            return (
+              <div
+                key={candidate.proposalsId}
+                onClick={() => onSelectProposal(candidate.proposalsId)}
+                className="group relative cursor-pointer rounded-2xl border border-border/70 bg-background p-4 transition-all hover:border-border hover:shadow-sm"
+              >
+                {cardInnerContent}
               </div>
             );
           })}
@@ -588,7 +610,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           <button
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/80 bg-background hover:bg-surface-muted hover:text-purple-600 disabled:opacity-40 transition cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/80 bg-background hover:bg-surface-muted hover:text-brand disabled:opacity-40 transition cursor-pointer"
           >
             <ChevronLeft size={14} />
           </button>
@@ -613,8 +635,8 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                   onClick={() => setCurrentPage(page as number)}
                   className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black transition cursor-pointer ${
                     page === currentPage
-                      ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
-                      : 'border border-border/80 bg-background hover:bg-surface-muted hover:text-purple-600 text-text-primary'
+                      ? 'bg-brand text-white shadow-md shadow-brand/25'
+                      : 'border border-border/80 bg-background hover:bg-surface-muted hover:text-brand text-text-primary'
                   }`}
                 >
                   {page}
@@ -626,7 +648,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           <button
             disabled={currentPage >= totalPages}
             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/80 bg-background hover:bg-surface-muted hover:text-purple-600 disabled:opacity-40 transition cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/80 bg-background hover:bg-surface-muted hover:text-brand disabled:opacity-40 transition cursor-pointer"
           >
             <ChevronRight size={14} />
           </button>

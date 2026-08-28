@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   BarChart2, Shield, Flag, HelpCircle,
   TrendingUp, PlusCircle, Zap, Bookmark,
-  ChevronDown, Wallet, Banknote, Star, Scale, FileCheck2, History, Send
+  ChevronDown, Wallet, Banknote, Star, Scale, FileCheck2, History, Send, X
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -309,9 +309,10 @@ export function Sidebar({ isOpen, onClose, isPinned, onTogglePin }: SidebarProps
     };
   }, [showToggleHelp]);
 
-  // Click Outside Listener: Automatically close sidebar when clicking outside if UNPINNED
+  // Click Outside Listener: Automatically close sidebar when clicking outside if UNPINNED or on MOBILE
   useEffect(() => {
-    if (isPinned || !isOpen || !onClose) return;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if ((isPinned && !isMobile) || !isOpen || !onClose) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
@@ -364,8 +365,9 @@ export function Sidebar({ isOpen, onClose, isPinned, onTogglePin }: SidebarProps
       navigate(path);
     }
 
-    // Only auto-close sidebar on navigation if NOT pinned
-    if (!isPinned && onClose) {
+    // Auto-close sidebar on navigation if on mobile (< 768px) or not pinned
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if ((isMobile || !isPinned) && onClose) {
       onClose();
     }
   };
@@ -386,7 +388,7 @@ export function Sidebar({ isOpen, onClose, isPinned, onTogglePin }: SidebarProps
   };
 
   return (
-    <aside ref={sidebarRef} className={`gb-sidebar ${isOpen || isPinned ? 'open' : ''} ${isPinned ? 'pinned' : ''}`}>
+    <aside ref={sidebarRef} className={`gb-sidebar ${isOpen ? 'open' : ''} ${isPinned ? 'pinned' : ''}`}>
       {/* Top Header Row Bar: Brand Label & Action Buttons */}
       <div className="sidebar-header-bar">
         <div className="flex items-center gap-2 px-1 text-xs font-black uppercase tracking-wider text-[var(--gb-text-muted,#64748b)]">
@@ -395,7 +397,7 @@ export function Sidebar({ isOpen, onClose, isPinned, onTogglePin }: SidebarProps
         </div>
 
         <div className="sidebar-top-actions">
-          <div className="relative" ref={helpRef}>
+          <div className="relative sidebar-help-wrapper" ref={helpRef}>
             <button
               type="button"
               onClick={() => setShowToggleHelp(prev => !prev)}
@@ -431,6 +433,18 @@ export function Sidebar({ isOpen, onClose, isPinned, onTogglePin }: SidebarProps
               aria-label={isPinned ? 'Disable Persistent Sidebar' : 'Enable Persistent Sidebar'}
             >
               <span className="sidebar-switch-thumb" />
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="sidebar-mobile-close-btn"
+              title={t('common.close', { defaultValue: 'Đóng' })}
+              aria-label={t('common.close', { defaultValue: 'Close sidebar' })}
+            >
+              <X size={18} />
             </button>
           )}
         </div>

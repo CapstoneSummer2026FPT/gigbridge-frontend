@@ -3,6 +3,7 @@ import { Outlet } from 'react-router';
 import { AppProvider } from '../providers/AppProvider';
 import { Toaster } from 'sonner';
 import { PremiumStatusProvider } from '../../features/premium/hooks';
+import { NotificationsProvider } from '../../features/notifications/providers/NotificationsProvider';
 
 function RouteLoadingFallback() {
   return (
@@ -20,10 +21,12 @@ export function RootLayout() {
   return (
     <AppProvider>
       <PremiumStatusProvider>
-        <Suspense fallback={<RouteLoadingFallback />}>
-          <Outlet />
-        </Suspense>
-        <Toaster position="top-right" richColors />
+        <NotificationsProvider>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <Outlet />
+          </Suspense>
+          <Toaster position="top-right" richColors />
+        </NotificationsProvider>
       </PremiumStatusProvider>
     </AppProvider>
   );

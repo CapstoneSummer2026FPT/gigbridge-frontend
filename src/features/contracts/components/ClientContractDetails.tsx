@@ -13,13 +13,14 @@ import { ESignerRole, ESignDocumentStatus, SignatureStatus } from '../../../type
 import {
   getContractStatusLabel,
   getContractStatusClass,
-  formatContractAmount,
   formatContractDate,
   getMilestoneStatusLabel,
 } from '../../../shared/utils/contractUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ContractChangeControlPanel } from './ContractChangeControlPanel';
 import { ContractLegalCard } from './ContractLegalCard';
@@ -161,28 +162,37 @@ export function ClientContractDetails({
           <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.milestoneBreakdown')} ({milestones.length})</h2>
         </div>
         <div className="flex flex-wrap gap-2">
-          <span className="px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-extrabold">
-            {t('contracts.sum')}: {formatContractAmount(milestonesTotal)}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-extrabold">
+            <span>{t('contracts.sum')}:</span>
+            <GCoinIcon size={14} />
+            <span>{formatGigCoinNumber(milestonesTotal)}</span>
+            <span className="text-[10.5px] font-semibold opacity-85">(≈ {formatGigCoinToVnd(milestonesTotal)})</span>
           </span>
         </div>
       </div>
       <div className="flex flex-col gap-3">
         {milestones.map((milestone, index) => (
           <div key={milestone.id} className="border border-border bg-background hover:border-brand/40 rounded-2xl p-4 transition duration-300 flex justify-between items-center gap-4 shadow-xs">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/20 font-black text-xs">
                 {index + 1}
               </div>
-              <div className="flex flex-col">
-                <h3 className="text-xs font-extrabold text-text-primary">{milestone.title}</h3>
+              <div className="flex flex-col min-w-0">
+                <h3 className="text-xs font-extrabold text-text-primary truncate">{milestone.title}</h3>
                 <span className="text-[11px] text-text-muted mt-0.5 font-semibold flex items-center gap-1.5">
                   <Calendar size={12} />
                   {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-sm font-black text-text-primary block">{formatContractAmount(milestone.amount)}</span>
+            <div className="text-right shrink-0 flex flex-col items-end">
+              <div className="flex items-center gap-1.5 text-sm font-black text-text-primary">
+                <GCoinIcon size={15} />
+                <span>{formatGigCoinNumber(milestone.amount)}</span>
+              </div>
+              <span className="text-[11px] font-semibold text-text-muted">
+                ≈ {formatGigCoinToVnd(milestone.amount)}
+              </span>
             </div>
           </div>
         ))}
@@ -210,9 +220,9 @@ export function ClientContractDetails({
       <div className="bg-background min-h-[calc(100vh-4rem)] flex flex-col text-left font-sans text-text-primary">
 
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
+        <header className="sticky top-0 z-40 border-b border-border bg-background/80 px-3.5 py-3.5 sm:py-4 backdrop-blur-md lg:px-8">
           <div className="mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => navigate('/contracts')}
@@ -222,15 +232,15 @@ export function ClientContractDetails({
                 <ArrowLeft size={16} />
               </button>
               <div className="min-w-0">
-                <div className="mb-0.5 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-brand">
-                  <Sparkles size={13} />
-                  {t('contracts.contractDetailsClient')}
+                <div className="mb-0.5 flex items-center gap-1.5 sm:gap-2 text-[10px] font-black uppercase tracking-wider text-brand">
+                  <Sparkles size={13} className="shrink-0" />
+                  <span className="truncate">{t('contracts.contractDetailsClient')}</span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-text-primary flex flex-wrap items-center gap-2.5 truncate">
-                  <span className="truncate max-w-[200px] md:max-w-xl">{contract.title}</span>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-black text-text-primary flex flex-wrap items-center gap-2 min-w-0 break-all [overflow-wrap:anywhere]">
+                  <span>{contract.title}</span>
                   <span className="text-brand italic font-light">Details</span>
-                  <span className={`status-badge ${getContractStatusClass(effectiveStatus)} text-[10px] py-1 px-3`}>
-                    {t('contracts.statusLabels.' + effectiveStatus, { defaultValue: getContractStatusLabel(effectiveStatus) })}
+                  <span className={`status-badge ${getContractStatusClass(effectiveStatus)} text-[10px] py-0.5 sm:py-1 px-2.5 sm:px-3 shrink-0`}>
+                    {getContractStatusLabel(effectiveStatus, t)}
                   </span>
                 </h1>
               </div>
@@ -241,12 +251,12 @@ export function ClientContractDetails({
         </header>
 
         {/* Main Content Workspace */}
-        <main className="mx-auto max-w-[1600px] w-full space-y-6 px-4 py-6 lg:px-8 flex-1">
+        <main className="mx-auto max-w-[1600px] w-full space-y-4 sm:space-y-6 px-3.5 py-4 sm:py-6 lg:px-8 flex-1 min-w-0">
 
           {/* Stepper Panel */}
-          <section className="glass-card p-4 relative overflow-hidden text-left shadow-sm">
+          <section className="glass-card p-3.5 sm:p-4 relative overflow-hidden text-left shadow-sm">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-brand via-mint to-cyan" />
-            <div className="flex items-center gap-6 overflow-x-auto pb-1 no-scrollbar whitespace-nowrap">
+            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto pb-1.5 custom-scrollbar touch-pan-x scroll-smooth whitespace-nowrap">
               {[
                 { number: 1, label: t('contracts.defineProjectPlan') },
                 { number: 2, label: t('contracts.freelancerReview') },
@@ -378,10 +388,17 @@ export function ClientContractDetails({
               {/* Step 2: Review and Confirm (waiting for freelancer) */}
               {contract.status === ContractStatus.PendingContractConfirmation && (
                 <>
-                  <div className="bg-brand/10 text-brand border border-brand/20 p-5 rounded-2xl flex items-center gap-3">
-                    <Clock size={20} className="shrink-0 animate-pulse" />
-                    <div className="text-xs font-bold">
-                      {t('contracts.waitingFreelancerReview')}
+                  <div className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4.5 sm:p-5 flex items-center gap-3.5 shadow-xs">
+                    <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                      <Clock size={18} className="animate-pulse" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <h4 className="text-xs font-black text-text-primary">
+                        {t('contracts.waitingFreelancerReview', { defaultValue: 'Awaiting Freelancer Review' })}
+                      </h4>
+                      <p className="text-[11px] font-medium text-text-muted">
+                        {t('contracts.waitingFreelancerReviewSub', { defaultValue: 'Kế hoạch dự án đã được gửi cho Freelancer xem xét và xác nhận hoặc gửi yêu cầu điều chỉnh.' })}
+                      </p>
                     </div>
                   </div>
                   <ContractLegalCard
@@ -431,7 +448,7 @@ export function ClientContractDetails({
               {/* Step 5: Active Contract / Full View */}
               {contract.status >= ContractStatus.Active && (
                 <>
-                  <section className="glass-card p-6 md:p-8 space-y-6">
+                  <section className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-6 shadow-xs">
                     <div className="flex items-center gap-2.5 border-b border-border pb-4">
                       <FileText size={20} className="text-brand" />
                       <h2 className="text-lg font-black text-text-primary uppercase tracking-tight">{t('contracts.contractInfo')}</h2>
@@ -509,7 +526,7 @@ export function ClientContractDetails({
 
                   {/* Milestones Accordions */}
                   {milestones.length > 0 && (
-                    <section className="glass-card p-6 md:p-8 space-y-6">
+                    <section className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-6 shadow-xs">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
                         <div className="flex items-center gap-2.5">
                           <ListChecks size={20} className="text-brand" />
@@ -523,8 +540,11 @@ export function ClientContractDetails({
                           <span className="px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-black">
                             {t('contracts.milestonesApprovedCount', { milestonesApproved })}
                           </span>
-                          <span className="px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-black">
-                            {t('contracts.sum')}: {formatContractAmount(milestonesTotal)}
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/20 text-brand rounded-full text-xs font-black">
+                            <span>{t('contracts.sum')}:</span>
+                            <GCoinIcon size={13} />
+                            <span>{formatGigCoinNumber(milestonesTotal)}</span>
+                            <span className="text-[10.5px] font-semibold opacity-85">(≈ {formatGigCoinToVnd(milestonesTotal)})</span>
                           </span>
                         </div>
                       </div>
@@ -544,8 +564,12 @@ export function ClientContractDetails({
                                   </span>
                                   <div className="min-w-0">
                                     <h3 className="text-xs font-extrabold text-text-primary truncate">{milestone.title}</h3>
-                                    <span className="text-[11px] font-semibold text-text-muted mt-0.5 flex items-center gap-2">
-                                      <span>{formatContractAmount(milestone.amount)}</span>
+                                    <span className="text-[11px] font-semibold text-text-muted mt-0.5 flex items-center gap-2 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 text-text-primary font-black">
+                                        <GCoinIcon size={13} />
+                                        <span>{formatGigCoinNumber(milestone.amount)}</span>
+                                      </span>
+                                      <span className="text-text-muted">(≈ {formatGigCoinToVnd(milestone.amount)})</span>
                                       <span>·</span>
                                       <span>{t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}</span>
                                     </span>
@@ -564,7 +588,13 @@ export function ClientContractDetails({
                                 <div className="border-t border-border bg-surface-muted/30 p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold">
                                   <div>
                                     <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">{t('contracts.amountTokens')}</span>
-                                    <span className="text-text-primary font-black">{formatContractAmount(milestone.amount)}</span>
+                                    <div className="flex items-center gap-1.5 font-black text-text-primary">
+                                      <GCoinIcon size={14} />
+                                      <span>{formatGigCoinNumber(milestone.amount)}</span>
+                                    </div>
+                                    <span className="text-[10.5px] font-semibold text-text-muted block mt-0.5">
+                                      ≈ {formatGigCoinToVnd(milestone.amount)}
+                                    </span>
                                   </div>
                                   <div>
                                     <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-1">{t('contracts.dueDate')}</span>
@@ -588,7 +618,7 @@ export function ClientContractDetails({
                   )}
 
                   {/* Audit Trail */}
-                  <section className="glass-card p-6 md:p-8 space-y-4">
+                  <section className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-4 shadow-xs">
                     <div className="flex items-center justify-between border-b border-border pb-4">
                       <div className="flex items-center gap-2.5">
                         <Clock size={20} className="text-brand" />
@@ -693,7 +723,13 @@ export function ClientContractDetails({
                   <div className="flex items-center justify-between p-3 bg-surface-muted/40 rounded-xl border border-border">
                     <div>
                       <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">{t('contracts.budget')}</span>
-                      <span className="text-base font-black text-brand mt-0.5 block">{formatContractAmount(contract.totalBudget)}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <GCoinIcon size={16} />
+                        <span className="text-base font-black text-brand">{formatGigCoinNumber(contract.totalBudget)}</span>
+                      </div>
+                      <span className="text-[10.5px] font-semibold text-text-muted block mt-0.5">
+                        ≈ {formatGigCoinToVnd(contract.totalBudget)}
+                      </span>
                     </div>
                     <div className="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
                       <GigCoinLogo size={16} />
@@ -760,7 +796,9 @@ export function ClientContractDetails({
 
               {/* Quick Actions Panel */}
               {Number(contract.status) !== ContractStatus.PendingSignature &&
-               Number(contract.status) !== ContractStatus.PendingEscrow && (
+               Number(contract.status) !== ContractStatus.PendingEscrow &&
+               Number(contract.status) !== ContractStatus.PendingContractConfirmation &&
+               Number(contract.status) !== ContractStatus.PendingContractDetails && (
                 <div className="relative overflow-hidden rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-md p-5 space-y-4">
                   {/* Background Ambient Glow */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--brand,#494be7)]/10 rounded-full blur-2xl pointer-events-none" />

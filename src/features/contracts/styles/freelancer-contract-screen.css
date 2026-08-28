@@ -758,3 +758,32 @@
     --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
   }
 }
+
+/* Horizontal Filter Track Scrolling */
+.filter-scroll-track {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  width: 100%;
+  max-width: 100%;
+}
+
+.filter-scroll-track::-webkit-scrollbar {
+  height: 4px;
+}
+
+.filter-scroll-track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.filter-scroll-track::-webkit-scrollbar-thumb {
+  background: var(--gb-border, var(--border, #ededf0));
+  border-radius: 4px;
+}
+

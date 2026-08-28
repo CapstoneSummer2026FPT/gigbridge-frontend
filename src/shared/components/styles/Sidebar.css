@@ -10,7 +10,7 @@
   top: 5.75rem;
   bottom: 0.75rem;
   width: 20rem;
-  z-index: 45;
+  z-index: 100;
   padding: 0.875rem 0.625rem;
   background: var(--card, rgba(15, 23, 42, 0.88));
   border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.12));
@@ -41,10 +41,16 @@
   }
 }
 
-/* Show sidebar when open or pinned */
-.gb-sidebar.open,
-.gb-sidebar.pinned {
+/* Show sidebar when open */
+.gb-sidebar.open {
   transform: translateX(0);
+}
+
+/* Show sidebar when pinned (Desktop only >= 768px) */
+@media (min-width: 768px) {
+  .gb-sidebar.pinned {
+    transform: translateX(0);
+  }
 }
 
 /* ─── Top Control Buttons (Clean Help Icon & Light Switch Toggle) ─── */
@@ -65,6 +71,47 @@
   gap: 0.5rem;
   margin-left: auto;
   z-index: 30;
+}
+
+/* Mobile Responsive Hide: Hide help ? and toggle lock switch on mobile screens (< 768px) */
+@media (max-width: 767px) {
+  .sidebar-help-wrapper,
+  .sidebar-help-icon-btn,
+  .sidebar-help-popover,
+  .sidebar-switch-toggle {
+    display: none !important;
+  }
+
+  .sidebar-mobile-close-btn {
+    display: inline-flex !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .sidebar-mobile-close-btn {
+    display: none !important;
+  }
+}
+
+.sidebar-mobile-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.5rem;
+  background: var(--gb-glass-hover, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  color: var(--gb-text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-mobile-close-btn:hover {
+  background: var(--brand, #494be7);
+  color: #ffffff;
+  border-color: var(--brand, #494be7);
+  transform: scale(1.05);
 }
 
 /* Standalone Clean Help ? Icon Button (No Outer Box) */

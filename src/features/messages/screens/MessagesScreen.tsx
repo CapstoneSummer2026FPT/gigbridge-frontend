@@ -7,6 +7,7 @@ import {
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
   ShieldAlert, Lock, Award, LockKeyhole,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
+  ArrowLeft,
 } from 'lucide-react';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -517,9 +518,12 @@ export default function MessagesScreen() {
 
   const handleSelectRoomTab = (roomId: string) => {
     setActiveRoomId(roomId);
-    const roomConvos = conversationsState.filter(c => isRoomConvo(c, roomId));
-    if (roomConvos.length > 0 && activeConv?.roomId !== roomId) {
-      handleSelectConv(roomConvos[0].id);
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (!isMobile) {
+      const roomConvos = conversationsState.filter(c => isRoomConvo(c, roomId));
+      if (roomConvos.length > 0 && activeConv?.roomId !== roomId) {
+        handleSelectConv(roomConvos[0].id);
+      }
     }
   };
 
@@ -565,7 +569,7 @@ export default function MessagesScreen() {
 
   return (
     <AppLayout fullWidth>
-      <div className="messages-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
+      <div className={`messages-page flex flex-col h-[calc(100vh-5rem)] pt-3 md:pt-4 bg-background text-foreground overflow-hidden ${activeConv ? 'view-chat' : 'view-list'}`}>
         {/* 3-Column Layout */}
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 
@@ -945,20 +949,28 @@ export default function MessagesScreen() {
             </div>
 
             {/* Bottom prominent Go to Workspace button */}
-            <div
-              className="p-4 bg-muted/20 border-t border-border mt-auto"
-              style={{ display: activeConv?.roomType === 'workspace' && activeConv.contractId ? undefined : 'none' }}
-            >
-              <button
-                onClick={() => {
-                  if (activeConv?.contractId) navigate(`/workspace/${activeConv.contractId}`);
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer border-none"
-              >
-                <span>{t('messages.goToWorkspace')}</span>
-                <span>-&gt;</span>
-              </button>
-            </div>
+            {activeRoomId === 'room_workspace' && (() => {
+              const targetContractId = (activeConv?.roomType === 'workspace' && activeConv.contractId)
+                ? activeConv.contractId
+                : conversationsState.find(c => isRoomConvo(c, 'room_workspace') && c.contractId)?.contractId;
+
+              if (!targetContractId) return null;
+
+              return (
+                <div className="p-3 sm:p-4 bg-muted/20 border-t border-border mt-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate(`/workspace/${targetContractId}`);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-xs sm:text-sm py-3 sm:py-3.5 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer border-none"
+                  >
+                    <span>{t('messages.goToWorkspace')}</span>
+                    <span>-&gt;</span>
+                  </button>
+                </div>
+              );
+            })()}
           </section>
 
           {/* ── Column 2: Chat Area (Center Pane) ────────────────────────── */}
@@ -966,12 +978,24 @@ export default function MessagesScreen() {
             {activeConv ? (
               <>
                 {/* Header info / Context of Job */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-card shadow-sm z-10 animate-in fade-in duration-200">
-              <div className="flex min-w-0 items-center gap-3">
+            <div className="flex justify-between items-center px-3 sm:px-6 py-2.5 sm:py-4 border-b border-border bg-card shadow-sm z-10 animate-in fade-in duration-200">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3 flex-1">
+                {/* Mobile-only Back Button to Conversation List */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectConv('')}
+                  className="md:hidden flex items-center justify-center h-8 w-8 rounded-full bg-muted/60 text-foreground hover:bg-muted active:scale-95 transition-all cursor-pointer mr-0.5 shrink-0"
+                  title={t('common.back', { defaultValue: 'Quay lại' })}
+                  aria-label={t('common.back', { defaultValue: 'Quay lại' })}
+                >
+                  <ArrowLeft size={16} />
+                </button>
+
+                {/* Desktop-only Panel Toggle Button */}
                 <button
                   type="button"
                   onClick={handleToggleConversationList}
-                  className="messages-pane-toggle shrink-0"
+                  className="messages-pane-toggle desktop-only hidden md:inline-flex shrink-0"
                   title={conversationPanelToggleLabel}
                   aria-label={conversationPanelToggleLabel}
                   aria-controls="messages-conversation-panel"
@@ -979,28 +1003,30 @@ export default function MessagesScreen() {
                 >
                   {showConversationList ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
                 </button>
-                <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative">
+
+                <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative shrink-0">
                   <img
                     src={activeConv.participantAvatar}
                     alt={activeConv.participantName}
-                    className="w-11 h-11 rounded-full object-cover border border-border shadow-sm"
+                    className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover border border-border shadow-sm"
                   />
                   {activeConv.participantOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full shadow-sm" />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 border-2 border-card rounded-full shadow-sm" />
                   )}
                 </UserProfileLink>
-                <div className="flex flex-col">
-                  <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="text-sm font-extrabold text-foreground tracking-tight leading-none" tooltip={activeConv.participantName}>
+
+                <div className="flex flex-col min-w-0 flex-1">
+                  <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="text-xs sm:text-sm font-extrabold text-foreground tracking-tight leading-none truncate" tooltip={activeConv.participantName}>
                     <span style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif" }}>{activeConv.participantName}</span>
                   </UserProfileLink>
                   
                   {/* Premium Job Pill */}
                   <div 
                     onClick={() => navigate(jobDetailPath)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--gb-cyan)]/5 border border-[var(--gb-cyan)]/15 text-[10px] font-bold text-[var(--gb-cyan)] mt-1.5 max-w-[280px] md:max-w-md truncate cursor-pointer hover:bg-[var(--gb-cyan)]/10 active:scale-95 transition-all shadow-[0_1px_2px_rgba(0,119,255,0.02)]"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-[var(--gb-cyan)]/5 border border-[var(--gb-cyan)]/15 text-[9.5px] sm:text-[10px] font-bold text-[var(--gb-cyan)] mt-1 max-w-[200px] sm:max-w-md truncate cursor-pointer hover:bg-[var(--gb-cyan)]/10 active:scale-95 transition-all shadow-[0_1px_2px_rgba(0,119,255,0.02)]"
                     title={t('messages.clickViewJobPost')}
                   >
-                    <Briefcase size={11} className="flex-shrink-0" />
+                    <Briefcase size={10} className="flex-shrink-0" />
                     <span className="truncate font-bold tracking-wide uppercase">{activeConv.job.title}</span>
                     <span className="w-1 h-1 rounded-full bg-[var(--gb-cyan)]/40 mx-0.5 flex-shrink-0" />
                     <span className="font-bold flex-shrink-0">{activeConv.job.budget}</span>
@@ -1008,15 +1034,16 @@ export default function MessagesScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-2">
+
                 <button
                   onClick={() => void handleCreateGoogleMeetRoom()}
                   disabled={creatingGoogleMeet || isActiveWorkspaceDisputed}
-                  className="w-9 h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   title={creatingGoogleMeet ? t('messages.creatingGoogleMeet') : t('messages.createGoogleMeet')}
                   aria-label={creatingGoogleMeet ? t('messages.creatingGoogleMeet') : t('messages.createGoogleMeet')}
                 >
-                  {creatingGoogleMeet ? <Loader2 size={18} className="animate-spin" /> : <Video size={18} />}
+                  {creatingGoogleMeet ? <Loader2 size={16} className="animate-spin" /> : <Video size={16} />}
                 </button>
                 <button
                   type="button"
@@ -1031,10 +1058,28 @@ export default function MessagesScreen() {
                   aria-controls="messages-context-panel"
                   aria-expanded={showInfo}
                 >
-                  {showInfo ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+                  {showInfo ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
                 </button>
               </div>
             </div>
+
+            {/* Mobile-only Workspace Action Bar inside Chat */}
+            {activeConv.roomType === 'workspace' && activeConv.contractId && (
+              <div className="md:hidden px-3.5 py-2 bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 min-w-0 text-xs font-bold text-[var(--gb-cyan)]">
+                  <Briefcase size={13} className="shrink-0" />
+                  <span className="truncate">{activeConv.job.title || t('messages.goToWorkspace')}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/workspace/${activeConv.contractId}`)}
+                  className="px-3 py-1 rounded-lg bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer border-none shrink-0"
+                >
+                  <span>{t('messages.goToWorkspace')}</span>
+                  <span>-&gt;</span>
+                </button>
+              </div>
+            )}
 
             {/* Agreed deal banner: both parties can inspect the contract workflow. */}
             {dealStatus === 'agreed' && isNegotiationConversation && (
@@ -1222,17 +1267,17 @@ export default function MessagesScreen() {
                   <div
                     key={msg.id ?? idx}
                     id={`message-${msg.id}`}
-                    className={`flex items-end gap-3 max-w-[80%] ${mine ? 'self-end flex-row-reverse' : 'self-start'}`}
+                    className={`flex items-end gap-2 sm:gap-3 max-w-[95%] sm:max-w-[85%] md:max-w-[80%] min-w-0 ${mine ? 'self-end flex-row-reverse' : 'self-start'}`}
                     style={highlightedMessageId === msg.id ? { outline: '3px solid color-mix(in srgb, var(--gb-cyan) 45%, transparent)', borderRadius: 18, transition: 'outline 1s ease' } : undefined}
                   >
                     {!mine && (
                       <img
                         src={msg.senderAvatar || '/img/avatar-fallback.png'}
                         alt={msg.senderName || 'Message sender'}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover flex-shrink-0"
                       />
                     )}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 min-w-0 max-w-full">
 
                       {/* ── File message ───────────────────────────────────── */}
                       {msg.type === 'schedule' && msg.schedule ? (
@@ -1388,8 +1433,17 @@ export default function MessagesScreen() {
                 <div className="mx-auto flex max-w-3xl items-center justify-center gap-3 text-muted-foreground">
                   <Lock size={20} className="shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <strong className="text-sm">{t('workspace.conversationClosedTitle')}</strong>
-                    <p className="text-xs">{t('workspace.conversationClosedDescription')}</p>
+                    {activeConv.contractStatus === ContractStatus.Completed ? (
+                      <>
+                        <strong className="text-sm">{t('workspace.conversationClosedCompletedTitle')}</strong>
+                        <p className="text-xs">{t('workspace.conversationClosedCompletedDescription')}</p>
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-sm">{t('workspace.conversationClosedTitle')}</strong>
+                        <p className="text-xs">{t('workspace.conversationClosedDescription')}</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1451,7 +1505,7 @@ export default function MessagesScreen() {
 
                 <textarea
                   id="msg-input"
-                  className="w-full bg-transparent border-none focus:outline-none p-4 resize-none min-h-[52px] text-sm focus:ring-0"
+                  className="w-full bg-transparent border-none focus:outline-none px-3 sm:px-4 pt-2.5 sm:pt-4 pb-1 resize-none min-h-[44px] sm:min-h-[52px] text-xs sm:text-sm focus:ring-0"
                   placeholder={t('messages.typeMessage')}
                   rows={1}
                   value={messageInput}
@@ -1464,30 +1518,30 @@ export default function MessagesScreen() {
                   }}
                 />
 
-                <div className="flex justify-between items-center px-4 pb-3">
-                  <div className="flex items-center gap-2">
+                <div className="flex justify-between items-center px-2.5 sm:px-4 pb-2.5 sm:pb-3">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                     {/* Attach File */}
                     <button
                       onClick={() => chatFileInputRef.current?.click()}
-                      className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
+                      className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
                       title={t('messages.attachFile')}
                     >
-                      <Paperclip size={16} />
+                      <Paperclip size={15} />
                     </button>
 
                     {isClient && <button onClick={() => openCreateSchedule(false)} disabled={hasOngoingSchedule || checkingOngoingSchedule}
-                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-all border-none bg-transparent ${hasOngoingSchedule || checkingOngoingSchedule ? 'text-gray-400 bg-gray-200/40 cursor-not-allowed opacity-60' : 'text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted cursor-pointer'}`}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full transition-all border-none bg-transparent ${hasOngoingSchedule || checkingOngoingSchedule ? 'text-gray-400 bg-gray-200/40 cursor-not-allowed opacity-60' : 'text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted cursor-pointer'}`}
                       title={hasOngoingSchedule ? t('messages.ongoingScheduleExists') : checkingOngoingSchedule ? t('messages.checkingOngoingSchedule') : t('messages.createSchedule')}>
-                      <CalendarPlus size={16} />
+                      <CalendarPlus size={15} />
                     </button>}
 
                     {/* Emoji */}
                     <button
                       onClick={() => setMessageInput(prev => prev + '😊')}
-                      className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
+                      className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
                       title={t('messages.addEmoji')}
                     >
-                      <Smile size={16} />
+                      <Smile size={15} />
                     </button>
 
                     {/* ── Request Negotiation button – Client only when in Invited room ── */}
@@ -1496,28 +1550,28 @@ export default function MessagesScreen() {
                         id="btn-request-negotiation"
                         onClick={handleSendNegotiationRequest}
                         title="Vào vòng đàm phán"
-                        className="h-8 px-3 flex items-center gap-1.5 rounded-full text-xs font-bold text-teal-600 bg-teal-500/10 hover:bg-teal-500/20 transition-all cursor-pointer border-none"
+                        className="h-7 sm:h-8 px-2.5 sm:px-3 flex items-center gap-1 sm:gap-1.5 rounded-full text-[10.5px] sm:text-xs font-bold text-teal-600 bg-teal-500/10 hover:bg-teal-500/20 transition-all cursor-pointer border-none"
                       >
-                        <ArrowRightLeft size={14} />
-                        <span>Vào vòng đàm phán</span>
+                        <ArrowRightLeft size={13} />
+                        <span className="hidden xs:inline">Vào đàm phán</span>
                       </button>
                     )}
 
                     {/* Deal Price button – only in Negotiation rooms for clients */}
                     {canProposeDeal && (
                       <>
-                        <div className="w-px h-5 bg-border mx-1" />
+                        <div className="w-px h-4 sm:h-5 bg-border mx-0.5" />
                         <button
                           id="btn-deal-price-trigger"
                           onClick={() => setShowDealPrice(!showDealPrice)}
                           title="Propose Deal Price"
-                          className={`w-8 h-8 flex items-center justify-center rounded-full transition-all cursor-pointer border-none bg-transparent ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full transition-all cursor-pointer border-none bg-transparent ${
                             showDealPrice
                               ? 'bg-[var(--gb-cyan)] text-white'
                               : 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)] hover:text-white'
                           }`}
                         >
-                          <CreditCard size={15} />
+                          <CreditCard size={14} />
                         </button>
                       </>
                     )}
@@ -1526,9 +1580,9 @@ export default function MessagesScreen() {
                   <button
                     id="btn-send-message"
                     onClick={handleSendMessage}
-                    className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-9 px-5 rounded-full flex items-center gap-2 font-semibold text-sm transition-all active:scale-95 shadow-lg shadow-blue-500/20 cursor-pointer border-none"
+                    className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-8 sm:h-9 px-3 sm:px-5 rounded-full flex items-center gap-1.5 font-semibold text-xs sm:text-sm transition-all active:scale-95 shadow-md shadow-blue-500/20 cursor-pointer border-none shrink-0 ml-1"
                   >
-                    <span>Send</span>
+                    <span className="hidden sm:inline">Send</span>
                     <Send size={13} />
                   </button>
                 </div>
@@ -1541,7 +1595,7 @@ export default function MessagesScreen() {
                 <button
                   type="button"
                   onClick={handleToggleConversationList}
-                  className="messages-pane-toggle absolute left-4 top-4"
+                  className="messages-pane-toggle desktop-only hidden md:inline-flex absolute left-4 top-4"
                   title={conversationPanelToggleLabel}
                   aria-label={conversationPanelToggleLabel}
                   aria-controls="messages-conversation-panel"
@@ -1560,15 +1614,43 @@ export default function MessagesScreen() {
             )}
           </section>
 
-          {/* ── Column 3: Contextual Info (Right Pane – Collapsible) ─────── */}
+          {/* ── Column 3: Contextual Info (Right Pane – Collapsible / Mobile Slide-over) ─────── */}
           {activeConv && (
-            <aside
-              ref={contextPanelRef}
-              id="messages-context-panel"
-              className={`flex shrink-0 flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
-              aria-hidden={!showInfo}
-            >
-            {/* Profile */}
+            <>
+              {/* Mobile backdrop for context drawer */}
+              {showInfo && (
+                <div
+                  className="messages-drawer-backdrop md:hidden"
+                  onClick={() => setShowInfo(false)}
+                  aria-hidden="true"
+                />
+              )}
+
+              <aside
+                ref={contextPanelRef}
+                id="messages-context-panel"
+                className={`messages-context-panel flex shrink-0 flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${
+                  showInfo ? 'is-open w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'
+                }`}
+                aria-hidden={!showInfo}
+              >
+                {/* Mobile Drawer Header */}
+                <div className="md:hidden flex items-center justify-between px-5 py-3.5 border-b border-border bg-surface-muted/50 sticky top-0 z-20">
+                  <span className="text-xs font-black text-foreground uppercase tracking-wider">
+                    {t('messages.projectInfo', { defaultValue: 'Thông Tin Chi Tiết' })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowInfo(false)}
+                    className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
+                    title={t('common.close', { defaultValue: 'Đóng' })}
+                    aria-label={t('common.close', { defaultValue: 'Đóng' })}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Profile */}
             <div className="p-6 text-center border-b border-border">
               <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative inline-block mb-4">
                 <img
@@ -1668,6 +1750,7 @@ export default function MessagesScreen() {
 
 
           </aside>
+          </>
           )}
         </div>
       </div>

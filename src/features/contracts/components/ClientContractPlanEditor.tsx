@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, Save, Send } from 'lucide-react';
+import { FileText, Loader2, Save, Send, Sparkles, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -8,9 +8,10 @@ import {
   NestedMilestonePlanEditor,
   type EditableMilestonePlan,
 } from '../../../shared/components/NestedMilestonePlanEditor';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { JOB_DURATION_UNITS } from '../../jobs/utils/jobDuration';
-import { formatContractAmount } from '../../../shared/utils/contractUtils';
 import {
   calculateContractMilestoneBudget,
   prepareContractMilestonesForEditing,
@@ -174,32 +175,63 @@ export function ClientContractPlanEditor({
   };
 
   return (
-    <section className="glass-card p-6 md:p-8 space-y-6" data-testid="client-contract-plan-editor">
-      <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-2.5">
-          <FileText size={20} className="mt-0.5 shrink-0 text-brand" />
+    <section className="rounded-2xl border border-border bg-background p-6 md:p-8 space-y-6 shadow-xs relative overflow-hidden" data-testid="client-contract-plan-editor">
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-brand via-sky-500 to-emerald-500" />
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-border/80 pb-5">
+        <div className="flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center shrink-0 mt-0.5">
+            <FileText size={20} />
+          </div>
           <div>
-            <h2 className="text-lg font-black uppercase tracking-tight text-text-primary">
+            <div className="text-[10px] font-black uppercase tracking-wider text-brand">
+              {t('contracts.projectPlanStep')}
+            </div>
+            <h2 className="text-base sm:text-lg font-black text-text-primary">
               {t('contracts.defineProjectPlan')}
             </h2>
-            <p className="mt-1 max-w-3xl text-xs font-semibold leading-relaxed text-text-muted">
+            <p className="mt-1 text-xs font-medium leading-relaxed text-text-muted max-w-2xl">
               {t('contracts.defineProjectPlanDesc')}
             </p>
           </div>
         </div>
-        <div className={`shrink-0 rounded-xl border px-4 py-2 text-right ${
+
+        {/* Budget Sum Badge */}
+        <div className={`shrink-0 rounded-2xl border p-3.5 sm:px-4 sm:py-3 text-right shadow-xs ${
           budgetMatches
-            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400'
             : budgetExceeded
-              ? 'border-rose-500/30 bg-rose-500/10 text-rose-500'
-              : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+              ? 'border-rose-500/30 bg-rose-500/5 text-rose-500'
+              : 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400'
         }`}>
-          <span className="block text-[10px] font-black uppercase tracking-widest">
-            {t('contracts.sum')}
+          <span className="block text-[10px] font-black uppercase tracking-wider">
+            {t('contracts.sum')}: {budgetMatches ? t('contracts.budgetMatched') : budgetExceeded ? t('contracts.budgetExceeded') : t('contracts.budgetAllocating')}
           </span>
-          <strong className="text-sm font-black">
-            {formatContractAmount(milestoneTotal)} / {formatContractAmount(contractBudget)}
-          </strong>
+          <div className="flex items-center justify-end gap-1.5 mt-1 font-black text-sm sm:text-base">
+            <GCoinIcon size={16} />
+            <span>{formatGigCoinNumber(milestoneTotal)}</span>
+            <span className="opacity-40 text-xs font-bold">/</span>
+            <span>{formatGigCoinNumber(contractBudget)}</span>
+          </div>
+          <div className="text-[11px] font-semibold opacity-85 mt-0.5">
+            ≈ {formatGigCoinToVnd(milestoneTotal)}
+          </div>
+        </div>
+      </div>
+
+      {/* Guidelines Callout */}
+      <div className="rounded-2xl border border-brand/20 bg-brand/5 p-4 sm:p-4.5 flex items-start gap-3.5">
+        <div className="w-7 h-7 rounded-lg bg-brand/15 text-brand flex items-center justify-center shrink-0 mt-0.5">
+          <Sparkles size={16} />
+        </div>
+        <div className="space-y-0.5 min-w-0">
+          <p className="text-xs sm:text-sm font-extrabold text-text-primary leading-snug">
+            {t('contracts.planEditorGuidelines')}
+          </p>
+          <p className="text-[11px] font-medium text-text-muted">
+            {t('contracts.planEditorGuidelinesSub')}
+          </p>
         </div>
       </div>
 
@@ -265,29 +297,30 @@ export function ClientContractPlanEditor({
       </div>
 
       {budgetError && (
-        <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-500">
-          {budgetError}
-        </p>
+        <div role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2.5 shadow-xs">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{budgetError}</span>
+        </div>
       )}
 
-      <div className="flex flex-col justify-end gap-3 border-t border-border pt-5 sm:flex-row">
+      <div className="flex flex-col sm:flex-row justify-end gap-3 border-t border-border pt-5">
         <button
           type="button"
           disabled={persistAction !== null}
           onClick={() => void persist('save')}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-xs font-extrabold text-text-primary shadow-xs transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-xs font-extrabold text-text-primary shadow-xs transition hover:bg-surface-muted hover:border-border-hover cursor-pointer active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {persistAction === 'save' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-          {t('contracts.saveDraftDetails')}
+          <span>{t('contracts.saveDraftDetails')}</span>
         </button>
         <button
           type="button"
           disabled={persistAction !== null}
           onClick={() => void persist('submit')}
-          className="btn-primary-custom inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-2.5 text-xs font-black text-white bg-gradient-to-r from-brand via-[#494be7] to-indigo-600 hover:opacity-95 shadow-md shadow-brand/25 cursor-pointer active:scale-[0.99] border-none disabled:cursor-not-allowed disabled:opacity-50"
         >
           {persistAction === 'submit' ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-          {t('contracts.submitToFreelancer')}
+          <span>{t('contracts.submitToFreelancer')}</span>
         </button>
       </div>
     </section>

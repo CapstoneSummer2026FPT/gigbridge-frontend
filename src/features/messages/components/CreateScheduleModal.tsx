@@ -109,33 +109,59 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
         ? !scheduleTime
         : !scheduleTitle.trim() || !scheduleTime);
 
+  const datePart = scheduleTime ? scheduleTime.slice(0, 10) : '';
+  const timePart = scheduleTime ? scheduleTime.slice(11, 16) : '';
+
+  const handleDateChange = (newDate: string) => {
+    if (!newDate) {
+      setScheduleTime('');
+      return;
+    }
+    const time = timePart || '09:00';
+    const combined = `${newDate}T${time}`;
+    setScheduleTime(combined);
+    setMidnightConfirmed(Number(time.slice(0, 2)) >= 2);
+  };
+
+  const handleTimeChange = (newTime: string) => {
+    if (!newTime) {
+      if (datePart) setScheduleTime(`${datePart}T09:00`);
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const date = datePart || today;
+    const combined = `${date}T${newTime}`;
+    setScheduleTime(combined);
+    setMidnightConfirmed(Number(newTime.slice(0, 2)) >= 2);
+  };
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Main Modal Shell */}
-      <div className="relative w-full max-w-xl bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+      <div className="schedule-modal-shell relative w-full bg-card border border-border rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
 
         {/* Modal Header */}
-        <div className="px-6 pt-6 pb-5 border-b border-border bg-muted/30 flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 shadow-sm">
-              <Calendar size={22} />
+        <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3.5 sm:pb-5 border-b border-border bg-muted/30 flex items-start justify-between gap-3 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <span className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 shadow-sm">
+              <Calendar size={20} className="sm:w-[22px] sm:h-[22px]" />
             </span>
 
             <div className="min-w-0 space-y-0.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">
+              <div className="flex items-center gap-1.5 text-[9.5px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">
                 <Sparkles size={11} />
                 <span>{isCancel ? 'HỦY BỎ LỊCH HẸN' : 'GIGBRIDGE SCHEDULING SYSTEM'}</span>
               </div>
-              <h2 className="text-lg font-black text-foreground tracking-tight truncate">
+              <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight truncate">
                 {modalTitle}
               </h2>
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Clock size={12} className="text-[var(--brand)] shrink-0" />
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Clock size={11} className="text-[var(--brand)] shrink-0" />
                 <span>{t('schedule.vietnamTime', 'Múi giờ chuẩn: Việt Nam (GMT+7)')}</span>
               </p>
             </div>
@@ -143,7 +169,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all border-none bg-transparent cursor-pointer shrink-0"
+            className="p-1.5 sm:p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all border-none bg-transparent cursor-pointer shrink-0"
             aria-label="Close"
           >
             <X size={18} />
@@ -151,7 +177,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
         </div>
 
         {/* Modal Content Body */}
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
 
           {/* Mode: CANCEL */}
           {isCancel ? (
@@ -164,7 +190,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                 value={scheduleReason}
                 onChange={e => setScheduleReason(e.target.value)}
                 placeholder={t('schedule.reason', 'Vui lòng nhập lý do hủy lịch hẹn để thông báo đối tác...')}
-                className="w-full min-h-[130px] bg-background/80 border border-border/80 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-red-500/30 focus:border-red-500 outline-none transition-all resize-none shadow-inner"
+                className="w-full min-h-[120px] bg-background/80 border border-border/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-500/30 focus:border-red-500 outline-none transition-all resize-none shadow-inner"
               />
             </div>
           ) : (
@@ -176,33 +202,52 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                     Tiêu đề lịch hẹn <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <FileText size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+                    <FileText size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
                     <input
                       maxLength={200}
                       value={scheduleTitle}
                       onChange={e => setScheduleTitle(e.target.value)}
                       placeholder={t('schedule.title', 'Ví dụ: Phỏng vấn trao đổi chi tiết dự án')}
-                      className="w-full pl-10 pr-4 py-3 bg-background/80 border border-border/80 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)] outline-none transition-all shadow-inner"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-background/80 border border-border/80 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)] outline-none transition-all shadow-inner"
                     />
                   </div>
                 </div>
               )}
 
               {/* Date & Time Field Card */}
-              <div className="space-y-2 p-4 rounded-2xl border border-border bg-card shadow-sm">
+              <div className="space-y-2.5 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-border bg-card shadow-sm">
                 <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground">
                   <CalendarDays size={15} className="text-[var(--brand)]" />
                   <span>Thời gian diễn ra cuộc hẹn</span> <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="datetime-local"
-                  value={scheduleTime}
-                  onChange={e => {
-                    setScheduleTime(e.target.value);
-                    setMidnightConfirmed(Number(e.target.value.slice(11, 13)) >= 2);
-                  }}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm font-bold text-foreground focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)] outline-none transition-all"
-                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Date Input */}
+                  <div className="space-y-1 min-w-0">
+                    <span className="block text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Ngày hẹn
+                    </span>
+                    <input
+                      type="date"
+                      value={datePart}
+                      onChange={e => handleDateChange(e.target.value)}
+                      className="schedule-datetime-input w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs sm:text-sm font-bold text-foreground focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)] outline-none transition-all cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Time Input */}
+                  <div className="space-y-1 min-w-0">
+                    <span className="block text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Giờ hẹn (ICT)
+                    </span>
+                    <input
+                      type="time"
+                      value={timePart}
+                      onChange={e => handleTimeChange(e.target.value)}
+                      className="schedule-datetime-input w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs sm:text-sm font-bold text-foreground focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)] outline-none transition-all cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Late night / Midnight warning */}
@@ -362,11 +407,11 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="relative z-10 p-5 border-t border-border/60 bg-muted/40 flex items-center gap-3">
+        <div className="relative z-10 p-3.5 sm:p-5 border-t border-border/60 bg-muted/40 flex items-center gap-2.5 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3.5 px-4 rounded-2xl border border-border bg-background hover:bg-muted text-muted-foreground font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm"
+            className="flex-1 py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl border border-border bg-background hover:bg-muted text-muted-foreground font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm"
           >
             Đóng
           </button>
@@ -375,7 +420,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
             type="button"
             disabled={isSubmitDisabled}
             onClick={submitSchedule}
-            className={`flex-1 py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-wider text-white transition-all cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isCancel
+            className={`flex-1 py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-wider text-white transition-all cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isCancel
               ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20'
               : 'bg-[var(--brand)] hover:bg-[var(--brand)]/90 shadow-md shadow-blue-500/20 active:scale-[0.98]'
               }`}

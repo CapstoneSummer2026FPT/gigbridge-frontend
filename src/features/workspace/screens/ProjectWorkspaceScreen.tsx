@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import {
   FileText, CreditCard,
   Upload, Link2, X, AlertCircle, Loader2,
-  FolderOpen
+  FolderOpen, MessageSquare
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -32,7 +32,7 @@ import { WorkspaceHeaderBar } from '../components/WorkspaceHeaderBar';
 import { WorkspaceListBar } from '../components/WorkspaceListBar';
 import { ManageMilestone } from '../components/ManageMilestone';
 import { ChatAndInfoPanel } from '../components/ChatAndInfoPanel';
-import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { WorkspaceSkeletonScreen } from '../components/WorkspaceSkeletonScreen';
 import { SubmitMilestoneModal } from '../components/SubmitMilestoneModal';
 import type { UploadTransferProgress } from '../../../service/apiService';
 import {
@@ -50,7 +50,7 @@ export default function ProjectWorkspaceScreen() {
   const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFileDto[]>([]);
   const [workspaceFilesLoading, setWorkspaceFilesLoading] = useState(false);
   const [workspaceFilesError, setWorkspaceFilesError] = useState<string | null>(null);
-  const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
+  const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('milestones');
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(() => {
     try {
       return localStorage.getItem('gigbridge_workspace_left_collapsed') === 'true';
@@ -660,39 +660,45 @@ export default function ProjectWorkspaceScreen() {
         )}
 
         {/* Mobile Navigation Tabs (visible only on mobile/tablet) */}
-        <div className="flex lg:hidden rounded-xl border border-border bg-card overflow-hidden flex-shrink-0">
+        <div className="flex lg:hidden p-1 bg-muted/60 dark:bg-muted/40 backdrop-blur-md rounded-2xl border border-border shrink-0 shadow-2xs gap-1">
           <button
             type="button"
             onClick={() => setMobileTab('list')}
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+            className={`flex-1 py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mobileTab === 'list'
-                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
-                : 'border-transparent text-muted-foreground'
+                ? 'bg-card text-[var(--gb-cyan)] shadow-sm font-black border border-border/80'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t('workspace.conversations', { defaultValue: 'Hội thoại' })}
+            <FolderOpen size={13} className="shrink-0" />
+            <span className="truncate">{t('workspace.conversations', { defaultValue: 'Dự án' })}</span>
           </button>
           <button
             type="button"
             onClick={() => setMobileTab('milestones')}
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+            className={`flex-1 py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer relative ${
               mobileTab === 'milestones'
-                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
-                : 'border-transparent text-muted-foreground'
+                ? 'bg-card text-[var(--gb-cyan)] shadow-sm font-black border border-border/80'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t('workspace.milestones', { defaultValue: 'Cột mốc' })}
+            <CreditCard size={13} className="shrink-0" />
+            <span className="truncate">{t('workspace.milestones', { defaultValue: 'Cột mốc' })}</span>
+            {allMilestonesApproved && activeContract?.status !== ContractStatus.Completed && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            )}
           </button>
           <button
             type="button"
             onClick={() => setMobileTab('chat')}
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+            className={`flex-1 py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mobileTab === 'chat'
-                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
-                : 'border-transparent text-muted-foreground'
+                ? 'bg-card text-[var(--gb-cyan)] shadow-sm font-black border border-border/80'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t('workspace.chatFiles', { defaultValue: 'Chat & File' })}
+            <MessageSquare size={13} className="shrink-0" />
+            <span className="truncate">{t('workspace.chatFiles', { defaultValue: 'Chat & File' })}</span>
           </button>
         </div>
 
@@ -713,16 +719,14 @@ export default function ProjectWorkspaceScreen() {
             mobileTab={mobileTab}
             onSelectProject={(id) => {
               setActiveProjectId(id);
+              setMobileTab('milestones');
               navigate(`/workspace/${id}`);
             }}
           />
 
           {isWorkspaceLoading ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-card border border-[var(--brand)]/30 rounded-2xl shadow-sm min-w-0 p-8 text-center relative overflow-hidden">
-              <LemniscateBloomLoader
-                label={t('workspace.loadingWorkspaceData', { defaultValue: 'Đang tải dữ liệu không gian làm việc...' })}
-                size={56}
-              />
+            <div className={`flex-1 min-w-0 ${mobileTab === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+              <WorkspaceSkeletonScreen />
             </div>
           ) : (
             <>

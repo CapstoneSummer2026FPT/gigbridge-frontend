@@ -1,7 +1,794 @@
-.signature-workflow-page {
-  padding: 2rem 1rem;
-  max-width: 900px;
+/* ==========================================================================
+   SIGNATURE WORKFLOW SCREEN STYLES
+   Responsive, Theme-Aware, Clean SaaS Styling for Contract E-Signing
+   ========================================================================== */
+
+.sw-container {
+  min-height: calc(100vh - 4rem);
+  background-color: var(--background);
+  color: var(--text-primary);
+  padding: 1.5rem 1rem;
+  max-width: 1440px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .sw-container {
+    padding: 2rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sw-container {
+    padding: 2.5rem 2rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TOP HEADER & STEPPER
+   -------------------------------------------------------------------------- */
+.sw-header-card {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .sw-header-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2rem;
+  }
+}
+
+.sw-header-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, var(--brand, #494be7), #38bdf8, #10b981);
+}
+
+.sw-header-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.sw-header-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--brand, #494be7);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: fit-content;
+  transition: opacity 0.2s;
+}
+
+.sw-header-back-btn:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+.sw-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--brand, #494be7);
+}
+
+.sw-header-title {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.25;
+}
+
+@media (min-width: 640px) {
+  .sw-header-title {
+    font-size: 1.625rem;
+  }
+}
+
+.sw-header-subtitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 42rem;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .sw-header-subtitle {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Stepper Component */
+.sw-stepper-container {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  flex-shrink: 0;
+  align-self: flex-start;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .sw-stepper-container {
+    align-self: center;
+  }
+}
+
+.sw-step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+
+.sw-step-item.active {
+  background-color: var(--brand, #494be7);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(73, 75, 231, 0.25);
+}
+
+.sw-step-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.2);
+  font-size: 0.625rem;
+  font-weight: 900;
+}
+
+.sw-step-item:not(.active) .sw-step-badge {
+  background-color: var(--border);
+  color: var(--text-muted);
+}
+
+.sw-step-arrow {
+  color: var(--text-muted);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   ALERT NOTIFICATIONS
+   -------------------------------------------------------------------------- */
+.sw-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1.125rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.sw-alert-error {
+  background-color: #e11d48;
+  color: #ffffff;
+}
+
+.sw-alert-success {
+  background-color: #059669;
+  color: #ffffff;
+}
+
+.sw-alert-warning {
+  background-color: #d97706;
+  color: #ffffff;
+}
+
+.sw-alert-content {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.sw-alert-close-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.sw-alert-close-btn:hover {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   CARD & BOX STYLES
+   -------------------------------------------------------------------------- */
+.sw-card {
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .sw-card {
+    padding: 1.5rem;
+    gap: 1.25rem;
+  }
+}
+
+.sw-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.sw-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.sw-card-title-lg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   STEP 1: REVIEW PROPOSAL & SCOPE
+   -------------------------------------------------------------------------- */
+.sw-review-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1.125rem 1.25rem;
+  border-radius: 1rem;
+  background-color: rgba(73, 75, 231, 0.05);
+  border: 1px solid rgba(73, 75, 231, 0.2);
+  color: var(--text-primary);
+}
+
+.sw-review-banner-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  background-color: rgba(73, 75, 231, 0.15);
+  color: var(--brand, #494be7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.sw-review-banner-title {
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.sw-review-banner-desc {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.sw-review-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .sw-review-grid {
+    grid-template-columns: 8fr 4fr;
+  }
+}
+
+.sw-scope-box {
+  padding: 1rem 1.125rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-line;
+}
+
+.sw-milestone-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.sw-milestone-card {
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+@media (min-width: 480px) {
+  .sw-milestone-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+}
+
+.sw-milestone-card:hover {
+  border-color: var(--brand, #494be7);
+}
+
+.sw-milestone-title {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sw-milestone-due {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+  display: block;
+}
+
+.sw-milestone-amount-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 480px) {
+  .sw-milestone-amount-wrap {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.125rem;
+  }
+}
+
+.sw-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  border-radius: 0.875rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.sw-party-card {
+  padding: 0.875rem 1rem;
+  border-radius: 0.875rem;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   STEP 2: CAPTURE & SIGN
+   -------------------------------------------------------------------------- */
+.sw-capture-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .sw-capture-grid {
+    grid-template-columns: 7fr 5fr;
+  }
+}
+
+.sw-pdf-viewer-wrap {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  padding: 0.5rem;
+  min-height: 480px;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .sw-pdf-viewer-wrap {
+    min-height: 600px;
+  }
+}
+
+.sw-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.sw-form-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.sw-form-input {
+  width: 100%;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.sw-form-input:focus {
+  border-color: var(--brand, #494be7);
+  box-shadow: 0 0 0 3px rgba(73, 75, 231, 0.15);
+}
+
+.sw-form-hint {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sw-form-hint.error {
+  color: #e11d48;
+}
+
+.sw-temp-sig-box {
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sw-temp-sig-img-container {
+  padding: 0.75rem;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sw-canvas-container {
+  border-radius: 1rem;
+  border: 2px dashed var(--border);
+  background-color: #ffffff;
+  padding: 0.375rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.sw-canvas-el {
+  width: 100%;
+  height: 140px;
+  touch-action: none;
+  cursor: crosshair;
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .sw-canvas-el {
+    height: 160px;
+  }
+}
+
+.sw-canvas-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  padding-top: 0.25rem;
+}
+
+.sw-counterpart-notice {
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #d97706;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.sw-policy-consent-box {
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface-muted);
+}
+
+.sw-policy-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+
+.sw-policy-checkbox {
+  margin-top: 0.125rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.sw-submit-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   STEP 3: COMPLETE CONFIRMATION
+   -------------------------------------------------------------------------- */
+.sw-complete-wrapper {
+  max-width: 48rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sw-complete-card {
+  padding: 1.75rem 1.25rem;
+  border-radius: 1.5rem;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .sw-complete-card {
+    padding: 2.5rem 2rem;
+  }
+}
+
+.sw-complete-icon-circle {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 9999px;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.sw-summary-pills-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+}
+
+@media (min-width: 640px) {
+  .sw-summary-pills-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.sw-summary-pill {
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sw-complete-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 480px) {
+  .sw-complete-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   BUTTON SYSTEM
+   -------------------------------------------------------------------------- */
+.sw-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 900;
+  color: #ffffff;
+  background: linear-gradient(to right, #3f41d0, var(--brand, #494be7), #6366f1);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(73, 75, 231, 0.25);
+  transition: all 0.2s ease;
+}
+
+.sw-btn-primary:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.sw-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.sw-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sw-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sw-btn-secondary:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  border-color: var(--brand, #494be7);
+}
+
+.sw-btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sw-btn-brand-subtle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--brand, #494be7);
+  background-color: rgba(73, 75, 231, 0.1);
+  border: 1px solid rgba(73, 75, 231, 0.25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sw-btn-brand-subtle:hover:not(:disabled) {
+  background-color: rgba(73, 75, 231, 0.18);
+}
+
+.sw-btn-brand-subtle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .signature-workflow-page--capture {

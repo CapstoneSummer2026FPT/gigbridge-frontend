@@ -113,6 +113,47 @@ export interface ESignDocumentDto {
   signatures: ESignSignatureDto[];
 }
 
+export interface ESignSignatureStatusDto {
+  signatureId: string;
+  documentId: string;
+  userId: string;
+  signerRole: number;
+  status: number;
+  isDraftValid: boolean;
+  signedAt?: string | null;
+  draftSubmittedAt?: string | null;
+  signatureImageUrl?: string | null;
+  signatureWidth?: number | null;
+  signatureHeight?: number | null;
+  identityOrTaxCode?: string | null;
+}
+
+export interface ESignDocumentStatusDto {
+  documentId: string;
+  contractId: string | null;
+  status: ESignDocumentStatus;
+  revision: number;
+  createdAt: string;
+  updatedAt?: string | null;
+  expiresAt?: string | null;
+  finalizedAt?: string | null;
+  currentUserSignerRole: number | null;
+  canCurrentUserSign: boolean;
+  hasDocxArtifact: boolean;
+  hasPdfArtifact: boolean;
+  pdfSizeBytes?: number | null;
+  semanticHash?: string | null;
+  signatureCount: number;
+  signatures: ESignSignatureStatusDto[];
+}
+
+export interface ESignDocumentRevisionChanged {
+  documentId: string;
+  contractId: string | null;
+  revision: number;
+  changeKind: 'upsert' | 'deleted';
+}
+
 export interface ESignDocumentListItemDto {
   documentId: string;
   jobPostId: string;

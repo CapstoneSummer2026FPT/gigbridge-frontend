@@ -40,6 +40,7 @@ import { CustomSelect } from '../../../shared/components/CustomSelect';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useClientProposals, type SortBy } from '../hooks/useClientProposals';
+import '../../../shared/components/styles/conic-border-button.css';
 import '../styles/client-proposals-screen.css';
 
 const badgeClass = (status: number) => {
@@ -113,7 +114,6 @@ export default function ClientProposalsScreen() {
     evalModalOpen,
     setEvalModalOpen,
     evalLoading,
-    evalResult,
     evalError,
     modalTab,
     setModalTab,
@@ -165,50 +165,64 @@ export default function ClientProposalsScreen() {
       <div ref={containerRef} className="min-h-[calc(100vh-4rem)] bg-background text-text-primary">
         
         {/* ── Top Glass Header Bar ─────────────────────────────────────────── */}
-        <header className="cps-gsap-header cps-header sticky top-0 z-40 border-b border-border px-6 py-3.5 backdrop-blur shrink-0">
-          <div className="w-full min-w-0 flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate('/client/dashboard')}
-              aria-label={t('proposalReview.back')}
-              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-text-secondary transition hover:border-brand/50 hover:text-brand cursor-pointer ${buttonFocus}`}
-            >
-              <ArrowLeft size={18} />
-            </button>
+        <header className="cps-gsap-header cps-header sticky top-0 z-40 border-b border-border px-3 sm:px-6 py-2.5 sm:py-3.5 backdrop-blur shrink-0">
+          <div className="w-full min-w-0 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => navigate('/client/dashboard')}
+                aria-label={t('proposalReview.back')}
+                className={`inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-text-secondary transition hover:border-brand/50 hover:text-brand cursor-pointer ${buttonFocus}`}
+              >
+                <ArrowLeft size={17} />
+              </button>
 
-            <div className="min-w-0">
-              <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-brand">
-                <Sparkles size={14} />
-                {t('proposalReview.eyebrow')}
+              <div className="min-w-0">
+                <div className="mb-0.5 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-brand">
+                  <Sparkles size={12} />
+                  {t('proposalReview.eyebrow')}
+                </div>
+                <h1 className="truncate text-base sm:text-2xl lg:text-3xl font-black tracking-tight text-text-primary">
+                  {t('proposalReview.titleWord1')} <span className="text-brand italic font-light">{t('proposalReview.titleWord2')}</span>
+                </h1>
+                <p className="hidden sm:block mt-0.5 text-xs font-semibold text-text-muted">{t('proposalReview.subtitle')}</p>
               </div>
-              <h1 className="truncate text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
-                {t('proposalReview.titleWord1')} <span className="text-brand italic font-light">{t('proposalReview.titleWord2')}</span>
-              </h1>
-              <p className="mt-0.5 text-xs font-semibold text-text-muted">{t('proposalReview.subtitle')}</p>
             </div>
 
             {/* View Mode Toggle */}
-            <div className="ml-auto flex items-center rounded-xl border border-border bg-surface-muted/60 p-1 text-xs font-bold">
+            <div className="flex items-center gap-1 rounded-xl border border-border bg-surface-muted/60 p-1 text-xs font-bold shrink-0 w-full sm:w-auto justify-center sm:justify-start">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`rounded-lg px-3 py-1.5 font-extrabold transition cursor-pointer ${viewMode === 'table' ? 'bg-background shadow-sm text-text-primary' : 'text-text-muted hover:text-text-primary'}`}
+                className={`flex-1 sm:flex-initial rounded-lg px-2.5 sm:px-3 py-1.5 font-extrabold transition cursor-pointer text-center ${viewMode === 'table' ? 'bg-background shadow-sm text-text-primary' : 'text-text-muted hover:text-text-primary'}`}
               >
-                Standard Table
+                Bảng tiêu chuẩn
               </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('aiJudging')}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition cursor-pointer ${viewMode === 'aiJudging' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 dark:text-purple-400 hover:text-text-primary'}`}
-              >
-                <Brain size={14} /> AI Judging Leaderboard
-              </button>
+              {viewMode === 'aiJudging' ? (
+                <div className="conic-border-wrap rounded-lg flex-1 sm:flex-initial">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('aiJudging')}
+                    className="conic-border-btn !py-1.5 !px-2.5 sm:!px-3 !text-xs !bg-brand !text-white flex items-center justify-center gap-1.5 font-extrabold shadow-sm w-full h-full"
+                  >
+                    <Brain size={14} className="text-[#AFDBFF]" /> AI Leaderboard
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setViewMode('aiJudging')}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-3 py-1.5 font-extrabold transition cursor-pointer text-brand hover:text-text-primary"
+                >
+                  <Brain size={14} className="text-brand" /> AI Leaderboard
+                </button>
+              )}
             </div>
           </div>
         </header>
 
         {/* ── Main Workspace ─────────────────────────────────────────────────── */}
-        <main className="w-full flex flex-col lg:flex-row gap-4 p-4 min-w-0">
+        <main className="w-full flex flex-col lg:flex-row gap-3 sm:gap-4 p-3 sm:p-4 min-w-0">
           
           {/* Left Sidebar: Job Posts Navigation */}
           <div className="w-full lg:w-[420px] shrink-0">
@@ -221,7 +235,7 @@ export default function ClientProposalsScreen() {
           </div>
 
           {/* Right Main Content */}
-          <div className="flex-1 min-w-0 space-y-4">
+          <div className="flex-1 min-w-0 space-y-3 sm:space-y-4">
             {viewMode === 'aiJudging' ? (
               <ProposalJudgingListView
                 jobPostId={selectedJobId || ''}
@@ -238,23 +252,23 @@ export default function ClientProposalsScreen() {
             ) : (
               <>
                 {selectedJob && !selectedJobCanNegotiate && (
-                  <div role="status" className="rounded-2xl bg-amber-500 text-white px-4 py-3 text-xs font-black flex items-center gap-2.5 shadow-md">
+                  <div role="status" className="rounded-2xl bg-amber-500 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-black flex items-center gap-2.5 shadow-md">
                     <ShieldAlert size={18} className="shrink-0 text-white" />
                     <span>{t('proposalReview.readOnly')}</span>
                   </div>
                 )}
 
                 {/* Metric Summary Cards */}
-                <section aria-label={t('proposalReview.metrics.label')} className="cps-gsap-metrics grid grid-cols-2 gap-3 xl:grid-cols-4">
+                <section aria-label={t('proposalReview.metrics.label')} className="cps-gsap-metrics grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
                   {metricCards.map(({ label, value, icon: Icon, tone }) => (
-                    <article key={label} className="cps-card p-4 shadow-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{label}</p>
-                          <p className="mt-1 text-xl font-black tracking-tight text-text-primary">{value}</p>
+                    <article key={label} className="cps-card p-3 sm:p-4 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-text-muted truncate">{label}</p>
+                          <p className="mt-0.5 sm:mt-1 text-base sm:text-xl font-black tracking-tight text-text-primary truncate">{value}</p>
                         </div>
-                        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-surface-muted ${tone}`}>
-                          <Icon size={19} />
+                        <span className={`inline-flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-surface-muted ${tone}`}>
+                          <Icon size={16} className="sm:w-[19px] sm:h-[19px]" />
                         </span>
                       </div>
                     </article>
@@ -262,17 +276,17 @@ export default function ClientProposalsScreen() {
                 </section>
 
                 {/* Filter Controls & Proposals Table */}
-                <section className="cps-gsap-main rounded-2xl border border-border bg-background shadow-sm overflow-hidden flex flex-col min-h-[640px]">
-                  <div className="border-b border-border p-4 shrink-0">
-                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                <section className="cps-gsap-main rounded-2xl border border-border bg-background shadow-sm overflow-hidden flex flex-col min-h-[500px] sm:min-h-[640px]">
+                  <div className="border-b border-border p-3 sm:p-4 shrink-0">
+                    <div className="flex flex-col gap-2.5 sm:gap-3 xl:flex-row xl:items-center">
                       <label className="relative min-w-0 flex-1">
                         <span className="sr-only">{t('proposalReview.search')}</span>
-                        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={17} />
+                        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
                         <input
                           value={search}
                           onChange={event => setSearch(event.target.value)}
                           placeholder={t('proposalReview.searchPlaceholder')}
-                          className={`${inputClass} pl-10`}
+                          className={`${inputClass} pl-9.5 text-xs`}
                         />
                       </label>
                       <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -489,7 +503,6 @@ export default function ClientProposalsScreen() {
           setModalTab={setModalTab}
           evalLoading={evalLoading}
           evalError={evalError}
-          evalResult={evalResult}
           rawAnswers={rawAnswers}
           rejectProposalId={rejectProposalId}
           setRejectProposalId={setRejectProposalId}
@@ -575,7 +588,7 @@ function ProposalTableRow({ item, t, onOpen }: {
         <p className="mt-1 text-xs font-semibold text-text-muted truncate">{item.workItemCount || 0} {t('proposalReview.workItems')} · {formatGigCoin(item.milestoneTotal || 0)}</p>
       </td>
       <td className="px-4 py-4 align-top text-xs font-medium text-text-secondary leading-relaxed overflow-hidden">
-        <p className="line-clamp-2 break-words text-xs font-medium text-text-secondary leading-relaxed">
+        <p className="line-clamp-2 break-all [overflow-wrap:anywhere] text-xs font-medium text-text-secondary leading-relaxed">
           {previewText(item.analysisSummaryPreview || item.coverLetter, 120) || t('proposalReview.notProvided')}
         </p>
       </td>
@@ -603,27 +616,27 @@ function ProposalCard({ item, t, onOpen }: {
           onOpen(item.proposalsId, event.currentTarget);
         }
       }}
-      className="cps-card p-4 cursor-pointer transition hover:border-brand/40"
+      className="cps-card p-4 cursor-pointer transition hover:border-brand/40 overflow-hidden min-w-0 w-full"
     >
-      <div className="flex items-start justify-between gap-3">
-        <UserProfileLink userId={item.freelancerUserId} role="freelancer" className="flex min-w-0 items-center gap-3">
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <UserProfileLink userId={item.freelancerUserId} role="freelancer" className="flex min-w-0 flex-1 items-center gap-3">
           <UserAvatar
             userId={item.freelancerUserId}
             name={item.freelancerName || 'Freelancer'}
             size="md"
           />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="truncate font-extrabold text-text-primary text-sm">{item.freelancerName || t('proposalReview.freelancer')}</h2>
-            <p className="text-xs font-semibold text-text-muted">{formatDate(item.submittedAt)}</p>
+            <p className="text-xs font-semibold text-text-muted truncate">{formatDate(item.submittedAt)}</p>
           </div>
         </UserProfileLink>
         <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] ${badgeClass(status)}`}>{getStatusLabel(status)}</span>
       </div>
-      <div className="my-3 grid grid-cols-2 gap-3 rounded-xl bg-surface-muted/40 p-3 text-xs">
-        <div><p className="text-[11px] font-bold text-text-muted">{t('proposalReview.columns.offer')}</p><p className="mt-1 font-black text-brand">{formatGigCoin(item.proposedBudget || 0)}</p></div>
-        <div><p className="text-[11px] font-bold text-text-muted">{t('proposalReview.sorts.duration')}</p><p className="mt-1 font-extrabold text-text-primary">{item.proposedDuration || '—'}</p></div>
+      <div className="my-3 grid grid-cols-2 gap-3 rounded-xl bg-surface-muted/40 p-3 text-xs min-w-0">
+        <div className="min-w-0 overflow-hidden"><p className="text-[11px] font-bold text-text-muted truncate">{t('proposalReview.columns.offer')}</p><p className="mt-1 font-black text-brand truncate">{formatGigCoin(item.proposedBudget || 0)}</p></div>
+        <div className="min-w-0 overflow-hidden"><p className="text-[11px] font-bold text-text-muted truncate">{t('proposalReview.sorts.duration')}</p><p className="mt-1 font-extrabold text-text-primary truncate">{item.proposedDuration || '—'}</p></div>
       </div>
-      <p className="line-clamp-2 text-xs font-medium leading-relaxed text-text-secondary">{previewText(item.analysisSummaryPreview || item.coverLetter, 150) || t('proposalReview.notProvided')}</p>
+      <p className="line-clamp-2 break-all [overflow-wrap:anywhere] text-xs font-medium leading-relaxed text-text-secondary">{previewText(item.analysisSummaryPreview || item.coverLetter, 150) || t('proposalReview.notProvided')}</p>
     </article>
   );
 }

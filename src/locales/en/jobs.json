@@ -472,7 +472,10 @@
       "totalChars": "Total: {{count}} / 15,000 chars",
       "cappedAt15k": "(capped at 15k)",
       "removeAll": "Remove all",
-      "placeholderWithDoc": "Add additional requirements or instructions for the attached document..."
+      "placeholderWithDoc": "Add additional requirements or instructions for the attached document...",
+      "aiExtractTitle": "AI Intelligent Document Parser",
+      "aiExtractDesc": "Automatically extract job requirements, recommended skills, and budget estimates from your document.",
+      "emptyHintMobile": "No files attached yet. Tap above to upload your document."
     }
   },
   "postJobAI": {

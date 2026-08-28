@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TopNav } from './TopNav';
 import { Sidebar } from './Sidebar';
 import { useApp } from '../../app/providers/AppProvider';
@@ -25,6 +25,11 @@ export function AppLayout({
   hideTopNav = false,
   mainClassName = '',
 }: AppLayoutProps) {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth >= 768;
+  });
+
   const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
     try {
       return localStorage.getItem('sidebar_pinned') === 'true';
@@ -33,7 +38,29 @@ export function AppLayout({
     }
   });
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => isSidebarPinned);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return false;
+    }
+    return isSidebarPinned;
+  });
+
+  // Track viewport breakpoint to completely disable pinned lock behavior on mobile (< 768px)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    const handleResize = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches);
+      if (!e.matches) {
+        // When transitioning down to mobile, close sidebar so it does not block the screen
+        setIsSidebarOpen(false);
+      }
+    };
+
+    setIsDesktop(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleResize);
+    return () => mediaQuery.removeEventListener('change', handleResize);
+  }, []);
 
   // Safely get app context - might throw if not within provider
   let user = null;
@@ -55,23 +82,22 @@ export function AppLayout({
     } catch {
       /* ignore */
     }
-    if (nextPinned) {
+    if (nextPinned && isDesktop) {
       setIsSidebarOpen(true);
     }
   };
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    setIsSidebarOpen(prev => !prev);
   };
 
   const closeSidebar = () => {
-    if (isSidebarPinned) return;
     setIsSidebarOpen(false);
   };
 
-  const forceCloseSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+  // Pin state is only effective on desktop (>= 768px)
+  const effectiveIsPinned = isDesktop && isSidebarPinned;
+  const effectiveIsOpen = isDesktop ? (isSidebarPinned || isSidebarOpen) : isSidebarOpen;
 
   return (
     <div className="app-layout">
@@ -83,13 +109,13 @@ export function AppLayout({
         {hasSidebar && (
           <>
             <Sidebar
-              isOpen={isSidebarOpen || isSidebarPinned}
-              onClose={isSidebarPinned ? undefined : forceCloseSidebar}
-              isPinned={isSidebarPinned}
+              isOpen={effectiveIsOpen}
+              onClose={closeSidebar}
+              isPinned={effectiveIsPinned}
               onTogglePin={togglePin}
             />
-            {/* Overlay for mobile (only active when unpinned) */}
-            {isSidebarOpen && !isSidebarPinned && (
+            {/* Overlay for mobile (only when open on mobile) */}
+            {!isDesktop && isSidebarOpen && (
               <div 
                 className="sidebar-overlay" 
                 onClick={closeSidebar}
@@ -100,12 +126,12 @@ export function AppLayout({
         )}
 
         <main
-          className={`app-layout-main ${hideTopNav ? 'no-top-nav' : ''} ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen || isSidebarPinned ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
+          className={`app-layout-main ${hideTopNav ? 'no-top-nav' : ''} ${hasSidebar ? 'with-sidebar' : ''} ${effectiveIsOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
         >
           {excludeMeshGradient ? (
             children
           ) : (
-            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6">
+            <MeshGradientBackground className={`min-h-[calc(100vh-6rem)] ${fullWidth ? 'p-0' : 'p-3 sm:p-6'}`}>
               {children}
             </MeshGradientBackground>
           )}
