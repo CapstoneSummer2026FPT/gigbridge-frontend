@@ -88,6 +88,9 @@ export function clampMilestonesToExpectedTargets(
       for (let i = keepCount; i < result.length; i++) {
         const excess = result[i];
         lastKept.amount = Math.round(((lastKept.amount || 0) + (excess.amount || 0)) * 100) / 100;
+        if (excess.title && !lastKept.title.includes(excess.title)) {
+          lastKept.title = lastKept.title ? `${lastKept.title} | ${excess.title}` : excess.title;
+        }
         if (excess.description) {
           lastKept.description = lastKept.description ? `${lastKept.description} | ${excess.description}` : excess.description;
         }
@@ -98,6 +101,7 @@ export function clampMilestonesToExpectedTargets(
           lastKept.acceptanceCriteria = lastKept.acceptanceCriteria ? `${lastKept.acceptanceCriteria} | ${excess.acceptanceCriteria}` : excess.acceptanceCriteria;
         }
       }
+
 
       result = mergedResult;
     }
