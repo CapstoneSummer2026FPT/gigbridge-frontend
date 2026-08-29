@@ -4,7 +4,7 @@ export const SITE_URL = 'https://gigbridge.id.vn';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/img/seo-og-default.png`;
 
 const MARKETING_COPY: Record<MarketingRoute, { readonly title: string; readonly description: string }> = {
-  '/': { title: 'GigBridge - Nền tảng kết nối freelancer và doanh nghiệp', description: 'Tìm freelancer phù hợp hoặc tiếp cận cơ hội việc làm freelance minh bạch trên GigBridge.' },
+  '/': { title: 'GigBridge | Thuê freelancer và tìm việc freelance', description: 'GigBridge kết nối doanh nghiệp với freelancer tại Việt Nam qua ghép nối thông minh, hợp đồng điện tử, milestone và thanh toán an toàn.' },
   '/about': { title: 'Về GigBridge | Kết nối nhân tài freelance', description: 'Tìm hiểu sứ mệnh của GigBridge trong việc kết nối doanh nghiệp với cộng đồng freelancer.' },
   '/careers': { title: 'Cơ hội nghề nghiệp tại GigBridge', description: 'Khám phá cơ hội đồng hành cùng GigBridge và xây dựng tương lai việc làm linh hoạt.' },
   '/faq': { title: 'Câu hỏi thường gặp | GigBridge', description: 'Giải đáp các câu hỏi phổ biến về tài khoản, việc làm, hợp đồng và thanh toán trên GigBridge.' },
@@ -33,7 +33,7 @@ export const getSeoMetadata = (state: SeoRouteState): SeoMetadata => {
   if (state.kind === 'marketing') {
     const copy = MARKETING_COPY[state.route];
     const jsonLd = state.route === '/'
-      ? [{ '@context': 'https://schema.org', '@type': 'Organization', name: 'GigBridge', url: SITE_URL, logo: `${SITE_URL}/img/logo.png` }, { '@context': 'https://schema.org', '@type': 'WebSite', name: 'GigBridge', url: SITE_URL, inLanguage: 'vi-VN' }]
+      ? [{ '@context': 'https://schema.org', '@type': 'Organization', name: 'GigBridge', url: SITE_URL, logo: `${SITE_URL}/apple-touch-icon.png` }, { '@context': 'https://schema.org', '@type': 'WebSite', name: 'GigBridge', url: SITE_URL, inLanguage: 'vi-VN' }]
       : [breadcrumb(copy.title.split('|')[0].trim(), state.route)];
     return { ...copy, canonicalPath: state.route, robots: 'index, follow', jsonLd };
   }

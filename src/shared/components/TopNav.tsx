@@ -35,6 +35,8 @@ interface TopNavProps {
   showMenuButton?: boolean;
 }
 
+const UNREAD_MESSAGES_FALLBACK_POLL_MS = 60_000;
+
 const navItems = [
   { label: 'Find Work', path: '/public/job-posts' },
   { label: 'Hire Talent', path: '/public/freelancers' },
@@ -965,11 +967,10 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   <button
                     type="button"
                     onClick={() => setSearchScope(TOP_NAV_SEARCH_SCOPE.Talent)}
-                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                      searchScope === TOP_NAV_SEARCH_SCOPE.Talent
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${searchScope === TOP_NAV_SEARCH_SCOPE.Talent
                         ? 'bg-[var(--brand)] text-white shadow-sm'
                         : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
+                      }`}
                   >
                     <UsersRound size={13} />
                     <span>{t('topNavSearch.talent')}</span>
@@ -977,11 +978,10 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   <button
                     type="button"
                     onClick={() => setSearchScope(TOP_NAV_SEARCH_SCOPE.Jobs)}
-                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                      searchScope === TOP_NAV_SEARCH_SCOPE.Jobs
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${searchScope === TOP_NAV_SEARCH_SCOPE.Jobs
                         ? 'bg-[var(--brand)] text-white shadow-sm'
                         : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
+                      }`}
                   >
                     <BriefcaseBusiness size={13} />
                     <span>{t('topNavSearch.jobs')}</span>

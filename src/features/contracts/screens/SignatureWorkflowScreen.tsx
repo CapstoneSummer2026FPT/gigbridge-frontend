@@ -66,6 +66,7 @@ interface PreparedSignatureImage {
 
 const PDF_SIGNATURE_MAX_WIDTH = 220;
 const PDF_SIGNATURE_MAX_HEIGHT = 80;
+const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
 
 const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImage => {
   const fallbackScale = Math.min(
@@ -275,6 +276,15 @@ export default function SignatureWorkflowScreen() {
   );
 
   useEffect(() => {
+    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
+
+    const intervalId = window.setInterval(() => {
+      if (window.document.visibilityState === 'visible') {
+        void refreshWorkflow();
+      }
+    }, ESIGN_STATUS_FALLBACK_POLL_MS);
+
+    return () => window.clearInterval(intervalId);
     const fetchContractDetails = async () => {
       if (!contractId) {
         setError('contracts.invalidContract');
@@ -551,8 +561,8 @@ export default function SignatureWorkflowScreen() {
   useESignDocumentRevisionEvent(
     contractId,
     signatureStep === 'complete' &&
-      (isWaitingForCounterpart ||
-        (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
+    (isWaitingForCounterpart ||
+      (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
     handleDocumentChangedDuringSigning,
   );
 
@@ -1268,4 +1278,4 @@ export default function SignatureWorkflowScreen() {
       </div>
     </AppLayout>
   );
-}
+}
