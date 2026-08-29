@@ -543,71 +543,71 @@ export default function WalletHistoryScreen() {
   return (
     <AppLayout>
       <div className="w-full max-w-[100vw] overflow-x-hidden bg-background min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-8 min-w-0">
           
           {/* Header Banner */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4 bg-gradient-to-r from-brand/10 via-brand-soft/20 to-transparent p-6 rounded-3xl border border-brand/20 shadow-xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4 bg-gradient-to-r from-brand/10 via-brand-soft/20 to-transparent p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-brand/20 shadow-xl">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="p-2 rounded-xl bg-brand/20 text-brand shadow-xs">
-                  <History size={20} />
+                  <History size={18} className="sm:w-5 sm:h-5" />
                 </span>
                 <span className="px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-brand/15 text-brand border border-brand/30">
                   {t('walletHistory.badgeLabel')}
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">{t('walletHistory.title')}</h1>
-              <p className="text-sm font-semibold text-text-secondary mt-1">{t('walletHistory.subtitle')}</p>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-text-primary tracking-tight">{t('walletHistory.title')}</h1>
+              <p className="text-xs sm:text-sm font-semibold text-text-secondary mt-1">{t('walletHistory.subtitle')}</p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
               {activeFiltersCount > 0 && (
                 <button
                   onClick={handleResetFilters}
-                  className="px-3.5 py-2.5 rounded-xl text-xs font-black text-rose-500 hover:bg-rose-500/10 border border-rose-500/25 flex items-center gap-1.5 transition-all shadow-xs"
+                  className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl text-xs font-black text-rose-500 hover:bg-rose-500/10 border border-rose-500/25 flex items-center justify-center gap-1.5 transition-all shadow-xs min-h-[40px]"
                 >
                   <RotateCcw size={14} />
-                  Xóa bộ lọc ({activeFiltersCount})
+                  <span>Xóa bộ lọc ({activeFiltersCount})</span>
                 </button>
               )}
               <button
                 onClick={() => void fetchTransactions()}
-                className="px-4 py-2.5 rounded-xl bg-brand text-white font-bold text-sm hover:bg-brand/90 transition-all flex items-center gap-2 shadow-md shadow-brand/20"
+                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-brand text-white font-bold text-xs sm:text-sm hover:bg-brand/90 transition-all flex items-center justify-center gap-2 shadow-md shadow-brand/20 min-h-[40px]"
                 disabled={loading}
               >
                 <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-                {t('walletHistory.refresh')}
+                <span>{t('walletHistory.refresh')}</span>
               </button>
             </div>
           </div>
 
           {/* Metric Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
             {[
-              { label: t('walletHistory.statTotalDeposits'), value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={18} />, color: 'emerald', border: 'border-emerald-500/25', bg: 'from-emerald-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalHold'), value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={18} />, color: 'rose', border: 'border-rose-500/25', bg: 'from-rose-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalRefund'), value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={18} />, color: 'cyan', border: 'border-cyan-500/25', bg: 'from-cyan-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalWithdrawn'), value: <GigCoinAmount amount={stats.totalWithdrawn} />, icon: <ArrowDownRight size={18} />, color: 'amber', border: 'border-amber-500/25', bg: 'from-amber-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statPending'), value: stats.pending.toString(), icon: <Loader2 size={18} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber', border: 'border-amber-500/25', bg: 'from-amber-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalTransactions'), value: stats.totalTransactions.toString(), icon: <Wallet size={18} />, color: 'indigo', border: 'border-brand/25', bg: 'from-brand/15 via-surface to-surface' },
+              { label: t('walletHistory.statTotalDeposits'), value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'emerald', border: 'border-emerald-500/25', bg: 'from-emerald-500/15 via-surface to-surface' },
+              { label: t('walletHistory.statTotalHold'), value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'rose', border: 'border-rose-500/25', bg: 'from-rose-500/15 via-surface to-surface' },
+              { label: t('walletHistory.statTotalRefund'), value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'cyan', border: 'border-cyan-500/25', bg: 'from-cyan-500/15 via-surface to-surface' },
+              { label: t('walletHistory.statTotalWithdrawn'), value: <GigCoinAmount amount={stats.totalWithdrawn} />, icon: <ArrowDownRight size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'amber', border: 'border-amber-500/25', bg: 'from-amber-500/15 via-surface to-surface' },
+              { label: t('walletHistory.statPending'), value: stats.pending.toString(), icon: <Loader2 size={16} className={`sm:w-[18px] sm:h-[18px] ${stats.pending > 0 ? 'animate-spin' : ''}`} />, color: 'amber', border: 'border-amber-500/25', bg: 'from-amber-500/15 via-surface to-surface' },
+              { label: t('walletHistory.statTotalTransactions'), value: stats.totalTransactions.toString(), icon: <Wallet size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'indigo', border: 'border-brand/25', bg: 'from-brand/15 via-surface to-surface' },
             ].map(stat => (
-              <div key={stat.label} className={`p-4 rounded-2xl bg-gradient-to-br ${stat.bg} border ${stat.border} shadow-lg transition-all hover:scale-[1.02]`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-text-secondary truncate">{stat.label}</p>
-                  <span className="p-1.5 rounded-xl bg-surface/80 shadow-xs text-text-primary">
+              <div key={stat.label} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${stat.bg} border ${stat.border} shadow-sm transition-all hover:scale-[1.02] min-w-0`}>
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-1">
+                  <p className="text-[11px] sm:text-xs font-bold text-text-secondary truncate">{stat.label}</p>
+                  <span className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-surface/80 shadow-xs text-text-primary shrink-0">
                     {stat.icon}
                   </span>
                 </div>
-                <p className="text-lg sm:text-xl font-black text-text-primary truncate">{stat.value}</p>
+                <p className="text-sm sm:text-base lg:text-lg font-black text-text-primary truncate">{stat.value}</p>
               </div>
             ))}
           </div>
 
           {/* Advanced Multi-filter Toolbar with CustomSelect */}
-          <div className="relative z-30 rounded-2xl border border-border bg-surface/90 backdrop-blur-xl p-5 shadow-xl space-y-4 mb-6">
+          <div className="relative z-30 rounded-2xl border border-border bg-surface/90 backdrop-blur-xl p-3.5 sm:p-5 shadow-xl space-y-3.5 sm:space-y-4 mb-6">
             
             {/* Primary Filter Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
               {/* Keyword Search Input */}
               <div className="relative col-span-1 sm:col-span-2 lg:col-span-1">
                 <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
@@ -616,7 +616,7 @@ export default function WalletHistoryScreen() {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Tìm mã GD, hợp đồng, PayOS..."
-                  className="w-full h-[50px] rounded-xl bg-surface-muted border border-border px-4 pl-10 pr-8 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
+                  className="w-full h-[46px] sm:h-[50px] rounded-xl bg-surface-muted border border-border px-4 pl-10 pr-8 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -660,24 +660,24 @@ export default function WalletHistoryScreen() {
             </div>
 
             {/* Expandable Options Bar */}
-            <div className="flex items-center justify-between pt-2 border-t border-border">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-border">
               <button
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="text-xs font-extrabold text-brand hover:underline flex items-center gap-1.5"
+                className="text-xs font-extrabold text-brand hover:underline flex items-center gap-1.5 py-1"
               >
                 <SlidersHorizontal size={14} />
-                {showAdvancedFilters ? 'Thu gọn bộ lọc nâng cao' : 'Bộ lọc nâng cao & Mốc thời gian'}
+                <span>{showAdvancedFilters ? 'Thu gọn bộ lọc nâng cao' : 'Bộ lọc nâng cao & Mốc thời gian'}</span>
                 <ChevronRight size={14} className={`transition-transform duration-200 ${showAdvancedFilters ? '-rotate-90' : 'rotate-90'}`} />
               </button>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-text-muted hidden sm:inline">Sắp xếp:</span>
+              <div className="flex items-center justify-between sm:justify-end gap-2">
+                <span className="text-xs font-bold text-text-muted">Sắp xếp:</span>
                 <CustomSelect
                   value={sortBy}
                   options={sortSelectOptions}
                   onChange={setSortBy}
                   searchable={false}
-                  className="w-44 cs-compact"
+                  className="w-48 sm:w-44 cs-compact"
                   ariaLabel="Sắp xếp danh sách giao dịch"
                 />
               </div>
@@ -685,7 +685,7 @@ export default function WalletHistoryScreen() {
 
             {/* Advanced Filters Panel */}
             {showAdvancedFilters && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-border animate-in fade-in slide-in-from-top-2 duration-200">
                 {/* CustomSelect 4: Balance Source Pool Filter */}
                 <div>
                   <label className="block text-[11px] font-extrabold text-text-muted mb-1.5 uppercase tracking-wider">Nguồn ví giao dịch</label>
@@ -719,7 +719,7 @@ export default function WalletHistoryScreen() {
                         type="date"
                         value={fromDate}
                         onChange={e => setFromDate(e.target.value)}
-                        className="w-full h-[50px] rounded-xl bg-surface-muted border border-border px-3 text-xs font-bold text-text-primary outline-none focus:border-brand"
+                        className="w-full h-[46px] sm:h-[50px] rounded-xl bg-surface-muted border border-border px-3 text-xs font-bold text-text-primary outline-none focus:border-brand"
                       />
                     </div>
                     <div>
@@ -728,7 +728,7 @@ export default function WalletHistoryScreen() {
                         type="date"
                         value={toDate}
                         onChange={e => setToDate(e.target.value)}
-                        className="w-full h-[50px] rounded-xl bg-surface-muted border border-border px-3 text-xs font-bold text-text-primary outline-none focus:border-brand"
+                        className="w-full h-[46px] sm:h-[50px] rounded-xl bg-surface-muted border border-border px-3 text-xs font-bold text-text-primary outline-none focus:border-brand"
                       />
                     </div>
                   </div>
@@ -742,40 +742,40 @@ export default function WalletHistoryScreen() {
 
             {/* Active Filter Badges Bar */}
             {activeFiltersCount > 0 && (
-              <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-border text-xs">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-3 border-t border-border text-xs">
                 <span className="text-text-muted font-bold text-[11px] uppercase tracking-wider">Đang lọc:</span>
                 {searchQuery && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-brand/10 text-brand border border-brand/20 font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-brand/10 text-brand border border-brand/20 font-bold text-xs">
                     Từ khóa: "{searchQuery}"
                     <button onClick={() => setSearchQuery('')} className="hover:text-text-primary"><X size={12} /></button>
                   </span>
                 )}
                 {typeFilter !== 'all' && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold text-xs">
                     Loại: {typeFilter}
                     <button onClick={() => setTypeFilter('all')} className="hover:text-text-primary"><X size={12} /></button>
                   </span>
                 )}
                 {statusFilter !== 'all' && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold text-xs">
                     Trạng thái: {statusFilter === '1' ? 'Thành công' : statusFilter === '0' ? 'Đang xử lý' : statusFilter === '2' ? 'Thất bại' : 'Đã hủy'}
                     <button onClick={() => setStatusFilter('all')} className="hover:text-text-primary"><X size={12} /></button>
                   </span>
                 )}
                 {directionFilter !== 'all' && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold text-xs">
                     Dòng tiền: {directionFilter === 'credit' ? 'Tiền cộng (+)' : 'Tiền trừ (-)'}
                     <button onClick={() => setDirectionFilter('all')} className="hover:text-text-primary"><X size={12} /></button>
                   </span>
                 )}
                 {balanceSourceFilter !== 'all' && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold text-xs">
                     Nguồn ví: {balanceSourceFilter}
                     <button onClick={() => setBalanceSourceFilter('all')} className="hover:text-text-primary"><X size={12} /></button>
                   </span>
                 )}
                 {datePreset !== 'all' && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-cyan-500/10 text-cyan border border-cyan-500/20 font-bold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-500/10 text-cyan border border-cyan-500/20 font-bold text-xs">
                     Thời gian: {datePreset}
                     <button onClick={() => { setDatePreset('all'); setFromDate(''); setToDate(''); }} className="hover:text-text-primary"><X size={12} /></button>
                   </span>
@@ -786,13 +786,13 @@ export default function WalletHistoryScreen() {
 
           {/* Interactive Table Container */}
           {loading ? (
-            <div className="rounded-2xl border border-border bg-surface/90 p-12 text-center flex flex-col items-center justify-center shadow-xl">
-              <Loader2 size={40} className="text-brand animate-spin mb-4" />
-              <p className="text-text-secondary text-sm font-bold">{t('walletHistory.loadingText')}</p>
+            <div className="rounded-2xl border border-border bg-surface/90 p-8 sm:p-12 text-center flex flex-col items-center justify-center shadow-xl">
+              <Loader2 size={36} className="text-brand animate-spin mb-3" />
+              <p className="text-text-secondary text-xs sm:text-sm font-bold">{t('walletHistory.loadingText')}</p>
             </div>
           ) : errorText ? (
-            <div className="rounded-2xl p-8 border border-rose-500/25 bg-rose-500/5 text-center shadow-xl">
-              <p className="text-rose-500 font-bold mb-3">{errorText}</p>
+            <div className="rounded-2xl p-6 sm:p-8 border border-rose-500/25 bg-rose-500/5 text-center shadow-xl">
+              <p className="text-rose-500 font-bold mb-3 text-xs sm:text-sm">{errorText}</p>
               <button onClick={() => void fetchTransactions()} className="px-4 py-2 rounded-xl bg-rose-500 text-white font-bold text-xs shadow-md">
                 {t('walletHistory.retry')}
               </button>
@@ -800,7 +800,66 @@ export default function WalletHistoryScreen() {
           ) : (
             <div className="space-y-4">
               <div className="rounded-2xl border border-border bg-surface/90 shadow-xl overflow-hidden backdrop-blur-xl">
-                <div className="overflow-x-auto">
+                {/* 1. Mobile Card List (< md: 768px) */}
+                <div className="block md:hidden divide-y divide-border/50">
+                  {paginatedTransactions.map(trans => (
+                    <div
+                      key={trans.walletTransactionId}
+                      onClick={() => setViewTransaction(trans)}
+                      className="p-3.5 sm:p-4 hover:bg-brand-soft/10 transition-colors cursor-pointer space-y-2.5"
+                    >
+                      {/* Top Row: Icon + Type Badge + Status Badge */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-xl bg-surface-muted border border-border flex items-center justify-center shrink-0 shadow-2xs">
+                            {getTypeIcon(trans)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-extrabold text-text-primary text-xs truncate block">
+                              {getDescription(trans)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          {getStatusBadge(trans.status, trans.gatewayOrderCode)}
+                        </div>
+                      </div>
+
+                      {/* Center Row: Amount & Badges */}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {getTypeBadge(trans.type)}
+                          {getBalanceSourceBadge(trans.balanceSource)}
+                        </div>
+                        <div className="text-right shrink-0">
+                          {getAmountDisplay(trans)}
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Date & Actions */}
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted pt-1.5 border-t border-border/40">
+                        <span>{formatDate(trans.createdAt)}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopyId(trans.walletTransactionId, e)}
+                            className="p-1 hover:text-brand text-text-muted flex items-center gap-1 text-[10px] font-mono"
+                            title="Sao chép ID"
+                          >
+                            <span>ID: {trans.walletTransactionId.substring(0, 8)}...</span>
+                            {copiedId === trans.walletTransactionId ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                          </button>
+                          <span className="text-brand font-bold flex items-center gap-0.5 text-xs">
+                            {t('walletHistory.detailBtn')} <ChevronRight size={12} />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 2. Desktop Table (>= md: 768px) */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse min-w-[750px]">
                     <thead>
                       <tr className="border-b border-border bg-surface-muted/90 text-[11px] text-text-muted uppercase font-black tracking-wider">
@@ -896,17 +955,17 @@ export default function WalletHistoryScreen() {
 
                 {/* Empty State */}
                 {filteredTransactions.length === 0 && (
-                  <div className="p-12 text-center">
-                    <History size={48} className="mx-auto mb-4 text-text-muted opacity-50" />
-                    <p className="text-lg font-black text-text-primary mb-2">{t('walletHistory.noTransactions')}</p>
-                    <p className="text-sm font-semibold text-text-secondary mb-4">{t('walletHistory.noTransactionsDesc')}</p>
+                  <div className="p-8 sm:p-12 text-center">
+                    <History size={44} className="mx-auto mb-3 text-text-muted opacity-50" />
+                    <p className="text-base sm:text-lg font-black text-text-primary mb-1.5">{t('walletHistory.noTransactions')}</p>
+                    <p className="text-xs sm:text-sm font-semibold text-text-secondary mb-4">{t('walletHistory.noTransactionsDesc')}</p>
                     {activeFiltersCount > 0 && (
                       <button
                         onClick={handleResetFilters}
-                        className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-brand/20"
+                        className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-brand/20 min-h-[38px]"
                       >
                         <RotateCcw size={14} />
-                        Xóa tất cả bộ lọc
+                        <span>Xóa tất cả bộ lọc</span>
                       </button>
                     )}
                   </div>
@@ -915,33 +974,31 @@ export default function WalletHistoryScreen() {
 
               {/* Complete Pagination Controls with CustomSelect */}
               {filteredTransactions.length > 0 && (
-                <div className="relative z-20 rounded-2xl border border-border bg-surface/90 px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+                <div className="relative z-20 rounded-2xl border border-border bg-surface/90 px-3.5 sm:px-5 py-3.5 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 shadow-xl">
                   {/* Left: Summary Info & CustomSelect Page Size */}
-                  <div className="flex items-center gap-4 text-xs font-bold text-text-secondary flex-wrap">
-                    <span>
-                      Hiển thị <strong className="text-text-primary">{startIndex + 1}</strong> –{' '}
-                      <strong className="text-text-primary">{endIndex}</strong> trên tổng số{' '}
-                      <strong className="text-brand">{filteredTransactions.length}</strong> giao dịch
+                  <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-4 text-xs font-bold text-text-secondary flex-wrap">
+                    <span className="text-[11px] sm:text-xs">
+                      Hiển thị <strong className="text-text-primary">{startIndex + 1}</strong>–<strong className="text-text-primary">{endIndex}</strong> / <strong className="text-brand">{filteredTransactions.length}</strong> GD
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-text-muted font-semibold">Xem:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-text-muted font-semibold text-[11px]">Xem:</span>
                       <CustomSelect
                         value={String(pageSize)}
                         options={pageSizeSelectOptions}
                         onChange={val => setPageSize(Number(val))}
                         searchable={false}
-                        className="w-36 cs-compact"
-                        ariaLabel="Chọn số số hàng trên mỗi trang"
+                        className="w-32 sm:w-36 cs-compact"
+                        ariaLabel="Chọn số hàng trên mỗi trang"
                       />
                     </div>
                   </div>
 
                   {/* Right: Page Navigation Buttons */}
-                  <div className="flex items-center gap-1.5 text-xs">
+                  <div className="flex items-center justify-center sm:justify-end gap-1 sm:gap-1.5 text-xs overflow-x-auto pb-1 sm:pb-0">
                     <button
                       onClick={() => setCurrentPage(1)}
                       disabled={currentPage === 1}
-                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors"
+                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                       title="Trang đầu"
                     >
                       <ChevronsLeft size={16} />
@@ -949,7 +1006,7 @@ export default function WalletHistoryScreen() {
                     <button
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
-                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors"
+                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                       title="Trang trước"
                     >
                       <ChevronLeft size={16} />
@@ -967,7 +1024,7 @@ export default function WalletHistoryScreen() {
                               {showEllipsis && <span className="px-1 text-text-muted font-bold">...</span>}
                               <button
                                 onClick={() => setCurrentPage(page)}
-                                className={`w-9 h-9 rounded-xl font-black transition-all text-xs ${
+                                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl font-black transition-all text-xs flex items-center justify-center ${
                                   currentPage === page
                                     ? 'bg-brand text-white shadow-md shadow-brand/30 ring-2 ring-brand/50 scale-105'
                                     : 'hover:bg-surface-muted text-text-secondary border border-border'
@@ -983,7 +1040,7 @@ export default function WalletHistoryScreen() {
                     <button
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
-                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors"
+                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                       title="Trang sau"
                     >
                       <ChevronRight size={16} />
@@ -991,7 +1048,7 @@ export default function WalletHistoryScreen() {
                     <button
                       onClick={() => setCurrentPage(totalPages)}
                       disabled={currentPage === totalPages}
-                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors"
+                      className="p-2 rounded-xl border border-border hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                       title="Trang cuối"
                     >
                       <ChevronsRight size={16} />
@@ -1004,235 +1061,194 @@ export default function WalletHistoryScreen() {
         </div>
       </div>
 
-      {/* Transaction Detail Modal (2-Column Split Layout matching ProjectReviewDialog) */}
+      {/* Transaction Detail Modal (Clean Modern Digital Receipt Layout) */}
       {viewTransaction && (
         <div
           role="presentation"
-          className="fixed inset-0 z-[1300] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto"
+          className="fixed inset-0 z-[1300] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto"
           onClick={() => setViewTransaction(null)}
         >
-          {/* Decorative ambient blobs */}
+          {/* Decorative ambient background */}
           <div className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full blur-[120px] opacity-20 pointer-events-none bg-brand/30" />
-          <div className="absolute bottom-0 right-0 w-1/2 h-1/2 rounded-full blur-[150px] opacity-15 pointer-events-none bg-text-muted/20" />
+          <div className="absolute bottom-0 right-0 w-1/2 h-1/2 rounded-full blur-[150px] opacity-15 pointer-events-none bg-emerald-500/20" />
 
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="tx-detail-title"
             onClick={e => e.stopPropagation()}
-            className="relative z-10 w-full lg:w-[800px] h-auto lg:h-[560px] max-h-[90vh] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col lg:flex-row shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-auto overflow-y-auto lg:overflow-hidden"
+            className="relative z-10 w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-border/80 bg-background text-text-primary backdrop-blur-2xl my-0 sm:my-auto animate-in fade-in zoom-in-95 duration-200"
           >
-            {/* ═══ LEFT COLUMN: Creative Cyber Financial Pass (Fixed 330px width) ════════════════════ */}
-            <div className="w-full lg:w-[330px] shrink-0 h-full p-6 sm:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-border/60 bg-gradient-to-b from-[var(--brand)]/15 via-surface-card/60 to-surface-card/80 relative overflow-hidden">
-              {/* Ambient Mesh Orbs */}
-              <div className="absolute -top-12 -left-12 w-44 h-44 rounded-full bg-[var(--brand)]/25 blur-3xl pointer-events-none animate-pulse" />
-              <div className="absolute -bottom-12 -right-12 w-44 h-44 rounded-full bg-[var(--mint)]/20 blur-3xl pointer-events-none" />
-
-              {/* Header Pass Bar */}
-              <div className="relative z-10 flex items-center justify-between gap-2 mb-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface/80 backdrop-blur-md border border-[var(--brand)]/30 text-[var(--brand)] text-[10px] font-black uppercase tracking-widest shadow-xs">
-                  <ShieldCheck size={13} className="text-[var(--brand)]" />
-                  GigBridge Verified Pass
+            {/* 1. Modal Header */}
+            <header className="flex items-center justify-between border-b border-border/70 px-4 sm:px-6 py-3.5 shrink-0 bg-surface/80">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-brand/10 text-brand border border-brand/20 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={16} />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setViewTransaction(null)}
-                  aria-label="Close"
-                  className="lg:hidden p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
+                <div className="min-w-0">
+                  <h2 id="tx-detail-title" className="text-xs sm:text-sm font-black text-text-primary truncate">
+                    {t('walletHistory.detailTitle', 'Chi tiết Giao Dịch')}
+                  </h2>
+                  <span className="font-mono text-[10px] font-bold text-muted-foreground block truncate">
+                    #{viewTransaction.walletTransactionId.substring(0, 12)}...
+                  </span>
+                </div>
               </div>
 
-              {/* Hero Centerpiece: Holographic Coin Pass */}
-              <div className="relative z-10 flex flex-col items-center text-center my-auto py-2">
-                {/* Floating Ring & Icon Halo */}
-                <div className="relative w-24 h-24 mb-4 flex items-center justify-center">
-                  {/* Outer Rotating Orbit Ring */}
-                  <div className="absolute inset-0 rounded-full border-2 border-dashed border-[var(--brand)]/40 animate-[spin_12s_linear_infinite]" />
-                  <div className="absolute -inset-2 rounded-full bg-[var(--brand)]/20 blur-2xl animate-pulse pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => setViewTransaction(null)}
+                aria-label={t('common.close', 'Đóng')}
+                className="p-1.5 rounded-xl border border-border hover:bg-muted text-muted-foreground transition hover:text-foreground cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center shrink-0"
+              >
+                <X size={17} />
+              </button>
+            </header>
 
-                  {/* Main Glass Medallion */}
-                  <div className="relative z-10 w-20 h-20 rounded-2xl bg-surface/90 border-2 border-[var(--brand)]/40 ring-4 ring-background shadow-2xl flex items-center justify-center text-[var(--brand)] transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                    {getTypeIcon(viewTransaction)}
-                  </div>
+            {/* 2. Scrollable Body */}
+            <div className="overflow-y-auto px-4 sm:px-6 py-4 space-y-4 flex-1 min-h-0">
+              {/* Hero Centerpiece: Icon + Amount + Status Badges */}
+              <div className="text-center py-2 bg-gradient-to-b from-brand/5 to-transparent rounded-2xl p-4 border border-brand/10">
+                <div className="w-14 h-14 rounded-2xl bg-surface border-2 border-brand/30 shadow-md flex items-center justify-center mx-auto mb-3 text-brand">
+                  {getTypeIcon(viewTransaction)}
                 </div>
 
-                {/* Amount & Currency Pass */}
-                <div className="my-1 flex flex-col items-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1">Giá trị giao dịch</span>
-                  <div className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
-                    {getAmountDisplay(viewTransaction)}
-                  </div>
-                  {viewTransaction.tokenAmount ? (
-                    <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--brand)]/10 border border-[var(--brand)]/20 text-xs font-black text-[var(--brand)] shadow-2xs">
-                      <Coins size={12} />
-                      ≈ {formatGigCoinToVnd(Math.abs(viewTransaction.tokenAmount))} VNĐ
-                    </span>
-                  ) : null}
-                </div>
-
-                <p className="text-xs font-bold text-text-secondary mt-3 max-w-xs leading-relaxed px-2">
-                  {getDescription(viewTransaction)}
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                  Giá trị giao dịch
                 </p>
-              </div>
 
-              {/* Bottom Security Barcode Pattern */}
-              <div className="relative z-10 rounded-2xl border border-border/70 bg-surface/90 backdrop-blur-md p-3.5 space-y-2.5 shadow-xs mt-auto">
-                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-text-muted">
-                  <span>Chứng từ bảo mật</span>
-                  <span className="text-[var(--brand)] font-mono font-bold">PASS #{viewTransaction.walletTransactionId.substring(0, 6)}</span>
+                <div className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary flex items-center justify-center gap-1.5">
+                  <GigCoinAmount
+                    amount={viewTransaction.tokenAmount}
+                    prefix={viewTransaction.isCredit ? '+' : '-'}
+                  />
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+
+                {viewTransaction.vndAmount > 0 && (
+                  <p className="mt-1 text-xs font-bold text-muted-foreground">
+                    ≈ {fmtNumber(viewTransaction.vndAmount)} VNĐ
+                  </p>
+                )}
+
+                {/* Badges strip */}
+                <div className="flex items-center justify-center gap-1.5 flex-wrap mt-3">
                   {getTypeBadge(viewTransaction.type)}
                   {getStatusBadge(viewTransaction.status, viewTransaction.gatewayOrderCode)}
                   {getBalanceSourceBadge(viewTransaction.balanceSource)}
                 </div>
-                {/* Barcode Lines Visual */}
-                <div className="pt-2 border-t border-border/50 flex items-center justify-center gap-1 opacity-60">
-                  <div className="h-5 w-1 bg-text-primary rounded-full" />
-                  <div className="h-5 w-0.5 bg-text-primary rounded-full" />
-                  <div className="h-5 w-1.5 bg-text-primary rounded-full" />
-                  <div className="h-5 w-0.5 bg-text-primary rounded-full" />
-                  <div className="h-5 w-2 bg-text-primary rounded-full" />
-                  <div className="h-5 w-0.5 bg-text-primary rounded-full" />
-                  <div className="h-5 w-1 bg-text-primary rounded-full" />
-                  <div className="h-5 w-2.5 bg-text-primary rounded-full" />
-                  <div className="h-5 w-0.5 bg-text-primary rounded-full" />
-                  <div className="h-5 w-1 bg-text-primary rounded-full" />
-                  <div className="h-5 w-1.5 bg-text-primary rounded-full" />
-                </div>
-              </div>
-            </div>
 
-            {/* ═══ RIGHT COLUMN: Metadata Grid (Fixed 470px width) ════════════════════ */}
-            <div className="w-full lg:w-[470px] flex-1 h-full p-6 sm:p-7 bg-background relative flex flex-col justify-between overflow-y-auto">
-              {/* Desktop close */}
-              <button
-                type="button"
-                onClick={() => setViewTransaction(null)}
-                aria-label="Close"
-                className="hidden lg:flex absolute top-4 right-4 p-1.5 rounded-lg border border-border hover:bg-surface-hover text-text-muted cursor-pointer z-20"
-              >
-                <X size={16} />
-              </button>
-
-              <div className="mb-5">
-                <h1 id="tx-detail-title" className="text-xl font-black text-text-primary mb-1">
-                  {t('walletHistory.detailTitle', 'Chi tiết Giao Dịch')}
-                </h1>
-                <p className="text-xs text-text-muted">
-                  Thông tin chứng từ thanh toán và mã xác thực giao dịch hệ thống
+                {/* Description */}
+                <p className="text-xs font-medium text-text-secondary mt-3 max-w-sm mx-auto leading-relaxed bg-background/60 p-2.5 rounded-xl border border-border/50">
+                  {getDescription(viewTransaction)}
                 </p>
               </div>
 
-              {/* Specifications Grid */}
-              <div className="space-y-4 flex-1">
-                {/* Dates card */}
-                <div className="rounded-xl border border-border/70 bg-surface-muted/50 p-3.5 flex items-center justify-between text-xs font-semibold">
-                  <div>
-                    <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider block">Thời gian khởi tạo</span>
-                    <span className="font-bold text-text-primary">{formatDate(viewTransaction.createdAt)}</span>
-                  </div>
-                  {viewTransaction.completedAt && (
-                    <div className="text-right">
-                      <span className="text-[10px] font-extrabold text-emerald-500 uppercase tracking-wider block">Hoàn tất xử lý</span>
-                      <span className="font-bold text-text-primary">{formatDate(viewTransaction.completedAt)}</span>
-                    </div>
-                  )}
+              {/* Structured Key-Value Receipt Details */}
+              <div className="rounded-2xl border border-border/80 bg-muted/20 divide-y divide-border/50 text-xs overflow-hidden">
+                {/* Thời gian khởi tạo */}
+                <div className="flex items-center justify-between p-3 gap-2">
+                  <span className="text-muted-foreground font-semibold text-[11px] shrink-0">Thời gian tạo</span>
+                  <span className="font-bold text-text-primary text-right">{formatDate(viewTransaction.createdAt)}</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {/* Transaction ID */}
-                  <div className="p-3 rounded-xl border border-border/70 bg-surface-muted/30 space-y-1">
-                    <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider block">Mã Giao Dịch (ID)</span>
-                    <div className="flex items-center justify-between gap-1 font-mono text-[11px] font-bold text-text-primary">
-                      <span className="truncate">{viewTransaction.walletTransactionId}</span>
-                      <button
-                        onClick={(e) => handleCopyId(viewTransaction.walletTransactionId, e)}
-                        className="p-1 hover:text-brand text-text-muted transition-colors cursor-pointer"
-                        title="Sao chép ID"
-                      >
-                        {copiedId === viewTransaction.walletTransactionId ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                      </button>
-                    </div>
+                {/* Thời gian hoàn tất */}
+                {viewTransaction.completedAt && (
+                  <div className="flex items-center justify-between p-3 gap-2">
+                    <span className="text-muted-foreground font-semibold text-[11px] shrink-0">Hoàn tất xử lý</span>
+                    <span className="font-bold text-emerald-500 text-right">{formatDate(viewTransaction.completedAt)}</span>
                   </div>
+                )}
 
-                  {/* Wallet ID */}
-                  <div className="p-3 rounded-xl border border-border/70 bg-surface-muted/30 space-y-1">
-                    <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider block">Mã Ví Giao Dịch</span>
-                    <span className="font-mono text-[11px] font-bold text-text-primary block truncate">{viewTransaction.walletId}</span>
+                {/* Mã Giao Dịch */}
+                <div className="flex items-center justify-between p-3 gap-2">
+                  <span className="text-muted-foreground font-semibold text-[11px] shrink-0">Mã Giao Dịch</span>
+                  <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-text-primary min-w-0">
+                    <span className="truncate break-all">{viewTransaction.walletTransactionId}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleCopyId(viewTransaction.walletTransactionId, e)}
+                      className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-brand transition shrink-0"
+                      title="Sao chép ID"
+                    >
+                      {copiedId === viewTransaction.walletTransactionId ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                    </button>
                   </div>
-
-                  {/* Contract ID */}
-                  {viewTransaction.contractId && (
-                    <div className="p-3 rounded-xl border border-brand/20 bg-brand/5 space-y-1">
-                      <span className="text-[10px] font-extrabold text-brand uppercase tracking-wider block">Hợp Đồng Liên Quan</span>
-                      <span className="font-mono text-[11px] font-bold text-brand block truncate">{viewTransaction.contractId}</span>
-                    </div>
-                  )}
-
-                  {/* Escrow ID */}
-                  {viewTransaction.contractEscrowId && (
-                    <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-1">
-                      <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Mã Ký Quỹ Escrow</span>
-                      <span className="font-mono text-[11px] font-bold text-amber-600 dark:text-amber-400 block truncate">{viewTransaction.contractEscrowId}</span>
-                    </div>
-                  )}
-
-                  {/* PayOS Order Code */}
-                  {viewTransaction.gatewayOrderCode && (
-                    <div className="p-3 rounded-xl border border-border/70 bg-surface-muted/30 space-y-1">
-                      <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider block">Mã Đơn PayOS</span>
-                      <span className="font-mono text-[11px] font-bold text-text-primary block truncate">{viewTransaction.gatewayOrderCode}</span>
-                    </div>
-                  )}
-
-                  {/* PayOS Transaction Code */}
-                  {viewTransaction.gatewayTransactionCode && (
-                    <div className="p-3 rounded-xl border border-border/70 bg-surface-muted/30 space-y-1">
-                      <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider block">Mã Tham Chiếu Ngân Hàng</span>
-                      <span className="font-mono text-[11px] font-bold text-text-primary block truncate">{viewTransaction.gatewayTransactionCode}</span>
-                    </div>
-                  )}
-
-                  {/* Idempotency Key */}
-                  {viewTransaction.idempotencyKey && (
-                    <div className="p-3 rounded-xl border border-border/70 bg-surface-muted/30 space-y-1 sm:col-span-2">
-                      <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider block">Khóa Tránh Trùng Lặp (Idempotency Key)</span>
-                      <span className="font-mono text-[11px] font-bold text-text-primary block truncate">{viewTransaction.idempotencyKey}</span>
-                    </div>
-                  )}
                 </div>
 
-                {/* Note */}
+                {/* Mã Ví Giao Dịch */}
+                <div className="flex items-center justify-between p-3 gap-2">
+                  <span className="text-muted-foreground font-semibold text-[11px] shrink-0">Mã Ví</span>
+                  <span className="font-mono text-[11px] font-bold text-text-primary truncate break-all">{viewTransaction.walletId}</span>
+                </div>
+
+                {/* Hợp Đồng Liên Quan */}
+                {viewTransaction.contractId && (
+                  <div className="flex items-center justify-between p-3 gap-2">
+                    <span className="text-brand font-semibold text-[11px] shrink-0">Hợp đồng</span>
+                    <span className="font-mono text-[11px] font-bold text-brand truncate break-all">{viewTransaction.contractId}</span>
+                  </div>
+                )}
+
+                {/* Mã Ký Quỹ Escrow */}
+                {viewTransaction.contractEscrowId && (
+                  <div className="flex items-center justify-between p-3 gap-2">
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px] shrink-0">Ký quỹ Escrow</span>
+                    <span className="font-mono text-[11px] font-bold text-amber-600 dark:text-amber-400 truncate break-all">{viewTransaction.contractEscrowId}</span>
+                  </div>
+                )}
+
+                {/* Mã Đơn PayOS */}
+                {viewTransaction.gatewayOrderCode && (
+                  <div className="flex items-center justify-between p-3 gap-2">
+                    <span className="text-muted-foreground font-semibold text-[11px] shrink-0">Mã đơn PayOS</span>
+                    <span className="font-mono text-[11px] font-bold text-text-primary truncate break-all">{viewTransaction.gatewayOrderCode}</span>
+                  </div>
+                )}
+
+                {/* Mã Tham Chiếu Ngân Hàng */}
+                {viewTransaction.gatewayTransactionCode && (
+                  <div className="flex items-center justify-between p-3 gap-2">
+                    <span className="text-muted-foreground font-semibold text-[11px] shrink-0">Tham chiếu NH</span>
+                    <span className="font-mono text-[11px] font-bold text-text-primary truncate break-all">{viewTransaction.gatewayTransactionCode}</span>
+                  </div>
+                )}
+
+                {/* Idempotency Key */}
+                {viewTransaction.idempotencyKey && (
+                  <div className="flex items-center justify-between p-3 gap-2">
+                    <span className="text-muted-foreground font-semibold text-[11px] shrink-0">Khóa bảo mật</span>
+                    <span className="font-mono text-[10px] font-bold text-text-primary truncate break-all">{viewTransaction.idempotencyKey}</span>
+                  </div>
+                )}
+
+                {/* Ghi chú */}
                 {viewTransaction.note && (
-                  <div className="p-3.5 rounded-xl border border-border/70 bg-surface-muted/50 space-y-1">
-                    <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider block">Ghi chú bổ sung</span>
-                    <p className="text-xs font-semibold text-text-primary leading-relaxed">{viewTransaction.note}</p>
+                  <div className="p-3 space-y-1">
+                    <span className="text-muted-foreground font-semibold text-[11px] block">Ghi chú bổ sung</span>
+                    <p className="text-xs font-semibold text-text-primary leading-relaxed bg-background p-2 rounded-lg border border-border/50">{viewTransaction.note}</p>
                   </div>
                 )}
               </div>
-
-              {/* Actions Footer */}
-              <div className="flex items-center gap-3 pt-4 border-t border-border/60 mt-auto">
-                <button
-                  type="button"
-                  onClick={(e) => handleCopyId(viewTransaction.walletTransactionId, e)}
-                  className="px-4 py-3 rounded-xl text-xs font-extrabold text-brand bg-brand/10 hover:bg-brand/15 border border-brand/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 w-1/2"
-                >
-                  {copiedId === viewTransaction.walletTransactionId ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                  <span>{copiedId === viewTransaction.walletTransactionId ? 'Đã sao chép' : 'Sao chép ID'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewTransaction(null)}
-                  className="px-5 py-3 rounded-xl text-xs font-extrabold text-white bg-brand hover:bg-brand-hover shadow-md shadow-brand/20 transition-all cursor-pointer w-1/2 text-center"
-                >
-                  {t('walletHistory.closeBtn', 'Đóng lại')}
-                </button>
-              </div>
             </div>
+
+            {/* 3. Sticky Action Footer */}
+            <footer className="border-t border-border/70 bg-surface/90 px-4 sm:px-6 py-3 shrink-0 flex items-center gap-2.5 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={(e) => handleCopyId(viewTransaction.walletTransactionId, e)}
+                className="px-4 py-2.5 rounded-xl text-xs font-extrabold text-brand bg-brand/10 hover:bg-brand/20 border border-brand/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-1 min-h-[40px]"
+              >
+                {copiedId === viewTransaction.walletTransactionId ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                <span>{copiedId === viewTransaction.walletTransactionId ? 'Đã sao chép' : 'Sao chép ID'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewTransaction(null)}
+                className="px-5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-brand hover:bg-brand/90 shadow-md shadow-brand/20 transition-all cursor-pointer flex-1 text-center min-h-[40px]"
+              >
+                {t('walletHistory.closeBtn', 'Đóng lại')}
+              </button>
+            </footer>
           </div>
         </div>
       )}

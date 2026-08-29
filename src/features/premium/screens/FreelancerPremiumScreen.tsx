@@ -161,7 +161,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
             <div style={{ padding: '24px 0 36px', borderBottom: '1px solid var(--cp-border)' }}>
               <p className="cp-section-eyebrow"><Crown size={13} /> {t('freelancerPremium.activePlanStatus', { defaultValue: 'Trạng thái Gói Premium' })}</p>
 
-              <article className="cp-plan-prem" style={{ margin: 0, padding: 36 }}>
+              <article className="cp-plan-prem" style={{ margin: 0 }}>
                 <div className="cp-plan-prem-orb" aria-hidden />
 
                 <div className="cp-plan-prem-top">
@@ -179,9 +179,9 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
 
                 <PremiumTimeRemaining subscriptions={history.data?.length ? history.data : (current.data ? [current.data] : [])} />
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderTop: '1px solid var(--cp-border)', paddingTop: 20, marginTop: 12, flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <label className={`cp-toggle ${Boolean(current.data?.autoRenew) ? '' : 'off'}`} title={t('freelancerPremium.autoRenew')}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-[var(--cp-border)] pt-5 mt-3">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <label className={`cp-toggle ${Boolean(current.data?.autoRenew) ? '' : 'off'} shrink-0 mt-0.5 sm:mt-0`} title={t('freelancerPremium.autoRenew')}>
                       <input
                         type="checkbox"
                         checked={Boolean(current.data?.autoRenew)}
@@ -191,26 +191,26 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                       <span className="cp-slider" />
                     </label>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800, color: 'var(--cp-text)' }}>
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-extrabold text-[var(--cp-text)]">
                         <span>{t('freelancerPremium.autoRenew')}</span>
                         {Boolean(current.data?.autoRenew) ? (
-                          <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 uppercase tracking-wider">
                             {t('freelancerPremium.activeBadge', { defaultValue: 'ACTIVE ✦' })}
                           </span>
                         ) : (
-                          <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.08)', color: 'var(--cp-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/10 text-[var(--cp-muted)] uppercase tracking-wider">
                             {t('freelancerPremium.offBadge', { defaultValue: 'OFF' })}
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--cp-muted)', marginTop: 2, fontWeight: 600 }}>
+                      <div className="text-xs text-[var(--cp-muted)] mt-0.5 font-medium leading-relaxed">
                         {t(current.data?.autoRenew ? 'freelancerPremium.autoRenewEnabledHelp' : 'freelancerPremium.autoRenewDisabledHelp')}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
-                    <button className="cp-btn" style={{ padding: '8px 18px', fontSize: 12 }} onClick={() => navigate('/premium/freelancer/pricing')}>
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0 pt-2 sm:pt-0">
+                    <button className="cp-btn w-full sm:w-auto" style={{ padding: '8px 18px', fontSize: 12 }} onClick={() => navigate('/premium/freelancer/pricing')}>
                       <Zap size={14} /> {t('freelancerPremium.topUpPlan', { defaultValue: 'Gia hạn gói' })}
                     </button>
                   </div>
@@ -317,7 +317,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
         ) : tab === 'jobMatching' ? (
           /* TAB 2: GỢI Ý VIỆC LÀM AI */
           <div style={{ padding: '24px 0' }}>
-            <article className="cp-plan-prem" style={{ margin: 0, padding: 40 }}>
+            <article className="cp-plan-prem" style={{ margin: 0 }}>
               <div className="cp-plan-prem-orb" aria-hidden />
 
               <div className="cp-plan-prem-top">
@@ -335,7 +335,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
               </p>
 
               <div style={{ borderTop: '1px solid var(--cp-border)', paddingTop: 24, marginTop: 12 }}>
-                <button className="cp-btn" style={{ padding: '14px 32px', fontSize: 15 }} onClick={() => navigate('/jobs/browse?aiMatch=true', { state: { highlightAiMatch: true } })}>
+                <button className="cp-btn w-full sm:w-auto" style={{ padding: '14px 28px', fontSize: 14 }} onClick={() => navigate('/jobs/browse?aiMatch=true', { state: { highlightAiMatch: true } })}>
                   <Target size={18} /> {t('freelancerPremium.goToBrowseJobs', { defaultValue: 'Đi tới trang Tìm kiếm Việc làm (Browse Jobs)' })} <ArrowRight size={18} />
                 </button>
               </div>
@@ -348,7 +348,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
           </div>
         ) : tab === 'vacation' ? (
           /* TAB 4: VACATION MODE */
-          <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 32 }}>
+          <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 28 }}>
             <div>
               <p className="cp-section-eyebrow">
                 <Shield size={13} /> {t('freelancerPremium.vacationEyebrow', { defaultValue: 'Rank Protection Shield' })}
@@ -361,11 +361,11 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 28, alignItems: 'start' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
               {/* LEFT COLUMN: ACTIVE OR SETUP FORM */}
               {vacation.data?.isEnabled ? (
-                <article className="cp-plan-prem" style={{ margin: 0, padding: 32 }}>
+                <article className="cp-plan-prem" style={{ margin: 0 }}>
                   <div className="cp-plan-prem-orb" aria-hidden />
 
                   <div className="cp-plan-prem-top">
@@ -395,7 +395,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                   )}
 
                   <button
-                    className="cp-btn ghost"
+                    className="cp-btn ghost w-full"
                     onClick={() => setConfirm({ kind: 'cancelVacation' })}
                     style={{ color: 'var(--cp-red)', borderColor: 'rgba(239,68,68,0.35)' }}
                   >
@@ -403,7 +403,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                   </button>
                 </article>
               ) : (
-                <article className="cp-card" style={{ padding: 28 }}>
+                <article className="cp-card">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Shield size={20} />
@@ -450,7 +450,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                     </div>
 
                     <button
-                      className="cp-btn"
+                      className="cp-btn w-full"
                       disabled={!entitled || !endDate}
                       onClick={() => setConfirm({ kind: 'vacation' })}
                       style={{ padding: '12px 24px', fontSize: 14, marginTop: 4 }}
@@ -463,7 +463,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
               )}
 
               {/* RIGHT COLUMN: MONOCHROME BENEFITS LIST */}
-              <article className="cp-card" style={{ padding: 28 }}>
+              <article className="cp-card">
                 <h3 style={{ fontSize: 15, fontWeight: 900, color: 'var(--cp-text)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Sparkles size={16} style={{ color: 'var(--cp-accent)' }} />
                   {t('freelancerPremium.vacationBenefitsHeader', { defaultValue: 'Quyền Lợi Bảo Vệ Thứ Hạng' })}
@@ -518,7 +518,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
           </div>
         ) : tab === 'points' ? (
           /* TAB 5: POINTS & ELO RANK TIER */
-          <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 32 }}>
+          <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 28 }}>
             <div>
               <p className="cp-section-eyebrow">
                 <Sparkles size={13} /> {t('freelancerPremium.pointsEyebrow', { defaultValue: 'Elo Rank & Reward System' })}
@@ -532,7 +532,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
             </div>
 
             {/* TOP ELO STATUS BANNER */}
-            <article className="cp-plan-prem" style={{ margin: 0, padding: 36 }}>
+            <article className="cp-plan-prem" style={{ margin: 0 }}>
               <div className="cp-plan-prem-orb" aria-hidden />
 
               <div className="cp-plan-prem-top">
@@ -571,7 +571,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
             </article>
 
             {/* RECENT ELO POINT TRANSACTION HISTORY */}
-            <article className="cp-card" style={{ padding: 28 }}>
+            <article className="cp-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <BriefcaseBusiness size={20} />
@@ -589,7 +589,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
               {points.data?.recentTransactions?.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {points.data.recentTransactions.map(x => (
-                    <div key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderRadius: 14, background: 'var(--card)', border: '1px solid var(--cp-border)' }}>
+                    <div key={x.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 sm:p-4 rounded-xl bg-[var(--card)] border border-[var(--cp-border)]">
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--cp-text)' }}>
                           {x.reason === 5 ? t('freelancerPremium.legacyIntegrityAdjustment', { defaultValue: 'Điều chỉnh điểm hệ thống' }) : x.sourceEntityType || t('freelancerPremium.activity', { reason: x.reason, defaultValue: `Giao dịch điểm #${x.reason}` })}

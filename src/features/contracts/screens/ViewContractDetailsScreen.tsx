@@ -13,6 +13,7 @@ import { ClientContractDetails } from '../components/ClientContractDetails';
 import { FreelancerContractDetails } from '../components/FreelancerContractDetails';
 import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
+import { useContractCancelledEvent } from '../hooks/useContractCancelledEvent';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 
@@ -177,6 +178,12 @@ export default function ViewContractDetailsScreen() {
   useContractReadyForEscrowEvent(
     contractId,
     userRole === 'client' && contract?.status === ContractStatus.PendingSignature,
+    loadContractDetails
+  );
+
+  useContractCancelledEvent(
+    contractId,
+    userRole === 'client' || userRole === 'freelancer',
     loadContractDetails
   );
 

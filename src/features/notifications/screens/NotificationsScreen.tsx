@@ -185,7 +185,7 @@ export default function NotificationsScreen() {
                 </div>
 
                 {/* CustomSelect Dropdown 1: Category Filter */}
-                <div className="w-48 shrink-0">
+                <div className="w-full sm:w-48 shrink-0">
                   <CustomSelect
                     value={activeTab}
                     options={categorySelectOptions}
@@ -196,7 +196,7 @@ export default function NotificationsScreen() {
                 </div>
 
                 {/* CustomSelect Dropdown 2: Page Size */}
-                <div className="w-36 shrink-0">
+                <div className="flex-1 sm:w-36 shrink-0">
                   <CustomSelect
                     value={String(pageSize)}
                     options={pageSizeSelectOptions}
@@ -206,7 +206,7 @@ export default function NotificationsScreen() {
                 </div>
 
                 {/* CustomSelect Dropdown 3: Sort Order */}
-                <div className="w-40 shrink-0">
+                <div className="flex-1 sm:w-40 shrink-0">
                   <CustomSelect
                     value={sortOrder}
                     options={sortOrderSelectOptions}
