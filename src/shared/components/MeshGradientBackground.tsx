@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/app/components/ui/utils';
+import { cn } from '../../app/components/ui/utils';
 
 export interface MeshGradientBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
