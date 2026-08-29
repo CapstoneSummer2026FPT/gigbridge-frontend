@@ -448,15 +448,15 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           <MetricCalculationTooltip
             title="Solution & Delivery Methodology"
             weight="35%"
-            formula="Score = 0.30×Alignment + 0.25×Correctness + 0.20×Workflow + 0.15×Feasibility + 0.10×Risk"
+            formula="Score = 0.25×Intro + 0.25×Analysis + 0.25×Solution + 0.15×Deliverables + 0.10×Scope"
             items={[
-              { label: 'Requirement Alignment', weight: '30%', icon: '🎯' },
-              { label: 'Methodological Correctness', weight: '25%', icon: '⚡' },
-              { label: 'Solution Architecture & Workflow', weight: '20%', icon: '🏗️' },
-              { label: 'Practical Feasibility', weight: '15%', icon: '🛠️' },
-              { label: 'Risk Mitigation & Quality Control', weight: '10%', icon: '🔒' },
+              { label: 'Giới thiệu & Tổng quan (Intro)', weight: '25%', icon: '🎯' },
+              { label: 'Phân tích vấn đề (Analysis)', weight: '25%', icon: '⚡' },
+              { label: 'Giải pháp & Hướng tiếp cận (Solution)', weight: '25%', icon: '🏗️' },
+              { label: 'Sản phẩm bàn giao (Deliverables)', weight: '15%', icon: '🛠️' },
+              { label: 'Giả định & Ngoài phạm vi (Scope)', weight: '10%', icon: '🔒' },
             ]}
-            note="Evaluates proposed solution approach strictly against the job description for any professional domain."
+            note="Scores the 6 core proposal text sections. Excludes proposed milestone plan (scored separately in Pillar 4)."
           >
             <div className="p-2 rounded-xl border border-transparent hover:border-purple-500/30 hover:bg-purple-500/5 transition-all">
               <div className="flex justify-between text-[11px] font-bold mb-1">
@@ -512,21 +512,19 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
 
           {/* Pillar 3 */}
           <MetricCalculationTooltip
-            title="Financial & Timeline Value"
+            title="Financial & Pricing Value"
             weight="20%"
-            formula="Score = 0.30×Budget Savings + 0.20×Time Savings + 0.30×Pricing Realism + 0.20×Timeline Feasibility"
+            formula="Score = 0.50×Budget Savings + 0.50×Pricing Realism"
             items={[
-              { label: 'Budget Savings Ratio', weight: '30%', icon: '💵' },
-              { label: 'Time Savings Ratio', weight: '20%', icon: '⚡' },
-              { label: 'Pricing Realism', weight: '30%', icon: '🏷️' },
-              { label: 'Timeline Feasibility', weight: '20%', icon: '⏱️' },
+              { label: 'Budget Savings Ratio', weight: '50%', icon: '💵' },
+              { label: 'AI Pricing Realism', weight: '50%', icon: '🏷️' },
             ]}
-            note="Balances budget and duration savings with AI-verified pricing realism and timeline feasibility."
+            note="100% pure financial score based on budget savings ratio and AI pricing realism."
           >
             <div className="p-2 rounded-xl border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all">
               <div className="flex justify-between text-[11px] font-bold mb-1">
                 <span className="text-text-primary flex items-center gap-1.5">
-                  💰 Financial & Timeline Value (20%)
+                  💰 Financial & Pricing Value (20%)
                   <HelpCircle size={11} className="text-text-muted" />
                 </span>
                 <span className="font-black text-emerald-600 dark:text-emerald-400">
@@ -544,19 +542,20 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
 
           {/* Pillar 4 */}
           <MetricCalculationTooltip
-            title="Milestone Scope & Deliverables"
+            title="Milestone Scope & Timeline Feasibility"
             weight="15%"
-            formula="Score = 0.60×Scope Completeness % + 0.40×Milestone Structure Score"
+            formula="Score = 0.40×Scope Coverage + 0.30×Milestone Structure + 0.30×Timeline Realism"
             items={[
-              { label: 'Scope Completeness %', weight: '60%', icon: '📋' },
-              { label: 'Milestone Structure', weight: '40%', icon: '🧩' },
+              { label: 'Scope Completeness %', weight: '40%', icon: '📋' },
+              { label: 'Milestone Structure & Granularity', weight: '30%', icon: '🧩' },
+              { label: 'Timeline Feasibility & Duration Realism', weight: '30%', icon: '⏱️' },
             ]}
-            note="Measures requirement fulfillment and milestone clarity."
+            note="Evaluates requirement scope coverage, milestone breakdown granularity, and duration velocity realism."
           >
             <div className="p-2 rounded-xl border border-transparent hover:border-brand/30 hover:bg-brand/5 transition-all">
               <div className="flex justify-between text-[11px] font-bold mb-1">
                 <span className="text-text-primary flex items-center gap-1.5">
-                  📋 Milestone Scope & Deliverables (15%)
+                  📋 Milestone Scope & Timeline Feasibility (15%)
                   <HelpCircle size={11} className="text-text-muted" />
                 </span>
                 <span className="font-black text-brand">
