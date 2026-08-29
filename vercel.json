@@ -57,17 +57,9 @@
         }
       ],
       "destination": "/api/seo?path=/freelancers/:id"
-    },
-    { "source": "/about", "destination": "/about/index.html" },
-    { "source": "/careers", "destination": "/careers/index.html" },
-    { "source": "/faq", "destination": "/faq/index.html" },
-    { "source": "/guide", "destination": "/guide/index.html" },
-    { "source": "/press-kit", "destination": "/press-kit/index.html" },
-    { "source": "/terms", "destination": "/terms/index.html" },
-    { "source": "/privacy", "destination": "/privacy/index.html" },
     {
       "source": "/((?!assets/|img/|fonts/|videos/|icons/|audio/|robots.txt|api/).*)",
-      "destination": "/spa.html"
+      "destination": "/index.html"
     }
   ]
 }
