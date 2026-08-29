@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   AlertTriangle,
   Brain,
@@ -8,6 +8,7 @@ import {
   FileText,
   Layers,
   MessageSquare,
+  ShieldCheck,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -61,15 +62,121 @@ const getScoreColorClass = (score?: number | null) => {
   return 'border-rose-500/40 text-rose-600 bg-rose-500/10 dark:text-rose-400 font-black';
 };
 
-const renderDetailSection = (title: string, text?: string | null) => {
+const renderAnnotatedDetailSection = (
+  title: string,
+  text?: string | null,
+  highlights: Array<{ quote: string; requirement: string }> = []
+) => {
   if (!text || !text.trim()) return null;
+  const trimmed = text.trim();
+
+  if (!highlights || highlights.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-3.5 sm:p-4.5 space-y-2 shadow-2xs">
+        <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+          {title}
+        </h4>
+        <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">{trimmed}</p>
+      </div>
+    );
+  }
+
+  // Split text into paragraphs/sentences for sentence-level matching
+  const sentences = trimmed.split(/(?<=[.!?\n])\s+/);
+  const matchedSentences: Array<{ sentence: string; requirement: string }> = [];
+
+  sentences.forEach(sentence => {
+    const cleanSentence = sentence.trim();
+    if (cleanSentence.length < 8) return;
+    const lowerSentence = cleanSentence.toLowerCase();
+
+    for (const h of highlights) {
+      const reqText = (h.requirement || '').toLowerCase();
+      const quoteText = (h.quote || '').toLowerCase();
+
+      // Direct substring match
+      const isDirectMatch =
+        (quoteText && quoteText.length > 5 && lowerSentence.includes(quoteText)) ||
+        (reqText && reqText.length > 5 && lowerSentence.includes(reqText));
+
+      // Key phrase / word overlap match
+      let isKeywordMatch = false;
+      if (!isDirectMatch) {
+        const stopWords = new Set(['with', 'that', 'this', 'from', 'have', 'your', 'will', 'then', 'into', 'each', 'such', 'their', 'them', 'both', 'only', 'also', 'and', 'for', 'the']);
+        const reqWords = (reqText + ' ' + quoteText)
+          .replace(/[^\w\s]/gi, '')
+          .split(/\s+/)
+          .filter(w => w.length >= 4 && !stopWords.has(w));
+
+        if (reqWords.length >= 2) {
+          const matchCount = reqWords.filter(w => lowerSentence.includes(w)).length;
+          if (matchCount >= Math.min(2, reqWords.length)) {
+            isKeywordMatch = true;
+          }
+        }
+      }
+
+      if (isDirectMatch || isKeywordMatch) {
+        matchedSentences.push({
+          sentence: cleanSentence,
+          requirement: h.requirement,
+        });
+        break;
+      }
+    }
+  });
+
+  if (matchedSentences.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-3.5 sm:p-4.5 space-y-2 shadow-2xs">
+        <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+          {title}
+        </h4>
+        <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">{trimmed}</p>
+      </div>
+    );
+  }
+
+  // Build annotated elements by replacing matched sentences in text
+  let lastPos = 0;
+  const elements: React.ReactNode[] = [];
+
+  matchedSentences.forEach((ms, idx) => {
+    const pos = trimmed.indexOf(ms.sentence, lastPos);
+    if (pos !== -1) {
+      if (pos > lastPos) {
+        elements.push(trimmed.substring(lastPos, pos));
+      }
+      elements.push(
+        <mark
+          key={`mark-${idx}`}
+          className="bg-emerald-500/25 dark:bg-emerald-500/35 text-emerald-950 dark:text-emerald-100 border-b-2 border-emerald-500 px-1.5 py-0.5 rounded-md font-bold transition-all hover:bg-emerald-500/40 inline shadow-2xs my-0.5"
+        >
+          {ms.sentence}
+          <span className="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-2xs align-middle">
+            ✓ Matched: "{ms.requirement}"
+          </span>
+        </mark>
+      );
+      lastPos = pos + ms.sentence.length;
+    }
+  });
+
+  if (lastPos < trimmed.length) {
+    elements.push(trimmed.substring(lastPos));
+  }
+
   return (
     <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-3.5 sm:p-4.5 space-y-2 shadow-2xs">
       <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-brand" />
         {title}
       </h4>
-      <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">{text.trim()}</p>
+      <div className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere] space-y-1">
+        {elements}
+      </div>
     </div>
   );
 };
@@ -101,6 +208,35 @@ export function ProposalDetailModal({
   showAiReportTab = true,
 }: ProposalDetailModalProps) {
   const activeProposal = proposals.find(p => p.proposalsId === activeId);
+
+  const aiAuditData = useMemo(() => {
+    if (!activeProposal?.aiFullEvaluationJson) return null;
+    try {
+      const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
+      const reqFulfillment: any[] = parsed?.llm_qualitative_evaluation?.requirement_fulfillment || [];
+      if (!reqFulfillment.length) return null;
+
+      const totalReqs = reqFulfillment.length;
+      const fulfilledCount = reqFulfillment.filter((r: any) => r.is_fulfilled).length;
+      const scopeCoveragePct = totalReqs > 0 ? (fulfilledCount / totalReqs) * 100 : 0;
+
+      const highlights = reqFulfillment
+        .filter((r: any) => r.is_fulfilled)
+        .map((r: any) => ({
+          quote: (r.evidence_quote || '').replace(/^"|"$/g, '').trim(),
+          requirement: r.requirement,
+        }));
+
+      return {
+        totalReqs,
+        fulfilledCount,
+        scopeCoveragePct,
+        highlights,
+      };
+    } catch {
+      return null;
+    }
+  }, [activeProposal?.aiFullEvaluationJson]);
 
   const displayQuestions = useMemo(() => {
     if (activeProposal?.aiFullEvaluationJson) {
@@ -399,12 +535,27 @@ export function ProposalDetailModal({
                   <div className="py-12 text-center text-xs font-semibold text-text-muted">Không có thông tin proposal.</div>
                 ) : (
                   <>
-                    {renderDetailSection('Giới thiệu & Tổng quan', detail.coverLetter)}
-                    {renderDetailSection('Phân tích vấn đề', detail.analysisSummary)}
-                    {renderDetailSection('Giải pháp & Hướng tiếp cận kỹ thuật', detail.solutionApproach)}
-                    {renderDetailSection('Sản phẩm bàn giao', detail.deliverables)}
-                    {renderDetailSection('Giả định dự án', detail.assumptions)}
-                    {renderDetailSection('Các hạng mục ngoài phạm vi', detail.outOfScope)}
+                    {/* Top Criteria Match Banner (Renders strictly when AI evaluation exists and totalReqs > 0) */}
+                    {aiAuditData && aiAuditData.totalReqs > 0 && (
+                      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-surface-card p-3.5 flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
+                          <span className="font-black text-emerald-800 dark:text-emerald-200">
+                            📋 {aiAuditData.fulfilledCount} / {aiAuditData.totalReqs} Criteria Matched ({aiAuditData.scopeCoveragePct.toFixed(0)}% Scope Coverage)
+                          </span>
+                        </div>
+                        <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[11px] font-black text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs">
+                          ✨ AI Evidence Sentences Highlighted in Proposal Below
+                        </span>
+                      </div>
+                    )}
+
+                    {renderAnnotatedDetailSection('Giới thiệu & Tổng quan', detail.coverLetter, aiAuditData?.highlights)}
+                    {renderAnnotatedDetailSection('Phân tích vấn đề', detail.analysisSummary, aiAuditData?.highlights)}
+                    {renderAnnotatedDetailSection('Giải pháp & Hướng tiếp cận kỹ thuật', detail.solutionApproach, aiAuditData?.highlights)}
+                    {renderAnnotatedDetailSection('Sản phẩm bàn giao', detail.deliverables, aiAuditData?.highlights)}
+                    {renderAnnotatedDetailSection('Giả định dự án', detail.assumptions, aiAuditData?.highlights)}
+                    {renderAnnotatedDetailSection('Các hạng mục ngoài phạm vi', detail.outOfScope, aiAuditData?.highlights)}
 
                     <section className="space-y-3 pt-2">
                       <h4 className="text-xs font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">

@@ -434,24 +434,53 @@ export function AISideBySideMilestoneMatrix({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-xs">
-            {requirementFulfillment.map((req, idx) => (
-              <div
-                key={idx}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
-                  req.is_fulfilled
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
-                }`}
-              >
-                {req.is_fulfilled ? (
-                  <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle size={14} className="text-rose-500 shrink-0" />
-                )}
-                <span>{req.requirement}</span>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 gap-2.5 text-xs">
+            {requirementFulfillment.map((req, idx) => {
+              const evidence = req.evidence_quote || req.note;
+              const matchedMs = req.matched_milestone;
+
+              return (
+                <div
+                  key={idx}
+                  className={`flex flex-col gap-1.5 p-3 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                    req.is_fulfilled
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-text-primary'
+                      : 'bg-rose-500/10 border-rose-500/30 text-text-primary'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {req.is_fulfilled ? (
+                        <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                      ) : (
+                        <XCircle size={16} className="text-rose-500 shrink-0" />
+                      )}
+                      <span className="font-extrabold text-xs text-text-primary">{req.requirement}</span>
+                    </div>
+
+                    {matchedMs && (
+                      <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
+                        📍 Matched: {matchedMs}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Highlighted Evidence Quote Box */}
+                  {evidence && (
+                    <div className={`mt-1 p-2.5 rounded-lg text-[11px] font-normal leading-relaxed border ${
+                      req.is_fulfilled
+                        ? 'bg-surface-card border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-surface-card border-rose-500/30 text-rose-800 dark:text-rose-300'
+                    }`}>
+                      <span className="font-sans font-black uppercase text-[9px] tracking-wider block mb-0.5 opacity-80 flex items-center gap-1">
+                        💬 {req.is_fulfilled ? 'Evidence Proof Quote (From Proposal/Milestones)' : 'Missing Scope Gap Explanation'}
+                      </span>
+                      <p className="italic font-sans text-[11.5px]">"{evidence.replace(/^"|"$/g, '')}"</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
