@@ -57,6 +57,7 @@
         }
       ],
       "destination": "/api/seo?path=/freelancers/:id"
+    },
     {
       "source": "/((?!assets/|img/|fonts/|videos/|icons/|audio/|robots.txt|api/).*)",
       "destination": "/index.html"
