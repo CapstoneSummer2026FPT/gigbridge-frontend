@@ -139,29 +139,79 @@ const renderAnnotatedDetailSection = (
     );
   }
 
-  // Build annotated elements by replacing matched sentences in text
+  // Locate character positions for matched sentences in trimmed text
+  const matchPositions: Array<{ start: number; end: number; requirement: string }> = [];
+  let searchCursor = 0;
+
+  matchedSentences.forEach(ms => {
+    const pos = trimmed.indexOf(ms.sentence, searchCursor);
+    if (pos !== -1) {
+      matchPositions.push({
+        start: pos,
+        end: pos + ms.sentence.length,
+        requirement: ms.requirement,
+      });
+      searchCursor = pos + ms.sentence.length;
+    }
+  });
+
+  if (matchPositions.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-3.5 sm:p-4.5 space-y-2 shadow-2xs">
+        <h4 className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+          {title}
+        </h4>
+        <p className="text-xs text-text-primary leading-relaxed font-medium whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">{trimmed}</p>
+      </div>
+    );
+  }
+
+  // Sort match positions by start index
+  matchPositions.sort((a, b) => a.start - b.start);
+
+  // Group contiguous/adjacent sentence matches of the SAME requirement
+  const groupedBlocks: Array<{ start: number; end: number; requirement: string }> = [];
+
+  matchPositions.forEach(m => {
+    if (groupedBlocks.length === 0) {
+      groupedBlocks.push({ ...m });
+      return;
+    }
+
+    const last = groupedBlocks[groupedBlocks.length - 1];
+    const textBetween = trimmed.substring(last.end, m.start);
+    const isAdjacent = textBetween.trim().length === 0;
+
+    if (last.requirement.toLowerCase() === m.requirement.toLowerCase() && isAdjacent) {
+      // Merge contiguous sentences of the same requirement
+      last.end = Math.max(last.end, m.end);
+    } else {
+      groupedBlocks.push({ ...m });
+    }
+  });
+
+  // Build annotated React elements with grouped contiguous <mark> blocks
   let lastPos = 0;
   const elements: React.ReactNode[] = [];
 
-  matchedSentences.forEach((ms, idx) => {
-    const pos = trimmed.indexOf(ms.sentence, lastPos);
-    if (pos !== -1) {
-      if (pos > lastPos) {
-        elements.push(trimmed.substring(lastPos, pos));
-      }
-      elements.push(
-        <mark
-          key={`mark-${idx}`}
-          className="bg-emerald-500/25 dark:bg-emerald-500/35 text-emerald-950 dark:text-emerald-100 border-b-2 border-emerald-500 px-1.5 py-0.5 rounded-md font-bold transition-all hover:bg-emerald-500/40 inline shadow-2xs my-0.5"
-        >
-          {ms.sentence}
-          <span className="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-2xs align-middle">
-            ✓ Matched: "{ms.requirement}"
-          </span>
-        </mark>
-      );
-      lastPos = pos + ms.sentence.length;
+  groupedBlocks.forEach((gb, idx) => {
+    if (gb.start > lastPos) {
+      elements.push(trimmed.substring(lastPos, gb.start));
     }
+    const combinedText = trimmed.substring(gb.start, gb.end);
+    elements.push(
+      <mark
+        key={`mark-group-${idx}`}
+        className="bg-emerald-500/25 dark:bg-emerald-500/35 text-emerald-950 dark:text-emerald-100 border-b-2 border-emerald-500 px-1.5 py-0.5 rounded-md font-bold transition-all hover:bg-emerald-500/40 inline shadow-2xs my-0.5"
+      >
+        {combinedText}
+        <span className="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-2xs align-middle">
+          ✓ Matched: "{gb.requirement}"
+        </span>
+      </mark>
+    );
+    lastPos = gb.end;
   });
 
   if (lastPos < trimmed.length) {
