@@ -262,7 +262,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
         return `• Pricing Realism (50%): ${realismText}\n• Cost Savings (50%): ${savingsText}`;
 
       case 'milestone_scope':
-        return `• Scope Coverage (40%): Fulfills ${scopePct.toFixed(0)}% of total job requirements.\n• Milestone Structure (30%): Clear phase breakdown across deliverable milestones.\n• Timeline Feasibility (30%): Execution duration aligns with standard professional velocity.`;
+        return `• Scope Coverage (40%): Fulfills ${scopePct.toFixed(0)}% / 100% of total job requirements.\n• Milestone Structure (30%): Clear phase breakdown across deliverable milestones.\n• Timeline Feasibility (30%): Execution duration aligns with standard professional velocity.`;
     }
   };
 
