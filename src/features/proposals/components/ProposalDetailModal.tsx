@@ -328,8 +328,8 @@ export function ProposalDetailModal({
               ...(qa.technical_reasoning?.evidence || []),
             ].map((e: any) => e.claim).filter(Boolean);
 
-            const qIdx = qa.question_index ?? (idx + 1);
-            const displayNumber = typeof qa.question_index === 'number' && qa.question_index > 0 ? qa.question_index : (idx + 1);
+            const displayNumber = idx + 1;
+            const qIdx = idx + 1;
 
             const qualitativeFeedback =
               qa.qualitative_feedback ||
@@ -855,15 +855,7 @@ export function ProposalDetailModal({
                             </div>
                           )}
 
-                          {/* AI Technical Evidence Assessment & Detailed Feedback */}
-                          <div className="rounded-xl bg-surface-card border border-border/70 p-3.5 text-xs space-y-1.5 shadow-2xs">
-                            <span className="block text-[10px] font-black uppercase text-brand tracking-wider">
-                              🧠 Đánh giá & Phản hồi Kỹ thuật của AI
-                            </span>
-                            <p className="text-text-primary leading-relaxed font-medium whitespace-pre-wrap">
-                              {q.qualitativeFeedback || q.evidenceAssessment}
-                            </p>
-                          </div>
+
                         </div>
                       ))}
                     </div>
