@@ -1,4 +1,4 @@
-import { Layers, CheckCircle2, XCircle, DollarSign, Clock, ShieldCheck, Percent, Info } from 'lucide-react';
+import { Layers, CheckCircle2, XCircle, DollarSign, Clock, ShieldCheck, Percent, Info, Edit3, PlusCircle, Trash2 } from 'lucide-react';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import type { ProposalDetailDto, ProposalDto } from '../../../types/models/Proposal';
 
@@ -45,6 +45,7 @@ export function AISideBySideMilestoneMatrix({
   fullEvaluationJson,
 }: AISideBySideMilestoneMatrixProps) {
   let requirementFulfillment: any[] = [];
+  let milestoneAudit: any[] = [];
   let jobBaseline: any = null;
   let proposalOffer: any = null;
   let deterministic: any = null;
@@ -54,11 +55,13 @@ export function AISideBySideMilestoneMatrix({
     try {
       const parsed = JSON.parse(rawJson);
       requirementFulfillment = parsed?.llm_qualitative_evaluation?.requirement_fulfillment || [];
+      milestoneAudit = parsed?.llm_qualitative_evaluation?.milestone_audit || [];
       jobBaseline = parsed?.job_post_baseline || null;
       proposalOffer = parsed?.proposal_offer || null;
       deterministic = parsed?.deterministic_calculations || null;
     } catch {
       requirementFulfillment = [];
+      milestoneAudit = [];
     }
   }
 
@@ -247,14 +250,42 @@ export function AISideBySideMilestoneMatrix({
           <tbody className="divide-y divide-border/40">
             {milestones.length > 0 ? (
               milestones.map((item, index) => {
-                // Find matching requirement audit item
-                const reqAudit =
-                  requirementFulfillment.find(
-                    (r) =>
-                      r.matched_milestone?.toLowerCase() === item.title?.toLowerCase() || index === 0
-                  ) || requirementFulfillment[index];
+                // Find matching milestone audit item from AI or fallback comparison against original milestones
+                const auditItem = milestoneAudit.find(
+                  (a: any) =>
+                    a.order_index === (index + 1) ||
+                    a.milestone_title?.toLowerCase() === item.title?.toLowerCase() ||
+                    item.title?.toLowerCase()?.includes(a.milestone_title?.toLowerCase() || '')
+                );
 
-                const isFulfilled = reqAudit ? reqAudit.is_fulfilled : true;
+                // Fallback check against baseline original milestones
+                const origMilestones: any[] = jobBaseline?.original_milestones || [];
+                const matchedOrig = origMilestones.find(
+                  (o) => o.title?.toLowerCase() === item.title?.toLowerCase()
+                );
+
+                let status = auditItem?.status;
+                let changeSummary = auditItem?.change_summary;
+
+                if (!status) {
+                  if (matchedOrig) {
+                    const isPriceChanged = Number(matchedOrig.amount) !== Number(item.amount);
+                    const isDurChanged =
+                      (matchedOrig.estimated_duration || matchedOrig.estimatedDuration) !==
+                      (item.estimatedDuration || (item as any).estimated_duration);
+                    if (isPriceChanged || isDurChanged) {
+                      status = 'Edited';
+                      changeSummary = 'Thông tin chi phí / thời gian đã được điều chỉnh';
+                    } else {
+                      status = 'Preserved';
+                    }
+                  } else if (origMilestones.length > 0) {
+                    status = 'Edited';
+                    changeSummary = 'Milestone được freelancer tùy chỉnh';
+                  } else {
+                    status = 'Preserved';
+                  }
+                }
 
                 return (
                   <tr key={item.id || index} className="hover:bg-surface-muted/30 transition-colors">
@@ -268,6 +299,11 @@ export function AISideBySideMilestoneMatrix({
                           {item.description}
                         </p>
                       )}
+                      {changeSummary && (
+                        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md inline-block mt-1">
+                          💡 {changeSummary}
+                        </p>
+                      )}
                     </td>
                     <td className="p-3 text-right font-black text-emerald-600 dark:text-emerald-400">
                       {formatGigCoin(item.amount)}
@@ -276,13 +312,21 @@ export function AISideBySideMilestoneMatrix({
                       {item.estimatedDuration || '—'}
                     </td>
                     <td className="p-3">
-                      {isFulfilled ? (
+                      {status === 'Preserved' ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-black text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 size={12} /> Covered & Preserved
                         </span>
-                      ) : (
+                      ) : status === 'Added' ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 px-2.5 py-0.5 text-[11px] font-black text-cyan-700 dark:text-cyan-300">
+                          <PlusCircle size={12} /> Freelancer Added
+                        </span>
+                      ) : status === 'Deleted' ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
-                          <XCircle size={12} /> Missing / Altered Scope
+                          <Trash2 size={12} /> Freelancer Deleted
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-black text-amber-700 dark:text-amber-300">
+                          <Edit3 size={12} /> Freelancer Edited
                         </span>
                       )}
                     </td>
@@ -296,6 +340,32 @@ export function AISideBySideMilestoneMatrix({
                 </td>
               </tr>
             )}
+
+            {/* Deleted Baseline Milestones (if any baseline milestones were removed by freelancer) */}
+            {(() => {
+              const deletedAudits = milestoneAudit.filter((a: any) => a.status === 'Deleted');
+              if (deletedAudits.length === 0) return null;
+              return deletedAudits.map((del: any, dIdx: number) => (
+                <tr key={`del-${dIdx}`} className="bg-rose-500/5 hover:bg-rose-500/10 transition-colors">
+                  <td className="p-3 font-bold text-rose-400">❌</td>
+                  <td className="p-3 space-y-1">
+                    <strong className="block text-xs font-bold text-rose-600 dark:text-rose-400 line-through">
+                      {del.milestone_title}
+                    </strong>
+                    <p className="text-[10px] italic text-rose-500">
+                      💡 {del.change_summary || 'Hạng mục milestone bị bỏ qua so với kế hoạch ban đầu'}
+                    </p>
+                  </td>
+                  <td className="p-3 text-right font-black text-text-muted italic">—</td>
+                  <td className="p-3 text-center font-semibold text-text-muted italic">—</td>
+                  <td className="p-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
+                      <Trash2 size={12} /> Freelancer Deleted
+                    </span>
+                  </td>
+                </tr>
+              ));
+            })()}
           </tbody>
           {/* Recruiter Summary Footer: Sum of Milestone Cost and Duration */}
           {milestones.length > 0 && (
