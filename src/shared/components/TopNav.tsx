@@ -35,8 +35,6 @@ interface TopNavProps {
   showMenuButton?: boolean;
 }
 
-const UNREAD_MESSAGES_FALLBACK_POLL_MS = 60_000;
-
 const navItems = [
   { label: 'Find Work', path: '/public/job-posts' },
   { label: 'Hire Talent', path: '/public/freelancers' },

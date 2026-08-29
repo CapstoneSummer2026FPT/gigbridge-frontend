@@ -88,7 +88,7 @@ export function clampMilestonesToExpectedTargets(
       for (let i = keepCount; i < result.length; i++) {
         const excess = result[i];
         lastKept.amount = Math.round(((lastKept.amount || 0) + (excess.amount || 0)) * 100) / 100;
-        if (excess.title && !lastKept.title.includes(excess.title)) {
+        if (excess.title && !lastKept.title?.includes(excess.title)) {
           lastKept.title = lastKept.title ? `${lastKept.title} | ${excess.title}` : excess.title;
         }
         if (excess.description) {
