@@ -26,7 +26,7 @@ export default function Contact() {
   return (
     <div id="contact" className="my-20 min-h-96 w-full px-5 sm:px-10">
       <div className="relative rounded-lg bg-card text-card-foreground border border-border/50 py-24 sm:overflow-hidden transition-colors duration-300">
-        
+
         {/* Left Side Polygon Clip-Path Images */}
         <div className="absolute -left-20 top-0 hidden h-full w-72 overflow-hidden sm:block lg:left-20 lg:w-96 pointer-events-none opacity-60 md:opacity-100">
           <ImageClipBox

@@ -66,6 +66,7 @@ interface PreparedSignatureImage {
 
 const PDF_SIGNATURE_MAX_WIDTH = 220;
 const PDF_SIGNATURE_MAX_HEIGHT = 80;
+const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
 
 const prepareSignatureImage = (canvas: HTMLCanvasElement): PreparedSignatureImage => {
   const fallbackScale = Math.min(
@@ -275,6 +276,15 @@ export default function SignatureWorkflowScreen() {
   );
 
   useEffect(() => {
+    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
+
+    const intervalId = window.setInterval(() => {
+      if (window.document.visibilityState === 'visible') {
+        void refreshWorkflow();
+      }
+    }, ESIGN_STATUS_FALLBACK_POLL_MS);
+
+    return () => window.clearInterval(intervalId);
     const fetchContractDetails = async () => {
       if (!contractId) {
         setError('contracts.invalidContract');
@@ -551,8 +561,8 @@ export default function SignatureWorkflowScreen() {
   useESignDocumentRevisionEvent(
     contractId,
     signatureStep === 'complete' &&
-      (isWaitingForCounterpart ||
-        (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
+    (isWaitingForCounterpart ||
+      (hasValidCurrentUserDraft && contract?.status === ContractStatus.PendingSignature)),
     handleDocumentChangedDuringSigning,
   );
 
@@ -713,7 +723,7 @@ export default function SignatureWorkflowScreen() {
               <Sparkles size={13} />
               <span>{t('contracts.esignContract')}</span>
             </div>
-            <h1 className="sw-header-title">
+            <h1 className="sw-header-title" title={contract.jobTitle || contract.title}>
               {contract.jobTitle || contract.title}
             </h1>
             <p className="sw-header-subtitle">
@@ -1203,7 +1213,9 @@ export default function SignatureWorkflowScreen() {
               <div className="sw-summary-pills-grid">
                 <div className="sw-summary-pill">
                   <span style={{ fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>{t('contracts.document')}</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contract.jobTitle || contract.title}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }} title={contract.jobTitle || contract.title}>
+                    {contract.jobTitle || contract.title}
+                  </span>
                 </div>
 
                 <div className="sw-summary-pill">
@@ -1266,4 +1278,4 @@ export default function SignatureWorkflowScreen() {
       </div>
     </AppLayout>
   );
-}
+}

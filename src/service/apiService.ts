@@ -8,6 +8,13 @@ import axios, {
 import type { ApiResponse, ApiTransportError } from '../types/common';
 import type { LoginResponse } from '../types/models/Auth';
 import { secureStorage } from '../shared/utils/secureStorage';
+import {
+  ACCESS_TOKEN_REFRESH_THRESHOLD_MS,
+  accessTokenExpiresWithin,
+  authSessionManager,
+  classifyRefreshFailureStatus,
+  getAccessTokenExpirationMs,
+} from '../features/auth/services/authSessionManager';
 
 type UnknownRecord = Record<string, unknown>;
 type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -67,6 +74,40 @@ const responseMessage = (source: UnknownRecord, fallback: string) => {
   return typeof value === 'string' && value.trim() ? value : fallback;
 };
 
+const authRequestPaths = [
+  'auth/login',
+  'auth/google',
+  'auth/register',
+  'auth/refresh',
+];
+
+const isAuthRequestUrl = (url?: string): boolean => {
+  const normalizedUrl = url?.toLowerCase() ?? '';
+  return authRequestPaths.some(path => normalizedUrl.includes(path));
+};
+
+const clearAuthenticationStorage = (): void => {
+  localStorage.removeItem('access_token');
+  secureStorage.removeItem('gigbridge_user');
+  secureStorage.removeItem('gigbridge_session');
+};
+
+const hardLogout = (reason: string): void => {
+  clearAuthenticationStorage();
+  authSessionManager.clearSession(reason);
+
+  if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
+    window.location.assign('/auth/login');
+  }
+};
+
+class IdleSessionError extends Error {
+  constructor() {
+    super('Your session expired because it was inactive.');
+    this.name = 'IdleSessionError';
+  }
+}
+
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 90_000,
@@ -76,32 +117,17 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
-    }
-
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error: AxiosError) => Promise.reject(error),
-);
-
 let refreshRequest: Promise<string> | null = null;
+let refreshRetryNotBefore = 0;
+let lastTransientRefreshError: unknown = null;
 
-const requestAccessToken = async (): Promise<string> => {
-  const currentToken = localStorage.getItem('access_token');
-  if (!currentToken) throw new Error('No access token is available for refresh.');
-
+const requestAccessToken = async (currentToken: string): Promise<string> => {
   const response = await axios.post<LegacyEnvelope<LegacyLoginResponse>>(
     `${API_BASE_URL}/auth/refresh`,
     { accessToken: currentToken },
     {
       withCredentials: true,
+      timeout: 30_000,
       headers: { 'Content-Type': 'application/json' },
     },
   );
@@ -111,29 +137,95 @@ const requestAccessToken = async (): Promise<string> => {
   if (!token) throw new Error('Token refresh returned no access token.');
 
   localStorage.setItem('access_token', token);
+  authSessionManager.notifyTokenRefreshed();
   return token;
 };
 
-const refreshAccessToken = () => {
+export const refreshAccessToken = (tokenBeingReplaced?: string): Promise<string> => {
+  if (Date.now() < refreshRetryNotBefore && lastTransientRefreshError) {
+    return Promise.reject(lastTransientRefreshError);
+  }
+
   if (!refreshRequest) {
-    refreshRequest = requestAccessToken().finally(() => {
-      refreshRequest = null;
-    });
+    const currentToken = tokenBeingReplaced ?? localStorage.getItem('access_token');
+    if (!currentToken) {
+      return Promise.reject(new Error('No access token is available for refresh.'));
+    }
+
+    refreshRequest = authSessionManager
+      .withRefreshLock(currentToken, () => requestAccessToken(currentToken))
+      .then(token => {
+        refreshRetryNotBefore = 0;
+        lastTransientRefreshError = null;
+        return token;
+      })
+      .catch((error: unknown) => {
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        if (classifyRefreshFailureStatus(status) === 'permanent') {
+          hardLogout('refresh-rejected');
+        } else {
+          lastTransientRefreshError = error;
+          refreshRetryNotBefore = Date.now() + 5_000;
+        }
+        throw error;
+      })
+      .finally(() => {
+        refreshRequest = null;
+      });
   }
   return refreshRequest;
 };
+
+export const ensureFreshAccessToken = async (): Promise<string | null> => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return null;
+
+  if (authSessionManager.isIdleExpired()) {
+    hardLogout('idle-expired');
+    throw new IdleSessionError();
+  }
+
+  if (
+    !authSessionManager.hasRecentActivity() ||
+    !accessTokenExpiresWithin(token, ACCESS_TOKEN_REFRESH_THRESHOLD_MS)
+  ) {
+    return token;
+  }
+
+  try {
+    return await refreshAccessToken(token);
+  } catch (error) {
+    const expiration = getAccessTokenExpirationMs(token);
+    const sessionWasPreserved = localStorage.getItem('access_token') === token;
+    if (sessionWasPreserved && expiration !== null && expiration > Date.now()) {
+      return token;
+    }
+    throw error;
+  }
+};
+
+apiClient.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
+    if (isAuthRequestUrl(config.url)) return config;
+
+    const token = await ensureFreshAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error: AxiosError) => Promise.reject(error),
+);
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
-    const requestUrl = originalRequest?.url?.toLowerCase() ?? '';
-    const isAuthRequest = [
-      'auth/login',
-      'auth/google',
-      'auth/register',
-      'auth/refresh',
-    ].some(path => requestUrl.includes(path));
+    const isAuthRequest = isAuthRequestUrl(originalRequest?.url);
 
     if (
       error.response?.status === 401 &&
@@ -148,15 +240,22 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      if (authSessionManager.isIdleExpired()) {
+        hardLogout('idle-expired');
+        return Promise.reject(error);
+      }
+
+      // Background polling and hidden tabs must not keep an AFK session alive.
+      // A meaningful user event makes the session eligible for refresh again.
+      if (!authSessionManager.hasRecentActivity()) {
+        return Promise.reject(error);
+      }
+
       try {
-        const newAccessToken = await refreshAccessToken();
+        const newAccessToken = await refreshAccessToken(currentToken);
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem('access_token');
-        secureStorage.removeItem('gigbridge_user');
-        secureStorage.removeItem('gigbridge_session');
-        window.location.assign('/auth/login');
         return Promise.reject(refreshError);
       }
     }
