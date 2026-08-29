@@ -1,6 +1,7 @@
 import { Layers, CheckCircle2, XCircle, DollarSign, Clock, ShieldCheck, Percent, Info, Edit3, PlusCircle, Trash2 } from 'lucide-react';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import type { ProposalDetailDto, ProposalDto } from '../../../types/models/Proposal';
+import { getCriteriaColorTheme } from '../utils/criteriaColors';
 
 export interface AISideBySideMilestoneMatrixProps {
   detail: ProposalDetailDto | null;
@@ -438,20 +439,21 @@ export function AISideBySideMilestoneMatrix({
             {requirementFulfillment.map((req, idx) => {
               const evidence = req.evidence_quote || req.note;
               const matchedMs = req.matched_milestone;
+              const theme = getCriteriaColorTheme(idx);
 
               return (
                 <div
                   key={idx}
                   className={`flex flex-col gap-1.5 p-3 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
                     req.is_fulfilled
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-text-primary'
+                      ? `${theme.cardBg} ${theme.cardBorder} text-text-primary`
                       : 'bg-rose-500/10 border-rose-500/30 text-text-primary'
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {req.is_fulfilled ? (
-                        <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                        <CheckCircle2 size={16} className={`${theme.cardText} shrink-0`} />
                       ) : (
                         <XCircle size={16} className="text-rose-500 shrink-0" />
                       )}
@@ -459,7 +461,7 @@ export function AISideBySideMilestoneMatrix({
                     </div>
 
                     {matchedMs && (
-                      <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
+                      <span className={`rounded-full ${theme.pillBg} text-white px-2.5 py-0.5 text-[10px] font-black shadow-2xs shrink-0`}>
                         📍 Matched: {matchedMs}
                       </span>
                     )}
@@ -469,7 +471,7 @@ export function AISideBySideMilestoneMatrix({
                   {evidence && (
                     <div className={`mt-1 p-2.5 rounded-lg text-[11px] font-normal leading-relaxed border ${
                       req.is_fulfilled
-                        ? 'bg-surface-card border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                        ? `bg-surface-card ${theme.cardBorder} ${theme.cardText}`
                         : 'bg-surface-card border-rose-500/30 text-rose-800 dark:text-rose-300'
                     }`}>
                       <span className="font-sans font-black uppercase text-[9px] tracking-wider block mb-0.5 opacity-80 flex items-center gap-1">

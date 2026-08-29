@@ -358,18 +358,13 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             🔥 Top Value Candidate
           </span>
         );
+      case 'qualified_match':
       case 'top_technical':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 border border-brand/30 px-3.5 py-1 text-xs font-black text-brand shadow-2xs">
-            <Zap size={14} className="text-brand" />
-            ⚡ Top Technical Expert
-          </span>
-        );
       case 'budget_saver':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1 text-xs font-black text-amber-600 dark:text-amber-400 shadow-2xs">
-            <PiggyBank size={14} className="text-amber-500" />
-            💰 Budget Saver Candidate
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 border border-brand/30 px-3.5 py-1 text-xs font-black text-brand shadow-2xs">
+            <CheckCircle2 size={14} className="text-brand" />
+            🤝 Qualified Match
           </span>
         );
       case 'high_risk':
@@ -382,6 +377,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
         );
     }
   };
+
 
   return (
     <div className="conic-border-wrap conic-border-card rounded-2xl w-full">

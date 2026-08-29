@@ -468,7 +468,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                       {hasScore && (
                         <>
                           {/* 1. Negotiation Verdict Badge */}
-                          {(candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60) ? (
+                          {(candidate.aiVerdictBadge === 'high_risk' || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60 || (candidate.aiScopeCompletenessPercent ?? 100) < 50) ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 px-3 py-0.5 text-xs font-black text-rose-600 dark:text-rose-400 shadow-2xs">
                               🚫 Not Worth Negotiating
                             </span>
@@ -502,12 +502,12 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                     {/* Clean AI Executive Summary for Recruiters - Larger & Easy to Read */}
                     {candidate.aiSummary ? (
                         <div className={`rounded-xl border p-3.5 space-y-1 text-xs sm:text-sm leading-relaxed shadow-2xs break-all [overflow-wrap:anywhere] ${
-                          (candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60)
+                          (candidate.aiVerdictBadge === 'high_risk' || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60 || (candidate.aiScopeCompletenessPercent ?? 100) < 50)
                             ? 'border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-100 font-semibold'
                             : 'border-brand/30 bg-brand/10 text-brand-950 dark:text-brand-100 font-medium'
                         }`}>
                           {candidate.aiSummary.startsWith('Technical Quality:') ? (
-                            (candidate.aiVerdictBadge === 'high_risk' || candidate.aiRecommendedHire === false || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60) ? (
+                            (candidate.aiVerdictBadge === 'high_risk' || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60 || (candidate.aiScopeCompletenessPercent ?? 100) < 50) ? (
                               <p>
                                 <strong className="font-black text-rose-600 dark:text-rose-400 mr-1">⚠️ High Risk Candidate:</strong>
                                 Candidate scored <span className="font-black">{candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0}/100</span> on technical quality and covers only <span className="font-black">{(candidate.aiScopeCompletenessPercent ?? 100).toFixed(0)}%</span> of required project scope deliverables.
@@ -522,7 +522,8 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                             <p className="italic">"{candidate.aiSummary}"</p>
                           )}
                         </div>
-                      ) : (
+                      )
+ : (
                         <p className="text-xs text-text-muted italic">
                           Chưa có đánh giá AI. Nhấn "Chấm tất cả" để chấm điểm.
                         </p>

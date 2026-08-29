@@ -24,6 +24,7 @@ import {
 } from '../../../types/models/Proposal';
 import { AIProposalVerdictCard } from './AIProposalVerdictCard';
 import { AISideBySideMilestoneMatrix } from './AISideBySideMilestoneMatrix';
+import { getCriteriaColorTheme } from '../utils/criteriaColors';
 import '../../../shared/components/styles/conic-border-button.css';
 import type { BusyAction } from '../hooks/useClientProposals';
 import { getStatusLabel } from '../utils/statusHelpers';
@@ -65,7 +66,7 @@ const getScoreColorClass = (score?: number | null) => {
 const renderAnnotatedDetailSection = (
   title: string,
   text?: string | null,
-  highlights: Array<{ quote: string; requirement: string }> = []
+  highlights: Array<{ quote: string; requirement: string; criteriaIndex?: number }> = []
 ) => {
   if (!text || !text.trim()) return null;
   const trimmed = text.trim();
@@ -84,7 +85,7 @@ const renderAnnotatedDetailSection = (
 
   // Split text into paragraphs/sentences for sentence-level matching
   const sentences = trimmed.split(/(?<=[.!?\n])\s+/);
-  const matchedSentences: Array<{ sentence: string; requirement: string }> = [];
+  const matchedSentences: Array<{ sentence: string; requirement: string; criteriaIndex: number }> = [];
 
   sentences.forEach(sentence => {
     const cleanSentence = sentence.trim();
@@ -121,6 +122,7 @@ const renderAnnotatedDetailSection = (
         matchedSentences.push({
           sentence: cleanSentence,
           requirement: h.requirement,
+          criteriaIndex: h.criteriaIndex ?? 0,
         });
         break;
       }
@@ -140,7 +142,7 @@ const renderAnnotatedDetailSection = (
   }
 
   // Locate character positions for matched sentences in trimmed text
-  const matchPositions: Array<{ start: number; end: number; requirement: string }> = [];
+  const matchPositions: Array<{ start: number; end: number; requirement: string; criteriaIndex: number }> = [];
   let searchCursor = 0;
 
   matchedSentences.forEach(ms => {
@@ -150,6 +152,7 @@ const renderAnnotatedDetailSection = (
         start: pos,
         end: pos + ms.sentence.length,
         requirement: ms.requirement,
+        criteriaIndex: ms.criteriaIndex,
       });
       searchCursor = pos + ms.sentence.length;
     }
@@ -171,7 +174,7 @@ const renderAnnotatedDetailSection = (
   matchPositions.sort((a, b) => a.start - b.start);
 
   // Group contiguous/adjacent sentence matches of the SAME requirement
-  const groupedBlocks: Array<{ start: number; end: number; requirement: string }> = [];
+  const groupedBlocks: Array<{ start: number; end: number; requirement: string; criteriaIndex: number }> = [];
 
   matchPositions.forEach(m => {
     if (groupedBlocks.length === 0) {
@@ -191,7 +194,7 @@ const renderAnnotatedDetailSection = (
     }
   });
 
-  // Build annotated React elements with grouped contiguous <mark> blocks
+  // Build annotated React elements with grouped contiguous <mark> blocks using criteria color themes
   let lastPos = 0;
   const elements: React.ReactNode[] = [];
 
@@ -200,13 +203,15 @@ const renderAnnotatedDetailSection = (
       elements.push(trimmed.substring(lastPos, gb.start));
     }
     const combinedText = trimmed.substring(gb.start, gb.end);
+    const theme = getCriteriaColorTheme(gb.criteriaIndex);
+
     elements.push(
       <mark
         key={`mark-group-${idx}`}
-        className="bg-emerald-500/25 dark:bg-emerald-500/35 text-emerald-950 dark:text-emerald-100 border-b-2 border-emerald-500 px-1.5 py-0.5 rounded-md font-bold transition-all hover:bg-emerald-500/40 inline shadow-2xs my-0.5"
+        className={`${theme.bgMark} ${theme.textMark} border-b-2 ${theme.borderMark} px-1.5 py-0.5 rounded-md font-bold transition-all hover:opacity-90 inline shadow-2xs my-0.5`}
       >
         {combinedText}
-        <span className="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-2xs align-middle">
+        <span className={`inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full ${theme.pillBg} text-white text-[9px] font-black uppercase tracking-wider shadow-2xs align-middle`}>
           ✓ Matched: "{gb.requirement}"
         </span>
       </mark>
@@ -272,9 +277,10 @@ export function ProposalDetailModal({
 
       const highlights = reqFulfillment
         .filter((r: any) => r.is_fulfilled)
-        .map((r: any) => ({
+        .map((r: any, idx: number) => ({
           quote: (r.evidence_quote || '').replace(/^"|"$/g, '').trim(),
           requirement: r.requirement,
+          criteriaIndex: idx,
         }));
 
       return {
