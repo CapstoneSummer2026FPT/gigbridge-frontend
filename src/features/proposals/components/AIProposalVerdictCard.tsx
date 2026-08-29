@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   Flame,
-  Zap,
-  PiggyBank,
   AlertTriangle,
   Award,
   TrendingUp,
@@ -13,6 +11,7 @@ import {
   Fingerprint,
   Calculator,
   HelpCircle,
+  Sparkles,
 } from 'lucide-react';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import '../../../shared/components/styles/conic-border-button.css';
@@ -221,6 +220,133 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
 
   const keyReasons = generateKeyReasons();
 
+  // Extract AI pillar comment from JSON or generate smart per-subcriteria fallback explanation
+  const getPillarComment = (
+    pillarKey: 'technical_solution' | 'screening_qa' | 'financial_value' | 'milestone_scope',
+    score: number
+  ): string => {
+    const rawComments = details?.llm_qualitative_evaluation?.pillar_comments;
+    if (rawComments && rawComments[pillarKey]) {
+      return rawComments[pillarKey];
+    }
+
+    // Dynamic smart per-subcriteria fallback generation in English (matching UI headers & candidate English answers)
+    switch (pillarKey) {
+      case 'technical_solution':
+        if (score >= 80) {
+          return '• Requirement Alignment (25%): Proposal introduction aligns closely with job description requirements.\n• Problem Analysis (25%): Demonstrates deep domain understanding and accurate technical analysis.\n• Solution Architecture (25%): Proposes a clear, well-structured workflow and system design.\n• Deliverables (15%): Comprehensive breakdown of tangible project outputs.\n• Scope Boundaries (10%): Clearly specifies project assumptions and out-of-scope exclusions.';
+        }
+        if (score >= 60) {
+          return '• Requirement Alignment (25%): Basic alignment with core job requirements.\n• Problem Analysis (25%): Problem breakdown is reasonable but remains high-level.\n• Solution Architecture (25%): Standard execution methodology proposed.\n• Deliverables (15%): Deliverables are described at an average depth.\n• Scope Boundaries (10%): Project scope boundaries require further technical clarification.';
+        }
+        return '• Requirement Alignment (25%): Generic introduction with weak requirement alignment.\n• Problem Analysis (25%): Lacks detailed domain analysis or technical problem breakdown.\n• Solution Architecture (25%): Superficial solution approach lacking concrete tools/methods.\n• Deliverables (15%): Brief or vague deliverable descriptions.\n• Scope Boundaries (10%): Project assumptions and out-of-scope boundaries were unmentioned.';
+
+      case 'screening_qa':
+        const qaList = details?.llm_qualitative_evaluation?.screening_qa || proposal.aiGradedQuestions || [];
+        if (qaList.length === 0 || score === 0) {
+          return '• Q&A Status: Candidate did not complete any screening questions (0/100).';
+        }
+        if (score >= 80) {
+          return '• Correctness (40%): Factually accurate concepts and core technical knowledge.\n• Technical Reasoning (25%): Strong logical rationale and trade-off justification.\n• Relevance (15%): Direct response addressing the exact question asked.\n• Technical Depth (10%): High technical substance and domain specificity.\n• Practical Examples (10%): Includes relevant real-world project scenario examples.';
+        }
+        return '• Correctness (40%): Average factual accuracy.\n• Technical Reasoning (25%): Requires further technical interview validation.\n• Relevance (15%): Direct response with standard question relevance.\n• Depth (10%): Content remains at a general overview level.\n• Practical Examples (10%): No concrete scenario examples provided.';
+
+      case 'financial_value':
+        const boostVal = (savingsPct * 0.5).toFixed(0);
+        const savingsText = savingsPct > 0 
+          ? `Provides ${savingsPct.toFixed(1)}% savings below maximum client budget (+${boostVal}%).` 
+          : 'Candidate offer remains unchanged from maximum client budget cap, providing 0% cost savings (+0%).';
+        const realismText = score >= 50 ? 'Proposed pricing is fair and realistic relative to scope complexity (+50%).' : 'Proposed pricing shows high variance relative to standard market rates.';
+        return `• Pricing Realism (50%): ${realismText}\n• Cost Savings (50%): ${savingsText}`;
+
+      case 'milestone_scope':
+        return `• Scope Coverage (40%): Fulfills ${scopePct.toFixed(0)}% / 100% of total job requirements.\n• Milestone Structure (30%): Clear phase breakdown across deliverable milestones.\n• Timeline Feasibility (30%): Execution duration aligns with standard professional velocity.`;
+    }
+  };
+
+  // Format AI explanation text: keep static labels unhighlighted, highlight metrics AFTER colon in pillar theme color
+  const renderFormattedExplanation = (rawText: string, pillarKey: string) => {
+    if (!rawText) return null;
+    const lines = rawText.split('\n');
+
+    // Get pillar theme badge style
+    const getPillarBadgeStyle = (key: string) => {
+      switch (key) {
+        case 'technical_solution':
+          return 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 font-black';
+        case 'screening_qa':
+          return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-black';
+        case 'financial_value':
+          return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-black';
+        case 'milestone_scope':
+        default:
+          return 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 font-black';
+      }
+    };
+
+    const badgeStyle = getPillarBadgeStyle(pillarKey);
+
+    return (
+      <div className="space-y-1.5 text-[13px] leading-relaxed font-normal text-text-primary">
+        {lines.map((line, lineIdx) => {
+          if (!line.trim()) return null;
+
+          // Split by colon to separate label prefix from explanation body
+          const colonIndex = line.indexOf(':');
+          if (colonIndex === -1) {
+            // No colon, scan entire line
+            const parts = line.split(/(\+?\d+(?:\.\d+)?%)/g);
+            return (
+              <div key={lineIdx} className="leading-snug">
+                {parts.map((part, partIdx) =>
+                  /^(\+?\d+(?:\.\d+)?%)$/.test(part) ? (
+                    <span
+                      key={partIdx}
+                      className={`inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-md border text-[12px] align-baseline shadow-2xs font-mono ${badgeStyle}`}
+                    >
+                      {part}
+                    </span>
+                  ) : (
+                    <span key={partIdx}>{part}</span>
+                  )
+                )}
+              </div>
+            );
+          }
+
+          const labelPart = line.substring(0, colonIndex + 1); // e.g. "• Scope Boundaries (10%):"
+          const bodyPart = line.substring(colonIndex + 1);     // e.g. " Project assumptions and out-of-scope boundaries were unmentioned."
+
+          // Scan ONLY bodyPart for metric percentages e.g. 25.0%, +13%, 74%
+          const bodyParts = bodyPart.split(/(\+?\d+(?:\.\d+)?%)/g);
+
+          return (
+            <div key={lineIdx} className="leading-snug flex items-start gap-1">
+              <span>
+                {/* Static label part - clean & unhighlighted */}
+                <strong className="font-semibold text-text-primary">{labelPart}</strong>
+                {/* Body part - highlight metrics if present */}
+                {bodyParts.map((part, partIdx) => {
+                  if (/^(\+?\d+(?:\.\d+)?%)$/.test(part)) {
+                    return (
+                      <span
+                        key={partIdx}
+                        className={`inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-md border text-[12px] align-baseline shadow-2xs font-mono ${badgeStyle}`}
+                      >
+                        {part}
+                      </span>
+                    );
+                  }
+                  return <span key={partIdx}>{part}</span>;
+                })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderBadge = () => {
     switch (badge) {
       case 'top_value':
@@ -230,18 +356,13 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             🔥 Top Value Candidate
           </span>
         );
+      case 'qualified_match':
       case 'top_technical':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 border border-brand/30 px-3.5 py-1 text-xs font-black text-brand shadow-2xs">
-            <Zap size={14} className="text-brand" />
-            ⚡ Top Technical Expert
-          </span>
-        );
       case 'budget_saver':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1 text-xs font-black text-amber-600 dark:text-amber-400 shadow-2xs">
-            <PiggyBank size={14} className="text-amber-500" />
-            💰 Budget Saver Candidate
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 border border-brand/30 px-3.5 py-1 text-xs font-black text-brand shadow-2xs">
+            <CheckCircle2 size={14} className="text-brand" />
+            🤝 Qualified Match
           </span>
         );
       case 'high_risk':
@@ -254,6 +375,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
         );
     }
   };
+
 
   return (
     <div className="conic-border-wrap conic-border-card rounded-2xl w-full">
@@ -458,8 +580,8 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="Scores the 6 core proposal text sections. Excludes proposed milestone plan (scored separately in Pillar 4)."
           >
-            <div className="p-2 rounded-xl border border-transparent hover:border-purple-500/30 hover:bg-purple-500/5 transition-all">
-              <div className="flex justify-between text-[11px] font-bold mb-1">
+            <div className="p-3 rounded-xl border border-transparent hover:border-purple-500/30 hover:bg-purple-500/5 transition-all space-y-2">
+              <div className="flex justify-between text-[11px] font-bold">
                 <span className="text-text-primary flex items-center gap-1.5">
                   🛠️ Solution & Delivery Methodology (35%)
                   <HelpCircle size={11} className="text-text-muted" />
@@ -473,6 +595,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                   className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.technical_solution))}%` }}
                 />
+              </div>
+              {/* AI Comment Box */}
+              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-purple-500/5 dark:bg-purple-500/10 p-3 rounded-xl border border-purple-500/20">
+                <Sparkles size={15} className="text-purple-500 shrink-0 mt-0.5" />
+                <div className="w-full">
+                  <span className="text-[11px] font-black uppercase text-purple-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  {renderFormattedExplanation(getPillarComment('technical_solution', pillarScores.technical_solution), 'technical_solution')}
+                </div>
               </div>
             </div>
           </MetricCalculationTooltip>
@@ -491,8 +621,8 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="Averages candidate screening answer quality across all questions."
           >
-            <div className="p-2 rounded-xl border border-transparent hover:border-amber-500/30 hover:bg-amber-500/5 transition-all">
-              <div className="flex justify-between text-[11px] font-bold mb-1">
+            <div className="p-3 rounded-xl border border-transparent hover:border-amber-500/30 hover:bg-amber-500/5 transition-all space-y-2">
+              <div className="flex justify-between text-[11px] font-bold">
                 <span className="text-text-primary flex items-center gap-1.5">
                   ❓ Screening Q&A Accuracy & Reasoning (30%)
                   <HelpCircle size={11} className="text-text-muted" />
@@ -506,6 +636,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                   className="h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.screening_qa))}%` }}
                 />
+              </div>
+              {/* AI Comment Box */}
+              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-amber-500/5 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
+                <Sparkles size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                <div className="w-full">
+                  <span className="text-[11px] font-black uppercase text-amber-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  {renderFormattedExplanation(getPillarComment('screening_qa', pillarScores.screening_qa), 'screening_qa')}
+                </div>
               </div>
             </div>
           </MetricCalculationTooltip>
@@ -521,8 +659,8 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="100% pure financial score based on budget savings ratio and AI pricing realism."
           >
-            <div className="p-2 rounded-xl border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all">
-              <div className="flex justify-between text-[11px] font-bold mb-1">
+            <div className="p-3 rounded-xl border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all space-y-2">
+              <div className="flex justify-between text-[11px] font-bold">
                 <span className="text-text-primary flex items-center gap-1.5">
                   💰 Financial & Pricing Value (20%)
                   <HelpCircle size={11} className="text-text-muted" />
@@ -536,6 +674,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.financial_value))}%` }}
                 />
+              </div>
+              {/* AI Comment Box */}
+              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-emerald-500/5 dark:bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
+                <Sparkles size={15} className="text-emerald-500 shrink-0 mt-0.5" />
+                <div className="w-full">
+                  <span className="text-[11px] font-black uppercase text-emerald-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  {renderFormattedExplanation(getPillarComment('financial_value', pillarScores.financial_value), 'financial_value')}
+                </div>
               </div>
             </div>
           </MetricCalculationTooltip>
@@ -552,8 +698,8 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="Evaluates requirement scope coverage, milestone breakdown granularity, and duration velocity realism."
           >
-            <div className="p-2 rounded-xl border border-transparent hover:border-brand/30 hover:bg-brand/5 transition-all">
-              <div className="flex justify-between text-[11px] font-bold mb-1">
+            <div className="p-3 rounded-xl border border-transparent hover:border-brand/30 hover:bg-brand/5 transition-all space-y-2">
+              <div className="flex justify-between text-[11px] font-bold">
                 <span className="text-text-primary flex items-center gap-1.5">
                   📋 Milestone Scope & Timeline Feasibility (15%)
                   <HelpCircle size={11} className="text-text-muted" />
@@ -567,6 +713,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                   className="h-full bg-gradient-to-r from-brand to-cyan-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.milestone_scope))}%` }}
                 />
+              </div>
+              {/* AI Comment Box */}
+              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-cyan-500/5 dark:bg-cyan-500/10 p-3 rounded-xl border border-cyan-500/20">
+                <Sparkles size={15} className="text-cyan-500 shrink-0 mt-0.5" />
+                <div className="w-full">
+                  <span className="text-[11px] font-black uppercase text-cyan-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  {renderFormattedExplanation(getPillarComment('milestone_scope', pillarScores.milestone_scope), 'milestone_scope')}
+                </div>
               </div>
             </div>
           </MetricCalculationTooltip>

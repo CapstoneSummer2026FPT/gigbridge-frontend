@@ -1,11 +1,13 @@
-import { Layers, CheckCircle2, XCircle, DollarSign, Clock, ShieldCheck, Percent, Info } from 'lucide-react';
+import { Layers, CheckCircle2, XCircle, DollarSign, Clock, ShieldCheck, Percent, Info, Edit3, PlusCircle, Trash2 } from 'lucide-react';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import type { ProposalDetailDto, ProposalDto } from '../../../types/models/Proposal';
+import { getCriteriaColorTheme } from '../utils/criteriaColors';
 
 export interface AISideBySideMilestoneMatrixProps {
   detail: ProposalDetailDto | null;
   proposal?: ProposalDto | null;
   fullEvaluationJson?: string | null;
+  originalMilestones?: any[] | null;
 }
 
 function parseDurationToWeeks(durationStr?: string | null): number {
@@ -18,6 +20,17 @@ function parseDurationToWeeks(durationStr?: string | null): number {
   if (lower.includes('day')) return val / 7;
   if (lower.includes('week')) return val;
   return val;
+}
+
+function isTitleMatch(titleA?: string | null, titleB?: string | null): boolean {
+  if (!titleA || !titleB) return false;
+  const a = titleA.trim().toLowerCase();
+  const b = titleB.trim().toLowerCase();
+  if (a === b) return true;
+  if (a.length >= 4 && b.length >= 4) {
+    if (a.includes(b) || b.includes(a)) return true;
+  }
+  return false;
 }
 
 function sumMilestoneDurations(milestones: any[]): string | null {
@@ -43,8 +56,10 @@ export function AISideBySideMilestoneMatrix({
   detail,
   proposal,
   fullEvaluationJson,
+  originalMilestones,
 }: AISideBySideMilestoneMatrixProps) {
   let requirementFulfillment: any[] = [];
+  let milestoneAudit: any[] = [];
   let jobBaseline: any = null;
   let proposalOffer: any = null;
   let deterministic: any = null;
@@ -54,11 +69,13 @@ export function AISideBySideMilestoneMatrix({
     try {
       const parsed = JSON.parse(rawJson);
       requirementFulfillment = parsed?.llm_qualitative_evaluation?.requirement_fulfillment || [];
+      milestoneAudit = parsed?.llm_qualitative_evaluation?.milestone_audit || [];
       jobBaseline = parsed?.job_post_baseline || null;
       proposalOffer = parsed?.proposal_offer || null;
       deterministic = parsed?.deterministic_calculations || null;
     } catch {
       requirementFulfillment = [];
+      milestoneAudit = [];
     }
   }
 
@@ -247,14 +264,46 @@ export function AISideBySideMilestoneMatrix({
           <tbody className="divide-y divide-border/40">
             {milestones.length > 0 ? (
               milestones.map((item, index) => {
-                // Find matching requirement audit item
-                const reqAudit =
-                  requirementFulfillment.find(
-                    (r) =>
-                      r.matched_milestone?.toLowerCase() === item.title?.toLowerCase() || index === 0
-                  ) || requirementFulfillment[index];
+                const itemTitle = (item.title || '').trim();
+                const itemTitleLower = itemTitle.toLowerCase();
+                const origMilestones: any[] = originalMilestones || jobBaseline?.original_milestones || [];
 
-                const isFulfilled = reqAudit ? reqAudit.is_fulfilled : true;
+                // Find matching baseline milestone strictly by title similarity (NO positional index fallback!)
+                const matchedOrig = origMilestones.find(
+                  (o: any) => isTitleMatch(o.title || o.milestone_title, itemTitle)
+                );
+
+                // Find matching milestone audit item strictly by title similarity
+                const auditItem = milestoneAudit.find(
+                  (a: any) => isTitleMatch(a.milestone_title || a.title, itemTitle)
+                );
+
+                let status: string = 'Preserved';
+                let changeSummary: string = '';
+
+                if (matchedOrig) {
+                  const isPriceChanged = Number(matchedOrig.amount) !== Number(item.amount);
+                  const isDurChanged =
+                    (matchedOrig.estimated_duration || matchedOrig.estimatedDuration || '').trim() !==
+                    (item.estimatedDuration || (item as any).estimated_duration || '').trim();
+                  const isTitleChanged = (matchedOrig.title || '').trim().toLowerCase() !== itemTitleLower;
+
+                  if (isPriceChanged || isDurChanged || isTitleChanged) {
+                    status = 'Edited';
+                    changeSummary = auditItem?.change_summary || 'Thông tin chi phí / thời gian / tiêu đề đã được điều chỉnh';
+                  } else {
+                    status = auditItem?.status || 'Preserved';
+                    changeSummary = auditItem?.change_summary || 'Baseline milestone preserved';
+                  }
+                } else if (auditItem && auditItem.status && isTitleMatch(auditItem.milestone_title || auditItem.title, itemTitle)) {
+                  status = auditItem.status;
+                  changeSummary = auditItem.change_summary || '';
+                } else if (origMilestones.length > 0) {
+                  status = 'Added';
+                  changeSummary = 'Hạng mục milestone mới do freelancer đề xuất bổ sung';
+                } else {
+                  status = 'Preserved';
+                }
 
                 return (
                   <tr key={item.id || index} className="hover:bg-surface-muted/30 transition-colors">
@@ -268,6 +317,17 @@ export function AISideBySideMilestoneMatrix({
                           {item.description}
                         </p>
                       )}
+                      {changeSummary && status !== 'Preserved' && (
+                        <p className={`text-[10px] font-medium px-2 py-0.5 rounded-md inline-block mt-1 border ${
+                          status === 'Added'
+                            ? 'text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 border-cyan-500/20'
+                            : status === 'Deleted'
+                            ? 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20'
+                            : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20'
+                        }`}>
+                          💡 {changeSummary}
+                        </p>
+                      )}
                     </td>
                     <td className="p-3 text-right font-black text-emerald-600 dark:text-emerald-400">
                       {formatGigCoin(item.amount)}
@@ -276,13 +336,21 @@ export function AISideBySideMilestoneMatrix({
                       {item.estimatedDuration || '—'}
                     </td>
                     <td className="p-3">
-                      {isFulfilled ? (
+                      {status === 'Preserved' ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-black text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 size={12} /> Covered & Preserved
                         </span>
-                      ) : (
+                      ) : status === 'Added' ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 px-2.5 py-0.5 text-[11px] font-black text-cyan-700 dark:text-cyan-300">
+                          <PlusCircle size={12} /> Freelancer Added
+                        </span>
+                      ) : status === 'Deleted' ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
-                          <XCircle size={12} /> Missing / Altered Scope
+                          <Trash2 size={12} /> Freelancer Deleted
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-black text-amber-700 dark:text-amber-300">
+                          <Edit3 size={12} /> Freelancer Edited
                         </span>
                       )}
                     </td>
@@ -296,6 +364,67 @@ export function AISideBySideMilestoneMatrix({
                 </td>
               </tr>
             )}
+
+            {/* Deleted Baseline Milestones */}
+            {(() => {
+              const origMilestones: any[] = originalMilestones || jobBaseline?.original_milestones || [];
+              const list: Array<{ milestone_title: string; change_summary: string }> = [];
+              const processedTitles = new Set<string>();
+
+              milestoneAudit
+                .filter((a: any) => a.status === 'Deleted')
+                .forEach((a: any) => {
+                  const title = a.milestone_title || a.title || '';
+                  if (title) {
+                    list.push({
+                      milestone_title: title,
+                      change_summary: a.change_summary || 'Hạng mục milestone bị bỏ qua so với kế hoạch ban đầu',
+                    });
+                    processedTitles.add(title.toLowerCase().trim());
+                  }
+                });
+
+              if (origMilestones.length > 0) {
+                origMilestones.forEach((orig: any) => {
+                  const origTitle = (orig.title || orig.milestone_title || '').trim();
+                  if (!origTitle) return;
+
+                  const isMatchedInProposed = milestones.some((m: any) =>
+                    isTitleMatch(m.title, origTitle)
+                  );
+
+                  if (!isMatchedInProposed && !processedTitles.has(origTitle.toLowerCase())) {
+                    list.push({
+                      milestone_title: origTitle,
+                      change_summary: `Hạng mục baseline '${origTitle}' đã bị bỏ qua / xóa bởi freelancer`,
+                    });
+                    processedTitles.add(origTitle.toLowerCase());
+                  }
+                });
+              }
+
+              if (list.length === 0) return null;
+              return list.map((del: any, dIdx: number) => (
+                <tr key={`del-${dIdx}`} className="bg-rose-500/5 hover:bg-rose-500/10 transition-colors">
+                  <td className="p-3 font-bold text-rose-400">❌</td>
+                  <td className="p-3 space-y-1">
+                    <strong className="block text-xs font-bold text-rose-600 dark:text-rose-400 line-through">
+                      {del.milestone_title}
+                    </strong>
+                    <p className="text-[10px] italic text-rose-500">
+                      💡 {del.change_summary || 'Hạng mục milestone bị bỏ qua so với kế hoạch ban đầu'}
+                    </p>
+                  </td>
+                  <td className="p-3 text-right font-black text-text-muted italic">—</td>
+                  <td className="p-3 text-center font-semibold text-text-muted italic">—</td>
+                  <td className="p-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
+                      <Trash2 size={12} /> Freelancer Deleted
+                    </span>
+                  </td>
+                </tr>
+              ));
+            })()}
           </tbody>
           {/* Recruiter Summary Footer: Sum of Milestone Cost and Duration */}
           {milestones.length > 0 && (
@@ -364,24 +493,54 @@ export function AISideBySideMilestoneMatrix({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-xs">
-            {requirementFulfillment.map((req, idx) => (
-              <div
-                key={idx}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
-                  req.is_fulfilled
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
-                }`}
-              >
-                {req.is_fulfilled ? (
-                  <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle size={14} className="text-rose-500 shrink-0" />
-                )}
-                <span>{req.requirement}</span>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 gap-2.5 text-xs">
+            {requirementFulfillment.map((req, idx) => {
+              const evidence = req.evidence_quote || req.note;
+              const matchedMs = req.matched_milestone;
+              const theme = getCriteriaColorTheme(idx);
+
+              return (
+                <div
+                  key={idx}
+                  className={`flex flex-col gap-1.5 p-3 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                    req.is_fulfilled
+                      ? `${theme.cardBg} ${theme.cardBorder} text-text-primary`
+                      : 'bg-rose-500/10 border-rose-500/30 text-text-primary'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {req.is_fulfilled ? (
+                        <CheckCircle2 size={16} className={`${theme.cardText} shrink-0`} />
+                      ) : (
+                        <XCircle size={16} className="text-rose-500 shrink-0" />
+                      )}
+                      <span className="font-extrabold text-xs text-text-primary">{req.requirement}</span>
+                    </div>
+
+                    {matchedMs && (
+                      <span className={`rounded-full ${theme.pillBg} text-white px-2.5 py-0.5 text-[10px] font-black shadow-2xs shrink-0`}>
+                        📍 Matched: {matchedMs}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Highlighted Evidence Quote Box */}
+                  {evidence && (
+                    <div className={`mt-1 p-2.5 rounded-lg text-[11px] font-normal leading-relaxed border ${
+                      req.is_fulfilled
+                        ? `bg-surface-card ${theme.cardBorder} ${theme.cardText}`
+                        : 'bg-surface-card border-rose-500/30 text-rose-800 dark:text-rose-300'
+                    }`}>
+                      <span className="font-sans font-black uppercase text-[9px] tracking-wider block mb-0.5 opacity-80 flex items-center gap-1">
+                        💬 {req.is_fulfilled ? 'Evidence Proof Quote (From Proposal/Milestones)' : 'Missing Scope Gap Explanation'}
+                      </span>
+                      <p className="italic font-sans text-[11.5px]">"{evidence.replace(/^"|"$/g, '')}"</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

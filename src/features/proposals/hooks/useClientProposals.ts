@@ -67,6 +67,7 @@ export function useClientProposals() {
   const [submittedTo, setSubmittedTo] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
   const [rawAnswers, setRawAnswers] = useState<ProposalAnswerDto[]>([]);
+  const [originalJobMilestones, setOriginalJobMilestones] = useState<any[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -345,6 +346,16 @@ export function useClientProposals() {
       const detailRes = await proposalGetAPI.getProposalDetail(proposalId).catch(() => null);
       if (detailRes?.success && detailRes.data) {
         setDetail(detailRes.data);
+        const targetJobId = detailRes.data.jobPostId || selectedJobId;
+        if (targetJobId) {
+          jobAPI.getMyJobPostById(targetJobId)
+            .then(res => {
+              if (res?.success && res.data?.milestonePlans) {
+                setOriginalJobMilestones(res.data.milestonePlans);
+              }
+            })
+            .catch(() => {});
+        }
       } else {
         setDetailError(detailRes?.message || 'Failed to load proposal detail');
       }
@@ -423,6 +434,7 @@ export function useClientProposals() {
     rejectProposalId,
     setRejectProposalId,
     rawAnswers,
+    originalJobMilestones,
     selectJob,
     updateStatus,
     acceptForNegotiation,
