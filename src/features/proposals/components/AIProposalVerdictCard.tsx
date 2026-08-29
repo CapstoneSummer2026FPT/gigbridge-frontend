@@ -254,15 +254,99 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
         return '• Correctness (40%): Average factual accuracy.\n• Technical Reasoning (25%): Requires further technical interview validation.\n• Relevance (15%): Direct response with standard question relevance.\n• Depth (10%): Content remains at a general overview level.\n• Practical Examples (10%): No concrete scenario examples provided.';
 
       case 'financial_value':
+        const boostVal = (savingsPct * 0.5).toFixed(0);
         const savingsText = savingsPct > 0 
-          ? `Provides ${savingsPct.toFixed(1)}% savings below maximum client budget (+${(savingsPct * 0.5).toFixed(0)}%)` 
-          : 'Candidate offer remains unchanged from maximum client budget cap, providing 0% cost savings (+0%)';
-        const realismText = score >= 50 ? 'Proposed pricing is fair and realistic relative to scope complexity (+50%)' : 'Proposed pricing shows high variance relative to standard market rates';
-        return `• Pricing Realism (50%): ${realismText}.\n• Cost Savings (50%): ${savingsText}.`;
+          ? `Provides ${savingsPct.toFixed(1)}% savings below maximum client budget (+${boostVal}%).` 
+          : 'Candidate offer remains unchanged from maximum client budget cap, providing 0% cost savings (+0%).';
+        const realismText = score >= 50 ? 'Proposed pricing is fair and realistic relative to scope complexity (+50%).' : 'Proposed pricing shows high variance relative to standard market rates.';
+        return `• Pricing Realism (50%): ${realismText}\n• Cost Savings (50%): ${savingsText}`;
 
       case 'milestone_scope':
         return `• Scope Coverage (40%): Fulfills ${scopePct.toFixed(0)}% of total job requirements.\n• Milestone Structure (30%): Clear phase breakdown across deliverable milestones.\n• Timeline Feasibility (30%): Execution duration aligns with standard professional velocity.`;
     }
+  };
+
+  // Format AI explanation text: keep static labels unhighlighted, highlight metrics AFTER colon in pillar theme color
+  const renderFormattedExplanation = (rawText: string, pillarKey: string) => {
+    if (!rawText) return null;
+    const lines = rawText.split('\n');
+
+    // Get pillar theme badge style
+    const getPillarBadgeStyle = (key: string) => {
+      switch (key) {
+        case 'technical_solution':
+          return 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 font-black';
+        case 'screening_qa':
+          return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-black';
+        case 'financial_value':
+          return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-black';
+        case 'milestone_scope':
+        default:
+          return 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 font-black';
+      }
+    };
+
+    const badgeStyle = getPillarBadgeStyle(pillarKey);
+
+    return (
+      <div className="space-y-1.5 text-[13px] leading-relaxed font-normal text-text-primary">
+        {lines.map((line, lineIdx) => {
+          if (!line.trim()) return null;
+
+          // Split by colon to separate label prefix from explanation body
+          const colonIndex = line.indexOf(':');
+          if (colonIndex === -1) {
+            // No colon, scan entire line
+            const parts = line.split(/(\+?\d+(?:\.\d+)?%)/g);
+            return (
+              <div key={lineIdx} className="leading-snug">
+                {parts.map((part, partIdx) =>
+                  /^(\+?\d+(?:\.\d+)?%)$/.test(part) ? (
+                    <span
+                      key={partIdx}
+                      className={`inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-md border text-[12px] align-baseline shadow-2xs font-mono ${badgeStyle}`}
+                    >
+                      {part}
+                    </span>
+                  ) : (
+                    <span key={partIdx}>{part}</span>
+                  )
+                )}
+              </div>
+            );
+          }
+
+          const labelPart = line.substring(0, colonIndex + 1); // e.g. "• Scope Boundaries (10%):"
+          const bodyPart = line.substring(colonIndex + 1);     // e.g. " Project assumptions and out-of-scope boundaries were unmentioned."
+
+          // Scan ONLY bodyPart for metric percentages e.g. 25.0%, +13%, 74%
+          const bodyParts = bodyPart.split(/(\+?\d+(?:\.\d+)?%)/g);
+
+          return (
+            <div key={lineIdx} className="leading-snug flex items-start gap-1">
+              <span>
+                {/* Static label part - clean & unhighlighted */}
+                <strong className="font-semibold text-text-primary">{labelPart}</strong>
+                {/* Body part - highlight metrics if present */}
+                {bodyParts.map((part, partIdx) => {
+                  if (/^(\+?\d+(?:\.\d+)?%)$/.test(part)) {
+                    return (
+                      <span
+                        key={partIdx}
+                        className={`inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-md border text-[12px] align-baseline shadow-2xs font-mono ${badgeStyle}`}
+                      >
+                        {part}
+                      </span>
+                    );
+                  }
+                  return <span key={partIdx}>{part}</span>;
+                })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderBadge = () => {
@@ -523,7 +607,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                 <Sparkles size={15} className="text-purple-500 shrink-0 mt-0.5" />
                 <div className="w-full">
                   <span className="text-[11px] font-black uppercase text-purple-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
-                  <div className="whitespace-pre-line text-[13px] leading-relaxed font-normal text-text-primary">{getPillarComment('technical_solution', pillarScores.technical_solution)}</div>
+                  {renderFormattedExplanation(getPillarComment('technical_solution', pillarScores.technical_solution), 'technical_solution')}
                 </div>
               </div>
             </div>
@@ -564,7 +648,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                 <Sparkles size={15} className="text-amber-500 shrink-0 mt-0.5" />
                 <div className="w-full">
                   <span className="text-[11px] font-black uppercase text-amber-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
-                  <div className="whitespace-pre-line text-[13px] leading-relaxed font-normal text-text-primary">{getPillarComment('screening_qa', pillarScores.screening_qa)}</div>
+                  {renderFormattedExplanation(getPillarComment('screening_qa', pillarScores.screening_qa), 'screening_qa')}
                 </div>
               </div>
             </div>
@@ -602,7 +686,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                 <Sparkles size={15} className="text-emerald-500 shrink-0 mt-0.5" />
                 <div className="w-full">
                   <span className="text-[11px] font-black uppercase text-emerald-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
-                  <div className="whitespace-pre-line text-[13px] leading-relaxed font-normal text-text-primary">{getPillarComment('financial_value', pillarScores.financial_value)}</div>
+                  {renderFormattedExplanation(getPillarComment('financial_value', pillarScores.financial_value), 'financial_value')}
                 </div>
               </div>
             </div>
@@ -641,7 +725,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
                 <Sparkles size={15} className="text-cyan-500 shrink-0 mt-0.5" />
                 <div className="w-full">
                   <span className="text-[11px] font-black uppercase text-cyan-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
-                  <div className="whitespace-pre-line text-[13px] leading-relaxed font-normal text-text-primary">{getPillarComment('milestone_scope', pillarScores.milestone_scope)}</div>
+                  {renderFormattedExplanation(getPillarComment('milestone_scope', pillarScores.milestone_scope), 'milestone_scope')}
                 </div>
               </div>
             </div>
