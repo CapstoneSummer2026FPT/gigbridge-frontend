@@ -47,7 +47,7 @@ const languageDetectorOptions = {
   caches: ['localStorage'],
 
   // Don't automatically set HTML lang attribute (we'll do this manually)
-  htmlTag: document.documentElement,
+  htmlTag: typeof document !== 'undefined' ? document.documentElement : undefined,
 };
 
 /**

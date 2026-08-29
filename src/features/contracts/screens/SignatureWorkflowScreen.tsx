@@ -723,7 +723,7 @@ export default function SignatureWorkflowScreen() {
               <Sparkles size={13} />
               <span>{t('contracts.esignContract')}</span>
             </div>
-            <h1 className="sw-header-title">
+            <h1 className="sw-header-title" title={contract.jobTitle || contract.title}>
               {contract.jobTitle || contract.title}
             </h1>
             <p className="sw-header-subtitle">
@@ -1213,7 +1213,9 @@ export default function SignatureWorkflowScreen() {
               <div className="sw-summary-pills-grid">
                 <div className="sw-summary-pill">
                   <span style={{ fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-muted)' }}>{t('contracts.document')}</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contract.jobTitle || contract.title}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }} title={contract.jobTitle || contract.title}>
+                    {contract.jobTitle || contract.title}
+                  </span>
                 </div>
 
                 <div className="sw-summary-pill">

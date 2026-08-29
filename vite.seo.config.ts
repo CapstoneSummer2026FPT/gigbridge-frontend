@@ -7,6 +7,11 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': resolve(projectRoot, 'src'),
+    },
+  },
   build: {
     emptyOutDir: false,
     outDir: 'dist',
