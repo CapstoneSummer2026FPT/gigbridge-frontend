@@ -43,6 +43,7 @@ export interface ProposalDetailModalProps {
   evalLoading: boolean;
   evalError: string | null;
   rawAnswers: ProposalAnswerDto[];
+  originalMilestones?: any[] | null;
   rejectProposalId: string | null;
   setRejectProposalId: (id: string | null) => void;
   selectedJobCanNegotiate: boolean;
@@ -250,6 +251,7 @@ export function ProposalDetailModal({
   evalLoading,
   evalError,
   rawAnswers,
+  originalMilestones,
   rejectProposalId,
   setRejectProposalId,
   selectedJobCanNegotiate,
@@ -745,6 +747,7 @@ export function ProposalDetailModal({
                       detail={detail}
                       proposal={activeProposal}
                       fullEvaluationJson={activeProposal?.aiFullEvaluationJson}
+                      originalMilestones={originalMilestones || undefined}
                     />
 
 

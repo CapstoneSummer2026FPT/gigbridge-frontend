@@ -7,6 +7,7 @@ export interface AISideBySideMilestoneMatrixProps {
   detail: ProposalDetailDto | null;
   proposal?: ProposalDto | null;
   fullEvaluationJson?: string | null;
+  originalMilestones?: any[] | null;
 }
 
 function parseDurationToWeeks(durationStr?: string | null): number {
@@ -19,6 +20,17 @@ function parseDurationToWeeks(durationStr?: string | null): number {
   if (lower.includes('day')) return val / 7;
   if (lower.includes('week')) return val;
   return val;
+}
+
+function isTitleMatch(titleA?: string | null, titleB?: string | null): boolean {
+  if (!titleA || !titleB) return false;
+  const a = titleA.trim().toLowerCase();
+  const b = titleB.trim().toLowerCase();
+  if (a === b) return true;
+  if (a.length >= 4 && b.length >= 4) {
+    if (a.includes(b) || b.includes(a)) return true;
+  }
+  return false;
 }
 
 function sumMilestoneDurations(milestones: any[]): string | null {
@@ -44,6 +56,7 @@ export function AISideBySideMilestoneMatrix({
   detail,
   proposal,
   fullEvaluationJson,
+  originalMilestones,
 }: AISideBySideMilestoneMatrixProps) {
   let requirementFulfillment: any[] = [];
   let milestoneAudit: any[] = [];
@@ -251,41 +264,45 @@ export function AISideBySideMilestoneMatrix({
           <tbody className="divide-y divide-border/40">
             {milestones.length > 0 ? (
               milestones.map((item, index) => {
-                // Find matching milestone audit item from AI or fallback comparison against original milestones
-                const auditItem = milestoneAudit.find(
-                  (a: any) =>
-                    a.order_index === (index + 1) ||
-                    a.milestone_title?.toLowerCase() === item.title?.toLowerCase() ||
-                    item.title?.toLowerCase()?.includes(a.milestone_title?.toLowerCase() || '')
-                );
+                const itemTitle = (item.title || '').trim();
+                const itemTitleLower = itemTitle.toLowerCase();
+                const origMilestones: any[] = originalMilestones || jobBaseline?.original_milestones || [];
 
-                // Fallback check against baseline original milestones
-                const origMilestones: any[] = jobBaseline?.original_milestones || [];
+                // Find matching baseline milestone strictly by title similarity (NO positional index fallback!)
                 const matchedOrig = origMilestones.find(
-                  (o) => o.title?.toLowerCase() === item.title?.toLowerCase()
+                  (o: any) => isTitleMatch(o.title || o.milestone_title, itemTitle)
                 );
 
-                let status = auditItem?.status;
-                let changeSummary = auditItem?.change_summary;
+                // Find matching milestone audit item strictly by title similarity
+                const auditItem = milestoneAudit.find(
+                  (a: any) => isTitleMatch(a.milestone_title || a.title, itemTitle)
+                );
 
-                if (!status) {
-                  if (matchedOrig) {
-                    const isPriceChanged = Number(matchedOrig.amount) !== Number(item.amount);
-                    const isDurChanged =
-                      (matchedOrig.estimated_duration || matchedOrig.estimatedDuration) !==
-                      (item.estimatedDuration || (item as any).estimated_duration);
-                    if (isPriceChanged || isDurChanged) {
-                      status = 'Edited';
-                      changeSummary = 'Thông tin chi phí / thời gian đã được điều chỉnh';
-                    } else {
-                      status = 'Preserved';
-                    }
-                  } else if (origMilestones.length > 0) {
+                let status: string = 'Preserved';
+                let changeSummary: string = '';
+
+                if (matchedOrig) {
+                  const isPriceChanged = Number(matchedOrig.amount) !== Number(item.amount);
+                  const isDurChanged =
+                    (matchedOrig.estimated_duration || matchedOrig.estimatedDuration || '').trim() !==
+                    (item.estimatedDuration || (item as any).estimated_duration || '').trim();
+                  const isTitleChanged = (matchedOrig.title || '').trim().toLowerCase() !== itemTitleLower;
+
+                  if (isPriceChanged || isDurChanged || isTitleChanged) {
                     status = 'Edited';
-                    changeSummary = 'Milestone được freelancer tùy chỉnh';
+                    changeSummary = auditItem?.change_summary || 'Thông tin chi phí / thời gian / tiêu đề đã được điều chỉnh';
                   } else {
-                    status = 'Preserved';
+                    status = auditItem?.status || 'Preserved';
+                    changeSummary = auditItem?.change_summary || 'Baseline milestone preserved';
                   }
+                } else if (auditItem && auditItem.status && isTitleMatch(auditItem.milestone_title || auditItem.title, itemTitle)) {
+                  status = auditItem.status;
+                  changeSummary = auditItem.change_summary || '';
+                } else if (origMilestones.length > 0) {
+                  status = 'Added';
+                  changeSummary = 'Hạng mục milestone mới do freelancer đề xuất bổ sung';
+                } else {
+                  status = 'Preserved';
                 }
 
                 return (
@@ -300,8 +317,14 @@ export function AISideBySideMilestoneMatrix({
                           {item.description}
                         </p>
                       )}
-                      {changeSummary && (
-                        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md inline-block mt-1">
+                      {changeSummary && status !== 'Preserved' && (
+                        <p className={`text-[10px] font-medium px-2 py-0.5 rounded-md inline-block mt-1 border ${
+                          status === 'Added'
+                            ? 'text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 border-cyan-500/20'
+                            : status === 'Deleted'
+                            ? 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20'
+                            : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20'
+                        }`}>
                           💡 {changeSummary}
                         </p>
                       )}
@@ -342,11 +365,46 @@ export function AISideBySideMilestoneMatrix({
               </tr>
             )}
 
-            {/* Deleted Baseline Milestones (if any baseline milestones were removed by freelancer) */}
+            {/* Deleted Baseline Milestones */}
             {(() => {
-              const deletedAudits = milestoneAudit.filter((a: any) => a.status === 'Deleted');
-              if (deletedAudits.length === 0) return null;
-              return deletedAudits.map((del: any, dIdx: number) => (
+              const origMilestones: any[] = originalMilestones || jobBaseline?.original_milestones || [];
+              const list: Array<{ milestone_title: string; change_summary: string }> = [];
+              const processedTitles = new Set<string>();
+
+              milestoneAudit
+                .filter((a: any) => a.status === 'Deleted')
+                .forEach((a: any) => {
+                  const title = a.milestone_title || a.title || '';
+                  if (title) {
+                    list.push({
+                      milestone_title: title,
+                      change_summary: a.change_summary || 'Hạng mục milestone bị bỏ qua so với kế hoạch ban đầu',
+                    });
+                    processedTitles.add(title.toLowerCase().trim());
+                  }
+                });
+
+              if (origMilestones.length > 0) {
+                origMilestones.forEach((orig: any) => {
+                  const origTitle = (orig.title || orig.milestone_title || '').trim();
+                  if (!origTitle) return;
+
+                  const isMatchedInProposed = milestones.some((m: any) =>
+                    isTitleMatch(m.title, origTitle)
+                  );
+
+                  if (!isMatchedInProposed && !processedTitles.has(origTitle.toLowerCase())) {
+                    list.push({
+                      milestone_title: origTitle,
+                      change_summary: `Hạng mục baseline '${origTitle}' đã bị bỏ qua / xóa bởi freelancer`,
+                    });
+                    processedTitles.add(origTitle.toLowerCase());
+                  }
+                });
+              }
+
+              if (list.length === 0) return null;
+              return list.map((del: any, dIdx: number) => (
                 <tr key={`del-${dIdx}`} className="bg-rose-500/5 hover:bg-rose-500/10 transition-colors">
                   <td className="p-3 font-bold text-rose-400">❌</td>
                   <td className="p-3 space-y-1">
