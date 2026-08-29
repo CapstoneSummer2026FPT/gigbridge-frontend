@@ -427,7 +427,11 @@ export function useMessages() {
     sentReadReceiptKeysRef.current.add(key);
     void messagePostAPI.markAsRead(conversationId, messageId)
       .then(response => {
-        if (!response.success) sentReadReceiptKeysRef.current.delete(key);
+        if (!response.success) {
+          sentReadReceiptKeysRef.current.delete(key);
+          return;
+        }
+        window.dispatchEvent(new Event('gigbridge-messages-updated'));
       })
       .catch(() => sentReadReceiptKeysRef.current.delete(key));
   }, []);
