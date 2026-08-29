@@ -8,7 +8,7 @@ import { PostJobTrimWarningModal } from './PostJobTrimWarningModal';
 interface Props {
   isPremium: boolean;
   isLoading: boolean;
-  onGenerate: (prompt: string, sourceType?: 'prompt' | 'document') => Promise<void>;
+  onGenerate: (prompt: string, sourceType?: 'prompt' | 'document' | 'hybrid') => Promise<void>;
   onAbort?: () => void;
   onUpgrade: () => void;
   onClose: () => void;
@@ -455,33 +455,50 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
 
   const rawTotalCharCount = attachedFiles.reduce((acc, f) => acc + f.charCount, 0);
 
-  const submitPrompt = async (event?: FormEvent) => {
-    if (event) event.preventDefault();
-    if (!isPremium || isLoading || isParsingDoc) return;
+  const buildHybridPayload = (): { payload: string; source: 'prompt' | 'document' | 'hybrid' } => {
     const trimmedPrompt = prompt.trim();
-    if (!trimmedPrompt) return;
+    const trimmedDocs = combinedDocs.text.trim();
 
-    await onGenerate(trimmedPrompt, 'prompt');
+    if (trimmedPrompt && trimmedDocs) {
+      return {
+        payload: `[CLIENT ADDITIONAL INSTRUCTIONS]\n${trimmedPrompt}\n\n[ATTACHED REFERENCE DOCUMENTS]\n${trimmedDocs}`,
+        source: 'hybrid',
+      };
+    } else if (trimmedPrompt) {
+      return {
+        payload: trimmedPrompt,
+        source: 'prompt',
+      };
+    } else {
+      return {
+        payload: trimmedDocs,
+        source: 'document',
+      };
+    }
   };
 
-  const submitDocument = async (event?: FormEvent) => {
+  const submitHybrid = async (event?: FormEvent) => {
     if (event) event.preventDefault();
     if (!isPremium || isLoading || isParsingDoc) return;
-    if (!combinedDocs.text) return;
+    const { payload, source } = buildHybridPayload();
+    if (!payload) return;
 
-    if (rawTotalCharCount > 15000 && !hasConfirmedTrim) {
+    if (attachedFiles.length > 0 && rawTotalCharCount > 15000 && !hasConfirmedTrim) {
       setIsTrimModalOpen(true);
       return;
     }
 
-    await onGenerate(combinedDocs.text, 'document');
+    await onGenerate(payload, source);
   };
+
+  const submitPrompt = submitHybrid;
+  const submitDocument = submitHybrid;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (prompt.trim() && !isLoading && !isParsingDoc && isPremium) {
-        void submitPrompt();
+      if ((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc && isPremium) {
+        void submitHybrid();
       }
     }
   };
@@ -489,13 +506,14 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
   const handleConfirmTrimModal = () => {
     setHasConfirmedTrim(true);
     setIsTrimModalOpen(false);
-    if (combinedDocs.text) {
-      void onGenerate(combinedDocs.text, 'document');
+    const { payload, source } = buildHybridPayload();
+    if (payload) {
+      void onGenerate(payload, source);
     }
   };
 
-  const canSubmitPrompt = Boolean(prompt.trim() && !isLoading && !isParsingDoc);
-  const canSubmitDocument = Boolean(combinedDocs.text && !isLoading && !isParsingDoc);
+  const canSubmitPrompt = Boolean((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc);
+  const canSubmitDocument = Boolean((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc);
 
   if (!isPremium) {
     return (

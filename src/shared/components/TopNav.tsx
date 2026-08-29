@@ -158,12 +158,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       'ConversationInboxRevisionChanged',
       event => {
         if (event.revision <= conversationRevisionRef.current) return;
-        if (event.revision > conversationRevisionRef.current + 1) {
-          void fetchUnreadMessages();
-          return;
-        }
         conversationRevisionRef.current = event.revision;
-        setUnreadMessagesCount(event.unreadCount);
+        // The event count is a delivery cache and may be stale after concurrent
+        // updates from multiple API nodes. Always reconcile with the authoritative
+        // participant total exposed by inbox-status.
+        void fetchUnreadMessages();
       },
     );
     const unsubscribeReconnect = onChatHubReconnected(() => void fetchUnreadMessages());

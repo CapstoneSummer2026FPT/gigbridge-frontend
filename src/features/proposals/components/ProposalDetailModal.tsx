@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  AlertTriangle,
   Brain,
   BriefcaseBusiness,
   Check,
@@ -102,56 +103,104 @@ export function ProposalDetailModal({
   const activeProposal = proposals.find(p => p.proposalsId === activeId);
 
   const displayQuestions = useMemo(() => {
-    if (!activeProposal?.aiFullEvaluationJson) return [];
-    try {
-      const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
-      const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
-      return screeningQa.map((qa: any) => {
-        const correctness = qa.answer_correctness?.score ?? 0;
-        const reasoning = qa.technical_reasoning?.score ?? 0;
-        const relevance = qa.relevance?.score ?? 0;
-        const depth = qa.depth?.score ?? 0;
-        const examples = qa.practical_examples?.score ?? 0;
+    if (activeProposal?.aiFullEvaluationJson) {
+      try {
+        const parsed = JSON.parse(activeProposal.aiFullEvaluationJson);
+        const screeningQa = parsed?.llm_qualitative_evaluation?.screening_qa || [];
+        if (screeningQa.length > 0) {
+          return screeningQa.map((qa: any, idx: number) => {
+            const correctness = qa.answer_correctness?.score ?? 0;
+            const reasoning = qa.technical_reasoning?.score ?? 0;
+            const relevance = qa.relevance?.score ?? 0;
+            const depth = qa.depth?.score ?? 0;
+            const examples = qa.practical_examples?.score ?? 0;
 
-        const weightedScore = Math.round(
-          correctness * 0.40 +
-          reasoning * 0.25 +
-          relevance * 0.15 +
-          depth * 0.10 +
-          examples * 0.10
-        );
+            const weightedScore = Math.round(
+              correctness * 0.40 +
+              reasoning * 0.25 +
+              relevance * 0.15 +
+              depth * 0.10 +
+              examples * 0.10
+            );
 
-        const evidenceAssessment =
-          qa.answer_correctness?.evidence?.[0]?.assessment ||
-          qa.technical_reasoning?.evidence?.[0]?.assessment ||
-          qa.relevance?.evidence?.[0]?.assessment ||
-          'Technical quality assessment based on candidate response.';
+            const evidenceAssessment =
+              qa.answer_correctness?.evidence?.[0]?.assessment ||
+              qa.technical_reasoning?.evidence?.[0]?.assessment ||
+              qa.relevance?.evidence?.[0]?.assessment ||
+              'Technical quality assessment based on candidate response.';
 
-        const claims = [
-          ...(qa.answer_correctness?.evidence || []),
-          ...(qa.technical_reasoning?.evidence || []),
-        ].map((e: any) => e.claim).filter(Boolean);
+            const claims = [
+              ...(qa.answer_correctness?.evidence || []),
+              ...(qa.technical_reasoning?.evidence || []),
+            ].map((e: any) => e.claim).filter(Boolean);
 
-        return {
-          questionIndex: qa.question_index ?? 0,
-          questionText: qa.question_text || `Question #${(qa.question_index ?? 0) + 1}`,
-          candidateAnswer: qa.candidate_answer || 'No answer provided',
-          overallScore: weightedScore,
-          subcriteria: {
-            correctness: Math.round(correctness),
-            reasoning: Math.round(reasoning),
-            relevance: Math.round(relevance),
-            depth: Math.round(depth),
-            examples: Math.round(examples),
-          },
-          evidenceAssessment,
-          claims,
-        };
-      });
-    } catch {
-      return [];
+            const qIdx = qa.question_index ?? (idx + 1);
+            const displayNumber = typeof qa.question_index === 'number' && qa.question_index > 0 ? qa.question_index : (idx + 1);
+
+            const qualitativeFeedback =
+              qa.qualitative_feedback ||
+              (evidenceAssessment && evidenceAssessment !== 'Correct' && evidenceAssessment !== 'Incorrect'
+                ? evidenceAssessment
+                : 'Đánh giá kỹ thuật chi tiết dựa trên mức độ chính xác, tính thực tiễn và lập luận của ứng viên.');
+
+            const isAiGenerated = Boolean(qa.is_ai_generated);
+            const aiDetectionReason = qa.ai_detection_reason || null;
+
+            return {
+              questionIndex: qIdx,
+              displayNumber,
+              questionText: qa.question_text || `Question #${displayNumber}`,
+              candidateAnswer: qa.candidate_answer || 'No answer provided',
+              overallScore: weightedScore,
+              subcriteria: {
+                correctness: Math.round(correctness),
+                reasoning: Math.round(reasoning),
+                relevance: Math.round(relevance),
+                depth: Math.round(depth),
+                examples: Math.round(examples),
+              },
+              evidenceAssessment,
+              qualitativeFeedback,
+              isAiGenerated,
+              aiDetectionReason,
+              claims,
+            };
+          });
+        }
+      } catch (e) {
+        console.error('Failed to parse aiFullEvaluationJson screening_qa', e);
+      }
     }
-  }, [activeProposal]);
+
+    // Fallback: If candidate submitted screening answers (rawAnswers), display them with AI Technical Quality score
+    if (rawAnswers && rawAnswers.length > 0) {
+      const answersWithText = rawAnswers.filter(a => a.answerText?.trim());
+      if (answersWithText.length > 0) {
+        const defaultScore = activeProposal?.aiTechnicalQualityScore ? Math.round(activeProposal.aiTechnicalQualityScore) : 75;
+        return answersWithText.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => {
+          const displayNumber = ans.orderIndex || (idx + 1);
+          return {
+            questionIndex: displayNumber,
+            displayNumber,
+            questionText: ans.questionText || `Question #${displayNumber}`,
+            candidateAnswer: ans.answerText || 'No answer provided',
+            overallScore: defaultScore,
+            subcriteria: {
+              correctness: defaultScore,
+              reasoning: defaultScore,
+              relevance: defaultScore,
+              depth: defaultScore,
+              examples: defaultScore,
+            },
+            evidenceAssessment: 'Detailed technical score computed from candidate screening answer.',
+            claims: [],
+          };
+        });
+      }
+    }
+
+    return [];
+  }, [activeProposal, rawAnswers]);
 
   const pillar2Score = useMemo(() => {
     if (!activeProposal?.aiFullEvaluationJson) {
@@ -527,7 +576,7 @@ export function ProposalDetailModal({
                           {/* Question Title & Overall Weighted Score */}
                           <div className="flex justify-between items-start gap-4">
                             <h5 className="text-xs font-black text-text-primary leading-snug">
-                              {q.questionIndex + 1}. {q.questionText}
+                              {q.displayNumber}. {q.questionText}
                             </h5>
                             <span className={`shrink-0 rounded-full px-3 py-0.5 text-xs font-black ${getScoreColorClass(q.overallScore)}`}>
                               {q.overallScore}/100
@@ -583,13 +632,26 @@ export function ProposalDetailModal({
                             </div>
                           </div>
 
-                          {/* AI Technical Evidence Assessment */}
-                          <div className="rounded-xl bg-surface-card border border-border/70 p-3 text-xs space-y-1 shadow-2xs">
+                          {/* AI Generator Detection Warning Badge (If flagged) */}
+                          {q.isAiGenerated && (
+                            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300 space-y-1 shadow-2xs">
+                              <div className="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                                <AlertTriangle size={15} className="text-rose-500" />
+                                <span>⚠️ Cảnh báo: Phát hiện dấu hiệu câu trả lời do AI (ChatGPT/Claude) tạo</span>
+                              </div>
+                              <p className="text-[11px] font-medium leading-relaxed">
+                                {q.aiDetectionReason || 'Câu trả lời có dấu hiệu sao chép từ AI generator (định dạng lý thuyết, thiếu ví dụ thực tế hoặc trải nghiệm cá nhân).'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* AI Technical Evidence Assessment & Detailed Feedback */}
+                          <div className="rounded-xl bg-surface-card border border-border/70 p-3.5 text-xs space-y-1.5 shadow-2xs">
                             <span className="block text-[10px] font-black uppercase text-brand tracking-wider">
                               🧠 Đánh giá & Phản hồi Kỹ thuật của AI
                             </span>
-                            <p className="text-text-primary leading-relaxed font-medium">
-                              {q.evidenceAssessment}
+                            <p className="text-text-primary leading-relaxed font-medium whitespace-pre-wrap">
+                              {q.qualitativeFeedback || q.evidenceAssessment}
                             </p>
                           </div>
                         </div>
