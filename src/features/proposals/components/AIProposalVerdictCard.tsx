@@ -76,26 +76,26 @@ function MetricCalculationTooltip({
 
       {/* Floating Glassmorphism Tooltip Popover (Positioned Downwards) */}
       {isOpen && (
-        <div className={`absolute ${getPositionClasses()} z-50 w-72 sm:w-80 p-3.5 rounded-2xl bg-surface-card/95 backdrop-blur-xl border border-brand/30 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.3)] text-text-primary text-xs space-y-2 animate-in fade-in zoom-in-95 duration-150 pointer-events-none`}>
+        <div className={`absolute ${getPositionClasses()} z-50 w-72 sm:w-80 p-4 rounded-2xl bg-surface-card/95 backdrop-blur-xl border border-brand/30 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.3)] text-text-primary text-xs sm:text-sm space-y-2.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-none`}>
           {/* Tooltip Arrow pointing up */}
           <div className={`absolute ${getArrowClasses()}`} />
 
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/50 pb-2">
-            <span className="font-black text-[11px] text-brand flex items-center gap-1.5">
-              <Calculator size={13} className="text-brand" />
+            <span className="font-black text-xs sm:text-sm text-brand flex items-center gap-1.5">
+              <Calculator size={14} className="text-brand" />
               {title}
             </span>
             {weight && (
-              <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[9px] font-black text-brand">
+              <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-black text-brand">
                 Pillar Weight: {weight}
               </span>
             )}
           </div>
 
           {/* Formula Box */}
-          <div className="rounded-xl bg-brand/10 border border-brand/20 p-2 text-[10px] font-mono font-bold text-brand leading-relaxed">
-            <span className="block text-[9px] font-sans font-black uppercase text-brand tracking-wider mb-0.5">
+          <div className="rounded-xl bg-brand/10 border border-brand/20 p-2.5 text-xs font-mono font-bold text-brand leading-relaxed">
+            <span className="block text-[10px] sm:text-xs font-sans font-black uppercase text-brand tracking-wider mb-0.5">
               📐 Calculation Formula
             </span>
             {formula}
@@ -104,13 +104,13 @@ function MetricCalculationTooltip({
           {/* Subcriteria Breakdown List */}
           {items.length > 0 && (
             <div className="space-y-1 pt-0.5">
-              <span className="block text-[9px] font-black uppercase text-text-muted tracking-wider">
+              <span className="block text-[10px] sm:text-xs font-black uppercase text-text-muted tracking-wider">
                 Sub-criteria Weights
               </span>
-              <ul className="space-y-1 text-[10px] font-medium text-text-primary">
+              <ul className="space-y-1 text-xs font-medium text-text-primary">
                 {items.map((item, idx) => (
-                  <li key={idx} className="flex items-center justify-between bg-surface-muted/50 px-2 py-1 rounded-lg border border-border/40">
-                    <span className="flex items-center gap-1">
+                  <li key={idx} className="flex items-center justify-between bg-surface-muted/50 px-2.5 py-1 rounded-lg border border-border/40">
+                    <span className="flex items-center gap-1.5">
                       {item.icon && <span>{item.icon}</span>}
                       {item.label}
                     </span>
@@ -123,7 +123,7 @@ function MetricCalculationTooltip({
 
           {/* Note / Rationale */}
           {note && (
-            <p className="text-[10px] text-text-muted italic pt-1 border-t border-border/40 leading-snug">
+            <p className="text-xs text-text-muted italic pt-1 border-t border-border/40 leading-snug">
               💡 {note}
             </p>
           )}
@@ -379,7 +379,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
 
   return (
     <div className="conic-border-wrap conic-border-card rounded-2xl w-full">
-      <div className="conic-border-card-inner rounded-[calc(1rem-1.5px)] bg-surface-card p-4 sm:p-5 space-y-5 shadow-sm w-full">
+      <div className="conic-border-card-inner rounded-[calc(1rem-1.5px)] bg-surface-card p-4 sm:p-6 space-y-5.5 shadow-sm w-full">
         {/* Top Header Row */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div className="flex items-center gap-3">
@@ -395,7 +395,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             note="Deterministic 4-pillar weighted sum computed in Python."
           >
             <div
-              className={`flex h-14 w-14 items-center justify-center rounded-2xl border shrink-0 font-black text-xl shadow-xs transition-transform hover:scale-105 ${
+              className={`flex h-16 w-16 items-center justify-center rounded-2xl border shrink-0 font-black text-2xl shadow-xs transition-transform hover:scale-105 ${
                 tq >= 75
                   ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                   : tq >= 60
@@ -409,9 +409,9 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-text-muted">Technical Quality</span>
+              <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-text-muted">Technical Quality</span>
               <span
-                className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${
+                className={`rounded-full px-3 py-0.5 text-xs font-black ${
                   tq >= 75
                     ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
                     : tq >= 60
@@ -431,9 +431,9 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
               ]}
               note="Capped at a maximum of 100.0."
             >
-              <p className="text-xs font-semibold text-text-primary mt-0.5 flex items-center gap-1">
-                Value Score (VS): <strong className="text-brand font-black">{vs.toFixed(1)} / 100</strong>
-                <HelpCircle size={11} className="text-text-muted hover:text-brand" />
+              <p className="text-xs sm:text-sm font-bold text-text-primary mt-1 flex items-center gap-1.5">
+                Value Score (VS): <strong className="text-brand font-black text-sm sm:text-base">{vs.toFixed(1)} / 100</strong>
+                <HelpCircle size={13} className="text-text-muted hover:text-brand" />
               </p>
             </MetricCalculationTooltip>
           </div>
@@ -444,7 +444,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
       </div>
 
       {/* Recruiter Top Decision KPI Cards with Tooltips */}
-      <div className="grid grid-cols-3 gap-2.5 text-xs">
+      <div className="grid grid-cols-3 gap-3 text-xs sm:text-sm">
         <MetricCalculationTooltip
           title="Requirement Coverage %"
           align="left"
@@ -454,14 +454,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           ]}
           note="Evaluates how completely candidate proposal covers client job description."
         >
-          <div className="rounded-xl border border-border/50 bg-surface-muted/60 p-3 text-center transition-all hover:border-brand/50 hover:bg-brand/5">
-            <span className="block text-[10px] font-black uppercase text-text-muted flex items-center justify-center gap-1">
-              <CheckCircle2 size={12} className="text-brand" /> Requirement Coverage
+          <div className="rounded-xl border border-border/50 bg-surface-muted/60 p-3.5 sm:p-4 text-center transition-all hover:border-brand/50 hover:bg-brand/5">
+            <span className="block text-xs sm:text-sm font-black uppercase text-text-muted flex items-center justify-center gap-1.5">
+              <CheckCircle2 size={14} className="text-brand shrink-0" /> Requirement Coverage
             </span>
-            <strong className="text-brand font-black text-lg block mt-0.5">
+            <strong className="text-brand font-black text-xl sm:text-2xl block mt-1">
               {scopePct.toFixed(0)}%
             </strong>
-            <span className="block text-[9px] font-semibold text-text-muted mt-0.5">Req. Scope Fulfilled</span>
+            <span className="block text-xs font-semibold text-text-muted mt-1">Req. Scope Fulfilled</span>
           </div>
         </MetricCalculationTooltip>
 
@@ -475,14 +475,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           ]}
           note="Measures budget savings percentage relative to job budget cap."
         >
-          <div className="rounded-xl border border-border/50 bg-surface-muted/60 p-3 text-center transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5">
-            <span className="block text-[10px] font-black uppercase text-text-muted flex items-center justify-center gap-1">
-              <Percent size={12} className="text-emerald-500" /> Budget Savings
+          <div className="rounded-xl border border-border/50 bg-surface-muted/60 p-3.5 sm:p-4 text-center transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5">
+            <span className="block text-xs sm:text-sm font-black uppercase text-text-muted flex items-center justify-center gap-1.5">
+              <Percent size={14} className="text-emerald-500 shrink-0" /> Budget Savings
             </span>
-            <strong className="text-emerald-600 dark:text-emerald-400 font-black text-lg block mt-0.5">
+            <strong className="text-emerald-600 dark:text-emerald-400 font-black text-xl sm:text-2xl block mt-1">
               {savingsPct > 0 ? `${savingsPct.toFixed(1)}%` : '0%'}
             </strong>
-            <span className="block text-[9px] font-semibold text-text-muted mt-0.5">Vs. Client Budget</span>
+            <span className="block text-xs font-semibold text-text-muted mt-1">Vs. Client Budget</span>
           </div>
         </MetricCalculationTooltip>
 
@@ -498,14 +498,14 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           ]}
           note="Main technical quality assessment score."
         >
-          <div className="rounded-xl border border-border/50 bg-surface-muted/60 p-3 text-center transition-all hover:border-purple-500/50 hover:bg-purple-500/5">
-            <span className="block text-[10px] font-black uppercase text-text-muted flex items-center justify-center gap-1">
-              <Award size={12} className="text-purple-500" /> Quality Score
+          <div className="rounded-xl border border-border/50 bg-surface-muted/60 p-3.5 sm:p-4 text-center transition-all hover:border-purple-500/50 hover:bg-purple-500/5">
+            <span className="block text-xs sm:text-sm font-black uppercase text-text-muted flex items-center justify-center gap-1.5">
+              <Award size={14} className="text-purple-500 shrink-0" /> Quality Score
             </span>
-            <strong className="text-purple-600 dark:text-purple-400 font-black text-lg block mt-0.5">
+            <strong className="text-purple-600 dark:text-purple-400 font-black text-xl sm:text-2xl block mt-1">
               {tq.toFixed(1)}
             </strong>
-            <span className="block text-[9px] font-semibold text-text-muted mt-0.5">Weighted 4-Pillar Score</span>
+            <span className="block text-xs font-semibold text-text-muted mt-1">Weighted 4-Pillar Score</span>
           </div>
         </MetricCalculationTooltip>
       </div>
@@ -513,38 +513,38 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
       {/* Executive Decision Rationale / Key Concerns Summary Box */}
       {keyReasons.length > 0 && (
         <div
-          className={`rounded-xl border p-3.5 space-y-2 text-xs ${
+          className={`rounded-xl border p-4 space-y-2.5 text-xs sm:text-sm ${
             tq < 60
               ? 'border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-200'
               : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="font-black uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <span className="font-black uppercase tracking-wider text-xs sm:text-sm flex items-center gap-2">
               {tq < 60 ? (
                 <>
-                  <AlertTriangle size={14} className="text-rose-500" />
+                  <AlertTriangle size={16} className="text-rose-500 shrink-0" />
                   🔴 WHY THIS CANDIDATE IS HIGH RISK
                 </>
               ) : (
                 <>
-                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
                   🟢 EXECUTIVE DECISION SUMMARY
                 </>
               )}
             </span>
-            <span className="text-[10px] font-extrabold opacity-70 uppercase tracking-widest">
+            <span className="text-xs font-extrabold opacity-80 uppercase tracking-widest">
               Recruiter Insight
             </span>
           </div>
 
-          <ul className="space-y-1.5 font-medium pl-1 text-xs">
+          <ul className="space-y-2 font-medium pl-1 text-xs sm:text-sm">
             {keyReasons.map((item, idx) => (
-              <li key={idx} className="flex items-start gap-2 leading-relaxed">
+              <li key={idx} className="flex items-start gap-2.5 leading-relaxed">
                 {item.type === 'negative' ? (
-                  <XCircle size={14} className="text-rose-500 shrink-0 mt-0.5" />
+                  <XCircle size={16} className="text-rose-500 shrink-0 mt-0.5" />
                 ) : (
-                  <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                 )}
                 <span>{item.text}</span>
               </li>
@@ -554,18 +554,18 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
       )}
 
       {/* 4-Pillar Score Visual Breakdown with Interactive Calculation Tooltips */}
-      <div className="space-y-3 pt-1">
-        <h4 className="text-[11px] font-black uppercase tracking-wider text-text-muted flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
-            <TrendingUp size={13} className="text-purple-500" />
+      <div className="space-y-3.5 pt-1">
+        <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-text-muted flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <TrendingUp size={15} className="text-purple-500 shrink-0" />
             4-Pillar Candidate Evaluation Breakdown
           </span>
-          <span className="text-[9px] font-bold text-text-muted bg-surface-muted px-2 py-0.5 rounded-full flex items-center gap-1">
-            <HelpCircle size={10} className="text-purple-500" /> Hover metric to view formula
+          <span className="text-xs font-extrabold text-text-muted bg-surface-muted px-2.5 py-1 rounded-full flex items-center gap-1">
+            <HelpCircle size={12} className="text-purple-500 shrink-0" /> Hover metric to view formula
           </span>
         </h4>
 
-        <div className="space-y-3 text-xs">
+        <div className="space-y-3.5 text-xs sm:text-sm">
           {/* Pillar 1 */}
           <MetricCalculationTooltip
             title="Solution & Delivery Methodology"
@@ -580,27 +580,27 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="Scores the 6 core proposal text sections. Excludes proposed milestone plan (scored separately in Pillar 4)."
           >
-            <div className="p-3 rounded-xl border border-transparent hover:border-purple-500/30 hover:bg-purple-500/5 transition-all space-y-2">
-              <div className="flex justify-between text-[11px] font-bold">
-                <span className="text-text-primary flex items-center gap-1.5">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-transparent hover:border-purple-500/30 hover:bg-purple-500/5 transition-all space-y-2.5">
+              <div className="flex justify-between text-xs sm:text-sm font-bold">
+                <span className="text-text-primary flex items-center gap-2 font-black">
                   🛠️ Solution & Delivery Methodology (35%)
-                  <HelpCircle size={11} className="text-text-muted" />
+                  <HelpCircle size={13} className="text-text-muted" />
                 </span>
-                <span className="font-black text-purple-600 dark:text-purple-400">
+                <span className="font-black text-sm sm:text-base text-purple-600 dark:text-purple-400">
                   {pillarScores.technical_solution.toFixed(1)} / 100
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div className="h-2.5 rounded-full bg-surface-muted overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.technical_solution))}%` }}
                 />
               </div>
               {/* AI Comment Box */}
-              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-purple-500/5 dark:bg-purple-500/10 p-3 rounded-xl border border-purple-500/20">
-                <Sparkles size={15} className="text-purple-500 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 pt-2 text-xs sm:text-sm font-normal text-text-primary leading-relaxed bg-purple-500/5 dark:bg-purple-500/10 p-3.5 rounded-xl border border-purple-500/20">
+                <Sparkles size={17} className="text-purple-500 shrink-0 mt-0.5" />
                 <div className="w-full">
-                  <span className="text-[11px] font-black uppercase text-purple-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  <span className="text-xs font-black uppercase text-purple-500 tracking-wider block mb-1.5">AI Explanation • Sub-Criteria Breakdown</span>
                   {renderFormattedExplanation(getPillarComment('technical_solution', pillarScores.technical_solution), 'technical_solution')}
                 </div>
               </div>
@@ -621,27 +621,27 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="Averages candidate screening answer quality across all questions."
           >
-            <div className="p-3 rounded-xl border border-transparent hover:border-amber-500/30 hover:bg-amber-500/5 transition-all space-y-2">
-              <div className="flex justify-between text-[11px] font-bold">
-                <span className="text-text-primary flex items-center gap-1.5">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-transparent hover:border-amber-500/30 hover:bg-amber-500/5 transition-all space-y-2.5">
+              <div className="flex justify-between text-xs sm:text-sm font-bold">
+                <span className="text-text-primary flex items-center gap-2 font-black">
                   ❓ Screening Q&A Accuracy & Reasoning (30%)
-                  <HelpCircle size={11} className="text-text-muted" />
+                  <HelpCircle size={13} className="text-text-muted" />
                 </span>
-                <span className="font-black text-amber-600 dark:text-amber-400">
+                <span className="font-black text-sm sm:text-base text-amber-600 dark:text-amber-400">
                   {pillarScores.screening_qa.toFixed(1)} / 100
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div className="h-2.5 rounded-full bg-surface-muted overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.screening_qa))}%` }}
                 />
               </div>
               {/* AI Comment Box */}
-              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-amber-500/5 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
-                <Sparkles size={15} className="text-amber-500 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 pt-2 text-xs sm:text-sm font-normal text-text-primary leading-relaxed bg-amber-500/5 dark:bg-amber-500/10 p-3.5 rounded-xl border border-amber-500/20">
+                <Sparkles size={17} className="text-amber-500 shrink-0 mt-0.5" />
                 <div className="w-full">
-                  <span className="text-[11px] font-black uppercase text-amber-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  <span className="text-xs font-black uppercase text-amber-500 tracking-wider block mb-1.5">AI Explanation • Sub-Criteria Breakdown</span>
                   {renderFormattedExplanation(getPillarComment('screening_qa', pillarScores.screening_qa), 'screening_qa')}
                 </div>
               </div>
@@ -659,27 +659,27 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="100% pure financial score based on budget savings ratio and AI pricing realism."
           >
-            <div className="p-3 rounded-xl border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all space-y-2">
-              <div className="flex justify-between text-[11px] font-bold">
-                <span className="text-text-primary flex items-center gap-1.5">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all space-y-2.5">
+              <div className="flex justify-between text-xs sm:text-sm font-bold">
+                <span className="text-text-primary flex items-center gap-2 font-black">
                   💰 Financial & Pricing Value (20%)
-                  <HelpCircle size={11} className="text-text-muted" />
+                  <HelpCircle size={13} className="text-text-muted" />
                 </span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400">
+                <span className="font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400">
                   {pillarScores.financial_value.toFixed(1)} / 100
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div className="h-2.5 rounded-full bg-surface-muted overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.financial_value))}%` }}
                 />
               </div>
               {/* AI Comment Box */}
-              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-emerald-500/5 dark:bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-                <Sparkles size={15} className="text-emerald-500 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 pt-2 text-xs sm:text-sm font-normal text-text-primary leading-relaxed bg-emerald-500/5 dark:bg-emerald-500/10 p-3.5 rounded-xl border border-emerald-500/20">
+                <Sparkles size={17} className="text-emerald-500 shrink-0 mt-0.5" />
                 <div className="w-full">
-                  <span className="text-[11px] font-black uppercase text-emerald-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  <span className="text-xs font-black uppercase text-emerald-500 tracking-wider block mb-1.5">AI Explanation • Sub-Criteria Breakdown</span>
                   {renderFormattedExplanation(getPillarComment('financial_value', pillarScores.financial_value), 'financial_value')}
                 </div>
               </div>
@@ -698,27 +698,27 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             ]}
             note="Evaluates requirement scope coverage, milestone breakdown granularity, and duration velocity realism."
           >
-            <div className="p-3 rounded-xl border border-transparent hover:border-brand/30 hover:bg-brand/5 transition-all space-y-2">
-              <div className="flex justify-between text-[11px] font-bold">
-                <span className="text-text-primary flex items-center gap-1.5">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-transparent hover:border-brand/30 hover:bg-brand/5 transition-all space-y-2.5">
+              <div className="flex justify-between text-xs sm:text-sm font-bold">
+                <span className="text-text-primary flex items-center gap-2 font-black">
                   📋 Milestone Scope & Timeline Feasibility (15%)
-                  <HelpCircle size={11} className="text-text-muted" />
+                  <HelpCircle size={13} className="text-text-muted" />
                 </span>
-                <span className="font-black text-brand">
+                <span className="font-black text-sm sm:text-base text-brand">
                   {pillarScores.milestone_scope.toFixed(1)} / 100
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div className="h-2.5 rounded-full bg-surface-muted overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-brand to-cyan-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, pillarScores.milestone_scope))}%` }}
                 />
               </div>
               {/* AI Comment Box */}
-              <div className="flex items-start gap-2.5 pt-1.5 border-t border-border/30 text-xs font-normal text-text-primary leading-relaxed bg-cyan-500/5 dark:bg-cyan-500/10 p-3 rounded-xl border border-cyan-500/20">
-                <Sparkles size={15} className="text-cyan-500 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 pt-2 text-xs sm:text-sm font-normal text-text-primary leading-relaxed bg-cyan-500/5 dark:bg-cyan-500/10 p-3.5 rounded-xl border border-cyan-500/20">
+                <Sparkles size={17} className="text-cyan-500 shrink-0 mt-0.5" />
                 <div className="w-full">
-                  <span className="text-[11px] font-black uppercase text-cyan-500 tracking-wider block mb-1">AI Explanation • Sub-Criteria Breakdown</span>
+                  <span className="text-xs font-black uppercase text-cyan-500 tracking-wider block mb-1.5">AI Explanation • Sub-Criteria Breakdown</span>
                   {renderFormattedExplanation(getPillarComment('milestone_scope', pillarScores.milestone_scope), 'milestone_scope')}
                 </div>
               </div>
@@ -737,15 +737,15 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
         ]}
         note="Measures technical specificity vs. generic copy-paste text."
       >
-        <div className="rounded-xl border border-border/70 bg-surface-muted/40 p-3.5 space-y-2 text-xs transition-all hover:border-pink-500/40">
+        <div className="rounded-xl border border-border/70 bg-surface-muted/40 p-4 space-y-2.5 text-xs sm:text-sm transition-all hover:border-pink-500/40">
           <div className="flex items-center justify-between border-b border-border/50 pb-2">
-            <span className="font-black uppercase tracking-wider text-[10px] text-text-muted flex items-center gap-1.5">
-              <Fingerprint size={13} className="text-pink-500" />
+            <span className="font-black uppercase tracking-wider text-xs font-black text-text-muted flex items-center gap-1.5">
+              <Fingerprint size={15} className="text-pink-500 shrink-0" />
               Detailed Analysis: Answer Authenticity & Substance Density
-              <HelpCircle size={11} className="text-text-muted" />
+              <HelpCircle size={13} className="text-text-muted" />
             </span>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+              className={`rounded-full px-2.5 py-0.5 text-xs font-black ${
                 pillarScores.authenticity_fluff >= 70
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
@@ -755,15 +755,15 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-xs font-semibold pt-0.5">
+          <div className="flex items-center justify-between text-xs sm:text-sm font-bold pt-0.5">
             <span className="text-text-muted">Answer Authenticity & Specificity Score:</span>
-            <strong className="text-pink-600 dark:text-pink-400 font-black">
+            <strong className="text-pink-600 dark:text-pink-400 font-black text-sm sm:text-base">
               {pillarScores.authenticity_fluff.toFixed(1)} / 100
             </strong>
           </div>
 
-          <p className="text-[11px] text-text-primary leading-relaxed font-medium bg-surface-card p-2.5 rounded-lg border border-border/40">
-            <Info size={12} className="inline mr-1 text-pink-500" />
+          <p className="text-xs sm:text-sm text-text-primary leading-relaxed font-normal bg-surface-card p-3 rounded-lg border border-border/40">
+            <Info size={14} className="inline mr-1.5 text-pink-500" />
             {pillarScores.authenticity_fluff >= 70
               ? 'Candidate responses contain high technical substance, specific methodology details, and concrete examples.'
               : 'Candidate responses contain lower technical substance density and generic phrasing. Further technical screening is recommended to verify hands-on expertise.'}
