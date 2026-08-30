@@ -545,4 +545,3 @@ export function AISideBySideMilestoneMatrix({
     </div>
   );
 }
-}
