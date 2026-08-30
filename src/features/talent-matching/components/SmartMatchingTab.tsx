@@ -123,10 +123,83 @@ export function SmartMatchingTab({
               </div>
 
               <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                <div className="text-left sm:text-right flex items-center sm:block gap-2">
-                  <div className="text-base sm:text-lg font-black text-purple-500 leading-none">{match.finalScore.toFixed(1)}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-text-muted">{t('talentMatching.matchScore')}</div>
-                </div>
+                {match.savingPercentage && match.savingPercentage > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    💚 Saving {match.savingPercentage.toFixed(0)}% from your job budget
+                  </span>
+                ) : null}
+                {(() => {
+                  const bonus = match.savingPercentage && match.savingPercentage > 0 ? (match.budgetBonus ?? match.savingPercentage) : 0;
+                  const trackBase = Math.max(0, match.scoreBreakdown.algorithm - bonus);
+                  const scoreBoost = 0.35 * bonus;
+                  const baseScore = Math.max(0, match.finalScore - scoreBoost);
+
+                  return (
+                    <div className="relative group cursor-pointer text-left sm:text-right flex items-center sm:block gap-2">
+                      <div className="text-base sm:text-lg font-black text-purple-500 leading-none group-hover:scale-105 transition-transform">{match.finalScore.toFixed(1)}</div>
+                      <div className="text-[9px] uppercase tracking-wider text-text-muted">{t('talentMatching.matchScore')}</div>
+                      <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-80 rounded-xl bg-slate-900/95 text-white p-3.5 text-xs shadow-2xl border border-purple-500/30 backdrop-blur-md text-left">
+                        <div className="font-bold text-purple-400 mb-1.5 flex items-center justify-between">
+                          <span>📊 Match Score & Savings Impact</span>
+                          <span className="text-[11px] font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-md font-bold">
+                            {match.finalScore.toFixed(1)} PTS
+                          </span>
+                        </div>
+                        <div className="font-mono bg-slate-950/85 p-2.5 rounded-lg border border-slate-800 text-[11px] space-y-1.5">
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>🎯 Skill Match (45%):</span>
+                            <span className="font-bold text-brand">0.45 × {match.scoreBreakdown.embedding.toFixed(1)} = {(0.45 * match.scoreBreakdown.embedding).toFixed(1)} pts</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>🏆 Track Record (35%):</span>
+                            <span className="font-bold text-purple-400">0.35 × {match.scoreBreakdown.algorithm.toFixed(1)} = {(0.35 * match.scoreBreakdown.algorithm).toFixed(1)} pts</span>
+                          </div>
+                          {bonus > 0 && (
+                            <div className="pl-3 text-[10px] text-slate-400 border-l border-purple-500/40 space-y-0.5 font-mono">
+                              <div className="flex justify-between">
+                                <span>└ Base Track Record:</span>
+                                <span>{trackBase.toFixed(1)} pts</span>
+                              </div>
+                              <div className="flex justify-between text-emerald-400 font-semibold">
+                                <span>└ Savings Bonus Added:</span>
+                                <span>+{bonus.toFixed(1)} pts</span>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>⚡ Activity (20%):</span>
+                            <span className="font-bold text-emerald-400">0.20 × {match.scoreBreakdown.evidence.toFixed(1)} = {(0.20 * match.scoreBreakdown.evidence).toFixed(1)} pts</span>
+                          </div>
+                        </div>
+
+                        {bonus > 0 ? (
+                          <div className="mt-2.5 bg-emerald-950/40 border border-emerald-500/30 p-2.5 rounded-lg text-[10px] text-emerald-300 space-y-1">
+                            <div className="font-bold text-emerald-400 flex items-center justify-between">
+                              <span>💚 BEFORE vs AFTER SAVINGS IMPACT</span>
+                              <span className="font-mono bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-300">+{scoreBoost.toFixed(1)} pts</span>
+                            </div>
+                            <div className="flex justify-between text-slate-300">
+                              <span>• Score Before Savings:</span>
+                              <span className="font-bold text-slate-200">{baseScore.toFixed(1)} Match Score</span>
+                            </div>
+                            <div className="flex justify-between text-emerald-400 font-bold">
+                              <span>• + Savings Bonus Boost:</span>
+                              <span>+{scoreBoost.toFixed(1)} pts (35% × {bonus.toFixed(1)} bonus)</span>
+                            </div>
+                            <div className="flex justify-between text-white font-black pt-1 border-t border-emerald-500/20">
+                              <span>• Score After Savings:</span>
+                              <span className="text-purple-400">{match.finalScore.toFixed(1)} Match Score</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-[10px] text-slate-300 text-center leading-relaxed">
+                            Sum: <strong>{(0.45 * match.scoreBreakdown.embedding).toFixed(1)}</strong> + <strong>{(0.35 * match.scoreBreakdown.algorithm).toFixed(1)}</strong> + <strong>{(0.20 * match.scoreBreakdown.evidence).toFixed(1)}</strong> = <strong className="text-purple-400">{match.finalScore.toFixed(1)} Match Score</strong>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center gap-2">
                   <button
                     disabled={savingIds.has(match.freelancerProfileId)}
@@ -198,11 +271,117 @@ export function SmartMatchingTab({
                       {match.title || t('talentMatching.freelancerRole')}
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xl sm:text-2xl font-black text-purple-500 leading-none">{match.finalScore.toFixed(1)}</div>
-                    <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-text-muted mt-0.5">
-                      {t('talentMatching.matchScore')}
-                    </div>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {match.savingPercentage && match.savingPercentage > 0 ? (
+                      <div className="relative group cursor-pointer shrink-0">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 shadow-sm transition-transform group-hover:scale-105">
+                          💚 Saving {match.savingPercentage.toFixed(0)}% from your job budget
+                        </span>
+                        <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-72 rounded-xl bg-slate-900/95 text-white p-3 text-xs shadow-2xl border border-emerald-500/30 backdrop-blur-md">
+                          <div className="font-bold text-emerald-400 mb-1 flex items-center justify-between">
+                            <span>💰 Budget Saving Formula</span>
+                            <span className="text-[10px] text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
+                              +{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts
+                            </span>
+                          </div>
+                          <div className="font-mono bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1">
+                            <div className="flex justify-between text-slate-300">
+                              <span>Job Budget:</span>
+                              <span className="font-bold text-white">
+                                {match.jobBudget ? `${match.jobBudget.toLocaleString()} GigCoins` : 'Standard Budget'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-slate-300">
+                              <span>Freelancer Rate:</span>
+                              <span className="font-bold text-emerald-400">
+                                {match.candidateRate ? `${match.candidateRate.toLocaleString()} GigCoins` : 'Preferred Rate'}
+                              </span>
+                            </div>
+                            <div className="border-t border-slate-800 pt-1 text-[10px] text-emerald-300 flex justify-between">
+                              <span>Formula:</span>
+                              <span>({match.jobBudget || 'Budget'} - {match.candidateRate || 'Rate'}) / {match.jobBudget || 'Budget'}</span>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-[10px] text-slate-300 text-center">
+                            Cost savings: <strong>{match.savingPercentage.toFixed(1)}%</strong> &rarr; awarded <strong>+{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts bonus</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    {(() => {
+                      const bonus = match.savingPercentage && match.savingPercentage > 0 ? (match.budgetBonus ?? match.savingPercentage) : 0;
+                      const trackBase = Math.max(0, match.scoreBreakdown.algorithm - bonus);
+                      const scoreBoost = 0.35 * bonus;
+                      const baseScore = Math.max(0, match.finalScore - scoreBoost);
+
+                      return (
+                        <div className="relative group cursor-pointer text-right shrink-0">
+                          <div className="text-xl sm:text-2xl font-black text-purple-500 leading-none group-hover:scale-105 transition-transform">{match.finalScore.toFixed(1)}</div>
+                          <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-text-muted mt-0.5">
+                            {t('talentMatching.matchScore')}
+                          </div>
+                          <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-80 sm:w-84 rounded-xl bg-slate-900/95 text-white p-3.5 text-xs shadow-2xl border border-purple-500/30 backdrop-blur-md text-left">
+                            <div className="font-bold text-purple-400 mb-1.5 flex items-center justify-between">
+                              <span>📊 Match Score & Savings Impact</span>
+                              <span className="text-[11px] font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-md font-bold">
+                                {match.finalScore.toFixed(1)} PTS
+                              </span>
+                            </div>
+                            <div className="font-mono bg-slate-950/85 p-2.5 rounded-lg border border-slate-800 text-[11px] space-y-1.5">
+                              <div className="flex justify-between items-center text-slate-300">
+                                <span>🎯 Skill Match (45%):</span>
+                                <span className="font-bold text-brand">0.45 × {match.scoreBreakdown.embedding.toFixed(1)} = {(0.45 * match.scoreBreakdown.embedding).toFixed(1)} pts</span>
+                              </div>
+                              <div className="flex justify-between items-center text-slate-300">
+                                <span>🏆 Track Record (35%):</span>
+                                <span className="font-bold text-purple-400">0.35 × {match.scoreBreakdown.algorithm.toFixed(1)} = {(0.35 * match.scoreBreakdown.algorithm).toFixed(1)} pts</span>
+                              </div>
+                              {bonus > 0 && (
+                                <div className="pl-3 text-[10px] text-slate-400 border-l border-purple-500/40 space-y-0.5 font-mono">
+                                  <div className="flex justify-between">
+                                    <span>└ Base Track Record:</span>
+                                    <span>{trackBase.toFixed(1)} pts</span>
+                                  </div>
+                                  <div className="flex justify-between text-emerald-400 font-semibold">
+                                    <span>└ Savings Bonus Added:</span>
+                                    <span>+{bonus.toFixed(1)} pts</span>
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-center text-slate-300">
+                                <span>⚡ Activity (20%):</span>
+                                <span className="font-bold text-emerald-400">0.20 × {match.scoreBreakdown.evidence.toFixed(1)} = {(0.20 * match.scoreBreakdown.evidence).toFixed(1)} pts</span>
+                              </div>
+                            </div>
+
+                            {bonus > 0 ? (
+                              <div className="mt-2.5 bg-emerald-950/40 border border-emerald-500/30 p-2.5 rounded-lg text-[10px] text-emerald-300 space-y-1">
+                                <div className="font-bold text-emerald-400 flex items-center justify-between">
+                                  <span>💚 BEFORE vs AFTER SAVINGS IMPACT</span>
+                                  <span className="font-mono bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-300">+{scoreBoost.toFixed(1)} pts</span>
+                                </div>
+                                <div className="flex justify-between text-slate-300">
+                                  <span>• Score Before Savings:</span>
+                                  <span className="font-bold text-slate-200">{baseScore.toFixed(1)} Match Score</span>
+                                </div>
+                                <div className="flex justify-between text-emerald-400 font-bold">
+                                  <span>• + Savings Bonus Boost:</span>
+                                  <span>+{scoreBoost.toFixed(1)} pts (35% × {bonus.toFixed(1)} bonus)</span>
+                                </div>
+                                <div className="flex justify-between text-white font-black pt-1 border-t border-emerald-500/20">
+                                  <span>• Score After Savings:</span>
+                                  <span className="text-purple-400">{match.finalScore.toFixed(1)} Match Score</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-2 text-[10px] text-slate-300 text-center leading-relaxed">
+                                Sum: <strong>{(0.45 * match.scoreBreakdown.embedding).toFixed(1)}</strong> + <strong>{(0.35 * match.scoreBreakdown.algorithm).toFixed(1)}</strong> + <strong>{(0.20 * match.scoreBreakdown.evidence).toFixed(1)}</strong> = <strong className="text-purple-400">{match.finalScore.toFixed(1)} Match Score</strong>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
