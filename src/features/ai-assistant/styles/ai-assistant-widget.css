@@ -284,19 +284,19 @@
 }
 
 .ai-brand-name {
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--ai-text);
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .ai-brand-context {
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--ai-muted);
-  margin-top: 0.18rem;
-  line-height: 1;
+  margin-top: 0.2rem;
+  line-height: 1.1;
 }
 
 .ai-header-controls {
@@ -393,7 +393,7 @@
   border-radius: 0.75rem;
   background: color-mix(in srgb, var(--warning) 8%, var(--ai-surface));
   border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
-  font-size: 0.76rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--ai-text);
   display: flex;
@@ -424,84 +424,7 @@
   transform: scale(1.04);
 }
 
-/* Executive Tiles Grid */
-.ai-tiles-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
-  width: 100%;
-  margin-top: 0.5rem;
-}
 
-.ai-tile-btn {
-  padding: 0.85rem;
-  border-radius: 1rem;
-  background: var(--ai-surface-strong);
-  border: 1px solid var(--ai-border);
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ai-tile-btn:hover {
-    border-color: var(--ai-border-strong);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.06);
-  }
-}
-
-.ai-tile-icon-box {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.55rem;
-  background: color-mix(in srgb, var(--ai-brand) 10%, transparent);
-  color: var(--ai-brand);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s ease;
-}
-
-.ai-tile-btn:hover .ai-tile-icon-box {
-  transform: scale(1.08);
-}
-
-.ai-tile-category {
-  display: block;
-  font-size: 0.58rem;
-  font-weight: 850;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ai-subtle);
-  margin-bottom: 0.15rem;
-}
-
-.ai-tile-title {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--ai-text);
-  line-height: 1.25;
-  margin: 0 0 0.2rem 0;
-  transition: color 0.15s ease;
-}
-
-.ai-tile-btn:hover .ai-tile-title {
-  color: var(--ai-brand);
-}
-
-.ai-tile-desc {
-  font-size: 0.68rem;
-  color: var(--ai-muted);
-  line-height: 1.4;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
 /* Chat Messages */
 .ai-msg-row {
@@ -519,7 +442,7 @@
 }
 
 .ai-msg-container {
-  max-width: 88%;
+  max-width: 90%;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -530,10 +453,10 @@
 }
 
 .ai-bubble {
-  padding: 0.85rem 1.05rem;
+  padding: 0.9rem 1.15rem;
   border-radius: 1.15rem;
-  font-size: 0.84rem;
-  line-height: 1.55;
+  font-size: 0.98rem;
+  line-height: 1.6;
   word-break: break-word;
 }
 
@@ -557,9 +480,9 @@
   justify-content: space-between;
   gap: 0.6rem;
   margin-bottom: 0.35rem;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  opacity: 0.65;
+  opacity: 0.75;
   letter-spacing: 0.06em;
 }
 
@@ -575,9 +498,9 @@
 }
 
 .ai-action-btn {
-  padding: 0.2rem 0.55rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 0.45rem;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--ai-muted);
   background: var(--ai-surface-soft);
@@ -633,7 +556,7 @@
 }
 
 .ai-thinking-text {
-  font-size: 0.76rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--ai-muted);
 }
@@ -670,8 +593,8 @@
 .ai-composer-input {
   display: block;
   width: 100%;
-  min-height: 2.2rem;
-  max-height: 6rem;
+  min-height: 2.5rem;
+  max-height: 6.5rem;
   padding: 0;
   margin: 0;
   resize: none;
@@ -679,8 +602,8 @@
   outline: 0;
   color: var(--ai-text);
   background: transparent;
-  font-size: 0.86rem;
-  line-height: 1.45;
+  font-size: 0.96rem;
+  line-height: 1.5;
 }
 
 .ai-composer-input::placeholder {
@@ -767,9 +690,6 @@
     padding-right: max(1rem, env(safe-area-inset-right));
   }
 
-  .ai-tiles-grid {
-    grid-template-columns: 1fr;
-  }
 
   .ai-composer-wrap {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
