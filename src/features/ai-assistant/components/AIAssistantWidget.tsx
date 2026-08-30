@@ -477,7 +477,7 @@ export default function AIAssistantWidget() {
                   void send();
                 }
               }}
-              placeholder={t('aiAssistant.placeholder', 'Đặt câu hỏi hoặc nhập yêu cầu cho GIGBRIDGE AI…')}
+              placeholder=""
               rows={1}
               maxLength={5000}
             />
