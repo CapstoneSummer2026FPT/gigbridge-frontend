@@ -39,6 +39,10 @@ export interface AiTalentMatch {
   missingSkills: string[];
   semanticStrengths: string[];
   reasons: string[];
+  savingPercentage?: number | null;
+  budgetBonus?: number;
+  jobBudget?: number | null;
+  candidateRate?: number | null;
   averageRating: number;
   reviewCount: number;
   completedContracts: number;

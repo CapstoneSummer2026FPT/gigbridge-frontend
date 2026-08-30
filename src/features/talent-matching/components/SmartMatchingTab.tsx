@@ -123,6 +123,11 @@ export function SmartMatchingTab({
               </div>
 
               <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                {match.savingPercentage && match.savingPercentage > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    💚 Saves {match.savingPercentage.toFixed(0)}%
+                  </span>
+                ) : null}
                 <div className="text-left sm:text-right flex items-center sm:block gap-2">
                   <div className="text-base sm:text-lg font-black text-purple-500 leading-none">{match.finalScore.toFixed(1)}</div>
                   <div className="text-[9px] uppercase tracking-wider text-text-muted">{t('talentMatching.matchScore')}</div>
@@ -198,15 +203,89 @@ export function SmartMatchingTab({
                       {match.title || t('talentMatching.freelancerRole')}
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xl sm:text-2xl font-black text-purple-500 leading-none">{match.finalScore.toFixed(1)}</div>
-                    <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-text-muted mt-0.5">
-                      {t('talentMatching.matchScore')}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {match.savingPercentage && match.savingPercentage > 0 ? (
+                      <div className="relative group cursor-pointer shrink-0">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 shadow-sm transition-transform group-hover:scale-105">
+                          💚 Saves {match.savingPercentage.toFixed(0)}%
+                        </span>
+                        <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-72 rounded-xl bg-slate-900/95 text-white p-3 text-xs shadow-2xl border border-emerald-500/30 backdrop-blur-md">
+                          <div className="font-bold text-emerald-400 mb-1 flex items-center justify-between">
+                            <span>💰 Budget Saving Formula</span>
+                            <span className="text-[10px] text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
+                              +{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts
+                            </span>
+                          </div>
+                          <div className="font-mono bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1">
+                            <div className="flex justify-between text-slate-300">
+                              <span>Job Budget:</span>
+                              <span className="font-bold text-white">
+                                {match.jobBudget ? `${match.jobBudget.toLocaleString()} GigCoins` : 'Standard Budget'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-slate-300">
+                              <span>Freelancer Rate:</span>
+                              <span className="font-bold text-emerald-400">
+                                {match.candidateRate ? `${match.candidateRate.toLocaleString()} GigCoins` : 'Preferred Rate'}
+                              </span>
+                            </div>
+                            <div className="border-t border-slate-800 pt-1 text-[10px] text-emerald-300 flex justify-between">
+                              <span>Formula:</span>
+                              <span>({match.jobBudget || 'Budget'} - {match.candidateRate || 'Rate'}) / {match.jobBudget || 'Budget'}</span>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-[10px] text-slate-300 text-center">
+                            Cost savings: <strong>{match.savingPercentage.toFixed(1)}%</strong> &rarr; awarded <strong>+{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts bonus</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="text-right shrink-0">
+                      <div className="text-xl sm:text-2xl font-black text-purple-500 leading-none">{match.finalScore.toFixed(1)}</div>
+                      <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-text-muted mt-0.5">
+                        {t('talentMatching.matchScore')}
+                      </div>
                     </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
                   <DataConfidenceBadge match={match} />
+                  {match.savingPercentage && match.savingPercentage > 0 ? (
+                    <div className="relative group cursor-pointer">
+                      <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] sm:text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        💚 Saves {match.savingPercentage.toFixed(0)}%
+                      </span>
+                      <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-50 w-72 rounded-xl bg-slate-900/95 text-white p-3 text-xs shadow-2xl border border-emerald-500/30 backdrop-blur-md">
+                        <div className="font-bold text-emerald-400 mb-1 flex items-center justify-between">
+                          <span>💰 Budget Saving Formula</span>
+                          <span className="text-[10px] text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
+                            +{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts
+                          </span>
+                        </div>
+                        <div className="font-mono bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1">
+                          <div className="flex justify-between text-slate-300">
+                            <span>Job Budget:</span>
+                            <span className="font-bold text-white">
+                              {match.jobBudget ? `${match.jobBudget.toLocaleString()} GigCoins` : 'Standard Budget'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-slate-300">
+                            <span>Freelancer Rate:</span>
+                            <span className="font-bold text-emerald-400">
+                              {match.candidateRate ? `${match.candidateRate.toLocaleString()} GigCoins` : 'Preferred Rate'}
+                            </span>
+                          </div>
+                          <div className="border-t border-slate-800 pt-1 text-[10px] text-emerald-300 flex justify-between">
+                            <span>Formula:</span>
+                            <span>({match.jobBudget || 'Budget'} - {match.candidateRate || 'Rate'}) / {match.jobBudget || 'Budget'}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-[10px] text-slate-300 text-center">
+                          Cost savings: <strong>{match.savingPercentage.toFixed(1)}%</strong> &rarr; awarded <strong>+{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts bonus</strong>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                   {match.location && (
                     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-muted border border-border text-[10px] sm:text-[11px] text-text-muted">
                       <MapPin size={11} /> {match.location}
