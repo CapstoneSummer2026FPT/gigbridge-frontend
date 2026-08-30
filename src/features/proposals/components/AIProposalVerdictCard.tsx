@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Percent,
   XCircle,
-  Info,
   Fingerprint,
   Calculator,
   HelpCircle,
@@ -376,6 +375,40 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     }
   };
 
+  // AI Generator Detection flags
+  const aiGeneratedQA = React.useMemo(() => {
+    const qaList = details?.llm_qualitative_evaluation?.screening_qa || [];
+    return qaList.find((q: any) => q.is_ai_generated);
+  }, [details]);
+
+  const summaryComment = React.useMemo(() => {
+    const customSummary = details?.llm_qualitative_evaluation?.answer_quality_summary_comment;
+    if (customSummary) return customSummary;
+
+    if (pillarScores.authenticity_fluff >= 70) {
+      return 'Candidate responses demonstrate high technical substance, concrete domain methodology, and clear practical examples tailored to this job post.';
+    }
+    return 'Candidate responses exhibit lower technical substance density and rely on generic, high-level phrasing. Further technical screening is recommended to verify hands-on execution experience and specific tools.';
+  }, [details, pillarScores.authenticity_fluff]);
+
+  // Extract probing questions or generate smart per-problem fallback list
+  const probingQuestionsList: string[] = React.useMemo(() => {
+    const rawProbing = details?.llm_qualitative_evaluation?.probing_questions;
+    if (Array.isArray(rawProbing) && rawProbing.length > 0) {
+      return rawProbing;
+    }
+
+    if (pillarScores.authenticity_fluff < 70) {
+      return [
+        'Proposal lacks specific architecture framework specs and concrete technical workflow artifacts for this job post.',
+        'Screening Q&A answers provide high-level theoretical concepts without naming specific component tokens or technical trade-off logic.',
+        'Project scope boundaries and explicit out-of-scope exclusions were unmentioned in the proposal text.',
+      ];
+    }
+    return [
+      'Verify specific hands-on workflow steps and team handoff processes during the technical interview.',
+    ];
+  }, [details, pillarScores.authenticity_fluff]);
 
   return (
     <div className="conic-border-wrap conic-border-card rounded-2xl w-full">
@@ -727,47 +760,93 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
         </div>
       </div>
 
-      {/* Detailed Analysis: Demoted Authenticity & Substance Metric Card with Tooltip */}
+      {/* 🤖 AI Recruiter Insight & Answer Quality (Diagnostic Feedback) */}
       <MetricCalculationTooltip
-        title="Answer Authenticity & Substance Density"
-        formula="Score = 0.60×Project Specificity + 0.40×Substance Density"
+        title="AI Recruiter Insight & Answer Quality"
+        formula="Diagnostic feedback — Does not alter overall VS score math"
         items={[
-          { label: 'Project Specificity', weight: '60%', icon: '🎯' },
-          { label: 'Substance Density', weight: '40%', icon: '🔬' },
+          { label: 'Project Specificity', weight: 'Evaluated', icon: '🎯' },
+          { label: 'Substance Density', weight: 'Evaluated', icon: '🔬' },
         ]}
-        note="Measures technical specificity vs. generic copy-paste text."
+        note="Measures technical specificity vs. generic copy-paste text to assist recruiter screening."
       >
-        <div className="rounded-xl border border-border/70 bg-surface-muted/40 p-4 space-y-2.5 text-xs sm:text-sm transition-all hover:border-pink-500/40">
-          <div className="flex items-center justify-between border-b border-border/50 pb-2">
-            <span className="font-black uppercase tracking-wider text-xs font-black text-text-muted flex items-center gap-1.5">
-              <Fingerprint size={15} className="text-pink-500 shrink-0" />
-              Detailed Analysis: Answer Authenticity & Substance Density
-              <HelpCircle size={13} className="text-text-muted" />
-            </span>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-black ${
-                pillarScores.authenticity_fluff >= 70
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-              }`}
-            >
-              {pillarScores.authenticity_fluff >= 70 ? 'High Substance' : 'Low Substance Density'}
-            </span>
+        <div className="rounded-xl border border-border/70 bg-surface-muted/40 p-4 space-y-3.5 text-xs sm:text-sm transition-all hover:border-pink-500/40 shadow-2xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-black uppercase tracking-wider text-xs sm:text-sm text-text-primary flex items-center gap-1.5">
+                <Fingerprint size={16} className="text-pink-500 shrink-0" />
+                🤖 AI Recruiter Insight & Answer Quality
+              </span>
+              <span className="text-[11px] font-bold text-text-muted bg-surface-card px-2.5 py-0.5 rounded-full border border-border/40">
+                (Diagnostic Feedback — Does not alter overall VS score)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {aiGeneratedQA && (
+                <span className="rounded-full px-3 py-1 text-xs font-black bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shadow-2xs flex items-center gap-1">
+                  <AlertTriangle size={12} className="text-amber-500 shrink-0" /> 🤖 AI-Generated Text Flagged
+                </span>
+              )}
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-black border shadow-2xs ${
+                  pillarScores.authenticity_fluff >= 70
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                    : 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30'
+                }`}
+              >
+                {pillarScores.authenticity_fluff >= 70
+                  ? '🟢 Candidate Response Status: Clear & Detailed'
+                  : '🔴 Candidate Response Status: Vague / Needs Technical Clarification'}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs sm:text-sm font-bold pt-0.5">
-            <span className="text-text-muted">Answer Authenticity & Specificity Score:</span>
-            <strong className="text-pink-600 dark:text-pink-400 font-black text-sm sm:text-base">
-              {pillarScores.authenticity_fluff.toFixed(1)} / 100
-            </strong>
+          {/* AI Generator Detection Warning Notice Box */}
+          {aiGeneratedQA && (
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-xl space-y-1">
+              <span className="block text-xs font-black uppercase text-amber-700 dark:text-amber-300 tracking-wider flex items-center gap-1.5">
+                <AlertTriangle size={15} className="text-amber-500 shrink-0" />
+                ⚠️ AI Generator Detection Notice (ChatGPT / Boilerplate Signature Flagged)
+              </span>
+              <p className="text-xs sm:text-sm text-text-primary leading-relaxed">
+                {aiGeneratedQA.ai_detection_reason || 'AI-generated response patterns detected (stereotypical ChatGPT intro phrases, uniform bold lead-in lists, and lack of personal project experience).'}
+              </p>
+            </div>
+          )}
+
+          {/* Single Cohesive AI Summary Narrative Comment (Compliment or Complaint) */}
+          <div className="bg-surface-card p-3.5 rounded-xl border border-border/50 space-y-1.5">
+            <span className="block text-xs font-black uppercase text-pink-500 tracking-wider flex items-center gap-1.5">
+              <Sparkles size={14} className="text-pink-500 shrink-0" />
+              AI Recruiter Summary Comment
+            </span>
+            <p className="text-xs sm:text-sm text-text-primary leading-relaxed font-normal">
+              {summaryComment}
+            </p>
           </div>
 
-          <p className="text-xs sm:text-sm text-text-primary leading-relaxed font-normal bg-surface-card p-3 rounded-lg border border-border/40">
-            <Info size={14} className="inline mr-1.5 text-pink-500" />
-            {pillarScores.authenticity_fluff >= 70
-              ? 'Candidate responses contain high technical substance, specific methodology details, and concrete examples.'
-              : 'Candidate responses contain lower technical substance density and generic phrasing. Further technical screening is recommended to verify hands-on expertise.'}
-          </p>
+          {/* Formatted Numbered List of Points/Problems Candidate Must Clarify */}
+          {probingQuestionsList.length > 0 && (
+            <div className="bg-pink-500/5 dark:bg-pink-500/10 p-3.5 rounded-xl border border-pink-500/20 space-y-2">
+              <span className="block text-xs font-black uppercase text-pink-600 dark:text-pink-400 tracking-wider flex items-center gap-1.5">
+                <AlertTriangle size={14} className="text-pink-500 shrink-0" />
+                💡 Key Points Candidate Must Clarify in Interview
+              </span>
+              <ol className="space-y-1.5 text-xs sm:text-sm font-medium text-text-primary pl-1">
+                {probingQuestionsList.map((probItem, pIdx) => {
+                  const cleanedText = probItem.replace(/^Problem\s*#?\d*:\s*/i, '').replace(/^\d+\.\s*/, '');
+                  return (
+                    <li key={pIdx} className="flex items-start gap-2 leading-relaxed">
+                      <strong className="text-pink-600 dark:text-pink-400 font-bold shrink-0">
+                        {pIdx + 1}. Problem #{pIdx + 1}:
+                      </strong>
+                      <span>{cleanedText}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
         </div>
       </MetricCalculationTooltip>
       </div>
