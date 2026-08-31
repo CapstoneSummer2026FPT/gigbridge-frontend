@@ -336,9 +336,19 @@ export function AISideBySideMilestoneMatrix({
                     (item.estimatedDuration || (item as any).estimated_duration || '').trim();
                   const isTitleChanged = (matchedOrig.title || '').trim().toLowerCase() !== itemTitleLower;
 
-                  if (isPriceChanged || isDurChanged || isTitleChanged) {
+                  const origDesc = (matchedOrig.description || matchedOrig.deliverables || '').trim();
+                  const itemDesc = (item.description || (item as any).deliverables || '').trim();
+                  const isDescChanged = Boolean(origDesc || itemDesc) && origDesc !== itemDesc;
+
+                  const changedFields: string[] = [];
+                  if (isTitleChanged) changedFields.push(`Tiêu đề ('${matchedOrig.title}' → '${itemTitle}')`);
+                  if (isPriceChanged) changedFields.push(`Chi phí (${formatGigCoin(matchedOrig.amount)} → ${formatGigCoin(item.amount)})`);
+                  if (isDurChanged) changedFields.push(`Thời gian ('${matchedOrig.estimated_duration || matchedOrig.estimatedDuration || '—'}' → '${item.estimatedDuration || (item as any).estimated_duration || '—'}')`);
+                  if (isDescChanged) changedFields.push('Mô tả / sản phẩm bàn giao');
+
+                  if (changedFields.length > 0) {
                     status = 'Edited';
-                    changeSummary = auditItem?.change_summary || 'Thông tin chi phí / thời gian / tiêu đề đã được điều chỉnh';
+                    changeSummary = auditItem?.change_summary || `Điều chỉnh: ${changedFields.join(', ')}`;
                   } else {
                     status = auditItem?.status || 'Preserved';
                     changeSummary = auditItem?.change_summary || 'Baseline milestone preserved';
