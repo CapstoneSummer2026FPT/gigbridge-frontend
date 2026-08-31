@@ -9,6 +9,8 @@ export interface SystemRequestLog {
   path: string;
   durationMs: number;
   requestId: string;
+  user?: string | null;
+  ip?: string | null;
 }
 
 export interface SystemErrorLog {
