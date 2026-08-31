@@ -92,7 +92,23 @@ const clearAuthenticationStorage = (): void => {
   secureStorage.removeItem('gigbridge_session');
 };
 
+export const revokeServerSession = (): void => {
+  if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
+
+  // keepalive lets the browser finish clearing/revoking the httpOnly refresh
+  // cookie even when logout immediately navigates away from the current page.
+  void fetch(`${API_BASE_URL}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    keepalive: true,
+    headers: { 'Content-Type': 'application/json' },
+  }).catch(() => {
+    // Local logout must still complete if the network is temporarily unavailable.
+  });
+};
+
 const hardLogout = (reason: string): void => {
+  revokeServerSession();
   clearAuthenticationStorage();
   authSessionManager.clearSession(reason);
 

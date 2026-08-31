@@ -14,8 +14,6 @@ export interface ContractESignDocumentState {
   retry: () => void;
 }
 
-const ESIGN_STATUS_FALLBACK_POLL_MS = 30_000;
-
 export const contractStatusMayHaveESignDocument = (status: ContractStatus): boolean =>
   [
     ContractStatus.PendingSignature,
