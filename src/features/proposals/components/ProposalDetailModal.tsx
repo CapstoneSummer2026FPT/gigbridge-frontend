@@ -28,6 +28,7 @@ import { getCriteriaColorTheme } from '../utils/criteriaColors';
 import '../../../shared/components/styles/conic-border-button.css';
 import type { BusyAction } from '../hooks/useClientProposals';
 import { getStatusLabel } from '../utils/statusHelpers';
+import { useLanguage } from '../../../hooks/useTranslation';
 
 export interface ProposalDetailModalProps {
   isOpen: boolean;
@@ -63,6 +64,81 @@ const getScoreColorClass = (score?: number | null) => {
   if (score >= 60) return 'border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400 font-black';
   return 'border-rose-500/40 text-rose-600 bg-rose-500/10 dark:text-rose-400 font-black';
 };
+
+function SubcriteriaDefinitionTooltip({
+  title,
+  titleEn,
+  weight,
+  score,
+  definition,
+  definitionEn,
+  children,
+}: {
+  title: string;
+  titleEn?: string;
+  weight: string;
+  score: number;
+  definition: string;
+  definitionEn?: string;
+  children: React.ReactNode;
+}) {
+  const [isVisible, setIsVisible] = React.useState(false);
+  const { currentLanguage } = useLanguage();
+  const isEn = currentLanguage === 'en';
+
+  const getScoreBadgeClass = (val: number) => {
+    if (val >= 80) return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+    if (val >= 60) return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+    return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
+  };
+
+  const displayTitle = isEn && titleEn ? titleEn : title;
+  const displayDefinition = isEn && definitionEn ? definitionEn : definition;
+
+  return (
+    <div
+      className="relative group inline-block w-full"
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {children}
+
+      {isVisible && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 w-64 sm:w-72 z-50 p-3.5 rounded-xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-xl text-left pointer-events-none animate-in fade-in duration-150">
+          <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2 mb-2">
+            <span className="font-black text-xs text-text-primary flex items-center gap-1.5">
+              🎯 {displayTitle}
+            </span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted bg-surface-muted px-2 py-0.5 rounded-full border border-border/40">
+              {isEn ? 'Weight:' : 'Trọng số:'} {weight}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-bold text-text-muted">
+              {isEn ? 'Candidate Score:' : 'Điểm ứng viên:'}
+            </span>
+            <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${getScoreBadgeClass(score)}`}>
+              {score} / 100
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <span className="block text-[10px] font-black uppercase text-brand tracking-wider">
+              {isEn ? 'Criteria Description & AI Scoring:' : 'Mô tả tiêu chí & Cách AI đánh giá:'}
+            </span>
+            <p className="text-xs text-text-primary font-normal leading-relaxed">
+              {displayDefinition}
+            </p>
+          </div>
+
+          {/* Bottom Arrow */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-card/95" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const renderAnnotatedDetailSection = (
   title: string,
@@ -264,6 +340,8 @@ export function ProposalDetailModal({
   t,
   showAiReportTab = true,
 }: ProposalDetailModalProps) {
+  const { currentLanguage } = useLanguage();
+  const isEn = currentLanguage === 'en';
   const activeProposal = proposals.find(p => p.proposalsId === activeId);
 
   const aiAuditData = useMemo(() => {
@@ -806,39 +884,103 @@ export function ProposalDetailModal({
                           {/* 5-Subcriteria Technical Evaluation Grid */}
                           <div className="rounded-xl border border-brand/20 bg-brand/5 p-4 space-y-3">
                             <span className="block text-xs font-black uppercase tracking-wider text-brand">
-                              📊 Chi tiết đánh giá 5 Tiêu chí Kỹ thuật (5 Sub-criteria Breakdown)
+                              📊 {isEn ? '5 Sub-Criteria Technical Breakdown' : 'Chi tiết đánh giá 5 Tiêu chí Kỹ thuật (5 Sub-criteria Breakdown)'}
                             </span>
                             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs sm:text-sm">
-                              <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center">
-                                <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">Độ chính xác (40%)</span>
-                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.correctness)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                  {q.subcriteria.correctness}/100
-                                </strong>
-                              </div>
-                              <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center">
-                                <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">Tư duy Kỹ thuật (25%)</span>
-                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.reasoning)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                  {q.subcriteria.reasoning}/100
-                                </strong>
-                              </div>
-                              <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center">
-                                <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">Độ liên quan (15%)</span>
-                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.relevance)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                  {q.subcriteria.relevance}/100
-                                </strong>
-                              </div>
-                              <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center">
-                                <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">Độ sâu (10%)</span>
-                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.depth)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                  {q.subcriteria.depth}/100
-                                </strong>
-                              </div>
-                              <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center col-span-2 sm:col-span-1">
-                                <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">Ví dụ thực tế (10%)</span>
-                                <strong className={`font-black ${getScoreColorClass(q.subcriteria.examples)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                  {q.subcriteria.examples}/100
-                                </strong>
-                              </div>
+                              {/* 1. Độ chính xác */}
+                              <SubcriteriaDefinitionTooltip
+                                title="Độ chính xác"
+                                titleEn="Answer Correctness"
+                                weight="40%"
+                                score={q.subcriteria.correctness}
+                                definition="Đánh giá độ chính xác thực tế, khái niệm kỹ thuật và mức độ đáp ứng đúng yêu cầu của câu hỏi."
+                                definitionEn="Evaluates factual accuracy, technical concepts, and how directly the response fulfills question requirements."
+                              >
+                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
+                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
+                                    {isEn ? 'Correctness (40%)' : 'Độ chính xác (40%)'}
+                                  </span>
+                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.correctness)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
+                                    {q.subcriteria.correctness}/100
+                                  </strong>
+                                </div>
+                              </SubcriteriaDefinitionTooltip>
+
+                              {/* 2. Tư duy Kỹ thuật */}
+                              <SubcriteriaDefinitionTooltip
+                                title="Tư duy Kỹ thuật"
+                                titleEn="Technical Reasoning"
+                                weight="25%"
+                                score={q.subcriteria.reasoning}
+                                definition="Đánh giá độ sâu của logic giải quyết vấn đề, lập luận kỹ thuật và lý do đưa ra các giải pháp hoặc lựa chọn đánh đổi (trade-offs)."
+                                definitionEn="Evaluates the depth of problem-solving logic, technical rationale, and trade-off decision justification."
+                              >
+                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
+                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
+                                    {isEn ? 'Reasoning (25%)' : 'Tư duy Kỹ thuật (25%)'}
+                                  </span>
+                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.reasoning)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
+                                    {q.subcriteria.reasoning}/100
+                                  </strong>
+                                </div>
+                              </SubcriteriaDefinitionTooltip>
+
+                              {/* 3. Độ liên quan */}
+                              <SubcriteriaDefinitionTooltip
+                                title="Độ liên quan"
+                                titleEn="Question Relevance"
+                                weight="15%"
+                                score={q.subcriteria.relevance}
+                                definition="Đánh giá mức độ trả lời trực tiếp vào đúng trọng tâm câu hỏi được hỏi, không đi lạc đề hoặc viết dài dòng sáo rỗng."
+                                definitionEn="Evaluates directness in answering the exact question asked without off-topic tangents or padded fluff."
+                              >
+                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
+                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
+                                    {isEn ? 'Relevance (15%)' : 'Độ liên quan (15%)'}
+                                  </span>
+                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.relevance)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
+                                    {q.subcriteria.relevance}/100
+                                  </strong>
+                                </div>
+                              </SubcriteriaDefinitionTooltip>
+
+                              {/* 4. Độ sâu */}
+                              <SubcriteriaDefinitionTooltip
+                                title="Độ sâu Kỹ thuật"
+                                titleEn="Technical Depth"
+                                weight="10%"
+                                score={q.subcriteria.depth}
+                                definition="Đánh giá tính cụ thể của các công cụ, công nghệ, framework, schema dữ liệu hoặc quy trình kỹ thuật so với các phát biểu chung chung."
+                                definitionEn="Evaluates technical specificity (naming concrete tools, frameworks, schemas, or workflow mechanics) vs generic high-level statements."
+                              >
+                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
+                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
+                                    {isEn ? 'Depth (10%)' : 'Độ sâu (10%)'}
+                                  </span>
+                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.depth)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
+                                    {q.subcriteria.depth}/100
+                                  </strong>
+                                </div>
+                              </SubcriteriaDefinitionTooltip>
+
+                              {/* 5. Ví dụ thực tế */}
+                              <SubcriteriaDefinitionTooltip
+                                title="Ví dụ thực tế"
+                                titleEn="Practical Examples"
+                                weight="10%"
+                                score={q.subcriteria.examples}
+                                definition="Đánh giá việc đưa ra các kịch bản dự án thực tế, chi tiết kinh nghiệm triển khai đã qua hoặc quy trình thực thi thực tiễn."
+                                definitionEn="Evaluates inclusion of concrete real-world project scenarios, past production experience details, or realistic execution workflows."
+                              >
+                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center col-span-2 sm:col-span-1 cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
+                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
+                                    {isEn ? 'Practical Examples (10%)' : 'Ví dụ thực tế (10%)'}
+                                  </span>
+                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.examples)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
+                                    {q.subcriteria.examples}/100
+                                  </strong>
+                                </div>
+                              </SubcriteriaDefinitionTooltip>
                             </div>
                           </div>
 
