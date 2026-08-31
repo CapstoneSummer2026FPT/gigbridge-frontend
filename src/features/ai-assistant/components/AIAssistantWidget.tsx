@@ -4,17 +4,13 @@ import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   Check,
-  Compass,
   Copy,
   CornerDownLeft,
   Eraser,
-  FileCheck2,
-  FileText,
   Maximize2,
   Minimize2,
   Send,
   Sparkles,
-  TrendingUp,
   X,
 } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -81,40 +77,7 @@ export default function AIAssistantWidget() {
       ? t('aiAssistant.roleClient', 'Client Workspace')
       : t('aiAssistant.roleMember', 'GigBridge Member');
 
-  const executivePrompts = useMemo(() => [
-    {
-      id: 'match',
-      icon: Compass,
-      title: t('aiAssistant.promptTiles.matchTitle', 'Phân tích cơ hội việc làm'),
-      description: t('aiAssistant.promptTiles.matchDesc', 'Lọc dự án phù hợp với hồ sơ năng lực và định giá thị trường'),
-      prompt: t('aiAssistant.promptTiles.matchPrompt', 'Phân tích các cơ hội việc làm đang mở trên sàn phù hợp nhất với kỹ năng và hồ sơ của tôi.'),
-      category: t('aiAssistant.promptTiles.matchCategory', 'Market Intelligence'),
-    },
-    {
-      id: 'proposal',
-      icon: FileText,
-      title: t('aiAssistant.promptTiles.proposalTitle', 'Soạn thảo bản đề xuất thầu'),
-      description: t('aiAssistant.promptTiles.proposalDesc', 'Xây dựng cấu trúc Proposal chuyên nghiệp nhằm tăng tỷ lệ chốt hợp đồng'),
-      prompt: t('aiAssistant.promptTiles.proposalPrompt', 'Hướng dẫn và gợi ý cấu trúc một Proposal chuyên nghiệp để chinh phục khách hàng và tăng tỷ lệ trúng thầu.'),
-      category: t('aiAssistant.promptTiles.proposalCategory', 'Proposal Strategy'),
-    },
-    {
-      id: 'escrow',
-      icon: FileCheck2,
-      title: t('aiAssistant.promptTiles.escrowTitle', 'Kiểm toán điều khoản hợp đồng'),
-      description: t('aiAssistant.promptTiles.escrowDesc', 'Đánh giá tiến độ milestone và cơ chế bảo vệ thanh toán qua Escrow'),
-      prompt: t('aiAssistant.promptTiles.escrowPrompt', 'Giải thích cơ chế thanh toán tạm giữ Escrow an toàn và quy trình giải ngân milestone trên GigBridge.'),
-      category: t('aiAssistant.promptTiles.escrowCategory', 'Contract & Escrow'),
-    },
-    {
-      id: 'elo',
-      icon: TrendingUp,
-      title: t('aiAssistant.promptTiles.eloTitle', 'Chiến lược tối ưu hóa thứ hạng'),
-      description: t('aiAssistant.promptTiles.eloDesc', 'Kế hoạch nâng cao điểm Elo reputation và độ uy tín hồ sơ'),
-      prompt: t('aiAssistant.promptTiles.eloPrompt', 'Chia sẻ các chiến lược hiệu quả để gia tăng điểm uy tín Elo và xếp hạng nổi bật trong cộng đồng GigBridge.'),
-      category: t('aiAssistant.promptTiles.eloCategory', 'Reputation Growth'),
-    },
-  ], [t]);
+
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -428,36 +391,9 @@ export default function AIAssistantWidget() {
                   <h4 className="text-base sm:text-lg font-black text-text-primary tracking-tight">
                     {t('aiAssistant.welcomeHeadline', 'Chào {{name}}! 👋', { name: displayName })}
                   </h4>
-                  <p className="text-xs text-text-secondary max-w-xs mx-auto leading-relaxed">
-                    {t('aiAssistant.welcomeSubtitle', 'Tôi là trợ lý GIGBRIDGE AI. Hãy chọn danh mục phân tích bên dưới hoặc đặt câu hỏi trực tiếp.')}
+                  <p className="text-sm text-text-secondary max-w-xs mx-auto leading-relaxed">
+                    {t('aiAssistant.welcomeSubtitle', 'Tôi là trợ lý GIGBRIDGE AI. Hãy nhập câu hỏi hoặc yêu cầu bất kỳ bên dưới.')}
                   </p>
-                </div>
-
-                {/* Structured Executive Action Tiles */}
-                <div className="ai-tiles-grid">
-                  {executivePrompts.map(item => {
-                    const IconComponent = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="ai-tile-btn group/tile cursor-pointer"
-                        onClick={() => {
-                          triggerPulse();
-                          void send(item.prompt);
-                        }}
-                      >
-                        <div className="ai-tile-icon-box">
-                          <IconComponent size={15} />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="ai-tile-category">{item.category}</span>
-                          <h5 className="ai-tile-title">{item.title}</h5>
-                          <p className="ai-tile-desc">{item.description}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
             )}
@@ -541,19 +477,19 @@ export default function AIAssistantWidget() {
                   void send();
                 }
               }}
-              placeholder={t('aiAssistant.placeholder', 'Đặt câu hỏi hoặc nhập yêu cầu cho GIGBRIDGE AI…')}
+              placeholder=""
               rows={1}
               maxLength={5000}
             />
 
             <div className="ai-composer-footer">
-              <div className="flex items-center gap-2 text-[10px] font-medium text-text-muted">
+              <div className="flex items-center gap-2 text-xs font-medium text-text-muted">
                 <span>{input.length}/5000</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="hidden sm:inline text-[9px] text-text-muted font-medium">
-                  Enter <CornerDownLeft size={10} className="inline" />
+                <span className="hidden sm:inline text-xs text-text-muted font-medium">
+                  Enter <CornerDownLeft size={11} className="inline" />
                 </span>
                 <button
                   type="button"

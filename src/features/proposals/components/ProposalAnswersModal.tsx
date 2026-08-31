@@ -67,11 +67,11 @@ export function ProposalAnswersModal({ modalState }: ProposalAnswersModalProps) 
               </p>
             </div>
           ) : (
-            answers.map(answer => (
-              <div key={answer.jobPostQuestionsId} className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-border bg-surface-muted/30 space-y-2">
+            answers.map((answer, idx) => (
+              <div key={answer.jobPostQuestionsId || idx} className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-border bg-surface-muted/30 space-y-2">
                 <div className="flex items-start justify-between gap-2.5">
                   <h4 className="text-xs sm:text-sm font-extrabold text-text-primary leading-snug break-all [overflow-wrap:anywhere]">
-                    {answer.orderIndex}. {answer.questionText}
+                    {idx + 1}. {answer.questionText}
                   </h4>
                   <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full shrink-0 ${
                     answer.isRequired
