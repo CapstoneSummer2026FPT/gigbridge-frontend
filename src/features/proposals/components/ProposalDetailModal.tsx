@@ -425,7 +425,7 @@ export function ProposalDetailModal({
             return {
               questionIndex: qIdx,
               displayNumber,
-              questionText: qa.question_text || `Question #${displayNumber}`,
+              questionText: (qa.question_text || '').replace(/^\d+[\.\s\-]+/, '').trim() || qa.question_text || `Question #${displayNumber}`,
               candidateAnswer: qa.candidate_answer || 'No answer provided',
               overallScore: weightedScore,
               subcriteria: {
@@ -458,7 +458,7 @@ export function ProposalDetailModal({
           return {
             questionIndex: displayNumber,
             displayNumber,
-            questionText: ans.questionText || `Question #${displayNumber}`,
+            questionText: (ans.questionText || '').replace(/^\d+[\.\s\-]+/, '').trim() || ans.questionText || `Question #${displayNumber}`,
             candidateAnswer: ans.answerText || 'No answer provided',
             overallScore: defaultScore,
             subcriteria: {
