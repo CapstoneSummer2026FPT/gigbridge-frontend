@@ -23,7 +23,8 @@ interface CalculationTooltipProps {
   title: string;
   weight?: string;
   formula: string;
-  items: { label: string; weight: string; icon?: string }[];
+  actualCalculation?: string;
+  items: { label: string; weight: string; icon?: string; actualValue?: string }[];
   note?: string;
   align?: 'left' | 'right' | 'center';
   children: React.ReactNode;
@@ -33,6 +34,7 @@ function MetricCalculationTooltip({
   title,
   weight,
   formula,
+  actualCalculation,
   items,
   note,
   align = 'center',
@@ -75,7 +77,7 @@ function MetricCalculationTooltip({
 
       {/* Floating Glassmorphism Tooltip Popover (Positioned Downwards) */}
       {isOpen && (
-        <div className={`absolute ${getPositionClasses()} z-50 w-72 sm:w-80 p-4 rounded-2xl bg-surface-card/95 backdrop-blur-xl border border-brand/30 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.3)] text-text-primary text-xs sm:text-sm space-y-2.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-none`}>
+        <div className={`absolute ${getPositionClasses()} z-50 w-72 sm:w-84 p-4 rounded-2xl bg-surface-card/95 backdrop-blur-xl border border-brand/30 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.3)] text-text-primary text-xs sm:text-sm space-y-2.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-none`}>
           {/* Tooltip Arrow pointing up */}
           <div className={`absolute ${getArrowClasses()}`} />
 
@@ -92,7 +94,7 @@ function MetricCalculationTooltip({
             )}
           </div>
 
-          {/* Formula Box */}
+          {/* Abstract Formula Box */}
           <div className="rounded-xl bg-brand/10 border border-brand/20 p-2.5 text-xs font-mono font-bold text-brand leading-relaxed">
             <span className="block text-[10px] sm:text-xs font-sans font-black uppercase text-brand tracking-wider mb-0.5">
               📐 Calculation Formula
@@ -100,20 +102,37 @@ function MetricCalculationTooltip({
             {formula}
           </div>
 
+          {/* Live Real-Number Calculation Box */}
+          {actualCalculation && (
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 leading-relaxed shadow-2xs">
+              <span className="block text-[10px] sm:text-xs font-sans font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider mb-0.5">
+                🧮 Live Real-Number Calculation
+              </span>
+              {actualCalculation}
+            </div>
+          )}
+
           {/* Subcriteria Breakdown List */}
           {items.length > 0 && (
             <div className="space-y-1 pt-0.5">
               <span className="block text-[10px] sm:text-xs font-black uppercase text-text-muted tracking-wider">
-                Sub-criteria Weights
+                Sub-criteria Weights & Values
               </span>
               <ul className="space-y-1 text-xs font-medium text-text-primary">
                 {items.map((item, idx) => (
-                  <li key={idx} className="flex items-center justify-between bg-surface-muted/50 px-2.5 py-1 rounded-lg border border-border/40">
-                    <span className="flex items-center gap-1.5">
+                  <li key={idx} className="flex items-center justify-between bg-surface-muted/50 px-2.5 py-1 rounded-lg border border-border/40 gap-2">
+                    <span className="flex items-center gap-1.5 truncate">
                       {item.icon && <span>{item.icon}</span>}
                       {item.label}
                     </span>
-                    <strong className="text-brand font-bold">{item.weight}</strong>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.actualValue && (
+                        <span className="text-[11px] font-mono font-bold text-text-primary bg-surface-card px-1.5 py-0.5 rounded border border-border/50">
+                          {item.actualValue}
+                        </span>
+                      )}
+                      <strong className="text-brand font-bold text-xs">{item.weight}</strong>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -151,11 +170,11 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
   }
 
   const pillarScores = details?.deterministic_calculations?.pillar_scores || {
-    technical_solution: Math.round(tq * 0.95),
+    technical_solution: Math.round(tq),
     screening_qa: Math.round(tq),
-    financial_value: Math.round(Math.min(100, tq + savingsPct)),
+    financial_value: Math.round(vs),
     milestone_scope: Math.round(scopePct),
-    authenticity_fluff: 46,
+    authenticity_fluff: 50,
   };
 
   const riskAnalysis: string[] = details?.llm_qualitative_evaluation?.risk_analysis || [];
@@ -410,6 +429,73 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     ];
   }, [details, pillarScores.authenticity_fluff]);
 
+  // Extract ground-truth AI sub-criteria scores (strict matching from AI server evaluation JSON)
+  const techSub = details?.llm_qualitative_evaluation?.technical_solution;
+  const hasP1Details = techSub?.requirement_alignment?.score !== undefined;
+  const p1Align = hasP1Details ? techSub.requirement_alignment.score : null;
+  const p1Anal = hasP1Details ? techSub.technical_correctness.score : null;
+  const p1Arch = hasP1Details ? techSub.architecture_quality.score : null;
+  const p1Deliv = hasP1Details ? techSub.implementation_feasibility.score : null;
+  const p1Scope = hasP1Details ? techSub.edge_cases_security.score : null;
+
+  const qaList = details?.llm_qualitative_evaluation?.screening_qa || [];
+  const hasQaDetails = qaList.length > 0 && qaList[0]?.answer_correctness?.score !== undefined;
+  const p2Correct = hasQaDetails ? (qaList.reduce((acc: number, q: any) => acc + (q.answer_correctness?.score ?? 0), 0) / qaList.length) : null;
+  const p2Reasoning = hasQaDetails ? (qaList.reduce((acc: number, q: any) => acc + (q.technical_reasoning?.score ?? 0), 0) / qaList.length) : null;
+  const p2Relevance = hasQaDetails ? (qaList.reduce((acc: number, q: any) => acc + (q.relevance?.score ?? 0), 0) / qaList.length) : null;
+  const p2Depth = hasQaDetails ? (qaList.reduce((acc: number, q: any) => acc + (q.depth?.score ?? 0), 0) / qaList.length) : null;
+  const p2Examples = hasQaDetails ? (qaList.reduce((acc: number, q: any) => acc + (q.practical_examples?.score ?? 0), 0) / qaList.length) : null;
+
+  const proposedBudget = proposal.proposedBudget || details?.deterministic_calculations?.proposed_budget || 0;
+  const maxBudget = details?.job_post_baseline?.budget_max || (savingsPct > 0 && proposedBudget > 0 ? proposedBudget / (1 - savingsPct / 100) : proposedBudget);
+  
+  const hasP3Details = details?.deterministic_calculations?.savings_ratio_percent !== undefined && details?.llm_qualitative_evaluation?.pricing_realism?.score !== undefined;
+  const p3SavingsScore = hasP3Details ? Math.min(100, 70 + details.deterministic_calculations.savings_ratio_percent) : null;
+  const p3RealismScore = hasP3Details ? details.llm_qualitative_evaluation.pricing_realism.score : null;
+
+  const hasP4Details = details?.llm_qualitative_evaluation?.milestone_structure?.score !== undefined && details?.llm_qualitative_evaluation?.timeline_feasibility?.score !== undefined;
+  const p4ScopeScore = scopePct;
+  const p4StructScore = hasP4Details ? details.llm_qualitative_evaluation.milestone_structure.score : null;
+  const p4TimeScore = hasP4Details ? details.llm_qualitative_evaluation.timeline_feasibility.score : null;
+
+  const reqFulfillment = details?.llm_qualitative_evaluation?.requirement_fulfillment || [];
+  const fulfilledReqs = reqFulfillment.filter((r: any) => r.is_fulfilled).length;
+  const totalReqs = reqFulfillment.length;
+
+  const formatMoney = (val: number) => `$${Math.round(val).toLocaleString()}`;
+
+  const calcSavingsString = maxBudget > 0 
+    ? `max(0, (${formatMoney(maxBudget)} - ${formatMoney(proposedBudget)}) / ${formatMoney(maxBudget)}) = ${savingsPct.toFixed(1)}%`
+    : `Savings = ${savingsPct.toFixed(1)}%`;
+
+  const calcTqString = `0.35×(${pillarScores.technical_solution.toFixed(1)}) + 0.30×(${pillarScores.screening_qa.toFixed(1)}) + 0.20×(${pillarScores.financial_value.toFixed(1)}) + 0.15×(${pillarScores.milestone_scope.toFixed(1)}) = ${tq.toFixed(1)} / 100`;
+
+  const calcVsString = `min(100.0, ${tq.toFixed(1)} × (1 + 0.5 × ${(savingsPct / 100).toFixed(2)})) = ${vs.toFixed(1)} / 100`;
+
+  const calcCoverageString = totalReqs > 0
+    ? `(${fulfilledReqs} / ${totalReqs} fulfilled) × 100% = ${scopePct.toFixed(0)}%`
+    : p1Align === 0.0
+    ? `0% (Forced 0% due to 0.0 Technical Alignment Score)`
+    : `${scopePct.toFixed(0)}% Scope Fulfilled`;
+
+  const calcP1String = hasP1Details
+    ? `0.25×(${p1Align!.toFixed(0)}) + 0.25×(${p1Anal!.toFixed(0)}) + 0.25×(${p1Arch!.toFixed(0)}) + 0.15×(${p1Deliv!.toFixed(0)}) + 0.10×(${p1Scope!.toFixed(0)}) = ${pillarScores.technical_solution.toFixed(1)} / 100`
+    : undefined;
+
+  const calcP2String = qaList.length === 0 || pillarScores.screening_qa === 0
+    ? `No screening Q&A completed by candidate = 0.0 / 100`
+    : hasQaDetails
+    ? `0.40×(${p2Correct!.toFixed(0)}) + 0.25×(${p2Reasoning!.toFixed(0)}) + 0.15×(${p2Relevance!.toFixed(0)}) + 0.10×(${p2Depth!.toFixed(0)}) + 0.10×(${p2Examples!.toFixed(0)}) = ${pillarScores.screening_qa.toFixed(1)} / 100`
+    : undefined;
+
+  const calcP3String = hasP3Details
+    ? `0.50×(${p3SavingsScore!.toFixed(0)}) + 0.50×(${p3RealismScore!.toFixed(0)}) = ${pillarScores.financial_value.toFixed(1)} / 100`
+    : undefined;
+
+  const calcP4String = hasP4Details
+    ? `0.40×(${p4ScopeScore.toFixed(0)}) + 0.30×(${p4StructScore!.toFixed(0)}) + 0.30×(${p4TimeScore!.toFixed(0)}) = ${pillarScores.milestone_scope.toFixed(1)} / 100`
+    : undefined;
+
   return (
     <div className="conic-border-wrap conic-border-card rounded-2xl w-full">
       <div className="conic-border-card-inner rounded-[calc(1rem-1.5px)] bg-surface-card p-4 sm:p-6 space-y-5.5 shadow-sm w-full">
@@ -419,11 +505,12 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           <MetricCalculationTooltip
             title="Technical Quality Score (TQ)"
             formula="TQ = 0.35×Tech + 0.30×Q&A + 0.20×Financial + 0.15×Scope"
+            actualCalculation={calcTqString}
             items={[
-              { label: 'Technical Solution', weight: '35%', icon: '🛠️' },
-              { label: 'Screening Q&A', weight: '30%', icon: '❓' },
-              { label: 'Financial & Timeline', weight: '20%', icon: '💰' },
-              { label: 'Milestone Scope', weight: '15%', icon: '📋' },
+              { label: 'Technical Solution', weight: '35%', actualValue: `${pillarScores.technical_solution.toFixed(1)}`, icon: '🛠️' },
+              { label: 'Screening Q&A', weight: '30%', actualValue: `${pillarScores.screening_qa.toFixed(1)}`, icon: '❓' },
+              { label: 'Financial & Timeline', weight: '20%', actualValue: `${pillarScores.financial_value.toFixed(1)}`, icon: '💰' },
+              { label: 'Milestone Scope', weight: '15%', actualValue: `${pillarScores.milestone_scope.toFixed(1)}`, icon: '📋' },
             ]}
             note="Deterministic 4-pillar weighted sum computed in Python."
           >
@@ -458,9 +545,10 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             <MetricCalculationTooltip
               title="Value Score (VS)"
               formula="VS = min(100, TQ × (1 + 0.5 × Savings Ratio))"
+              actualCalculation={calcVsString}
               items={[
-                { label: 'Base Quality Score (TQ)', weight: '100%', icon: '🏆' },
-                { label: 'Savings Boost Factor', weight: '+0.5 × Savings%', icon: '📈' },
+                { label: 'Base Quality Score (TQ)', weight: '100%', actualValue: `${tq.toFixed(1)}`, icon: '🏆' },
+                { label: 'Savings Boost Factor', weight: '+0.5 × Savings%', actualValue: `+${(savingsPct * 0.5).toFixed(1)}%`, icon: '📈' },
               ]}
               note="Capped at a maximum of 100.0."
             >
@@ -482,8 +570,9 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           title="Requirement Coverage %"
           align="left"
           formula="Coverage % = (Fulfilled Reqs / Total Reqs) × 100%"
+          actualCalculation={calcCoverageString}
           items={[
-            { label: 'Requirements Fulfilled', weight: `${scopePct.toFixed(0)}%`, icon: '✅' },
+            { label: 'Requirements Fulfilled', weight: `${scopePct.toFixed(0)}%`, actualValue: totalReqs > 0 ? `${fulfilledReqs}/${totalReqs}` : `${scopePct.toFixed(0)}%`, icon: '✅' },
           ]}
           note="Evaluates how completely candidate proposal covers client job description."
         >
@@ -502,9 +591,10 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           title="Budget Savings %"
           align="center"
           formula="Savings % = max(0, (Max Budget - Proposed) / Max Budget)"
+          actualCalculation={calcSavingsString}
           items={[
-            { label: 'Client Max Budget', weight: 'Baseline', icon: '💰' },
-            { label: 'Candidate Offer', weight: 'Proposed', icon: '🏷️' },
+            { label: 'Client Max Budget', weight: 'Baseline', actualValue: maxBudget > 0 ? formatMoney(maxBudget) : 'N/A', icon: '💰' },
+            { label: 'Candidate Offer', weight: 'Proposed', actualValue: formatMoney(proposedBudget), icon: '🏷️' },
           ]}
           note="Measures budget savings percentage relative to job budget cap."
         >
@@ -523,11 +613,12 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
           title="Overall Quality Score"
           align="right"
           formula="TQ = 35% Tech + 30% Q&A + 20% Financial + 15% Scope"
+          actualCalculation={calcTqString}
           items={[
-            { label: 'Technical Solution', weight: '35%', icon: '🛠️' },
-            { label: 'Screening Q&A', weight: '30%', icon: '❓' },
-            { label: 'Financial Value', weight: '20%', icon: '💰' },
-            { label: 'Scope & Deliverables', weight: '15%', icon: '📋' },
+            { label: 'Technical Solution', weight: '35%', actualValue: `${pillarScores.technical_solution.toFixed(1)}`, icon: '🛠️' },
+            { label: 'Screening Q&A', weight: '30%', actualValue: `${pillarScores.screening_qa.toFixed(1)}`, icon: '❓' },
+            { label: 'Financial Value', weight: '20%', actualValue: `${pillarScores.financial_value.toFixed(1)}`, icon: '💰' },
+            { label: 'Scope & Deliverables', weight: '15%', actualValue: `${pillarScores.milestone_scope.toFixed(1)}`, icon: '📋' },
           ]}
           note="Main technical quality assessment score."
         >
@@ -604,12 +695,13 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             title="Solution & Delivery Methodology"
             weight="35%"
             formula="Score = 0.25×Intro + 0.25×Analysis + 0.25×Solution + 0.15×Deliverables + 0.10×Scope"
+            actualCalculation={calcP1String}
             items={[
-              { label: 'Giới thiệu & Tổng quan (Intro)', weight: '25%', icon: '🎯' },
-              { label: 'Phân tích vấn đề (Analysis)', weight: '25%', icon: '⚡' },
-              { label: 'Giải pháp & Hướng tiếp cận (Solution)', weight: '25%', icon: '🏗️' },
-              { label: 'Sản phẩm bàn giao (Deliverables)', weight: '15%', icon: '🛠️' },
-              { label: 'Giả định & Ngoài phạm vi (Scope)', weight: '10%', icon: '🔒' },
+              { label: 'Giới thiệu & Tổng quan (Intro)', weight: '25%', actualValue: hasP1Details ? `${p1Align!.toFixed(0)}` : '--', icon: '🎯' },
+              { label: 'Phân tích vấn đề (Analysis)', weight: '25%', actualValue: hasP1Details ? `${p1Anal!.toFixed(0)}` : '--', icon: '⚡' },
+              { label: 'Giải pháp & Hướng tiếp cận (Solution)', weight: '25%', actualValue: hasP1Details ? `${p1Arch!.toFixed(0)}` : '--', icon: '🏗️' },
+              { label: 'Sản phẩm bàn giao (Deliverables)', weight: '15%', actualValue: hasP1Details ? `${p1Deliv!.toFixed(0)}` : '--', icon: '🛠️' },
+              { label: 'Giả định & Ngoài phạm vi (Scope)', weight: '10%', actualValue: hasP1Details ? `${p1Scope!.toFixed(0)}` : '--', icon: '🔒' },
             ]}
             note="Scores the 6 core proposal text sections. Excludes proposed milestone plan (scored separately in Pillar 4)."
           >
@@ -645,12 +737,13 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             title="Screening Q&A Accuracy & Reasoning"
             weight="30%"
             formula="Score = Avg(0.40×Correctness + 0.25×Reasoning + 0.15×Relevance + 0.10×Depth + 0.10×Examples)"
+            actualCalculation={calcP2String}
             items={[
-              { label: 'Answer Correctness', weight: '40%', icon: '✅' },
-              { label: 'Technical Reasoning', weight: '25%', icon: '🧠' },
-              { label: 'Question Relevance', weight: '15%', icon: '🎯' },
-              { label: 'Technical Depth', weight: '10%', icon: '🔍' },
-              { label: 'Practical Examples', weight: '10%', icon: '💡' },
+              { label: 'Answer Correctness', weight: '40%', actualValue: hasQaDetails ? `${p2Correct!.toFixed(0)}` : (qaList.length === 0 ? '0' : '--'), icon: '✅' },
+              { label: 'Technical Reasoning', weight: '25%', actualValue: hasQaDetails ? `${p2Reasoning!.toFixed(0)}` : (qaList.length === 0 ? '0' : '--'), icon: '🧠' },
+              { label: 'Question Relevance', weight: '15%', actualValue: hasQaDetails ? `${p2Relevance!.toFixed(0)}` : (qaList.length === 0 ? '0' : '--'), icon: '🎯' },
+              { label: 'Technical Depth', weight: '10%', actualValue: hasQaDetails ? `${p2Depth!.toFixed(0)}` : (qaList.length === 0 ? '0' : '--'), icon: '🔍' },
+              { label: 'Practical Examples', weight: '10%', actualValue: hasQaDetails ? `${p2Examples!.toFixed(0)}` : (qaList.length === 0 ? '0' : '--'), icon: '💡' },
             ]}
             note="Averages candidate screening answer quality across all questions."
           >
@@ -686,9 +779,10 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             title="Financial & Pricing Value"
             weight="20%"
             formula="Score = 0.50×Budget Savings + 0.50×Pricing Realism"
+            actualCalculation={calcP3String}
             items={[
-              { label: 'Budget Savings Ratio', weight: '50%', icon: '💵' },
-              { label: 'AI Pricing Realism', weight: '50%', icon: '🏷️' },
+              { label: 'Budget Savings Ratio', weight: '50%', actualValue: hasP3Details ? `${p3SavingsScore!.toFixed(0)}` : '--', icon: '💵' },
+              { label: 'AI Pricing Realism', weight: '50%', actualValue: hasP3Details ? `${p3RealismScore!.toFixed(0)}` : '--', icon: '🏷️' },
             ]}
             note="100% pure financial score based on budget savings ratio and AI pricing realism."
           >
@@ -724,10 +818,11 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
             title="Milestone Scope & Timeline Feasibility"
             weight="15%"
             formula="Score = 0.40×Scope Coverage + 0.30×Milestone Structure + 0.30×Timeline Realism"
+            actualCalculation={calcP4String}
             items={[
-              { label: 'Scope Completeness %', weight: '40%', icon: '📋' },
-              { label: 'Milestone Structure & Granularity', weight: '30%', icon: '🧩' },
-              { label: 'Timeline Feasibility & Duration Realism', weight: '30%', icon: '⏱️' },
+              { label: 'Scope Completeness %', weight: '40%', actualValue: `${p4ScopeScore.toFixed(0)}%`, icon: '📋' },
+              { label: 'Milestone Structure & Granularity', weight: '30%', actualValue: hasP4Details ? `${p4StructScore!.toFixed(0)}` : '--', icon: '🧩' },
+              { label: 'Timeline Feasibility & Duration Realism', weight: '30%', actualValue: hasP4Details ? `${p4TimeScore!.toFixed(0)}` : '--', icon: '⏱️' },
             ]}
             note="Evaluates requirement scope coverage, milestone breakdown granularity, and duration velocity realism."
           >
