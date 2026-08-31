@@ -663,7 +663,7 @@ export default function MyJobsScreen() {
               return (
                 <article
                   key={job.jobPostsId}
-                  className="rounded-2xl sm:rounded-3xl border border-border/80 bg-surface-card p-3.5 sm:p-6 shadow-xs hover:border-brand/40 hover:shadow-md transition-all space-y-3 sm:space-y-4 w-full min-w-0 max-w-full overflow-hidden"
+                  className="rounded-2xl sm:rounded-3xl border border-border/80 bg-surface-card p-3.5 sm:p-6 shadow-xs hover:border-brand/40 hover:shadow-md transition-all space-y-3 sm:space-y-4 w-full min-w-0 max-w-full relative overflow-visible focus-within:z-30 hover:z-20"
                 >
                   {/* 1. DESKTOP & MOBILE TOP ROW / HEADER */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
@@ -822,7 +822,7 @@ export default function MyJobsScreen() {
                           </button>
 
                           {/* Desktop AI Tools Details Dropdown */}
-                          <details className="relative inline-block">
+                          <details className="relative inline-block focus-within:z-50">
                             <summary className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 hover:border-amber-500/70 hover:shadow-lg transition-all text-xs font-black cursor-pointer list-none select-none active:scale-95">
                               <Sparkles size={13} className="text-amber-500 animate-pulse shrink-0" />
                               <span>{t('myJobs.actions.aiFeatures', { defaultValue: 'Tính Năng AI' })}</span>

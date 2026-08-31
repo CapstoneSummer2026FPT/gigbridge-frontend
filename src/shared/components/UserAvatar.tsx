@@ -41,7 +41,8 @@ const crownIconSizes = {
 // In-memory cache for user profile data to avoid redundant API queries during the session
 const avatarProfileCache = new Map<string, { avatar?: string | null; isPremium?: boolean; role?: number }>();
 
-const initialsFor = (name: string) => {
+const initialsFor = (name?: string | null) => {
+  if (!name || typeof name !== 'string') return '?';
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
   return `${parts[0]?.[0] ?? ''}${parts.length > 1 ? parts.at(-1)?.[0] ?? '' : ''}`.toUpperCase();
