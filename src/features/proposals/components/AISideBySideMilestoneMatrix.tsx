@@ -8,6 +8,8 @@ export interface AISideBySideMilestoneMatrixProps {
   proposal?: ProposalDto | null;
   fullEvaluationJson?: string | null;
   originalMilestones?: any[] | null;
+  jobPostBudgetMax?: number | null;
+  jobPostDuration?: string | null;
 }
 
 function parseDurationToWeeks(durationStr?: string | null): number {
@@ -57,6 +59,8 @@ export function AISideBySideMilestoneMatrix({
   proposal,
   fullEvaluationJson,
   originalMilestones,
+  jobPostBudgetMax,
+  jobPostDuration,
 }: AISideBySideMilestoneMatrixProps) {
   let requirementFulfillment: any[] = [];
   let milestoneAudit: any[] = [];
@@ -82,18 +86,72 @@ export function AISideBySideMilestoneMatrix({
   const milestones = detail?.milestonePlans || [];
   const milestoneSumDuration = sumMilestoneDurations(milestones);
 
-  // Metrics for Financial & Timeline Comparison
-  const baselineBudgetMax = jobBaseline?.budget_max || 0;
+  const origMilestoneList: any[] = originalMilestones || jobBaseline?.original_milestones || [];
+  const origMilestoneSumCost = origMilestoneList.reduce(
+    (sum, m) => sum + (Number(m.amount) || 0),
+    0
+  );
+  const origMilestoneSumDuration = sumMilestoneDurations(origMilestoneList);
+
+  // Metrics for Financial & Timeline Comparison - CANONICAL CLIENT BASELINE RESOLUTION
+  const baselineBudgetMax =
+    (jobPostBudgetMax && jobPostBudgetMax > 0 ? jobPostBudgetMax : 0) ||
+    (jobBaseline?.budget_max && jobBaseline.budget_max > 0 ? jobBaseline.budget_max : 0) ||
+    (jobBaseline?.budget_min && jobBaseline.budget_min > 0 ? jobBaseline.budget_min : 0) ||
+    origMilestoneSumCost;
+
   const proposedBudget =
     proposal?.proposedBudget || proposalOffer?.proposed_budget || detail?.proposedBudget || 0;
   const savingsRatioPercent =
     proposal?.aiSavingsRatioPercent ?? deterministic?.savings_ratio_percent ?? 0;
 
-  const rawBaselineDuration = jobBaseline?.estimated_duration;
-  const baselineDuration =
-    rawBaselineDuration && rawBaselineDuration !== '—' && rawBaselineDuration !== 'null'
-      ? rawBaselineDuration
-      : milestoneSumDuration || 'Flexible / Unspecified';
+  // Determine Client Original Budget string strictly without defaulting to proposedBudget
+  let clientBudgetDisplay = 'Flexible / Unspecified';
+  let budgetBadgeLabel = '🎯 Baseline Unspecified';
+  let budgetBadgeStyle = 'bg-surface-muted text-text-muted border-border/60';
+
+  if (baselineBudgetMax > 0) {
+    clientBudgetDisplay = formatGigCoin(baselineBudgetMax);
+    if (savingsRatioPercent > 0) {
+      budgetBadgeLabel = `🟢 ${savingsRatioPercent.toFixed(1)}% Savings`;
+      budgetBadgeStyle = 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border-emerald-500/60';
+    } else {
+      budgetBadgeLabel = '🎯 0% Savings (On Budget)';
+      budgetBadgeStyle = 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border-blue-500/60';
+    }
+  } else if (savingsRatioPercent > 0 && proposedBudget > 0) {
+    const calculatedMax = Math.round(proposedBudget / (1 - savingsRatioPercent / 100));
+    clientBudgetDisplay = formatGigCoin(calculatedMax);
+    budgetBadgeLabel = `🟢 ${savingsRatioPercent.toFixed(1)}% Savings`;
+    budgetBadgeStyle = 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border-emerald-500/60';
+  } else {
+    // Client did not set explicit budget max or milestone amounts
+    clientBudgetDisplay = 'Flexible / Unspecified';
+    budgetBadgeLabel = '🎯 Baseline Unspecified';
+    budgetBadgeStyle = 'bg-surface-muted text-text-muted border-border/60';
+  }
+
+  const rawBaselineDuration =
+    (jobPostDuration && jobPostDuration !== '—' && jobPostDuration !== 'null'
+      ? jobPostDuration
+      : null) ||
+    (jobBaseline?.estimated_duration &&
+    jobBaseline.estimated_duration !== '—' &&
+    jobBaseline.estimated_duration !== 'null'
+      ? jobBaseline.estimated_duration
+      : null) ||
+    origMilestoneSumDuration;
+
+  // Strictly assign baselineDuration without falling back to milestoneSumDuration (which is freelancer data)
+  const isBaselineDurationSpecified =
+    rawBaselineDuration &&
+    rawBaselineDuration !== '—' &&
+    rawBaselineDuration !== 'null' &&
+    rawBaselineDuration.toLowerCase() !== 'flexible / unspecified';
+
+  const baselineDuration = isBaselineDurationSpecified
+    ? rawBaselineDuration
+    : 'Flexible / Unspecified';
 
   const rawProposedDuration =
     proposal?.proposedDuration || proposalOffer?.proposed_duration || detail?.proposedDuration;
@@ -102,11 +160,11 @@ export function AISideBySideMilestoneMatrix({
       ? rawProposedDuration
       : milestoneSumDuration || '—';
 
-  const baselineWeeks = parseDurationToWeeks(baselineDuration);
+  const baselineWeeks = isBaselineDurationSpecified ? parseDurationToWeeks(baselineDuration) : 0;
   const proposedWeeks = parseDurationToWeeks(proposedDuration);
 
-  let timelineBadgeLabel = '⏱️ Timeline Audit';
-  let timelineBadgeStyle = 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border border-blue-500/60 text-xs font-black shadow-xs px-3 py-1';
+  let timelineBadgeLabel = '⏱️ Baseline Unspecified';
+  let timelineBadgeStyle = 'bg-surface-muted text-text-muted border-border/60 text-xs font-black shadow-xs px-3 py-1';
 
   if (baselineWeeks > 0 && proposedWeeks > 0) {
     const diffPct = ((baselineWeeks - proposedWeeks) / baselineWeeks) * 100;
@@ -174,15 +232,9 @@ export function AISideBySideMilestoneMatrix({
                 <Percent size={15} className="text-emerald-500 shrink-0" /> Budget Savings Comparison
               </span>
               <span
-                className={`px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-black shadow-xs border ${
-                  savingsRatioPercent > 0
-                    ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border-emerald-500/60'
-                    : 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border-blue-500/60'
-                }`}
+                className={`px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-black shadow-xs border ${budgetBadgeStyle}`}
               >
-                {savingsRatioPercent > 0
-                  ? `🟢 ${savingsRatioPercent.toFixed(1)}% Savings`
-                  : '🎯 0% Savings (On Budget)'}
+                {budgetBadgeLabel}
               </span>
             </div>
 
@@ -190,11 +242,7 @@ export function AISideBySideMilestoneMatrix({
               <div className="bg-surface-muted/50 p-2.5 sm:p-3 rounded-xl border border-border/40 text-center space-y-0.5">
                 <span className="block text-[10px] sm:text-xs font-bold text-text-muted uppercase">Original Client Budget</span>
                 <strong className="text-text-primary font-black text-sm sm:text-lg block">
-                  {baselineBudgetMax > 0
-                    ? formatGigCoin(baselineBudgetMax)
-                    : savingsRatioPercent > 0 && proposedBudget > 0
-                    ? formatGigCoin(Math.round(proposedBudget / (1 - savingsRatioPercent / 100)))
-                    : formatGigCoin(proposedBudget)}
+                  {clientBudgetDisplay}
                 </strong>
               </div>
 
