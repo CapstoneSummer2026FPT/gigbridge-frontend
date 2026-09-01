@@ -276,15 +276,6 @@ export default function SignatureWorkflowScreen() {
   );
 
   useEffect(() => {
-    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
-
-    const intervalId = window.setInterval(() => {
-      if (window.document.visibilityState === 'visible') {
-        void refreshWorkflow();
-      }
-    }, ESIGN_STATUS_FALLBACK_POLL_MS);
-
-    return () => window.clearInterval(intervalId);
     const fetchContractDetails = async () => {
       if (!contractId) {
         setError('contracts.invalidContract');
@@ -341,6 +332,18 @@ export default function SignatureWorkflowScreen() {
 
     void fetchContractDetails();
   }, [contractId, loadDocument, user?.id]);
+
+  useEffect(() => {
+    if (signatureStep !== 'complete' || !isWaitingForCounterpart) return;
+
+    const intervalId = window.setInterval(() => {
+      if (window.document.visibilityState === 'visible') {
+        void refreshWorkflow();
+      }
+    }, ESIGN_STATUS_FALLBACK_POLL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [signatureStep, isWaitingForCounterpart, refreshWorkflow]);
 
   useEffect(() => {
     if (document) {
