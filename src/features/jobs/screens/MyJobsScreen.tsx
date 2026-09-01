@@ -128,7 +128,8 @@ export default function MyJobsScreen() {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
-  const [premiumActionBusy, setPremiumActionBusy] = useState(false);
+  // AI Interview enable/disable actions are hidden from My Jobs.
+  // const [premiumActionBusy, setPremiumActionBusy] = useState(false);
   const [activeMenuJobId, setActiveMenuJobId] = useState<string | null>(null);
   const [activeAiMenuJobId, setActiveAiMenuJobId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
@@ -236,6 +237,7 @@ export default function MyJobsScreen() {
     action();
   };
 
+  /* AI Interview can now only be enabled while creating a job post.
   const createAiInterview = async (job: GetMyJobPostDto) => {
     setPremiumActionBusy(true);
     const response = await jobAPI.createAiInterview(job.jobPostsId, {
@@ -250,7 +252,9 @@ export default function MyJobsScreen() {
     updateLocalJob(job.jobPostsId, { hasAiInterview: true });
     toast.success(t('myJobs.aiInterviewEnabled', { defaultValue: 'Đã bật phỏng vấn AI.' }));
   };
+  */
 
+  /* AI Interview cannot be disabled from My Jobs.
   const disableAiInterview = async (job: GetMyJobPostDto) => {
     setPremiumActionBusy(true);
     const response = await jobAPI.disableAiInterview(job.jobPostsId);
@@ -261,6 +265,7 @@ export default function MyJobsScreen() {
     updateLocalJob(job.jobPostsId, { hasAiInterview: false });
     toast.success(t('myJobs.aiInterviewDisabled', { defaultValue: 'Đã tắt phỏng vấn AI.' }));
   };
+  */
 
   const counts = useMemo(() => {
     const base = {
@@ -880,7 +885,8 @@ export default function MyJobsScreen() {
                                 </div>
                               </button>
 
-                              {job.hasAiInterview ? (
+                              {/* AI Interview cannot be disabled from My Jobs.
+                              {job.hasAiInterview && (
                                 <button
                                   type="button"
                                   onClick={event => {
@@ -898,7 +904,9 @@ export default function MyJobsScreen() {
                                     <div className="text-[10px] font-medium text-rose-400/80 truncate">{t('myJobs.actions.turnOffAiInterviewDesc', { defaultValue: 'Tạm dừng sàng lọc tự động' })}</div>
                                   </div>
                                 </button>
-                              ) : (
+                              )}
+                              */}
+                              {/* AI Interview must be enabled in the job-post wizard.
                                 <button
                                   type="button"
                                   onClick={event => {
@@ -919,7 +927,7 @@ export default function MyJobsScreen() {
                                     <div className="text-[10px] font-medium text-text-muted truncate">{t('myJobs.actions.turnOnAiInterviewDesc', { defaultValue: 'Phỏng vấn & chấm điểm AI' })}</div>
                                   </div>
                                 </button>
-                              )}
+                              */}
                             </div>
                           </details>
                         </>
@@ -1073,7 +1081,8 @@ export default function MyJobsScreen() {
                             </div>
                           </button>
 
-                          {job.hasAiInterview ? (
+                          {/* AI Interview cannot be disabled from My Jobs.
+                          {job.hasAiInterview && (
                             <button
                               type="button"
                               onClick={() => {
@@ -1089,7 +1098,9 @@ export default function MyJobsScreen() {
                                 <div className="text-[10px] text-rose-400 font-medium truncate">Tạm dừng sàng lọc tự động</div>
                               </div>
                             </button>
-                          ) : (
+                          )}
+                          */}
+                          {/* AI Interview must be enabled in the job-post wizard.
                             <button
                               type="button"
                               onClick={() => {
@@ -1105,7 +1116,7 @@ export default function MyJobsScreen() {
                                 <div className="text-[10px] text-text-muted font-medium truncate">Phỏng vấn & chấm điểm AI</div>
                               </div>
                             </button>
-                          )}
+                          */}
                         </div>
                       )}
                     </div>

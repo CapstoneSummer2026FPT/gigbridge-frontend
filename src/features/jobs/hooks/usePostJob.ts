@@ -9,7 +9,6 @@ import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types
 
 import {
   JobPostVisibility,
-  JobPostStatus,
   type CreateDraftJobPostResponse,
   type GetMyJobPostDetailDto,
   type JobPostQuestionDto,
@@ -29,6 +28,7 @@ import {
 } from '../utils/jobDuration';
 import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from '../utils/milestoneClamping';
 import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
+import { publishJobPost } from '../utils/publishJobPost';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -1568,9 +1568,14 @@ export function usePostJob() {
       }
 
       if (mode === 'publish') {
-        const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
-        if (!publishResponse.success) throw new Error(publishResponse.message || 'Project request could not be published.');
-        toast.success(t('postJobWizard.messages.published'));
+        const publishResult = await publishJobPost(jobAPI, currentJobPostId, hasAiInterview);
+        if (publishResult.aiInterviewError) {
+          toast.warning(t('postJobWizard.messages.publishedWithoutAiInterview'), {
+            description: publishResult.aiInterviewError,
+          });
+        } else {
+          toast.success(t('postJobWizard.messages.published'));
+        }
         allowNextNavigation();
         navigate('/jobs/my-jobs');
         return { status: 'success' };

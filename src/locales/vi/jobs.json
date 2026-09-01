@@ -421,6 +421,7 @@
     "messages": {
       "aiGenerated": "Đã tạo thông tin dự án. Vui lòng kiểm tra trước khi tiếp tục.",
       "published": "Đã đăng Project Request.",
+      "publishedWithoutAiInterview": "Đã đăng Project Request, nhưng AI Interview hiện không khả dụng.",
       "draftSaved": "Đã lưu Project Request dưới dạng bản nháp.",
       "emptyDraftDiscarded": "Đã loại bỏ bản nháp trống.",
       "attachmentUploaded": "Đã tải hình ảnh dự án lên.",
