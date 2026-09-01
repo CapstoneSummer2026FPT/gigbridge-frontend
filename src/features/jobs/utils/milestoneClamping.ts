@@ -41,25 +41,26 @@ export function clampMilestonesToExpectedTargets(
 
   // 1. Clamp Budget
   if (expectedBudget !== null && expectedBudget > 0) {
+    const targetBudget = Math.round(expectedBudget);
     const currentTotal = result.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
-    if (currentTotal > 0 && Math.abs(currentTotal - expectedBudget) > 0.001) {
-      const scale = expectedBudget / currentTotal;
+    if (currentTotal > 0 && Math.abs(currentTotal - targetBudget) > 0.001) {
+      const scale = targetBudget / currentTotal;
       let scaledSum = 0;
 
       result = result.map((item, index) => {
         if (index < result.length - 1) {
-          const scaledAmount = Math.round(Number(item.amount) * scale * 100) / 100;
+          const scaledAmount = Math.round(Number(item.amount) * scale);
           scaledSum += scaledAmount;
           return { ...item, amount: scaledAmount };
         } else {
-          // Last milestone absorbs decimal remainder
-          const lastAmount = Math.max(0, Math.round((expectedBudget - scaledSum) * 100) / 100);
+          // Last milestone absorbs integer remainder
+          const lastAmount = Math.max(0, Math.round(targetBudget - scaledSum));
           return { ...item, amount: lastAmount };
         }
       });
     } else if (currentTotal <= 0) {
-      const per = Math.round((expectedBudget / result.length) * 100) / 100;
+      const per = Math.floor(targetBudget / result.length);
       let sumSoFar = 0;
 
       result = result.map((item, index) => {
@@ -67,7 +68,7 @@ export function clampMilestonesToExpectedTargets(
           sumSoFar += per;
           return { ...item, amount: per };
         } else {
-          const lastAmount = Math.max(0, Math.round((expectedBudget - sumSoFar) * 100) / 100);
+          const lastAmount = Math.max(0, Math.round(targetBudget - sumSoFar));
           return { ...item, amount: lastAmount };
         }
       });
@@ -88,7 +89,7 @@ export function clampMilestonesToExpectedTargets(
       for (let i = keepCount; i < result.length; i++) {
         const excess = result[i];
         lastKept.amount = Math.round(((lastKept.amount || 0) + (excess.amount || 0)) * 100) / 100;
-        if (excess.title && !lastKept.title.includes(excess.title)) {
+        if (excess.title && (!lastKept.title || !lastKept.title.includes(excess.title))) {
           lastKept.title = lastKept.title ? `${lastKept.title} | ${excess.title}` : excess.title;
         }
         if (excess.description) {
