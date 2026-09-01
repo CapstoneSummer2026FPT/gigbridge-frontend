@@ -840,12 +840,60 @@ export default function BrowseJobsScreen() {
                           return (
                             <div className="flex items-center gap-2">
                               {job.aiMatchScore && user && (
-                                <div
-                                  className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1"
-                                  title={job.matchReasons?.length ? `${t('jobs.matchReasonsTitle')}: ${job.matchReasons.join(' · ')}` : undefined}
-                                >
-                                  <Bot size={11} />
-                                  <span>{job.aiMatchScore}% {t('jobs.match')}</span>
+                                <div className="relative group/match">
+                                  <div
+                                    className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 transition-all duration-200 hover:bg-emerald-500/25 hover:border-emerald-500/70 hover:scale-105 shadow-xs cursor-pointer"
+                                  >
+                                    <Bot size={13} className="text-emerald-600 dark:text-emerald-400" />
+                                    <span>{job.aiMatchScore}% {t('jobs.match')}</span>
+                                  </div>
+
+                                  {/* Custom Styled Popover Breakdown Card */}
+                                  <div className="absolute right-0 top-full mt-2 hidden group-hover/match:block z-50 w-72 sm:w-80 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 p-4 text-xs shadow-2xl border border-emerald-500/40 text-left animate-in fade-in duration-200 pointer-events-none">
+                                    <div className="font-bold text-emerald-600 dark:text-emerald-400 mb-2.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                                      <span className="flex items-center gap-1.5 font-black text-xs">
+                                        <Bot size={14} className="text-emerald-500" /> AI Compatibility Breakdown
+                                      </span>
+                                      <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md font-extrabold border border-emerald-500/30">
+                                        {job.aiMatchScore}% FIT
+                                      </span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      {job.matchReasons?.length ? (
+                                        job.matchReasons.map((reason, idx) => {
+                                          const scoreMatch = reason.match(/^([^:]+):\s*(\d+)\/100$/);
+                                          if (scoreMatch) {
+                                            const label = scoreMatch[1].replace(/^Algorithmic\s*/i, '');
+                                            const scoreVal = parseInt(scoreMatch[2], 10);
+                                            return (
+                                              <div key={idx} className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1">
+                                                <div className="flex justify-between items-center text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                                  <span className="capitalize">{label}</span>
+                                                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{scoreVal} / 100</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                  <div
+                                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                                                    style={{ width: `${Math.max(5, scoreVal)}%` }}
+                                                  />
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+
+                                          return (
+                                            <div key={idx} className="flex items-start gap-2 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+                                              <span className="text-emerald-500 font-bold shrink-0 mt-0.5">✦</span>
+                                              <span className="leading-snug">{reason}</span>
+                                            </div>
+                                          );
+                                        })
+                                      ) : (
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">High compatibility matching candidate skills & major requirements.</p>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                               <button
@@ -853,9 +901,13 @@ export default function BrowseJobsScreen() {
                                 onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
                                 disabled={!canSaveJob || isSaving}
                                 title={canSaveJob ? undefined : t('jobs.onlyFreelancersCanSave')}
-                                className={`p-2.5 rounded-xl border border-[var(--border)] transition-all min-h-[40px] min-w-[40px] flex items-center justify-center ${isSaved ? 'browse-jobs-save-icon-active bg-amber-500/10 border-amber-500/30' : 'browse-jobs-save-icon hover:bg-[var(--surface-hover)]'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                className={`p-2.5 rounded-xl border transition-all duration-200 min-h-[40px] min-w-[40px] flex items-center justify-center ${
+                                  isSaved
+                                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 hover:bg-amber-500/25 hover:border-amber-500/80 hover:text-amber-700 hover:scale-110 hover:shadow-md'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110 hover:shadow-md'
+                                } ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                               >
-                                <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                                <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} className="transition-transform duration-200" />
                               </button>
                             </div>
                           );
@@ -864,7 +916,7 @@ export default function BrowseJobsScreen() {
                         <button
                           type="button"
                           onClick={event => { event.stopPropagation(); openJob(job); }}
-                          className="px-4 py-2 rounded-xl bg-[var(--brand,#494be7)] text-white text-xs font-bold shadow-sm hover:bg-[var(--brand-hover,#3f41d0)] transition-all cursor-pointer min-h-[40px] inline-flex items-center justify-center"
+                          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer min-h-[40px] inline-flex items-center justify-center"
                         >
                           {t('jobs.viewJob')}
                         </button>
