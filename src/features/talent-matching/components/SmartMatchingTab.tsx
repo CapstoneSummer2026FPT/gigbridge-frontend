@@ -495,9 +495,9 @@ export function SmartMatchingTab({
             {/* Insights */}
             <div className="mt-4 sm:mt-5 space-y-3">
               {(() => {
-                const displayStrengths = match.semanticStrengths.filter(
-                  s => !s.toLowerCase().includes('above job budget') && !s.startsWith('Rate is')
-                );
+                const displayStrengths = match.semanticStrengths
+                  .filter(s => !s.toLowerCase().includes('above job budget') && !s.startsWith('Rate is'))
+                  .map(s => s.replace(/\s*(vs\s+job\s+budget\s*)?\(\+\d+(\.\d+)?\s*pts?\s*bonus\)/gi, '').trim());
                 return displayStrengths.length > 0 ? (
                   <p className="text-text-primary text-base sm:text-lg font-medium leading-relaxed">
                     <span className="font-black text-text-primary text-base sm:text-lg">{t('talentMatching.whyStandOut')} </span>
