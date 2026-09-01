@@ -276,6 +276,34 @@
   outline: none;
 }
 
+.browse-jobs-filter-grid .cs-container {
+  width: 100%;
+}
+
+.browse-jobs-filter-grid .cs-container .cs-trigger {
+  height: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0 0.75rem;
+  background: var(--surface-hover, rgba(249, 250, 251, 0.8));
+  border: 1px solid var(--border, rgba(229, 231, 235, 0.8));
+  color: var(--text-primary, #111827);
+  transition: all 0.2s ease;
+}
+
+.browse-jobs-filter-grid .cs-container .cs-trigger:hover:not(:disabled) {
+  border-color: var(--border-hover, rgba(209, 213, 219, 1));
+}
+
+.browse-jobs-filter-grid .cs-container .cs-trigger:focus,
+.browse-jobs-filter-grid .cs-container .cs-trigger.is-open {
+  background: var(--surface, #ffffff);
+  border-color: var(--brand, #494be7);
+  box-shadow: 0 0 0 3px var(--brand-soft, rgba(73, 75, 231, 0.14));
+}
+
 .browse-jobs-error {
   margin-top: 0.75rem;
   color: var(--destructive, #ef4444);
