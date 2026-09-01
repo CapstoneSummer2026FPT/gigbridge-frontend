@@ -330,6 +330,11 @@ export function SmartMatchingTab({
                                       {match.candidateRate ? (isHourlyComp ? `${match.candidateRate.toFixed(1)} GigCoins/hr` : `${Math.round(match.candidateRate).toLocaleString()} GigCoins`) : 'Preferred Rate'}
                                     </span>
                                   </div>
+                                  {match.candidateRate ? (
+                                    <div className="text-[9px] text-emerald-400/80 text-right italic font-sans">
+                                      ℹ️ Formed by: Total Proposal Budgets ÷ Total Milestone Hours
+                                    </div>
+                                  ) : null}
                                   <div className="border-t border-slate-800 pt-1 text-[10px] text-emerald-300 flex justify-between">
                                     <span>Formula:</span>
                                     <span>({jobDispStr} - {candDispStr}) / {jobDispStr}</span>
@@ -360,6 +365,11 @@ export function SmartMatchingTab({
                                       {match.candidateRate ? (isHourlyComp ? `${match.candidateRate.toFixed(1)} GigCoins/hr` : `${Math.round(match.candidateRate).toLocaleString()} GigCoins`) : 'Preferred Rate'}
                                     </span>
                                   </div>
+                                  {match.candidateRate ? (
+                                    <div className="text-[9px] text-amber-300/80 text-right italic font-sans">
+                                      ℹ️ Formed by: Total Proposal Budgets ÷ Total Milestone Hours
+                                    </div>
+                                  ) : null}
                                   <div className="border-t border-slate-800 pt-1 text-[10px] text-amber-300 flex justify-between">
                                     <span>Variance:</span>
                                     <span>+{Math.abs(match.savingPercentage).toFixed(1)}% higher than budget</span>
