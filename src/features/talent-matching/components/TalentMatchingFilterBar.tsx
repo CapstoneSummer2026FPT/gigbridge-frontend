@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUpDown, Check, ChevronDown, LayoutGrid, Rows, Search, X } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, HelpCircle, LayoutGrid, Rows, Search, Sparkles, X } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
 import type { ViewStage } from '../hooks/useSmartTalentMatching';
@@ -83,7 +83,7 @@ export function TalentMatchingFilterBar({
       style={{ backdropFilter: 'blur(16px)' }}
     >
       {/* Header Info Row: Title, Result Count, Description */}
-      <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base sm:text-lg font-black text-text-primary">{resultTitle}</h2>
@@ -94,6 +94,75 @@ export function TalentMatchingFilterBar({
             </span>
           </div>
           <p className="mt-0.5 text-[11px] sm:text-xs text-text-secondary leading-normal">{resultDescription}</p>
+        </div>
+
+        {/* How Ranking Works Hover Tooltip placed at farthest right */}
+        <div className="relative group inline-flex items-center shrink-0">
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface-muted hover:bg-brand/10 border border-border hover:border-brand/30 text-text-muted hover:text-brand transition-all cursor-pointer"
+            aria-label={t('talentMatching.howRankingWorksTitle')}
+          >
+            <HelpCircle size={15} />
+            <span className="text-[11px] font-bold hidden sm:inline">{t('talentMatching.howRankingWorksTitle')}</span>
+          </button>
+
+          <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-80 sm:w-84 rounded-2xl bg-white dark:bg-slate-900 text-text-primary p-4 text-xs shadow-2xl border border-brand/40 opacity-100 text-left">
+            <div className="font-bold text-text-primary flex items-center gap-2 mb-2 border-b border-border/50 pb-2">
+              <Sparkles size={16} className="text-purple-500 shrink-0" />
+              <span className="font-black text-sm">{t('talentMatching.howRankingWorksTitle')}</span>
+            </div>
+            <p className="text-xs text-text-secondary mb-3">{t('talentMatching.howRankingWorksSub')}</p>
+
+            <div
+              className="flex h-2.5 overflow-hidden rounded-full mb-3.5 bg-surface-muted"
+              role="img"
+              aria-label="Ranking weights"
+            >
+              <span className="bg-brand h-full" style={{ width: '45%' }} title="Skill match: 45%" />
+              <span className="bg-purple-500 h-full" style={{ width: '35%' }} title="Track record: 35%" />
+              <span className="bg-emerald-500 h-full" style={{ width: '20%' }} title="Activity: 20%" />
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-text-primary">
+                    <span>{t('talentMatching.skillMatch')}</span>
+                    <span className="text-brand font-black">45%</span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-text-muted">{t('talentMatching.factorSkillDesc')}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-purple-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-text-primary">
+                    <span>{t('talentMatching.trackRecord')}</span>
+                    <span className="text-purple-500 font-black">35%</span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-text-muted">{t('talentMatching.factorTrackDesc')}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-text-primary">
+                    <span>{t('talentMatching.activity')}</span>
+                    <span className="text-emerald-500 font-black">20%</span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-text-muted">{t('talentMatching.factorActivityDesc')}</p>
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-3 pt-2.5 border-t border-border text-[11px] text-text-muted leading-relaxed">
+              {t('talentMatching.rankingFootnote')}
+            </p>
+          </div>
         </div>
       </div>
 
