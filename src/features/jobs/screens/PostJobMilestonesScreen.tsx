@@ -16,7 +16,7 @@ import { BrandSweepBackButton } from '../components/BrandSweepBackButton';
 import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { computeWorkItemDurationSummary, JOB_DURATION_UNITS } from '../utils/jobDuration';
+import { computeWorkItemDurationSummary, JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS } from '../utils/jobDuration';
 import '../../../shared/components/styles/conic-border-button.css';
 
 export default function PostJobMilestonesScreen() {
@@ -186,6 +186,7 @@ export default function PostJobMilestonesScreen() {
               onExpandedIndexesChange={setExpandedMilestones}
               errors={milestoneErrors}
               durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
+              workItemDurationUnits={WORK_ITEM_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
               uiCopy={{
                 optional: t('postJobWizard.plan.milestoneCopy.optional'),
                 addMilestone: t('postJobWizard.plan.milestoneCopy.addMilestone'),

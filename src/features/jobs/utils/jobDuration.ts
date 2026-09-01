@@ -2,6 +2,10 @@ import type { JobPostMilestonePlanDto } from '../../../types/models/Job';
 
 export const JOB_DURATION_UNITS = ['weeks', 'months', 'years'] as const;
 
+// Work items get a finer duration grain (day(s)) than milestones, which stay
+// week(s)+ only via JOB_DURATION_UNITS above.
+export const WORK_ITEM_DURATION_UNITS = ['days', 'weeks', 'months', 'years'] as const;
+
 export type JobDurationUnit = typeof JOB_DURATION_UNITS[number];
 
 export interface JobDurationParts {

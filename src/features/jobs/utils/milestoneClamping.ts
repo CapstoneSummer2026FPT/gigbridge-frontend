@@ -186,6 +186,9 @@ export function clampWorkItemsToMilestoneDuration(
       if (excess.description && (!lastKept.description || !lastKept.description.includes(excess.description))) {
         lastKept.description = lastKept.description ? `${lastKept.description} | ${excess.description}` : excess.description;
       }
+      if (excess.deliverables && (!lastKept.deliverables || !lastKept.deliverables.includes(excess.deliverables))) {
+        lastKept.deliverables = lastKept.deliverables ? `${lastKept.deliverables} | ${excess.deliverables}` : excess.deliverables;
+      }
     }
 
     result = merged;
