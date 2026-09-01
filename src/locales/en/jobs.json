@@ -424,6 +424,7 @@
     "messages": {
       "aiGenerated": "Project details generated. Review them before continuing.",
       "published": "Project request published.",
+      "publishedWithoutAiInterview": "Project request published, but AI Interview is currently unavailable.",
       "draftSaved": "Project request saved as draft.",
       "emptyDraftDiscarded": "Empty draft discarded.",
       "attachmentUploaded": "Project image uploaded.",
