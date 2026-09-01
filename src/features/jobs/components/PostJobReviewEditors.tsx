@@ -234,7 +234,8 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
         optional
         showDueDate
         dueDateReadOnly
-        showWorkItems={false}
+        showWorkItems
+        showWorkItemsSummary
         title={t('postJob.baselineMilestoneTitle')}
         description={t('postJob.baselineMilestoneDescription')}
         expandedIndex={expandedMilestone}

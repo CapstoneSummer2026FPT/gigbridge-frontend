@@ -5,6 +5,7 @@ import { CustomSelect } from './CustomSelect';
 import GCoinIcon from './GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
 import { recalculateMilestonesBidirectional, resetAndEqualizeMilestones } from '../../features/jobs/utils/milestoneClamping';
+import { computeWorkItemDurationSummary } from '../../features/jobs/utils/jobDuration';
 
 export interface EditablePlanWorkItem {
   id?: string | null;
@@ -86,6 +87,9 @@ export interface MilestonePlanUiCopy {
   userLockedTitle?: string;
   autoBalanced?: string;
   autoBalancedTitle?: string;
+  workItemsTotalLabel?: string;
+  workItemsRemainingLabel?: string;
+  workItemsOverageLabel?: string;
 }
 
 export interface MilestoneDurationUnitOption {
@@ -102,6 +106,7 @@ interface Props {
   showDueDate?: boolean;
   dueDateReadOnly?: boolean;
   showWorkItems?: boolean;
+  showWorkItemsSummary?: boolean;
   showBudgetSummary?: boolean;
   simplifiedMilestoneFields?: boolean;
   advancedIndexes?: readonly number[];
@@ -179,6 +184,7 @@ export function NestedMilestonePlanEditor({
   showDueDate = false,
   dueDateReadOnly = false,
   showWorkItems = true,
+  showWorkItemsSummary = false,
   showBudgetSummary = true,
   simplifiedMilestoneFields = false,
   advancedIndexes = [],
@@ -876,6 +882,31 @@ export function NestedMilestonePlanEditor({
                       <label className="text-xs font-semibold">{uiCopy.workItemDeliverables || 'Work item deliverables'}<textarea disabled={readOnly} value={workItem.deliverables || ''} onChange={e => updateWorkItem(index, workIndex, { deliverables: e.target.value })} placeholder={fieldPlaceholders.workItemDeliverables || 'Work item deliverables'} aria-describedby={describedBy(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)} rows={2} className={`${inputClass} mt-1`} />{renderHint(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)}</label>
                     </div>;
                   })}
+                  {showWorkItemsSummary && milestone.workItems.length > 0 && (() => {
+                    const summary = computeWorkItemDurationSummary(milestone);
+                    return (
+                      <div className="mt-1 rounded-lg border border-border bg-muted/30 p-3 text-xs">
+                        <ul className="space-y-1 font-mono">
+                          {milestone.workItems.map((workItem, workIndex) => (
+                            <li key={workItem.id || workIndex} className="flex items-baseline gap-1.5 text-muted-foreground">
+                              <span>{workIndex === milestone.workItems.length - 1 ? '└──' : '├──'}</span>
+                              <span className="min-w-0 flex-1 truncate">{workItem.title || uiCopy.workItem || 'Work item'}</span>
+                              <span className="shrink-0">{workItem.estimatedDuration || '—'}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className={`mt-2 flex flex-wrap items-center justify-between gap-x-3 border-t border-border pt-2 font-semibold ${summary.overageDays > 0 ? 'text-red-500' : ''}`}>
+                          <span>{uiCopy.workItemsTotalLabel || 'Total'}: {summary.totalWorkItemDays} / {summary.milestoneDays} days</span>
+                          <span>{uiCopy.workItemsRemainingLabel || 'Remaining'}: {summary.remainingDays} day(s)</span>
+                        </div>
+                        {summary.overageDays > 0 && (
+                          <p className="mt-1 font-semibold text-red-500">
+                            ⚠ {(uiCopy.workItemsOverageLabel || 'Work items exceed milestone duration by {{days}} day(s).').replace('{{days}}', String(summary.overageDays))}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div> : null}
               </div>
             )}
