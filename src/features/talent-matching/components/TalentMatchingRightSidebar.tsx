@@ -1,6 +1,7 @@
-import { Sparkles, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
+import { TopFreelancersLeaderboard } from '../../jobs/components/TopFreelancersLeaderboard';
 
 interface TalentMatchingRightSidebarProps {
   isDirectoryStage: boolean;
@@ -9,36 +10,15 @@ interface TalentMatchingRightSidebarProps {
 export function TalentMatchingRightSidebar({ isDirectoryStage }: TalentMatchingRightSidebarProps) {
   const { t } = useTranslation();
 
-  const rankingFactors = [
-    {
-      label: t('talentMatching.skillMatch'),
-      description: t('talentMatching.factorSkillDesc'),
-      weight: 45,
-      color: 'bg-brand',
-      marker: 'bg-brand',
-    },
-    {
-      label: t('talentMatching.trackRecord'),
-      description: t('talentMatching.factorTrackDesc'),
-      weight: 35,
-      color: 'bg-purple-500',
-      marker: 'bg-purple-500',
-    },
-    {
-      label: t('talentMatching.activity'),
-      description: t('talentMatching.factorActivityDesc'),
-      weight: 20,
-      color: 'bg-emerald-500',
-      marker: 'bg-emerald-500',
-    },
-  ];
-
   return (
     <aside className="col-span-12 lg:col-span-3 space-y-4 lg:sticky lg:top-24 min-w-0">
       <div className="text-[10px] uppercase tracking-[0.2em] font-black text-text-muted px-1">
         {t('talentMatching.sponsoredTag')}
       </div>
       <SponsoredPromotionCard promotionType="freelancer" />
+
+      {/* Top Freelancers Leaderboard */}
+      <TopFreelancersLeaderboard />
 
       {isDirectoryStage && (
         <div
