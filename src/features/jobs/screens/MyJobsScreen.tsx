@@ -128,7 +128,8 @@ export default function MyJobsScreen() {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
-  const [premiumActionBusy, setPremiumActionBusy] = useState(false);
+  // AI Interview enable/disable actions are hidden from My Jobs.
+  // const [premiumActionBusy, setPremiumActionBusy] = useState(false);
   const [activeMenuJobId, setActiveMenuJobId] = useState<string | null>(null);
   const [activeAiMenuJobId, setActiveAiMenuJobId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
@@ -253,6 +254,7 @@ export default function MyJobsScreen() {
   };
   */
 
+  /* AI Interview cannot be disabled from My Jobs.
   const disableAiInterview = async (job: GetMyJobPostDto) => {
     setPremiumActionBusy(true);
     const response = await jobAPI.disableAiInterview(job.jobPostsId);
@@ -263,6 +265,7 @@ export default function MyJobsScreen() {
     updateLocalJob(job.jobPostsId, { hasAiInterview: false });
     toast.success(t('myJobs.aiInterviewDisabled', { defaultValue: 'Đã tắt phỏng vấn AI.' }));
   };
+  */
 
   const counts = useMemo(() => {
     const base = {
@@ -882,6 +885,7 @@ export default function MyJobsScreen() {
                                 </div>
                               </button>
 
+                              {/* AI Interview cannot be disabled from My Jobs.
                               {job.hasAiInterview && (
                                 <button
                                   type="button"
@@ -901,6 +905,7 @@ export default function MyJobsScreen() {
                                   </div>
                                 </button>
                               )}
+                              */}
                               {/* AI Interview must be enabled in the job-post wizard.
                                 <button
                                   type="button"
@@ -1076,6 +1081,7 @@ export default function MyJobsScreen() {
                             </div>
                           </button>
 
+                          {/* AI Interview cannot be disabled from My Jobs.
                           {job.hasAiInterview && (
                             <button
                               type="button"
@@ -1093,6 +1099,7 @@ export default function MyJobsScreen() {
                               </div>
                             </button>
                           )}
+                          */}
                           {/* AI Interview must be enabled in the job-post wizard.
                             <button
                               type="button"
