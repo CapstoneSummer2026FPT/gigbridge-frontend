@@ -123,10 +123,16 @@ export function SmartMatchingTab({
               </div>
 
               <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                {match.savingPercentage && match.savingPercentage > 0 ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                    💚 Saving {match.savingPercentage.toFixed(0)}% from your job budget
-                  </span>
+                {match.savingPercentage != null && match.savingPercentage !== 0 ? (
+                  match.savingPercentage > 0 ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      💚 Saving {match.savingPercentage.toFixed(0)}% from your job budget
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                      ⚠️ {Math.abs(match.savingPercentage).toFixed(0)}% above your job budget
+                    </span>
+                  )
                 ) : null}
                 {(() => {
                   const bonus = match.savingPercentage && match.savingPercentage > 0 ? (match.budgetBonus ?? match.savingPercentage) : 0;
@@ -190,6 +196,10 @@ export function SmartMatchingTab({
                               <span>• Score After Savings:</span>
                               <span className="text-purple-400">{match.finalScore.toFixed(1)} Match Score</span>
                             </div>
+                          </div>
+                        ) : match.savingPercentage != null && match.savingPercentage < 0 ? (
+                          <div className="mt-2.5 bg-amber-950/40 border border-amber-500/30 p-2 rounded-lg text-[10px] text-amber-300 text-center leading-relaxed">
+                            ⚠️ Rate is <strong>{Math.abs(match.savingPercentage).toFixed(1)}% above budget</strong> (0.0 pts bonus). Match score based on skills & qualification.
                           </div>
                         ) : (
                           <div className="mt-2 text-[10px] text-slate-300 text-center leading-relaxed">
@@ -272,39 +282,105 @@ export function SmartMatchingTab({
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5 shrink-0">
-                    {match.savingPercentage && match.savingPercentage > 0 ? (
+                    {match.savingPercentage != null && match.savingPercentage !== 0 ? (
                       <div className="relative group cursor-pointer shrink-0">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 shadow-sm transition-transform group-hover:scale-105">
-                          💚 Saving {match.savingPercentage.toFixed(0)}% from your job budget
-                        </span>
-                        <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-72 rounded-xl bg-slate-900/95 text-white p-3 text-xs shadow-2xl border border-emerald-500/30 backdrop-blur-md">
-                          <div className="font-bold text-emerald-400 mb-1 flex items-center justify-between">
-                            <span>💰 Budget Saving Formula</span>
-                            <span className="text-[10px] text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
-                              +{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts
-                            </span>
-                          </div>
-                          <div className="font-mono bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1">
-                            <div className="flex justify-between text-slate-300">
-                              <span>Job Budget:</span>
-                              <span className="font-bold text-white">
-                                {match.jobBudget ? `${match.jobBudget.toLocaleString()} GigCoins` : 'Standard Budget'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-slate-300">
-                              <span>Freelancer Rate:</span>
-                              <span className="font-bold text-emerald-400">
-                                {match.candidateRate ? `${match.candidateRate.toLocaleString()} GigCoins` : 'Preferred Rate'}
-                              </span>
-                            </div>
-                            <div className="border-t border-slate-800 pt-1 text-[10px] text-emerald-300 flex justify-between">
-                              <span>Formula:</span>
-                              <span>({match.jobBudget || 'Budget'} - {match.candidateRate || 'Rate'}) / {match.jobBudget || 'Budget'}</span>
-                            </div>
-                          </div>
-                          <div className="mt-2 text-[10px] text-slate-300 text-center">
-                            Cost savings: <strong>{match.savingPercentage.toFixed(1)}%</strong> &rarr; awarded <strong>+{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts bonus</strong>
-                          </div>
+                        {match.savingPercentage > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 shadow-sm transition-transform group-hover:scale-105">
+                            💚 Saving {match.savingPercentage.toFixed(0)}% from your job budget
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 shadow-sm transition-transform group-hover:scale-105">
+                            ⚠️ {Math.abs(match.savingPercentage).toFixed(0)}% above your job budget
+                          </span>
+                        )}
+                        <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-76 rounded-xl bg-slate-900/95 text-white p-3 text-xs shadow-2xl border border-purple-500/30 backdrop-blur-md">
+                          {(() => {
+                            const hourlyTarget = match.jobBudget ? match.jobBudget / 160 : 0;
+                            const hourlyVariance = (hourlyTarget > 0 && match.candidateRate)
+                              ? ((hourlyTarget - match.candidateRate) / hourlyTarget) * 100
+                              : 0;
+                            const isHourlyComp = Boolean(
+                              match.jobBudget &&
+                              match.candidateRate &&
+                              match.savingPercentage != null &&
+                              Math.abs(Math.abs(match.savingPercentage) - Math.abs(hourlyVariance)) < 2.0
+                            );
+                            const targetHourly = isHourlyComp ? hourlyTarget : match.jobBudget;
+                            const jobDispStr = targetHourly ? (isHourlyComp ? `${targetHourly.toFixed(1)}/hr` : `${Math.round(targetHourly).toLocaleString()}`) : 'Budget';
+                            const candDispStr = match.candidateRate ? (isHourlyComp ? `${match.candidateRate.toFixed(1)}/hr` : `${Math.round(match.candidateRate).toLocaleString()}`) : 'Rate';
+
+                            return match.savingPercentage > 0 ? (
+                              <>
+                                <div className="font-bold text-emerald-400 mb-1 flex items-center justify-between">
+                                  <span>💰 Budget Saving Formula</span>
+                                  <span className="text-[10px] text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
+                                    +{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts
+                                  </span>
+                                </div>
+                                <div className="font-mono bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1">
+                                  <div className="flex justify-between text-slate-300">
+                                    <span>Job Budget:</span>
+                                    <span className="font-bold text-white">
+                                      {match.jobBudget ? (isHourlyComp ? `${targetHourly?.toFixed(1)} GigCoins/hr (${Math.round(match.jobBudget).toLocaleString()} Total)` : `${Math.round(match.jobBudget).toLocaleString()} GigCoins`) : 'Standard Budget'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-slate-300">
+                                    <span>Freelancer Rate:</span>
+                                    <span className="font-bold text-emerald-400">
+                                      {match.candidateRate ? (isHourlyComp ? `${match.candidateRate.toFixed(1)} GigCoins/hr` : `${Math.round(match.candidateRate).toLocaleString()} GigCoins`) : 'Preferred Rate'}
+                                    </span>
+                                  </div>
+                                  {match.candidateRate ? (
+                                    <div className="text-[9px] text-emerald-400/80 text-right italic font-sans">
+                                      ℹ️ Formed by: Total Proposal Budgets ÷ Total Milestone Hours
+                                    </div>
+                                  ) : null}
+                                  <div className="border-t border-slate-800 pt-1 text-[10px] text-emerald-300 flex justify-between">
+                                    <span>Formula:</span>
+                                    <span>({jobDispStr} - {candDispStr}) / {jobDispStr}</span>
+                                  </div>
+                                </div>
+                                <div className="mt-2 text-[10px] text-slate-300 text-center">
+                                  Cost savings: <strong>{match.savingPercentage.toFixed(1)}%</strong> &rarr; awarded <strong>+{(match.budgetBonus ?? match.savingPercentage).toFixed(1)} pts bonus</strong>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="font-bold text-amber-400 mb-1 flex items-center justify-between">
+                                  <span>⚠️ Budget Variance Breakdown</span>
+                                  <span className="text-[10px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded font-mono">
+                                    +0.0 pts
+                                  </span>
+                                </div>
+                                <div className="font-mono bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1">
+                                  <div className="flex justify-between text-slate-300">
+                                    <span>Job Budget:</span>
+                                    <span className="font-bold text-white">
+                                      {match.jobBudget ? (isHourlyComp ? `${targetHourly?.toFixed(1)} GigCoins/hr (${Math.round(match.jobBudget).toLocaleString()} Total)` : `${Math.round(match.jobBudget).toLocaleString()} GigCoins`) : 'Standard Budget'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-slate-300">
+                                    <span>Freelancer Rate:</span>
+                                    <span className="font-bold text-amber-400">
+                                      {match.candidateRate ? (isHourlyComp ? `${match.candidateRate.toFixed(1)} GigCoins/hr` : `${Math.round(match.candidateRate).toLocaleString()} GigCoins`) : 'Preferred Rate'}
+                                    </span>
+                                  </div>
+                                  {match.candidateRate ? (
+                                    <div className="text-[9px] text-amber-300/80 text-right italic font-sans">
+                                      ℹ️ Formed by: Total Proposal Budgets ÷ Total Milestone Hours
+                                    </div>
+                                  ) : null}
+                                  <div className="border-t border-slate-800 pt-1 text-[10px] text-amber-300 flex justify-between">
+                                    <span>Variance:</span>
+                                    <span>+{Math.abs(match.savingPercentage).toFixed(1)}% higher than budget</span>
+                                  </div>
+                                </div>
+                                <div className="mt-2 text-[10px] text-slate-300 text-center">
+                                  Rate is <strong>{Math.abs(match.savingPercentage).toFixed(1)}% higher</strong> than job budget (0.0 pts bonus).
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     ) : null}
@@ -372,6 +448,10 @@ export function SmartMatchingTab({
                                   <span>• Score After Savings:</span>
                                   <span className="text-purple-400">{match.finalScore.toFixed(1)} Match Score</span>
                                 </div>
+                              </div>
+                            ) : match.savingPercentage != null && match.savingPercentage < 0 ? (
+                              <div className="mt-2.5 bg-amber-950/40 border border-amber-500/30 p-2 rounded-lg text-[10px] text-amber-300 text-center leading-relaxed">
+                                ⚠️ Rate is <strong>{Math.abs(match.savingPercentage).toFixed(1)}% above budget</strong> (0.0 pts bonus). Match score based on skills & qualification.
                               </div>
                             ) : (
                               <div className="mt-2 text-[10px] text-slate-300 text-center leading-relaxed">
