@@ -6,7 +6,7 @@ import type { ApiResponse } from '../../types/common';
 import type { LoginResponse, RegisterRequest, UserDTO } from '../../types/models/Auth';
 import { authAPI } from '../../api/authAPI';
 import { secureStorage } from '../../shared/utils/secureStorage';
-import { ensureFreshAccessToken } from '../../service/apiService';
+import { ensureFreshAccessToken, revokeServerSession } from '../../service/apiService';
 import {
   authSessionManager,
   getAccessTokenUserId,
@@ -353,6 +353,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback((redirectPath?: string) => {
+    revokeServerSession();
     setUser(null);
     setRoleState(null);
     setClientProfile(null);

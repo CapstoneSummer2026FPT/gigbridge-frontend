@@ -19,7 +19,6 @@ import {
   X,
   RotateCcw,
   ShieldCheck,
-  Coins,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
@@ -29,7 +28,6 @@ import { walletPostAPI } from '../../../api/walletAPI/POST';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import '../../admin/styles/admin-users-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
-import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { toast } from 'sonner';
 

@@ -55,6 +55,9 @@ export const adminGetAPI = {
   getSystemTracking: async (limit = 100): Promise<ApiResponse<SystemTrackingSnapshot>> => {
     return apiService.get<SystemTrackingSnapshot>(`${Admin_Api_Base_Url}/system-tracking`, { limit });
   },
+  getSystemTrackingSnapshot: async (limit = 100): Promise<ApiResponse<SystemTrackingSnapshot>> => {
+    return apiService.get<SystemTrackingSnapshot>(`${Admin_Api_Base_Url}/system-tracking`, { limit });
+  },
 
   getDisputes: async (
     params: AdminDisputeListParams = {}

@@ -1,1133 +1,359 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  FileText,
+  Zap,
+  Clock,
+  RefreshCw,
+  Download,
+} from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
-import { adminGetAPI } from '../../../api/adminAPI/GET';
-import { jobGetAPI } from '../../../api/jobAPI/GET';
-import { proposalGetAPI } from '../../../api/proposalAPI/GET';
-import type { ApiResponse } from '../../../types/common';
-import type { AdminUserDto, PaginatedUsersResponse } from '../../../types/models/User';
-import type { AdminJobPostListResponse, JobPostSummaryDto } from '../../../types/models/Job';
-import type { ProposalDto } from '../../../types/models/Proposal';
-import type { AdminAuditLog, PageResult } from '../../../types/models/AdminPhase1';
-import type { SystemTrackingSnapshot } from '../../../types/systemTracking';
-import { createSystemTrackingHubConnection } from '../services/systemTrackingHubConnection';
-import '../styles/admin-users-screen.css';
-
-type TabType = 'overview' | 'audit' | 'errors' | 'alerts' | 'ai-usage';
-type LogLevel = 'info' | 'warning' | 'error' | 'critical';
-
-type AuditLog = {
-  id: string;
-  timestamp: string;
-  userName: string;
-  action: string;
-  resource: string;
-  ipAddress: string;
-  userAgent: string;
-  details: string;
-};
-
-type ErrorLogEntry = {
-  id: string;
-  timestamp: string;
-  level: LogLevel;
-  service: string;
-  message: string;
-  stackTrace: string | null;
-  userId: string | null;
-  requestId: string;
-  count: number;
-  source: string;
-  externalUrl: string | null;
-  firstObservedAt: string | null;
-  status: string | null;
-  environment: string | null;
-  platform: string | null;
-};
-
-type SystemAlert = {
-  id: string;
-  timestamp: string;
-  title: string;
-  description: string;
-  severity: LogLevel;
-  service: string;
-  metric: string;
-  value: string;
-  threshold: string;
-};
-
-type ApiLog = {
-  id: string;
-  timestamp: string;
-  method: string;
-  status: number;
-  url: string;
-  ip: string;
-  duration: number;
-  user: string | null;
-  application: string;
-};
-
-const getThrownErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message ? error.message : fallback;
-
-const getRoleName = (role: number) => {
-  if (role === 0) return 'Client';
-  if (role === 1) return 'Freelancer';
-  if (role === 2) return 'Admin';
-  return 'User';
-};
-
-const toAuditLogs = (
-  users: AdminUserDto[],
-  jobs: JobPostSummaryDto[],
-  proposals: ProposalDto[]
-): AuditLog[] => {
-  const userLogs = users.slice(0, 8).map(user => ({
-    id: `user_${user.userId}`,
-    timestamp: user.updatedAt || user.createdAt,
-    userName: user.fullName,
-    action: user.isActive ? 'user.active' : 'user.inactive',
-    resource: `${getRoleName(user.role)} ${user.email}`,
-    ipAddress: '-',
-    userAgent: user.provider || 'GigBridge',
-    details: `${user.fullName} is registered as ${getRoleName(user.role)}`,
-  }));
-
-  const jobLogs = jobs.slice(0, 8).map(job => ({
-    id: `job_${job.jobPostsId}`,
-    timestamp: job.createdAt,
-    userName: 'Client',
-    action: 'job.created',
-    resource: job.title,
-    ipAddress: '-',
-    userAgent: 'GigBridge API',
-    details: job.descriptionPreview || `Created job post "${job.title}"`,
-  }));
-
-  const proposalLogs = proposals.slice(0, 8).map(proposal => ({
-    id: `proposal_${proposal.proposalsId}`,
-    timestamp: proposal.submittedAt,
-    userName: proposal.freelancerName || 'Freelancer',
-    action: 'proposal.submitted',
-    resource: proposal.jobTitle || proposal.jobPostsId,
-    ipAddress: '-',
-    userAgent: 'GigBridge API',
-    details: `Submitted proposal for "${proposal.jobTitle || proposal.jobPostsId}"`,
-  }));
-
-  return [...userLogs, ...jobLogs, ...proposalLogs]
-    .filter(log => Boolean(log.timestamp))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-};
-
-const formatStructuredAuditValue = (value: unknown): string => {
-  if (value === undefined || value === null || value === '') return 'none';
-  if (typeof value === 'string') return value;
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-};
-
-const toBackendAuditLogs = (items: AdminAuditLog[]): AuditLog[] =>
-  items.map(item => ({
-    id: item.auditLogId || item.id || item.correlationId,
-    timestamp: item.createdAt,
-    userName: item.adminName || item.adminUserId || 'Admin',
-    action: item.action,
-    resource: [item.entityType, item.entityId].filter(Boolean).join(' ') || 'Platform',
-    ipAddress: '-',
-    userAgent: item.userAgent || 'GigBridge Admin',
-    details: `Before: ${formatStructuredAuditValue(item.oldValues)} · After: ${formatStructuredAuditValue(item.newValues)} · Correlation: ${item.correlationId || 'none'}`,
-  }));
-
-const toFailureLog = (service: string, url: string, response: ApiResponse<unknown>): ErrorLogEntry => ({
-  id: `${service}_${Date.now()}`,
-  timestamp: new Date().toISOString(),
-  level: response.statusCode >= 500 ? 'error' : 'warning',
-  service,
-  message: response.message || `${service} request failed`,
-  stackTrace: null,
-  userId: null,
-  requestId: url,
-  count: 1,
-  source: 'admin-probe',
-  externalUrl: null,
-  firstObservedAt: null,
-  status: null,
-  environment: null,
-  platform: null,
-});
-
-const toAlert = (service: string, response: ApiResponse<unknown>): SystemAlert => ({
-  id: `alert_${service}_${Date.now()}`,
-  timestamp: new Date().toISOString(),
-  title: `${service} request failed`,
-  description: response.message || `${service} endpoint returned an unsuccessful response`,
-  severity: response.statusCode >= 500 ? 'error' : 'warning',
-  service,
-  metric: 'http_status',
-  value: response.statusCode.toString(),
-  threshold: '< 400',
-});
+import { useTranslation } from '../../../hooks/useTranslation';
+import { useAdminSystemTracking } from '../hooks/useAdminSystemTracking';
+import { TrackingOverviewTab } from '../components/system-tracking/TrackingOverviewTab';
+import { TrackingAuditTab } from '../components/system-tracking/TrackingAuditTab';
+import { TrackingErrorsTab } from '../components/system-tracking/TrackingErrorsTab';
+import { TrackingAlertsTab } from '../components/system-tracking/TrackingAlertsTab';
+import type { TabType } from '../utils/systemTrackingUtils';
+import '../styles/admin-system-tracking.css';
 
 export default function AdminSystemTrackingScreen() {
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [logLevelFilter, setLogLevelFilter] = useState<LogLevel | 'all'>('all');
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [errorLogs, setErrorLogs] = useState<ErrorLogEntry[]>([]);
-  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
-  const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
-  const [isLoadingTracking, setIsLoadingTracking] = useState(true);
-  const [errorMonitoring, setErrorMonitoring] = useState<SystemTrackingSnapshot['errorMonitoring'] | null>(null);
+  const { t } = useTranslation(['admin', 'common']);
 
-  // API Logs filters
-  const [apiLogFilters, setApiLogFilters] = useState({
-    startDate: '',
-    endDate: '',
-    username: '',
-    url: '',
-    minDuration: '',
-    maxDuration: '',
-    method: '',
-    status: '',
-    ip: '',
-  });
-  const [apiLogSortOrder, setApiLogSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [apiLogPage, setApiLogPage] = useState(1);
-  const [apiLogsPerPage, setApiLogsPerPage] = useState(10);
+  const {
+    activeTab,
+    setActiveTab,
+    stats,
+    isLoadingTracking,
+    isLiveConnected,
+    copiedId,
+    handleCopy,
+    handleExportAllJson,
+    loadSystemTrackingData,
+    errorMonitoring,
+    userMap,
 
-  const applyTrackingSnapshot = useCallback((snapshot: SystemTrackingSnapshot) => {
-    setApiLogs(snapshot.requests.map(request => ({
-      id: request.id,
-      timestamp: request.timestamp,
-      method: request.method,
-      status: request.statusCode,
-      url: request.path,
-      ip: '-',
-      duration: request.durationMs,
-      user: null,
-      application: 'GigBridge API',
-    })));
-    setErrorLogs(snapshot.errors.map(error => ({
-      id: error.id,
-      timestamp: error.timestamp,
-      level: error.level,
-      service: error.service,
-      message: error.message,
-      stackTrace: null,
-      userId: null,
-      requestId: error.requestId,
-      count: error.count,
-      source: error.source,
-      externalUrl: error.externalUrl ?? null,
-      firstObservedAt: error.firstObservedAt ?? null,
-      status: error.status ?? null,
-      environment: error.environment ?? null,
-      platform: error.platform ?? null,
-    })));
-    setErrorMonitoring(snapshot.errorMonitoring);
-    setAlerts(snapshot.alerts.map(alert => ({
-      id: alert.id,
-      timestamp: alert.firstObservedAt,
-      title: alert.title,
-      description: alert.description,
-      severity: alert.severity,
-      service: 'backend-api',
-      metric: alert.metric,
-      value: alert.value,
-      threshold: alert.threshold,
-    })));
-  }, []);
+    // Tab 1: API Logs
+    apiLogs,
+    filteredApiLogs,
+    paginatedApiLogs,
+    apiLogFilters,
+    setApiLogFilters,
+    apiLogSortOrder,
+    setApiLogSortOrder,
+    apiLogPage,
+    setApiLogPage,
+    apiLogsPerPage,
+    setApiLogsPerPage,
+    totalApiLogPages,
+    showAdvancedFilters,
+    setShowAdvancedFilters,
 
-  const loadRealtimeSnapshot = useCallback(async () => {
-    const response = await adminGetAPI.getSystemTracking(100);
-    if (response.success && response.data) {
-      applyTrackingSnapshot(response.data);
-    }
-  }, [applyTrackingSnapshot]);
+    // Tab 2: Recent Activity
+    auditLogs,
+    filteredAuditLogs,
+    paginatedAuditLogs,
+    auditSearchQuery,
+    setAuditSearchQuery,
+    auditCategoryFilter,
+    setAuditCategoryFilter,
+    auditSortOrder,
+    setAuditSortOrder,
+    auditLogPage,
+    setAuditLogPage,
+    auditLogsPerPage,
+    setAuditLogsPerPage,
+    totalAuditLogPages,
+    expandedAuditIds,
+    toggleAuditExpand,
+    toggleAllAuditExpand,
+    globalAuditViewMode,
+    setGlobalAuditViewMode,
 
-  const loadSystemTrackingData = async () => {
-    setIsLoadingTracking(true);
+    // Tab 3: Error Logs
+    errorLogs,
+    filteredErrorLogs,
+    paginatedErrorLogs,
+    errorSearchQuery,
+    setErrorSearchQuery,
+    errorLevelFilter,
+    setErrorLevelFilter,
+    errorSortOrder,
+    setErrorSortOrder,
+    errorLogPage,
+    setErrorLogPage,
+    errorLogsPerPage,
+    setErrorLogsPerPage,
+    totalErrorLogPages,
+    expandedErrorIds,
+    toggleErrorExpand,
+    toggleAllErrorExpand,
 
-    const requestLogs: ApiLog[] = [];
-    const failures: ErrorLogEntry[] = [];
-    const activeAlerts: SystemAlert[] = [];
+    // Tab 4: System Alerts
+    alerts,
+    filteredAlerts,
+    paginatedAlerts,
+    alertSearchQuery,
+    setAlertSearchQuery,
+    alertSeverityFilter,
+    setAlertSeverityFilter,
+    alertSortOrder,
+    setAlertSortOrder,
+    alertLogPage,
+    setAlertLogPage,
+    alertsPerPage,
+    setAlertsPerPage,
+    totalAlertLogPages,
+    expandedAlertIds,
+    toggleAlertExpand,
+    toggleAllAlertExpand,
+  } = useAdminSystemTracking();
 
-    const callTracked = async <T,>(
-      service: string,
-      url: string,
-      call: () => Promise<ApiResponse<T>>
-    ): Promise<ApiResponse<T>> => {
-      const startedAt = Date.now();
-      let response: ApiResponse<T>;
-      try {
-        response = await call();
-      } catch (error: unknown) {
-        response = {
-          success: false,
-          statusCode: 0,
-          message: getThrownErrorMessage(error, `${service} request failed`),
-        };
-      }
-      const duration = Date.now() - startedAt;
-
-      requestLogs.push({
-        id: `${service}_${startedAt}`,
-        timestamp: new Date(startedAt).toISOString(),
-        method: 'GET',
-        status: response.statusCode,
-        url,
-        ip: '-',
-        duration,
-        user: null,
-        application: 'GigBridge API',
-      });
-
-      if (!response.success) {
-        failures.push(toFailureLog(service, url, response));
-        activeAlerts.push(toAlert(service, response));
-      }
-
-      return response;
-    };
-
-    const [usersResponse, jobsResponse, proposalsResponse, auditResponse] = await Promise.all([
-      callTracked<PaginatedUsersResponse>(
-        'admin-users',
-        '/api/v1/admin/users',
-        () => adminGetAPI.getUsers({ Page: 1, PageSize: 200 })
-      ),
-      callTracked<AdminJobPostListResponse>(
-        'job-posts',
-        '/api/JobPosts/admin/all',
-        () => jobGetAPI.getAllJobPosts({ pageIndex: 1, pageSize: 100 })
-      ),
-      callTracked<ProposalDto[]>(
-        'proposals',
-        '/api/Proposals/admin/all',
-        () => proposalGetAPI.getAllProposals({ PageIndex: 1, PageSize: 200 })
-      ),
-      callTracked<PageResult<AdminAuditLog>>(
-        'admin-audit-logs',
-        '/api/v1/admin/audit-logs',
-        () => adminGetAPI.getAuditLogs({ page: 1, pageSize: 200 })
-      ),
-    ]);
-
-    const users = usersResponse.data?.items || [];
-    const jobs = jobsResponse.data?.items || [];
-    const proposals = proposalsResponse.data || [];
-
-    // Prefer the persisted admin audit trail from our branch. The discovery-derived
-    // activity from the incoming implementation remains as a fallback when that
-    // endpoint is unavailable, so none of its original tracking coverage is lost.
-    setAuditLogs(
-      auditResponse.success && auditResponse.data
-        ? toBackendAuditLogs(auditResponse.data.items)
-        : toAuditLogs(users, jobs, proposals)
-    );
-    setErrorLogs(failures);
-    setAlerts(activeAlerts);
-    setApiLogs(requestLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-    await loadRealtimeSnapshot();
-    setIsLoadingTracking(false);
-  };
-
-  useEffect(() => {
-    loadSystemTrackingData();
-  }, []);
-
-  useEffect(() => {
-    let disposed = false;
-    let refreshTimer: number | undefined;
-    const connection = createSystemTrackingHubConnection();
-
-    const scheduleRefresh = () => {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(() => {
-        if (!disposed) void loadRealtimeSnapshot();
-      }, 300);
-    };
-
-    connection.on('SystemTrackingUpdated', scheduleRefresh);
-    connection.onreconnected(scheduleRefresh);
-    void connection.start().catch(() => undefined);
-
-    return () => {
-      disposed = true;
-      window.clearTimeout(refreshTimer);
-      connection.off('SystemTrackingUpdated', scheduleRefresh);
-      void connection.stop();
-    };
-  }, [loadRealtimeSnapshot]);
-
-  const stats = useMemo(() => {
-    const auditCount = auditLogs.length;
-    const errorCount = errorLogs.filter(e => e.level === 'error' || e.level === 'critical').length;
-    const activeAlerts = alerts.length;
-    const avgResponseTime = apiLogs.length
-      ? `${Math.round(apiLogs.reduce((total, log) => total + log.duration, 0) / apiLogs.length)}ms`
-      : '0ms';
-
-    return { auditCount, errorCount, activeAlerts, trackedRequests: apiLogs.length, avgResponseTime };
-  }, [auditLogs, errorLogs, alerts, apiLogs]);
-
-  const filteredErrors = useMemo(() => {
-    return errorLogs.filter(error => {
-      const matchesSearch = searchQuery === '' ||
-        error.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        error.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        error.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (error.platform?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-
-      const matchesLevel = logLevelFilter === 'all' || error.level === logLevelFilter;
-
-      return matchesSearch && matchesLevel;
-    });
-  }, [errorLogs, searchQuery, logLevelFilter]);
-
-  const filteredAuditLogs = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return auditLogs;
-    return auditLogs.filter(log =>
-      log.action.toLowerCase().includes(query) ||
-      log.userName.toLowerCase().includes(query) ||
-      log.resource.toLowerCase().includes(query) ||
-      log.details.toLowerCase().includes(query)
-    );
-  }, [auditLogs, searchQuery]);
-
-  const filteredAlerts = useMemo(() => {
-    return alerts.filter(alert => {
-      const matchesSearch = searchQuery === '' ||
-        alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alert.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchesSearch;
-    });
-  }, [alerts, searchQuery]);
-
-  const getLogLevelBadge = (level: LogLevel) => {
-    if (level === 'info') return <span className="badge-cyan text-xs">Info</span>;
-    if (level === 'warning') return <span className="badge-amber text-xs">Warning</span>;
-    if (level === 'error') return <span className="badge-red text-xs">Error</span>;
-    return <span className="badge-red text-xs font-bold">Critical</span>;
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  const getStatusColor = (status: number) => {
-    if (status >= 200 && status < 300) return 'text-green';
-    if (status >= 300 && status < 400) return 'text-cyan';
-    if (status >= 400 && status < 500) return 'text-amber';
-    return 'text-red';
-  };
-
-  const getMethodColor = (method: string) => {
-    switch (method) {
-      case 'GET': return 'bg-cyan/20 text-cyan border-cyan';
-      case 'POST': return 'bg-green/20 text-green border-green';
-      case 'PUT': return 'bg-amber/20 text-amber border-amber';
-      case 'DELETE': return 'bg-red/20 text-red border-red';
-      case 'PATCH': return 'bg-purple/20 text-purple border-purple';
-      default: return 'bg-gray/20 text-gray border-gray';
-    }
-  };
-
-  // Filter and sort API logs
-  const filteredApiLogs = useMemo(() => {
-    let filtered = apiLogs.filter(log => {
-      const timestamp = new Date(log.timestamp).getTime();
-      const matchesStartDate = apiLogFilters.startDate === '' || timestamp >= new Date(apiLogFilters.startDate).getTime();
-      const matchesEndDate = apiLogFilters.endDate === '' || timestamp <= new Date(`${apiLogFilters.endDate}T23:59:59`).getTime();
-      const matchesUrl = apiLogFilters.url === '' || log.url.toLowerCase().includes(apiLogFilters.url.toLowerCase());
-      const matchesMethod = apiLogFilters.method === '' || log.method === apiLogFilters.method;
-      const matchesStatus = apiLogFilters.status === '' || log.status.toString() === apiLogFilters.status;
-      const matchesIp = apiLogFilters.ip === '' || log.ip.includes(apiLogFilters.ip);
-      const matchesUsername = apiLogFilters.username === '' || (log.user && log.user.toLowerCase().includes(apiLogFilters.username.toLowerCase()));
-
-      const matchesMinDuration = apiLogFilters.minDuration === '' || log.duration >= parseInt(apiLogFilters.minDuration);
-      const matchesMaxDuration = apiLogFilters.maxDuration === '' || log.duration <= parseInt(apiLogFilters.maxDuration);
-
-      return matchesStartDate && matchesEndDate && matchesUrl && matchesMethod && matchesStatus && matchesIp && matchesUsername && matchesMinDuration && matchesMaxDuration;
-    });
-
-    // Sort by timestamp
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.timestamp).getTime();
-      const dateB = new Date(b.timestamp).getTime();
-      return apiLogSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-    });
-
-    return filtered;
-  }, [apiLogs, apiLogFilters, apiLogSortOrder]);
-
-  // Pagination for API logs
-  const totalApiLogPages = Math.ceil(filteredApiLogs.length / apiLogsPerPage);
-  const paginatedApiLogs = filteredApiLogs.slice(
-    (apiLogPage - 1) * apiLogsPerPage,
-    apiLogPage * apiLogsPerPage
-  );
-
-  useEffect(() => {
-    const lastPage = Math.max(1, totalApiLogPages);
-    if (apiLogPage > lastPage) setApiLogPage(lastPage);
-  }, [apiLogPage, totalApiLogPages]);
-
-  const handleResetApiLogFilters = () => {
-    setApiLogFilters({
-      startDate: '',
-      endDate: '',
-      username: '',
-      url: '',
-      minDuration: '',
-      maxDuration: '',
-      method: '',
-      status: '',
-      ip: '',
-    });
-    setApiLogPage(1);
-  };
-
-  const handleExportApiLogs = () => {
-    const header = ['Timestamp', 'Method', 'Status', 'URL', 'User', 'IP', 'Duration', 'Application'];
-    const rows = filteredApiLogs.map(log => [
-      log.timestamp,
-      log.method,
-      log.status.toString(),
-      log.url,
-      log.user || '',
-      log.ip,
-      `${log.duration}ms`,
-      log.application,
-    ]);
-
-    const csv = [header, ...rows]
-      .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `system-api-logs-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const isApiLogFilterActive = () => {
-    return Object.values(apiLogFilters).some(val => val !== '');
-  };
+  const tabs: { id: TabType; label: string; icon: typeof Activity; badge?: number }[] = [
+    { id: 'overview', label: t('adminSystemTracking.tabOverview', 'Gateway & API Logs'), icon: Activity, badge: apiLogs.length },
+    { id: 'audit', label: t('adminSystemTracking.tabAudit', 'Recent Activity'), icon: FileText, badge: auditLogs.length },
+    { id: 'errors', label: t('adminSystemTracking.tabErrors', 'Error Logs'), icon: AlertTriangle, badge: errorLogs.length },
+    { id: 'alerts', label: t('adminSystemTracking.tabAlerts', 'System Alerts'), icon: Zap, badge: alerts.length },
+  ];
 
   return (
     <AppLayout>
-      <div className="w-full max-w-[100vw] overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Activity size={20} className="text-cyan" />
-                <span className="badge-cyan text-xs">System Tracking</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">System Monitoring</h1>
-              <p className="text-sm text-secondary mt-1">Real-time system health and activity monitoring</p>
+      <div className="admin-system-tracking-container">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-2xl font-black text-primary tracking-tight">
+                {t('adminSystemTracking.pageTitle', 'System Tracking & Health')}
+              </h1>
+              <span className={`live-status-pill ${isLiveConnected ? 'is-live' : 'is-stale'}`}>
+                <span className="live-dot"></span>
+                <span>{isLiveConnected ? t('adminSystemTracking.liveTelemetry', 'Live Telemetry') : t('adminSystemTracking.pollingMode', 'Polling Mode')}</span>
+              </span>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={loadSystemTrackingData}
-                disabled={isLoadingTracking}
-                className="btn-ghost-cyan px-3 py-2 text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={isLoadingTracking ? 'animate-spin' : ''} />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-              <button
-                onClick={handleExportApiLogs}
-                disabled={filteredApiLogs.length === 0}
-                className="btn-cyan px-3 py-2 text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50"
-              >
-                <Download size={14} />
-                <span className="hidden sm:inline">Export</span>
-              </button>
+            <p className="text-xs sm:text-sm text-secondary">
+              {t('adminSystemTracking.pageSubtitle', 'Giám sát thời gian thực các sự kiện hệ thống, API gateway, log hoạt động quản trị và phát hiện lỗi')}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => loadSystemTrackingData()}
+              disabled={isLoadingTracking}
+              className="tracking-btn text-xs font-bold"
+              title={t('adminSystemTracking.refreshTooltip', 'Tải lại dữ liệu')}
+            >
+              <RefreshCw size={14} className={isLoadingTracking ? 'animate-spin' : ''} />
+              <span>{isLoadingTracking ? t('adminSystemTracking.refreshing', 'Đang tải...') : t('adminSystemTracking.refresh', 'Làm mới')}</span>
+            </button>
+
+            <button
+              onClick={handleExportAllJson}
+              className="tracking-btn text-xs font-bold"
+              title={t('adminSystemTracking.exportJsonTooltip', 'Xuất toàn bộ dữ liệu ra file JSON')}
+            >
+              <Download size={14} />
+              <span>{t('adminSystemTracking.exportJson', 'Xuất JSON')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Global KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="stat-card group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">
+                {t('adminSystemTracking.statTotalRequests', 'Tổng Requests')}
+              </span>
+              <div className="stat-card-icon bg-brand text-white shadow-sm">
+                <Activity size={16} />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-primary font-mono">
+              {stats.totalRequests.toLocaleString()}
+            </div>
+            <div className="text-[11px] text-muted mt-1">
+              {t('adminSystemTracking.statTrackingSession', 'Phiên theo dõi hiện tại')}
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            {[
-              { label: 'Activity Items', value: stats.auditCount.toString(), icon: <FileText size={16} />, color: 'cyan' },
-              { label: 'Active Errors', value: stats.errorCount.toString(), icon: <XCircle size={16} />, color: 'red' },
-              { label: 'Active Alerts', value: stats.activeAlerts.toString(), icon: <AlertTriangle size={16} />, color: 'amber' },
-              { label: 'Tracked Requests', value: stats.trackedRequests.toString(), icon: <Activity size={16} />, color: 'purple' },
-              { label: 'Avg Response', value: stats.avgResponseTime, icon: <Clock size={16} />, color: 'cyan' },
-            ].map(stat => (
-              <div key={stat.label} className="stat-card">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-secondary truncate">{stat.label}</p>
-                  <span className={`icon-${stat.color} flex-shrink-0`}>{stat.icon}</span>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold text-primary">{stat.value}</p>
+          <div className="stat-card group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">
+                {t('adminSystemTracking.statAvgLatency', 'Độ trễ trung bình')}
+              </span>
+              <div className="stat-card-icon bg-sky-600 text-white shadow-sm">
+                <Clock size={16} />
               </div>
-            ))}
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-primary font-mono">
+              {stats.avgDuration} <span className="text-xs font-normal text-muted">ms</span>
+            </div>
+            <div className="text-[11px] text-muted mt-1">
+              P95: <span className="font-bold text-primary font-mono">{stats.p95Duration}ms</span>
+            </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-            {[
-              { id: 'overview', label: 'Overview', icon: <Activity size={14} /> },
-              { id: 'audit', label: 'Recent Activity', icon: <FileText size={14} /> },
-              { id: 'errors', label: 'Error Logs', icon: <Terminal size={14} /> },
-              { id: 'alerts', label: 'Alerts', icon: <AlertTriangle size={14} /> },
-              { id: 'ai-usage', label: 'AI Usage', icon: <Zap size={14} /> },
-            ].map(tab => (
+          <div className="stat-card group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">
+                {t('adminSystemTracking.statErrorRate', 'Tỷ lệ lỗi (4xx/5xx)')}
+              </span>
+              <div className={`stat-card-icon ${stats.errorRate > 5 ? 'bg-red-600' : 'bg-emerald-600'} text-white shadow-sm`}>
+                <AlertTriangle size={16} />
+              </div>
+            </div>
+            <div className={`text-xl sm:text-2xl font-black font-mono ${stats.errorRate > 5 ? 'text-red-600' : 'text-emerald-600'}`}>
+              {stats.errorRate}%
+            </div>
+            <div className="text-[11px] text-muted mt-1">
+              {stats.errorRequests} {t('adminSystemTracking.statErrorsOccurred', 'lỗi ghi nhận')}
+            </div>
+          </div>
+
+          <div className="stat-card group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">
+                {t('adminSystemTracking.statAuditActivities', 'Nhật ký hoạt động')}
+              </span>
+              <div className="stat-card-icon bg-indigo-600 text-white shadow-sm">
+                <FileText size={16} />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-primary font-mono">
+              {stats.auditCount.toLocaleString()}
+            </div>
+            <div className="text-[11px] text-muted mt-1">
+              {t('adminSystemTracking.statSystemAuditLogs', 'Sự kiện kiểm toán quản trị')}
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs Bar */}
+        <div className="tracking-tab-bar">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
-                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
-                    ? 'bg-cyan/20 text-cyan border border-cyan'
-                    : 'glass-button text-secondary hover:text-primary'
-                  }`}
+                onClick={() => setActiveTab(tab.id)}
+                className={`tracking-tab-item ${isActive ? 'active' : ''}`}
               >
-                {tab.icon}
-                {tab.label}
+                <Icon size={16} />
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span className={`tracking-tab-badge ${isActive ? 'active' : ''}`}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
-            ))}
-          </div>
-
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="glass-card p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Database size={18} className="text-purple" />
-                    <h3 className="font-semibold text-primary">Database Metrics</h3>
-                  </div>
-                  <p className="text-sm text-secondary">
-                    Unavailable: no database telemetry endpoint is connected.
-                  </p>
-                </div>
-
-                <div className="glass-card p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Cloud size={18} className="text-green" />
-                    <h3 className="font-semibold text-primary">Infrastructure</h3>
-                  </div>
-                  <p className="text-sm text-secondary">
-                    Unavailable: no infrastructure telemetry endpoint is connected.
-                  </p>
-                </div>
-              </div>
-
-              {/* API Logs Section */}
-              <div className="glass-card overflow-hidden mb-6">
-                <div className="flex items-center gap-2 px-6 py-4 border-b border-white/5 bg-gradient-to-r from-cyan/5 to-purple/5">
-                  <Terminal size={18} className="text-cyan" />
-                  <h3 className="font-semibold text-primary">API Request Logs</h3>
-                </div>
-
-                {/* Filters */}
-                <div className="p-6 border-b border-white/5">
-                  <div className="space-y-4">
-                    {/* Row 1 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">Start date</label>
-                        <input
-                          type="date"
-                          value={apiLogFilters.startDate}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, startDate: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">End date</label>
-                        <input
-                          type="date"
-                          value={apiLogFilters.endDate}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, endDate: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">User name</label>
-                        <input
-                          type="text"
-                          placeholder="Username"
-                          value={apiLogFilters.username}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, username: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">URL</label>
-                        <input
-                          type="text"
-                          placeholder="URL path"
-                          value={apiLogFilters.url}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, url: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Row 2 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">Min. duration (ms)</label>
-                        <input
-                          type="number"
-                          placeholder="ms"
-                          value={apiLogFilters.minDuration}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, minDuration: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">Max. duration (ms)</label>
-                        <input
-                          type="number"
-                          placeholder="ms"
-                          value={apiLogFilters.maxDuration}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, maxDuration: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">HTTP method</label>
-                        <select
-                          value={apiLogFilters.method}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, method: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        >
-                          <option value="">All</option>
-                          <option value="GET">GET</option>
-                          <option value="POST">POST</option>
-                          <option value="PUT">PUT</option>
-                          <option value="DELETE">DELETE</option>
-                          <option value="PATCH">PATCH</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">HTTP status code</label>
-                        <select
-                          value={apiLogFilters.status}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, status: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        >
-                          <option value="">All</option>
-                          <option value="200">200</option>
-                          <option value="201">201</option>
-                          <option value="204">204</option>
-                          <option value="400">400</option>
-                          <option value="401">401</option>
-                          <option value="403">403</option>
-                          <option value="404">404</option>
-                          <option value="500">500</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Row 3 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div>
-                        <label className="text-xs text-muted mb-1.5 block">Client IP Address</label>
-                        <input
-                          type="text"
-                          placeholder="IP address"
-                          value={apiLogFilters.ip}
-                          onChange={(e) => setApiLogFilters({ ...apiLogFilters, ip: e.target.value })}
-                          className="input-gb w-full text-xs py-2"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        onClick={() => {
-                          setApiLogPage(1);
-                          loadSystemTrackingData();
-                        }}
-                        disabled={isLoadingTracking}
-                        className="btn-cyan px-4 py-2 text-xs disabled:opacity-50"
-                      >
-                        <RefreshCw size={14} className={`inline mr-1 ${isLoadingTracking ? 'animate-spin' : ''}`} />
-                        Refresh
-                      </button>
-                      {isApiLogFilterActive() && (
-                        <button
-                          onClick={handleResetApiLogFilters}
-                          className="btn-ghost-cyan px-4 py-2 text-xs"
-                        >
-                          Reset Filters
-                        </button>
-                      )}
-                      <button
-                        onClick={handleExportApiLogs}
-                        disabled={filteredApiLogs.length === 0}
-                        className="btn-ghost-cyan px-4 py-2 text-xs ml-auto disabled:opacity-50"
-                      >
-                        <Download size={14} className="inline mr-1" />
-                        Export CSV
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Logs Table */}
-                <div className="flex justify-end border-t border-white/5 px-6 py-3">
-                  <AdminTablePageSize
-                    pageSize={apiLogsPerPage}
-                    totalEntries={filteredApiLogs.length}
-                    disabled={isLoadingTracking}
-                    onPageSizeChange={value => { setApiLogsPerPage(value); setApiLogPage(1); }}
-                  />
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="border-b border-white/5">
-                      <tr>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">No.</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">HTTP Request</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">User</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">IP Address</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">
-                          <button
-                            onClick={() => setApiLogSortOrder(apiLogSortOrder === 'desc' ? 'asc' : 'desc')}
-                            className="flex items-center gap-1 hover:text-cyan transition-colors"
-                          >
-                            Date
-                            {apiLogSortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                          </button>
-                        </th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">Duration</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">Application</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {paginatedApiLogs.map((log, index) => (
-                        <tr key={log.id} className="hover:bg-white/5 transition-colors">
-                          <td className="px-4 py-3 text-xs font-bold text-cyan">{((apiLogPage - 1) * apiLogsPerPage) + index + 1}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getMethodColor(log.method)}`}>
-                                {log.method}
-                              </span>
-                              <span className={`text-xs font-bold ${getStatusColor(log.status)}`}>
-                                {log.status}
-                              </span>
-                              <span className="text-xs text-primary font-mono">{log.url}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-secondary">{log.user || '-'}</td>
-                          <td className="px-4 py-3 text-xs text-secondary font-mono">{log.ip}</td>
-                          <td className="px-4 py-3 text-xs text-secondary whitespace-nowrap">
-                            {formatTimestamp(log.timestamp)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs font-semibold ${log.duration > 1000 ? 'text-red' : log.duration > 500 ? 'text-amber' : 'text-green'}`}>
-                              {log.duration}ms
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-muted">{log.application}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {filteredApiLogs.length === 0 && (
-                    <div className="text-center py-12">
-                      <Search size={48} className="mx-auto mb-4 text-muted" />
-                      <p className="text-primary font-medium mb-2">No logs found</p>
-                      <p className="text-sm text-secondary">Try adjusting your filters</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Pagination */}
-                {filteredApiLogs.length > 0 && (
-                  <div className="px-6 py-4 border-t border-white/5">
-                    <p className="text-xs text-secondary">
-                      Showing <span className="text-primary font-semibold">{((apiLogPage - 1) * apiLogsPerPage) + 1}</span> to <span className="text-primary font-semibold">{Math.min(apiLogPage * apiLogsPerPage, filteredApiLogs.length)}</span> of <span className="text-primary font-semibold">{filteredApiLogs.length}</span> logs
-                    </p>
-                    {totalApiLogPages > 1 && <AdminTablePagination currentPage={apiLogPage} totalPages={totalApiLogPages} disabled={isLoadingTracking} onPageChange={setApiLogPage} ariaLabel="API log pagination" />}
-                  </div>
-                )}
-              </div>
-
-              <div className="glass-card p-6">
-                <h3 className="font-semibold text-primary mb-2">Historical Request Volume</h3>
-                <p className="text-sm text-secondary">
-                  Unavailable: the current backend exposes no historical request-metrics endpoint.
-                  The table above contains only live probes made by this screen.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Audit Logs Tab */}
-          {activeTab === 'audit' && (
-            <div className="space-y-4">
-              {/* Search */}
-              <div className="glass-card p-4">
-                <div className="relative">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search recent activity..."
-                    className="input-gb w-full py-2.5 text-sm"
-                    style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
-                  />
-                </div>
-              </div>
-
-              {/* Audit Logs List */}
-              <div className="space-y-3">
-                {filteredAuditLogs.map(log => (
-                  <div key={log.id} className="glass-card p-4 hover:bg-white/5 transition-all">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <CheckCircle size={14} className="text-green" />
-                          <span className="text-sm font-semibold text-primary">{log.action}</span>
-                          <span className="text-xs text-muted">by {log.userName}</span>
-                        </div>
-                        <p className="text-sm text-secondary mb-2">{log.details}</p>
-                        <div className="flex flex-wrap gap-3 text-xs text-muted">
-                          <span>Resource: {log.resource}</span>
-                          <span>•</span>
-                          <span>IP: {log.ipAddress}</span>
-                          <span>•</span>
-                          <span>{log.userAgent}</span>
-                        </div>
-                      </div>
-                      <span className="text-xs text-secondary whitespace-nowrap ml-4">
-                        {formatTimestamp(log.timestamp)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                {!isLoadingTracking && filteredAuditLogs.length === 0 && (
-                  <div className="glass-card text-center py-12">
-                    <FileText size={48} className="mx-auto mb-4 text-muted" />
-                    <p className="text-primary font-medium mb-2">No audit activity found</p>
-                    <p className="text-sm text-secondary">Refresh after users, jobs, or proposals have been created.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Error Logs Tab */}
-          {activeTab === 'errors' && (
-            <div className="space-y-4">
-              {errorMonitoring && (
-                <div className={`glass-card p-4 border ${errorMonitoring.available
-                    ? 'border-green/30'
-                    : errorMonitoring.configured
-                      ? 'border-red/30'
-                      : 'border-amber/30'
-                  }`}>
-                  <div className="flex items-start gap-3">
-                    {errorMonitoring.available
-                      ? <CheckCircle size={18} className="text-green mt-0.5" />
-                      : <AlertTriangle size={18} className={errorMonitoring.configured ? 'text-red mt-0.5' : 'text-amber mt-0.5'} />}
-                    <div>
-                      <p className="text-sm font-semibold text-primary">
-                        {errorMonitoring.provider === 'sentry' ? 'Sentry issue feed' : errorMonitoring.provider}
-                      </p>
-                      <p className="text-xs text-secondary mt-1">{errorMonitoring.message}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Filters */}
-              <div className="glass-card p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1 relative">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      placeholder="Search errors..."
-                      className="input-gb w-full py-2.5 text-sm"
-                      style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
-                    />
-                  </div>
-                  <select
-                    value={logLevelFilter}
-                    onChange={e => setLogLevelFilter(e.target.value as LogLevel | 'all')}
-                    className="input-gb px-4 py-2.5 text-sm cursor-pointer"
-                  >
-                    <option value="all">All Levels</option>
-                    <option value="info">Info</option>
-                    <option value="warning">Warning</option>
-                    <option value="error">Error</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Error Logs List */}
-              <div className="space-y-3">
-                {filteredErrors.map(error => (
-                  <div key={error.id} className="glass-card p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        {getLogLevelBadge(error.level)}
-                        <span className="badge-purple text-xs">{error.service}</span>
-                        <span className="badge-cyan text-xs">{error.source}</span>
-                        {error.count > 1 && (
-                          <span className="badge-amber text-xs">{error.count}x</span>
-                        )}
-                      </div>
-                      <span className="text-xs text-secondary whitespace-nowrap">
-                        {formatTimestamp(error.timestamp)}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-primary mb-2">{error.message}</p>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-                      {error.environment && <span>Environment: {error.environment}</span>}
-                      {error.platform && <span>Platform: {error.platform}</span>}
-                      {error.status && <span>Status: {error.status}</span>}
-                      {error.firstObservedAt && <span>First seen: {formatTimestamp(error.firstObservedAt)}</span>}
-                    </div>
-                    {error.stackTrace && (
-                      <details className="mt-3">
-                        <summary className="text-xs text-cyan cursor-pointer hover:underline">
-                          View Stack Trace
-                        </summary>
-                        <pre className="mt-2 p-3 rounded-lg bg-black/20 text-xs text-secondary overflow-x-auto">
-                          {error.stackTrace}
-                        </pre>
-                      </details>
-                    )}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted mt-3">
-                      {error.requestId && <span>Request: {error.requestId}</span>}
-                      {error.userId && <span>User: {error.userId}</span>}
-                      {error.externalUrl && (
-                        <a
-                          href={error.externalUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-cyan hover:underline inline-flex items-center gap-1"
-                        >
-                          Open in Sentry <ExternalLink size={12} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {!isLoadingTracking && filteredErrors.length === 0 && (
-                  <div className="glass-card text-center py-12">
-                    <CheckCircle size={48} className="mx-auto mb-4 text-green" />
-                    <p className="text-primary font-medium mb-2">No unresolved errors found</p>
-                    <p className="text-sm text-secondary">No local API failures or unresolved Sentry issues match the current filters.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Alerts Tab */}
-          {activeTab === 'alerts' && (
-            <div className="space-y-4">
-              {/* Filters */}
-              <div className="glass-card p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1 relative">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      placeholder="Search alerts..."
-                      className="input-gb w-full py-2.5 text-sm"
-                      style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Alerts List */}
-              <div className="space-y-3">
-                {filteredAlerts.map(alert => (
-                  <div key={alert.id} className="glass-card p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {getLogLevelBadge(alert.severity)}
-                        <span className="badge-red text-xs">Active</span>
-                        <span className="badge-purple text-xs">{alert.service}</span>
-                      </div>
-                      <span className="text-xs text-secondary whitespace-nowrap ml-4">
-                        {formatTimestamp(alert.timestamp)}
-                      </span>
-                    </div>
-                    <h4 className="text-base font-bold text-primary mb-2">{alert.title}</h4>
-                    <p className="text-sm text-secondary mb-3">{alert.description}</p>
-                    <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/5">
-                      <div>
-                        <p className="text-xs text-muted mb-1">Metric</p>
-                        <p className="text-sm font-semibold text-primary">{alert.metric}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted mb-1">Current Value</p>
-                        <p className="text-sm font-semibold text-primary">{alert.value}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted mb-1">Threshold</p>
-                        <p className="text-sm font-semibold text-primary">{alert.threshold}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {!isLoadingTracking && filteredAlerts.length === 0 && (
-                  <div className="glass-card text-center py-12">
-                    <CheckCircle size={48} className="mx-auto mb-4 text-green" />
-                    <p className="text-primary font-medium mb-2">No active alerts</p>
-                    <p className="text-sm text-secondary">Tracked admin endpoints are responding normally.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* AI Usage Tab */}
-          {activeTab === 'ai-usage' && (
-            <div className="glass-card p-10 text-center">
-              <Zap size={48} className="mx-auto mb-4 text-muted" />
-              <h3 className="text-lg font-semibold text-primary mb-2">
-                AI usage telemetry unavailable
-              </h3>
-              <p className="text-sm text-secondary max-w-2xl mx-auto">
-                No backend endpoint currently provides AI request counts, token consumption,
-                feature distribution, or cost history. These charts will remain hidden until
-                persisted telemetry is available.
-              </p>
-            </div>
-          )}
+            );
+          })}
         </div>
+
+        {/* Tab 1: Overview & API Request Logs */}
+        {activeTab === 'overview' && (
+          <TrackingOverviewTab
+            apiLogs={apiLogs}
+            filteredApiLogs={filteredApiLogs}
+            paginatedApiLogs={paginatedApiLogs}
+            apiLogFilters={apiLogFilters}
+            setApiLogFilters={setApiLogFilters}
+            apiLogSortOrder={apiLogSortOrder}
+            setApiLogSortOrder={setApiLogSortOrder}
+            apiLogPage={apiLogPage}
+            setApiLogPage={setApiLogPage}
+            apiLogsPerPage={apiLogsPerPage}
+            setApiLogsPerPage={setApiLogsPerPage}
+            totalApiLogPages={totalApiLogPages}
+            showAdvancedFilters={showAdvancedFilters}
+            setShowAdvancedFilters={setShowAdvancedFilters}
+            isLoadingTracking={isLoadingTracking}
+            handleCopy={handleCopy}
+            copiedId={copiedId}
+          />
+        )}
+
+        {/* Tab 2: Recent Activity / Audit Trail */}
+        {activeTab === 'audit' && (
+          <TrackingAuditTab
+            auditLogs={auditLogs}
+            filteredAuditLogs={filteredAuditLogs}
+            paginatedAuditLogs={paginatedAuditLogs}
+            auditSearchQuery={auditSearchQuery}
+            setAuditSearchQuery={setAuditSearchQuery}
+            auditCategoryFilter={auditCategoryFilter}
+            setAuditCategoryFilter={setAuditCategoryFilter}
+            auditSortOrder={auditSortOrder}
+            setAuditSortOrder={setAuditSortOrder}
+            auditLogPage={auditLogPage}
+            setAuditLogPage={setAuditLogPage}
+            auditLogsPerPage={auditLogsPerPage}
+            setAuditLogsPerPage={setAuditLogsPerPage}
+            totalAuditLogPages={totalAuditLogPages}
+            expandedAuditIds={expandedAuditIds}
+            toggleAuditExpand={toggleAuditExpand}
+            toggleAllAuditExpand={toggleAllAuditExpand}
+            globalAuditViewMode={globalAuditViewMode}
+            setGlobalAuditViewMode={setGlobalAuditViewMode}
+            isLoadingTracking={isLoadingTracking}
+            handleCopy={handleCopy}
+            copiedId={copiedId}
+            userMap={userMap}
+          />
+        )}
+
+        {/* Tab 3: Error Logs */}
+        {activeTab === 'errors' && (
+          <TrackingErrorsTab
+            errorMonitoring={errorMonitoring}
+            errorLogs={errorLogs}
+            filteredErrorLogs={filteredErrorLogs}
+            paginatedErrorLogs={paginatedErrorLogs}
+            errorSearchQuery={errorSearchQuery}
+            setErrorSearchQuery={setErrorSearchQuery}
+            errorLevelFilter={errorLevelFilter}
+            setErrorLevelFilter={setErrorLevelFilter}
+            errorSortOrder={errorSortOrder}
+            setErrorSortOrder={setErrorSortOrder}
+            errorLogPage={errorLogPage}
+            setErrorLogPage={setErrorLogPage}
+            errorLogsPerPage={errorLogsPerPage}
+            setErrorLogsPerPage={setErrorLogsPerPage}
+            totalErrorLogPages={totalErrorLogPages}
+            expandedErrorIds={expandedErrorIds}
+            toggleErrorExpand={toggleErrorExpand}
+            toggleAllErrorExpand={toggleAllErrorExpand}
+            isLoadingTracking={isLoadingTracking}
+            handleCopy={handleCopy}
+            copiedId={copiedId}
+          />
+        )}
+
+        {/* Tab 4: System Alerts */}
+        {activeTab === 'alerts' && (
+          <TrackingAlertsTab
+            alerts={alerts}
+            filteredAlerts={filteredAlerts}
+            paginatedAlerts={paginatedAlerts}
+            alertSearchQuery={alertSearchQuery}
+            setAlertSearchQuery={setAlertSearchQuery}
+            alertSeverityFilter={alertSeverityFilter}
+            setAlertSeverityFilter={setAlertSeverityFilter}
+            alertSortOrder={alertSortOrder}
+            setAlertSortOrder={setAlertSortOrder}
+            alertLogPage={alertLogPage}
+            setAlertLogPage={setAlertLogPage}
+            alertsPerPage={alertsPerPage}
+            setAlertsPerPage={setAlertsPerPage}
+            totalAlertLogPages={totalAlertLogPages}
+            expandedAlertIds={expandedAlertIds}
+            toggleAlertExpand={toggleAlertExpand}
+            toggleAllAlertExpand={toggleAllAlertExpand}
+            isLoadingTracking={isLoadingTracking}
+          />
+        )}
       </div>
     </AppLayout>
   );

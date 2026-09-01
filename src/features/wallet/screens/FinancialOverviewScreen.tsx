@@ -10,7 +10,6 @@ import {
   Cell,
   Pie,
   PieChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -63,14 +62,6 @@ const PERIODS: FinancialOverviewPeriod[] = ['day', 'month', 'year'];
 const C_BRAND = '#494be7';
 const C_PURPLE = '#7c3aed';
 const C_AMBER = '#d97706';
-
-/* DOM-oriented pool colors (CSS vars so they adapt to light/dark theme). */
-const POOL_COLORS: Record<'withdrawable' | 'deposited' | 'held' | 'pending', string> = {
-  withdrawable: 'var(--success)',
-  deposited: 'var(--brand)',
-  held: 'var(--warning)',
-  pending: 'var(--info)',
-};
 
 const POOL_ORDER: Array<'withdrawable' | 'deposited' | 'held' | 'pending'> = [
   'withdrawable',
@@ -133,61 +124,13 @@ function AnimatedNumber({ value, format = formatGigCoinNumber, suffix = '', clas
   );
 }
 
-interface RadialGlowRingProps {
-  pct: number;
-  size?: number;
-  stroke?: number;
-}
-
-/** Glowing Cyber Radial Progress Ring for Cell 03. */
-function RadialGlowRing({ pct, size = 48, stroke = 5 }: RadialGlowRingProps) {
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const safe = Math.min(100, Math.max(0, pct));
-  const offset = circumference - (safe / 100) * circumference;
-
-  return (
-    <div className="fno-micro-ring-wrapper" style={{ width: size, height: size }}>
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        className="fno-ring"
-        role="img"
-        aria-label={`${Math.round(safe)}%`}
-      >
-        <defs>
-          <linearGradient id="fnoRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#494be7" />
-            <stop offset="60%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#10b981" />
-          </linearGradient>
-        </defs>
-        <circle cx={size / 2} cy={size / 2} r={radius} className="fno-ring-track" strokeWidth={stroke} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          className="fno-ring-fill"
-          stroke="url(#fnoRingGrad)"
-          strokeWidth={stroke}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-        />
-      </svg>
-      <span className="fno-micro-ring-label">{Math.round(safe)}%</span>
-    </div>
-  );
-}
-
 interface RadialHalfGaugeProps {
   pct: number;
-  isClient: boolean;
   caption?: string;
 }
 
 /** High-tech 180° Half-Gauge / Arc Speedometer for Contract Progress */
-function RadialHalfGauge({ pct, isClient, caption }: RadialHalfGaugeProps) {
+function RadialHalfGauge({ pct, caption }: RadialHalfGaugeProps) {
   const safe = Math.min(100, Math.max(0, pct));
   const cx = 110;
   const cy = 94;
@@ -454,34 +397,6 @@ export default function FinancialOverviewScreen() {
       return { period: point.period, cumulative: accumulator };
     });
   }, [overview, isClient]);
-
-  /* Average spending/earnings trend series for the glowing KPI sparkline. */
-  const avgSparkData = useMemo(() => {
-    if (!overview) return [];
-    return overview.trendPoints.map(point => ({
-      period: point.period,
-      amount: point.paidOrReceivedAmount,
-      baseline: overview.averageAmount,
-    }));
-  }, [overview]);
-
-  /* Per-period deviation from the average for secondary analysis. */
-  const avgDeviationData = useMemo(() => {
-    if (!overview) return [];
-    return overview.trendPoints.map(point => ({
-      period: point.period,
-      deviation: point.paidOrReceivedAmount - overview.averageAmount,
-    }));
-  }, [overview]);
-
-  /* Service-fee series for its micro bar cell. */
-  const feeSeriesData = useMemo(() => {
-    if (!overview) return [];
-    return overview.trendPoints.map(point => ({
-      period: point.period,
-      fee: point.serviceFeeAmount,
-    }));
-  }, [overview]);
 
   /* Escrow funded across the whole selected period (client view). */
   const escrowFundedTotal = useMemo(
@@ -1195,7 +1110,6 @@ export default function FinancialOverviewScreen() {
               {/* Radial Half-Gauge Dial */}
               <RadialHalfGauge
                 pct={overview.progressPercentage}
-                isClient={isClient}
                 caption={isClient ? t('financialOverview.status.paid') : t('financialOverview.status.received')}
               />
 
