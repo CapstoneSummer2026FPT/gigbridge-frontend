@@ -440,6 +440,7 @@
       "generating": "Đang tạo...",
       "lockedTitle": "Tạo bản nháp bằng AI là tính năng Premium",
       "lockedDescription": "Nâng cấp gói Client để AI tạo thông tin dự án và câu hỏi phỏng vấn có cấu trúc.",
+      "upgrade": "Nâng cấp",
       "attachFile": "Đính kèm tài liệu (.docx, .pdf, .txt, .md)",
       "aiPromptTab": "AI Job Prompt",
       "createWithDocTab": "Tạo Công Việc Bằng Tài Liệu",
