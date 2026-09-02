@@ -934,6 +934,13 @@ export function usePostJob() {
     const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
     const canonicalBudgetNum = canonicalBudgetStr ? Number(canonicalBudgetStr) : null;
 
+    const selectedSkills = [
+      ...form.skillIds.map(id => skillNameById[id] || id).filter(Boolean),
+      ...form.customSkillNames,
+    ];
+    const categoryName = categories.find(c => c.categoryId === form.categoryId)?.name || taxonomyDisplayNames.categoryName || undefined;
+    const majorName = majors.find(m => m.majorId === form.majorId)?.name || taxonomyDisplayNames.majorName || undefined;
+
     const promise = jobAPI.generateAIHiringPlan({
       clientPrompt: promptText,
       title: jobTitle || '',
@@ -942,6 +949,9 @@ export function usePostJob() {
       budgetMax: canonicalBudgetNum,
       estimatedDuration: generatedData.estimatedDuration,
       proposalClosingDate: computedDeadline,
+      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+      categoryName,
+      majorName,
     }, abortController.signal).then(response => {
       // Guard: if user has re-prompted since this Flow 2 started, discard the result silently.
       // This handles Scenarios 2 & 3 where the LLM result still arrives despite the abort.
@@ -1510,6 +1520,13 @@ export function usePostJob() {
                 setForm(prev => ({ ...prev, deadline: computedDeadline }));
               }
 
+              const currentSelectedSkills = [
+                ...form.skillIds.map(id => skillNameById[id] || id).filter(Boolean),
+                ...form.customSkillNames,
+              ];
+              const currentCategoryName = categories.find(c => c.categoryId === form.categoryId)?.name || taxonomyDisplayNames.categoryName || undefined;
+              const currentMajorName = majors.find(m => m.majorId === form.majorId)?.name || taxonomyDisplayNames.majorName || undefined;
+
               const planResponse = await jobAPI.generateAIHiringPlan({
                 clientPrompt: aiClientPrompt,
                 title: form.title,
@@ -1518,6 +1535,9 @@ export function usePostJob() {
                 budgetMax: form.budget ? Number(form.budget) : undefined,
                 estimatedDuration: form.estimatedDurationValue ? formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit) || undefined : undefined,
                 proposalClosingDate: computedDeadline,
+                skills: currentSelectedSkills.length > 0 ? currentSelectedSkills : undefined,
+                categoryName: currentCategoryName,
+                majorName: currentMajorName,
               });
 
               if (!planResponse.success || !planResponse.data) {
