@@ -527,9 +527,10 @@ export function useProjectWorkspace(initialContractId: string) {
     if (!contractId || contractId !== activeProjectIdRef.current) return;
 
     try {
-      const [milestonesRes, contractRes] = await Promise.all([
+      const [milestonesRes, contractRes, earlyStartRes] = await Promise.all([
         contractGetAPI.getMilestonesByContract(contractId),
         contractGetAPI.getContractById(contractId),
+        contractGetAPI.getEarlyStartRequests(contractId),
       ]);
 
       if (milestonesRes.success && milestonesRes.data) {
@@ -564,8 +565,21 @@ export function useProjectWorkspace(initialContractId: string) {
           });
         }
       }
+
+      if (earlyStartRes.success) {
+        const nextEarlyStartRequests = earlyStartRes.data ?? [];
+        setEarlyStartRequests(nextEarlyStartRequests);
+
+        const cached = workspaceCacheRef.current.get(contractId);
+        if (cached) {
+          workspaceCacheRef.current.set(contractId, {
+            ...cached,
+            earlyStartRequests: nextEarlyStartRequests,
+          });
+        }
+      }
     } catch (err) {
-      console.error('[useProjectWorkspace] failed to reload milestones:', err);
+      console.error('[useProjectWorkspace] failed to reload milestone state:', err);
     }
   }, []);
 

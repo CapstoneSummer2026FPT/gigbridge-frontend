@@ -37,7 +37,6 @@ const DeliverySpaceScreen = () => {
     submitted: t('contracts.workItemStatus.submitted', 'Awaiting review'),
     approved: t('contracts.workItemStatus.approved', 'Approved'),
     awaitingReview: t('contracts.workItemStatus.submitted', 'Awaiting review'),
-    notScheduled: t('contracts.deliverySpace.notScheduled', 'Not scheduled'),
     notePlaceholder: t('contracts.deliverySpace.notePlaceholder', 'Add a note for the client (optional)'),
     attachFile: t('contracts.deliverySpace.attachFile', 'Attach file'),
     removeFile: t('common.remove', 'Remove'),

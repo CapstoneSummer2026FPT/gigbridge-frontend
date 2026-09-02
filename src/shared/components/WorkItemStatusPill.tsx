@@ -1,8 +1,9 @@
-import { ContractWorkItemStatus } from '../../../types/models/Contract';
+import { useTranslation } from '../../hooks/useTranslation';
+import { ContractWorkItemStatus } from '../../types/models/Contract';
 
 interface WorkItemStatusPillProps {
   status: ContractWorkItemStatus | number;
-  labels: Record<string, string>;
+  className?: string;
 }
 
 const STYLES: Record<number, string> = {
@@ -23,16 +24,33 @@ const KEYS: Record<number, string> = {
   [ContractWorkItemStatus.Approved]: 'approved',
 };
 
-export const WorkItemStatusPill = ({ status, labels }: WorkItemStatusPillProps) => {
+const FALLBACKS: Record<string, string> = {
+  todo: 'To do',
+  inProgress: 'In progress',
+  completed: 'Completed',
+  revisionRequired: 'Needs changes',
+  submitted: 'Awaiting review',
+  approved: 'Approved',
+};
+
+/**
+ * The one place a work item status becomes a human label.
+ *
+ * Shared rather than feature-local because both the delivery space and the workspace milestone
+ * card render it, and the two flows disagree about which status means "done" — that mapping has to
+ * live in a single component or the two screens drift.
+ */
+export const WorkItemStatusPill = ({ status, className = '' }: WorkItemStatusPillProps) => {
+  const { t } = useTranslation(['contracts', 'common']);
   const key = KEYS[Number(status)] ?? 'todo';
 
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
         STYLES[Number(status)] ?? STYLES[ContractWorkItemStatus.Todo]
-      }`}
+      } ${className}`}
     >
-      {labels[key] ?? key}
+      {t(`contracts.workItemStatus.${key}`, { defaultValue: FALLBACKS[key] })}
     </span>
   );
 };

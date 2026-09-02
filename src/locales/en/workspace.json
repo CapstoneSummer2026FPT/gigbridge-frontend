@@ -32,7 +32,7 @@
     "progress": "Progress",
     "reviewMilestone": "Review Milestone",
     "submitDeliverable": "Submit Deliverable",
-    "startRevision": "Start Revision",
+    "startRevision": "Start revision",
     "sharedFiles": "Shared Files",
     "online": "Online",
     "offline": "Offline",
@@ -281,7 +281,18 @@
     "deliverablesSubmittedNotice": "The freelancer submitted deliverables. Please review and release payment.",
     "completeWorkItemsNotice": "Complete all work items before submitting.",
     "openDeliverySpace": "Open delivery space",
-    "reviewWorkItems": "Review work items"
+    "reviewWorkItems": "Review work items",
+    "deliverableTasks": "Work items",
+    "startWorkItem": "Start work item",
+    "markCompleted": "Mark completed",
+    "workItemInProgress": "In progress",
+    "milestoneReadyToSubmit": "Ready to submit",
+    "workItemsAwaitingDelivery_one": "{{count}} work item still needs deliverables.",
+    "workItemsAwaitingDelivery_other": "{{count}} work items still need deliverables.",
+    "workItemsAllDelivered": "Everything is submitted and waiting on the client.",
+    "workItemsAwaitingReview_one": "{{count}} work item is waiting for your review.",
+    "workItemsAwaitingReview_other": "{{count}} work items are waiting for your review.",
+    "openDeliverySpaceFor": "Open delivery space for {{title}}"
   },
   "projects": {
     "title": "Projects",

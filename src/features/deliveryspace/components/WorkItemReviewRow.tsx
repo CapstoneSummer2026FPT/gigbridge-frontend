@@ -1,6 +1,6 @@
 import { CalendarDays } from 'lucide-react';
 import { isWorkItemAwaitingReview, type ContractWorkItem } from '../../../types/models/Contract';
-import { WorkItemStatusPill } from './WorkItemStatusPill';
+import { WorkItemStatusPill } from '../../../shared/components/WorkItemStatusPill';
 import { WorkItemSubmissionHistory } from './WorkItemSubmissionHistory';
 
 interface WorkItemReviewRowProps {
@@ -47,15 +47,19 @@ export const WorkItemReviewRow = ({
               {workItem.description ? (
                 <p className="mt-1 whitespace-pre-line text-sm text-slate-600">{workItem.description}</p>
               ) : null}
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                {workItem.estimatedDuration ? <span>{workItem.estimatedDuration}</span> : null}
-                <span className="inline-flex items-center gap-1">
-                  <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-                  {workItem.dueDate ?? labels.notScheduled}
-                </span>
-              </div>
+              {workItem.estimatedDuration || workItem.dueDate ? (
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                  {workItem.estimatedDuration ? <span>{workItem.estimatedDuration}</span> : null}
+                  {workItem.dueDate ? (
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+                      {workItem.dueDate}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-            <WorkItemStatusPill status={workItem.status} labels={labels} />
+            <WorkItemStatusPill status={workItem.status} />
           </div>
 
           <div className="mt-4 border-t border-slate-100 pt-3">
