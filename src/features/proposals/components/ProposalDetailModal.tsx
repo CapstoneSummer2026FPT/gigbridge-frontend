@@ -164,7 +164,7 @@ const normalizeTextForMatching = (str: string) => {
 const extractKeyWordsForMatching = (str: string) => {
   const stopWords = new Set([
     'with', 'that', 'this', 'from', 'have', 'your', 'will', 'then', 'into', 'each', 'such', 'their', 'them', 'both', 'only', 'also', 'and', 'for', 'the', 'project', 'system', 'more',
-    'toi', 'se', 'bang', 'viec', 'cac', 'va', 'nhung', 'voi', 'cho', 'duoc', 'trong', 'theo', 'nhu', 'da', 'dang', 'cua', 'tai', 've', 'nay', 'do', 'thi', 'la'
+    'toi', 'se', 'bang', 'viec', 'cac', 'va', 'nhung', 'voi', 'cho', 'duoc', 'trong', 'theo', 'nhu', 'da', 'dang', 'cua', 'tai', 've', 'nay', 'do', 'thi', 'la', 'mot', 'cach'
   ]);
   const normalized = normalizeTextForMatching(str);
   return normalized
@@ -192,44 +192,37 @@ const renderAnnotatedDetailSection = (
     );
   }
 
-  // Split text into paragraphs/sentences for sentence-level matching
+  // Split text into paragraphs/sentences for sentence/line-level matching
   const sentences = trimmed.split(/(?<=[.!?\n])\s+/);
   const matchedSentences: Array<{ sentence: string; requirement: string; criteriaIndex: number }> = [];
 
   sentences.forEach(sentence => {
     const cleanSentence = sentence.trim();
-    if (cleanSentence.length < 5) return;
+    if (cleanSentence.length < 4) return;
 
-    const lowerSentence = cleanSentence.toLowerCase();
-    const normalizedSentence = normalizeTextForMatching(cleanSentence);
+    const normSentence = normalizeTextForMatching(cleanSentence);
     const sentenceWords = extractKeyWordsForMatching(cleanSentence);
 
     for (const h of highlights) {
-      const reqText = (h.requirement || '').trim();
-      const quoteText = (h.quote || '').trim();
+      const rawQuote = (h.quote || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+      const rawReq = (h.requirement || '').trim();
 
-      const lowerReq = reqText.toLowerCase();
-      const lowerQuote = quoteText.toLowerCase();
+      const normQuote = normalizeTextForMatching(rawQuote);
+      const normReq = normalizeTextForMatching(rawReq);
 
-      const normReq = normalizeTextForMatching(reqText);
-      const normQuote = normalizeTextForMatching(quoteText);
-
-      // 1. Direct Substring Match (exact or normalized)
+      // 1. Direct or normalized substring match (sentence contains quote/req OR quote/req contains sentence)
       const isDirectMatch =
-        (lowerQuote.length >= 5 && lowerSentence.includes(lowerQuote)) ||
-        (lowerReq.length >= 5 && lowerSentence.includes(lowerReq)) ||
-        (normQuote.length >= 5 && normalizedSentence.includes(normQuote)) ||
-        (normReq.length >= 5 && normalizedSentence.includes(normReq));
+        (normQuote.length >= 5 && (normSentence.includes(normQuote) || normQuote.includes(normSentence))) ||
+        (normReq.length >= 6 && (normSentence.includes(normReq) || normReq.includes(normSentence)));
 
-      // 2. Keyword & Token Overlap Match (Unicode / Vietnamese & English safe)
+      // 2. Multi-token / Keyword Overlap Match (Unicode & Vietnamese / English safe)
       let isKeywordMatch = false;
       if (!isDirectMatch) {
-        const reqWords = extractKeyWordsForMatching(reqText + ' ' + quoteText);
+        const reqWords = extractKeyWordsForMatching(rawReq + ' ' + rawQuote);
         if (reqWords.length >= 2 && sentenceWords.length >= 2) {
           const sentenceWordSet = new Set(sentenceWords);
-          const matchCount = reqWords.filter(w => sentenceWordSet.has(w) || normalizedSentence.includes(w)).length;
-          const requiredOverlap = Math.min(2, reqWords.length);
-          if (matchCount >= requiredOverlap) {
+          const matchCount = reqWords.filter(w => sentenceWordSet.has(w) || normSentence.includes(w)).length;
+          if (matchCount >= Math.min(2, reqWords.length)) {
             isKeywordMatch = true;
           }
         }
@@ -266,10 +259,6 @@ const renderAnnotatedDetailSection = (
     let pos = trimmed.indexOf(ms.sentence, searchCursor);
     if (pos === -1) {
       pos = trimmed.indexOf(ms.sentence);
-    }
-    if (pos === -1 && ms.sentence.length >= 15) {
-      const snippet = ms.sentence.slice(0, 15);
-      pos = trimmed.indexOf(snippet);
     }
     if (pos !== -1) {
       matchPositions.push({
@@ -308,12 +297,12 @@ const renderAnnotatedDetailSection = (
 
     const last = groupedBlocks[groupedBlocks.length - 1];
     const textBetween = trimmed.substring(last.end, m.start);
-    const isAdjacent = textBetween.trim().length === 0;
+    const isAdjacent = textBetween.trim().length <= 2;
 
     if (last.requirement.toLowerCase() === m.requirement.toLowerCase() && isAdjacent) {
       // Merge contiguous sentences of the same requirement
       last.end = Math.max(last.end, m.end);
-    } else {
+    } else if (m.start >= last.end) {
       groupedBlocks.push({ ...m });
     }
   });
