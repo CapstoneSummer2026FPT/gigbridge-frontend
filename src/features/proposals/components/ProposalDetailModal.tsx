@@ -161,17 +161,6 @@ const normalizeTextForMatching = (str: string) => {
     .trim();
 };
 
-const extractKeyWordsForMatching = (str: string) => {
-  const stopWords = new Set([
-    'with', 'that', 'this', 'from', 'have', 'your', 'will', 'then', 'into', 'each', 'such', 'their', 'them', 'both', 'only', 'also', 'and', 'for', 'the', 'project', 'system', 'more',
-    'toi', 'se', 'bang', 'viec', 'cac', 'va', 'nhung', 'voi', 'cho', 'duoc', 'trong', 'theo', 'nhu', 'da', 'dang', 'cua', 'tai', 've', 'nay', 'do', 'thi', 'la'
-  ]);
-  const normalized = normalizeTextForMatching(str);
-  return normalized
-    .split(/\s+/)
-    .filter(w => w.length >= 3 && !stopWords.has(w));
-};
-
 const renderAnnotatedDetailSection = (
   title: string,
   text?: string | null,
@@ -192,93 +181,77 @@ const renderAnnotatedDetailSection = (
     );
   }
 
-  // Split text into paragraphs/sentences for sentence-level matching
-  const sentences = trimmed.split(/(?<=[.!?\n])\s+/);
-  const matchedSentences: Array<{ sentence: string; requirement: string; criteriaIndex: number }> = [];
+  // 1. Locate primary match position for each highlight item in trimmed text
+  const matchPositions: Array<{ start: number; end: number; requirement: string; criteriaIndex: number }> = [];
+  const normTrimmed = normalizeTextForMatching(trimmed);
 
-  sentences.forEach(sentence => {
-    const cleanSentence = sentence.trim();
-    if (cleanSentence.length < 5) return;
+  highlights.forEach((h) => {
+    const rawQuote = (h.quote || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+    const rawReq = (h.requirement || '').trim();
 
-    const lowerSentence = cleanSentence.toLowerCase();
-    const normalizedSentence = normalizeTextForMatching(cleanSentence);
-    const sentenceWords = extractKeyWordsForMatching(cleanSentence);
+    if (!rawQuote && !rawReq) return;
 
-    for (const h of highlights) {
-      const reqText = (h.requirement || '').trim();
-      const quoteText = (h.quote || '').trim();
+    let startPos = -1;
+    let matchLen = 0;
 
-      const lowerReq = reqText.toLowerCase();
-      const lowerQuote = quoteText.toLowerCase();
+    // Stage 1: Exact quote substring search
+    if (rawQuote.length >= 5) {
+      startPos = trimmed.indexOf(rawQuote);
+      if (startPos !== -1) {
+        matchLen = rawQuote.length;
+      }
+    }
 
-      const normReq = normalizeTextForMatching(reqText);
-      const normQuote = normalizeTextForMatching(quoteText);
+    // Stage 2: Normalized accent-folded & space-collapsed quote search
+    if (startPos === -1 && rawQuote.length >= 5) {
+      const normQuote = normalizeTextForMatching(rawQuote);
+      if (normQuote.length >= 5) {
+        const normPos = normTrimmed.indexOf(normQuote);
+        if (normPos !== -1) {
+          const words = normQuote.split(' ');
+          const firstWord = words[0];
+          const lastWord = words[words.length - 1];
 
-      // 1. Direct Substring Match (exact or normalized)
-      const isDirectMatch =
-        (lowerQuote.length >= 5 && lowerSentence.includes(lowerQuote)) ||
-        (lowerReq.length >= 5 && lowerSentence.includes(lowerReq)) ||
-        (normQuote.length >= 5 && normalizedSentence.includes(normQuote)) ||
-        (normReq.length >= 5 && normalizedSentence.includes(normReq));
+          const p1 = trimmed.toLowerCase().indexOf(firstWord.toLowerCase());
+          const p2 = trimmed.toLowerCase().lastIndexOf(lastWord.toLowerCase());
 
-      // 2. Keyword & Token Overlap Match (Unicode / Vietnamese & English safe)
-      let isKeywordMatch = false;
-      if (!isDirectMatch) {
-        const reqWords = extractKeyWordsForMatching(reqText + ' ' + quoteText);
-        if (reqWords.length >= 2 && sentenceWords.length >= 2) {
-          const sentenceWordSet = new Set(sentenceWords);
-          const matchCount = reqWords.filter(w => sentenceWordSet.has(w) || normalizedSentence.includes(w)).length;
-          const requiredOverlap = Math.min(2, reqWords.length);
-          if (matchCount >= requiredOverlap) {
-            isKeywordMatch = true;
+          if (p1 !== -1 && p2 !== -1 && p2 >= p1) {
+            startPos = p1;
+            matchLen = (p2 + lastWord.length) - p1;
           }
         }
       }
+    }
 
-      if (isDirectMatch || isKeywordMatch) {
-        matchedSentences.push({
-          sentence: cleanSentence,
-          requirement: h.requirement,
-          criteriaIndex: h.criteriaIndex ?? 0,
-        });
-        break;
+    // Stage 3: Long quote clause snippet search (first 25 chars)
+    if (startPos === -1 && rawQuote.length >= 25) {
+      const snippet = rawQuote.slice(0, 25).trim();
+      startPos = trimmed.indexOf(snippet);
+      if (startPos !== -1) {
+        const endDot = trimmed.indexOf('.', startPos + snippet.length);
+        matchLen = endDot !== -1 ? (endDot + 1 - startPos) : Math.min(trimmed.length - startPos, rawQuote.length + 30);
       }
     }
-  });
 
-  if (matchedSentences.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border/70 bg-surface-card/60 p-4 sm:p-5 space-y-2.5 shadow-2xs">
-        <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-text-muted flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-brand shrink-0" />
-          {title}
-        </h4>
-        <p className="text-sm sm:text-base text-text-primary leading-relaxed font-normal whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">{trimmed}</p>
-      </div>
-    );
-  }
-
-  // Locate character positions for matched sentences in trimmed text
-  const matchPositions: Array<{ start: number; end: number; requirement: string; criteriaIndex: number }> = [];
-  let searchCursor = 0;
-
-  matchedSentences.forEach(ms => {
-    let pos = trimmed.indexOf(ms.sentence, searchCursor);
-    if (pos === -1) {
-      pos = trimmed.indexOf(ms.sentence);
+    // Stage 4: Requirement fallback search (only if quote match failed)
+    if (startPos === -1 && rawReq.length >= 8) {
+      const normReq = normalizeTextForMatching(rawReq);
+      if (normReq.length >= 8 && normTrimmed.includes(normReq)) {
+        startPos = trimmed.toLowerCase().indexOf(rawReq.toLowerCase());
+        if (startPos !== -1) {
+          matchLen = rawReq.length;
+        }
+      }
     }
-    if (pos === -1 && ms.sentence.length >= 15) {
-      const snippet = ms.sentence.slice(0, 15);
-      pos = trimmed.indexOf(snippet);
-    }
-    if (pos !== -1) {
+
+    if (startPos !== -1 && matchLen > 0) {
+      const endPos = Math.min(trimmed.length, startPos + matchLen);
       matchPositions.push({
-        start: pos,
-        end: pos + ms.sentence.length,
-        requirement: ms.requirement,
-        criteriaIndex: ms.criteriaIndex,
+        start: startPos,
+        end: endPos,
+        requirement: h.requirement,
+        criteriaIndex: h.criteriaIndex ?? 0,
       });
-      searchCursor = Math.max(searchCursor, pos + ms.sentence.length);
     }
   });
 
@@ -297,7 +270,7 @@ const renderAnnotatedDetailSection = (
   // Sort match positions by start index
   matchPositions.sort((a, b) => a.start - b.start);
 
-  // Group contiguous/adjacent sentence matches of the SAME requirement
+  // Group contiguous or overlapping blocks of the SAME requirement
   const groupedBlocks: Array<{ start: number; end: number; requirement: string; criteriaIndex: number }> = [];
 
   matchPositions.forEach(m => {
@@ -307,12 +280,17 @@ const renderAnnotatedDetailSection = (
     }
 
     const last = groupedBlocks[groupedBlocks.length - 1];
-    const textBetween = trimmed.substring(last.end, m.start);
-    const isAdjacent = textBetween.trim().length === 0;
-
-    if (last.requirement.toLowerCase() === m.requirement.toLowerCase() && isAdjacent) {
-      // Merge contiguous sentences of the same requirement
-      last.end = Math.max(last.end, m.end);
+    if (m.start < last.end) {
+      if (last.requirement.toLowerCase() === m.requirement.toLowerCase()) {
+        last.end = Math.max(last.end, m.end);
+      } else if (m.end > last.end) {
+        groupedBlocks.push({
+          start: last.end,
+          end: m.end,
+          requirement: m.requirement,
+          criteriaIndex: m.criteriaIndex,
+        });
+      }
     } else {
       groupedBlocks.push({ ...m });
     }
