@@ -34,6 +34,7 @@ import { ManageMilestone } from '../components/ManageMilestone';
 import { ChatAndInfoPanel } from '../components/ChatAndInfoPanel';
 import { WorkspaceSkeletonScreen } from '../components/WorkspaceSkeletonScreen';
 import { SubmitMilestoneModal } from '../components/SubmitMilestoneModal';
+import { DeliverySpaceModal } from '../../deliveryspace/components/DeliverySpaceModal';
 import type { UploadTransferProgress } from '../../../service/apiService';
 import {
   FileUploadProgress,
@@ -72,6 +73,7 @@ export default function ProjectWorkspaceScreen() {
   };
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [submitModal, setSubmitModal] = useState<{ milestoneId: string; title: string } | null>(null);
+  const [deliverySpaceModalMilestoneId, setDeliverySpaceModalMilestoneId] = useState<string | null>(null);
   const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
   const [milestoneActionError, setMilestoneActionError] = useState<{ milestoneId: string; message: string } | null>(null);
   const [withdrawDialogMilestone, setWithdrawDialogMilestone] = useState<{
@@ -759,6 +761,7 @@ export default function ProjectWorkspaceScreen() {
                 setMilestoneActionPendingId={setMilestoneActionPendingId}
                 isWorkspaceLocked={isWorkspaceLocked}
                 navigate={navigate}
+                onOpenDeliverySpaceModal={setDeliverySpaceModalMilestoneId}
               />
 
               {/* Component 3: ChatAndInfoPanel (Right Pane) */}
@@ -876,6 +879,18 @@ export default function ProjectWorkspaceScreen() {
           milestoneTitle={submitModal.title}
           onClose={() => setSubmitModal(null)}
           onSubmit={(payload, lifecycle) => handleSubmitMilestoneDeliverable(submitModal.milestoneId, payload, lifecycle)}
+        />
+      )}
+
+      {deliverySpaceModalMilestoneId && (
+        <DeliverySpaceModal
+          isOpen={Boolean(deliverySpaceModalMilestoneId)}
+          contractId={activeProjectId}
+          milestoneId={deliverySpaceModalMilestoneId}
+          onClose={() => setDeliverySpaceModalMilestoneId(null)}
+          onActionComplete={() => {
+            void refreshWorkspace();
+          }}
         />
       )}
 
