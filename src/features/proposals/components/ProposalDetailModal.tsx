@@ -150,6 +150,28 @@ function SubcriteriaDefinitionTooltip({
   );
 }
 
+const normalizeTextForMatching = (str: string) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const extractKeyWordsForMatching = (str: string) => {
+  const stopWords = new Set([
+    'with', 'that', 'this', 'from', 'have', 'your', 'will', 'then', 'into', 'each', 'such', 'their', 'them', 'both', 'only', 'also', 'and', 'for', 'the', 'project', 'system', 'more',
+    'toi', 'se', 'bang', 'viec', 'cac', 'va', 'nhung', 'voi', 'cho', 'duoc', 'trong', 'theo', 'nhu', 'da', 'dang', 'cua', 'tai', 've', 'nay', 'do', 'thi', 'la'
+  ]);
+  const normalized = normalizeTextForMatching(str);
+  return normalized
+    .split(/\s+/)
+    .filter(w => w.length >= 3 && !stopWords.has(w));
+};
+
 const renderAnnotatedDetailSection = (
   title: string,
   text?: string | null,
@@ -176,30 +198,38 @@ const renderAnnotatedDetailSection = (
 
   sentences.forEach(sentence => {
     const cleanSentence = sentence.trim();
-    if (cleanSentence.length < 8) return;
+    if (cleanSentence.length < 5) return;
+
     const lowerSentence = cleanSentence.toLowerCase();
+    const normalizedSentence = normalizeTextForMatching(cleanSentence);
+    const sentenceWords = extractKeyWordsForMatching(cleanSentence);
 
     for (const h of highlights) {
-      const reqText = (h.requirement || '').toLowerCase();
-      const quoteText = (h.quote || '').toLowerCase();
+      const reqText = (h.requirement || '').trim();
+      const quoteText = (h.quote || '').trim();
 
-      // Direct substring match
+      const lowerReq = reqText.toLowerCase();
+      const lowerQuote = quoteText.toLowerCase();
+
+      const normReq = normalizeTextForMatching(reqText);
+      const normQuote = normalizeTextForMatching(quoteText);
+
+      // 1. Direct Substring Match (exact or normalized)
       const isDirectMatch =
-        (quoteText && quoteText.length > 5 && lowerSentence.includes(quoteText)) ||
-        (reqText && reqText.length > 5 && lowerSentence.includes(reqText));
+        (lowerQuote.length >= 5 && lowerSentence.includes(lowerQuote)) ||
+        (lowerReq.length >= 5 && lowerSentence.includes(lowerReq)) ||
+        (normQuote.length >= 5 && normalizedSentence.includes(normQuote)) ||
+        (normReq.length >= 5 && normalizedSentence.includes(normReq));
 
-      // Key phrase / word overlap match
+      // 2. Keyword & Token Overlap Match (Unicode / Vietnamese & English safe)
       let isKeywordMatch = false;
       if (!isDirectMatch) {
-        const stopWords = new Set(['with', 'that', 'this', 'from', 'have', 'your', 'will', 'then', 'into', 'each', 'such', 'their', 'them', 'both', 'only', 'also', 'and', 'for', 'the']);
-        const reqWords = (reqText + ' ' + quoteText)
-          .replace(/[^\w\s]/gi, '')
-          .split(/\s+/)
-          .filter(w => w.length >= 4 && !stopWords.has(w));
-
-        if (reqWords.length >= 2) {
-          const matchCount = reqWords.filter(w => lowerSentence.includes(w)).length;
-          if (matchCount >= Math.min(2, reqWords.length)) {
+        const reqWords = extractKeyWordsForMatching(reqText + ' ' + quoteText);
+        if (reqWords.length >= 2 && sentenceWords.length >= 2) {
+          const sentenceWordSet = new Set(sentenceWords);
+          const matchCount = reqWords.filter(w => sentenceWordSet.has(w) || normalizedSentence.includes(w)).length;
+          const requiredOverlap = Math.min(2, reqWords.length);
+          if (matchCount >= requiredOverlap) {
             isKeywordMatch = true;
           }
         }
@@ -233,7 +263,14 @@ const renderAnnotatedDetailSection = (
   let searchCursor = 0;
 
   matchedSentences.forEach(ms => {
-    const pos = trimmed.indexOf(ms.sentence, searchCursor);
+    let pos = trimmed.indexOf(ms.sentence, searchCursor);
+    if (pos === -1) {
+      pos = trimmed.indexOf(ms.sentence);
+    }
+    if (pos === -1 && ms.sentence.length >= 15) {
+      const snippet = ms.sentence.slice(0, 15);
+      pos = trimmed.indexOf(snippet);
+    }
     if (pos !== -1) {
       matchPositions.push({
         start: pos,
@@ -241,7 +278,7 @@ const renderAnnotatedDetailSection = (
         requirement: ms.requirement,
         criteriaIndex: ms.criteriaIndex,
       });
-      searchCursor = pos + ms.sentence.length;
+      searchCursor = Math.max(searchCursor, pos + ms.sentence.length);
     }
   });
 
@@ -299,7 +336,7 @@ const renderAnnotatedDetailSection = (
       >
         {combinedText}
         <span className={`inline-flex items-center gap-1 ml-1.5 px-2.5 py-0.5 rounded-full ${theme.pillBg} text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-2xs align-middle`}>
-          ✓ Matched: "{gb.requirement}"
+          ✓ MATCHED: "{gb.requirement}"
         </span>
       </mark>
     );
