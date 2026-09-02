@@ -358,12 +358,17 @@
         "autoBalanceOff": "Auto-balance: OFF",
         "autoBalanceOnDesc": "Edits auto-balance remaining unlocked milestones.",
         "autoBalanceOffDesc": "Auto-balance is OFF. Values remain exact.",
-        "resetBalance": "↺ Reset & Split Budget",
+        "resetBalance": "Reset & Split Budget",
         "resetBalanceTooltip": "Clear all user locks and split budget equally across milestones",
         "userLocked": "Fixed",
         "userLockedTitle": "Fixed milestone (User-locked). Click to unlock auto-balancing.",
         "autoBalanced": "Auto",
-        "autoBalancedTitle": "Dynamically calculated. Click to lock amount."
+        "autoBalancedTitle": "Dynamically calculated. Click to lock amount.",
+        "expandAll": "Expand all",
+        "collapseAll": "Collapse all",
+        "percentOfBudget": "{{percent}}% of total budget",
+        "budgetShort": "Budget",
+        "dragToReorder": "Drag to reorder milestone"
       }
     },
     "review": {
