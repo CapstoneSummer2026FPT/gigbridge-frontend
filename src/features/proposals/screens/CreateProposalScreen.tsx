@@ -105,8 +105,6 @@ export default function CreateProposalScreen() {
         estimatedDuration: formattedDuration,
         durationUnit: parsedDuration.unit || 'weeks',
         dueDate: (m.dueDate ? m.dueDate.slice(0, 10) : computedDueDates[idx]) || undefined,
-        startDate: m.startDate || undefined,
-        endDate: m.endDate || undefined,
         deliverables: m.deliverables || '',
         description: m.description || '',
         acceptanceCriteria: m.acceptanceCriteria || '',
@@ -117,11 +115,10 @@ export default function CreateProposalScreen() {
             : (w.estimatedDuration || '1 day');
           return {
             orderIndex: wIdx,
-            milestoneOrderIndex: idx,
             title: w.title || `Hạng mục ${wIdx + 1}`,
             estimatedDuration: formattedWDuration,
             durationUnit: parsedWDuration ? parsedWDuration.unit : 'days',
-            taskDescription: w.taskDescription || '',
+            description: w.description || '',
             deliverables: w.deliverables || '',
           };
         }),
@@ -157,11 +154,9 @@ export default function CreateProposalScreen() {
     // Initialize in a clean/blank state so user can customize their own milestone plan
     const blankMilestone: EditableMilestonePlan = {
       orderIndex: 0,
-      milestoneOrderIndex: 0,
       title: '',
       amount: 0,
       estimatedDuration: '1 week',
-      durationUnit: 'weeks',
       deliverables: '',
       description: '',
       acceptanceCriteria: '',
