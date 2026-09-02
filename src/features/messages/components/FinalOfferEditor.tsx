@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { CreditCard, Layers, Loader2, Save, Send, Sparkles } from 'lucide-react';
+import { CreditCard, FileDown, Layers, Loader2, Save, Send, Sparkles } from 'lucide-react';
 import {
   NestedMilestonePlanEditor,
   type EditableMilestonePlan,
 } from '../../../shared/components/NestedMilestonePlanEditor';
+import { MilestonePlanComparison } from '../../../shared/components/MilestonePlanComparison';
 import type { NegotiationMilestoneDto } from '../../../types/models/Message';
 import { formatGigCoin, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { JOB_DURATION_UNITS } from '../../jobs/utils/jobDuration';
+import { JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS } from '../../jobs/utils/jobDuration';
 import '../styles/final-offer-editor.css';
 
 interface FinalOfferEditorProps {
   milestones: NegotiationMilestoneDto[];
+  freelancerBaseline: NegotiationMilestoneDto[];
   milestoneTotal: number;
   overallDuration: string | null;
   advancedIndexes: number[];
@@ -23,10 +25,13 @@ interface FinalOfferEditorProps {
   onSaveDraft: () => void;
   onSubmit: () => void;
   onClose: () => void;
+  onUseJobPostMilestones: () => void;
+  onUseFreelancerMilestones: () => void;
 }
 
 export function FinalOfferEditor({
   milestones,
+  freelancerBaseline,
   milestoneTotal,
   overallDuration,
   advancedIndexes,
@@ -38,6 +43,8 @@ export function FinalOfferEditor({
   onSaveDraft,
   onSubmit,
   onClose,
+  onUseJobPostMilestones,
+  onUseFreelancerMilestones,
 }: FinalOfferEditorProps) {
   const { t } = useTranslation();
   const [openMilestoneIndexes, setOpenMilestoneIndexes] = useState<number[]>(() => Array.from(new Set([
@@ -169,6 +176,24 @@ export function FinalOfferEditor({
               </div>
             ) : (
               <div className="final-offer-editor-body">
+                <div className="mb-3 flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={onUseFreelancerMilestones}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted transition cursor-pointer"
+                  >
+                    <FileDown size={13} />
+                    {t('messages.finalOfferEditor.useFreelancerMilestones')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onUseJobPostMilestones}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted transition cursor-pointer"
+                  >
+                    <FileDown size={13} />
+                    {t('messages.finalOfferEditor.useJobPostMilestones')}
+                  </button>
+                </div>
                 <NestedMilestonePlanEditor
                   value={milestones as EditableMilestonePlan[]}
                   onChange={value => onMilestonesChange(value as NegotiationMilestoneDto[])}
@@ -184,6 +209,7 @@ export function FinalOfferEditor({
                 showBudgetSummary={false}
                 simplifiedMilestoneFields
                 durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
+                workItemDurationUnits={WORK_ITEM_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
                 milestoneTitleMaxLength={200}
                 workItemTitleMaxLength={200}
                 durationMaxLength={100}
@@ -200,6 +226,7 @@ export function FinalOfferEditor({
                   milestoneTitle: t('messages.finalOfferEditor.milestoneTitle'),
                   amount: t('messages.finalOfferEditor.amount'),
                   deadline: t('messages.finalOfferEditor.deadline'),
+                  durationUnit: t('postJob.milestonePlan.durationUnit'),
                   deliverables: t('messages.finalOfferEditor.deliverables'),
                   advancedDetails: t('proposalMilestoneEditor.advancedDetails'),
                   derivedDuration: t('proposalMilestoneEditor.derivedDuration'),
@@ -224,6 +251,21 @@ export function FinalOfferEditor({
                   workItemDeliverables: t('messages.finalOfferEditor.workItemDeliverablesPlaceholder'),
                 }}
                 />
+                {freelancerBaseline.length > 0 && (
+                  <div className="mt-6">
+                    <MilestonePlanComparison
+                      clientMilestones={freelancerBaseline as EditableMilestonePlan[]}
+                      freelancerMilestones={milestones as EditableMilestonePlan[]}
+                      title={t('messages.finalOfferEditor.comparisonTitle')}
+                      clientLabel={t('messages.finalOfferEditor.comparisonFreelancerLabel')}
+                      freelancerLabel={t('messages.finalOfferEditor.comparisonClientLabel')}
+                      addedLabel={t('messages.finalOfferEditor.comparisonAddedLabel')}
+                      removedLabel={t('messages.finalOfferEditor.comparisonRemovedLabel')}
+                      emptyLabel={t('messages.finalOfferEditor.comparisonEmptyLabel')}
+                      workItemsLabel={t('messages.finalOfferEditor.comparisonWorkItemsLabel')}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

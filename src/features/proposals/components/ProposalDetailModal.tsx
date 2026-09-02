@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Brain,
@@ -11,10 +11,16 @@ import {
   ShieldCheck,
   Sparkles,
   X,
+  Clock3,
+  Calendar,
+  Package,
+  CheckCircle2,
+  ChevronDown,
 } from 'lucide-react';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
-import { formatGigCoin, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { formatGigCoin, formatGigCoinToVnd, formatGigCoinNumber } from '../../../shared/utils/gigcoin';
 import {
   ProposalStatus,
   type ProposalAnswerDto,
@@ -24,6 +30,8 @@ import {
 } from '../../../types/models/Proposal';
 import { AIProposalVerdictCard } from './AIProposalVerdictCard';
 import { AISideBySideMilestoneMatrix } from './AISideBySideMilestoneMatrix';
+import { MilestonePlanComparison } from '../../../shared/components/MilestonePlanComparison';
+import type { EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import { getCriteriaColorTheme } from '../utils/criteriaColors';
 import '../../../shared/components/styles/conic-border-button.css';
 import type { BusyAction } from '../hooks/useClientProposals';
@@ -312,6 +320,256 @@ const renderAnnotatedDetailSection = (
         {elements}
       </div>
     </div>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PROPOSED MILESTONES COLLAPSIBLE SECTION COMPONENT
+// ══════════════════════════════════════════════════════════════════════════════
+const ProposedMilestonesSection: React.FC<{
+  milestonePlans: ProposalMilestonePlanDto[];
+}> = ({ milestonePlans }) => {
+  const [isSectionOpen, setIsSectionOpen] = useState(true);
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = {};
+    milestonePlans.forEach((_, idx) => {
+      initial[idx] = true;
+    });
+    return initial;
+  });
+
+  const toggleCard = (index: number) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
+  const toggleAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const allExpanded = milestonePlans.every((_, idx) => expandedCards[idx]);
+    const next: Record<number, boolean> = {};
+    milestonePlans.forEach((_, idx) => {
+      next[idx] = !allExpanded;
+    });
+    setExpandedCards(next);
+  };
+
+  if (!milestonePlans || milestonePlans.length === 0) {
+    return (
+      <section className="space-y-3 pt-2">
+        <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-text-muted flex items-center gap-2">
+          <Layers size={16} className="text-brand shrink-0" />
+          Kế hoạch Milestone đề xuất
+        </h4>
+        <p className="text-sm text-text-muted italic bg-surface-muted/40 p-4 rounded-xl border border-dashed border-border text-center">
+          Proposal không kèm kế hoạch milestone cụ thể.
+        </p>
+      </section>
+    );
+  }
+
+  const totalAmount = milestonePlans.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
+  const totalWorkItems = milestonePlans.reduce((acc, m) => acc + (m.workItems?.length || 0), 0);
+  const allCardsExpanded = milestonePlans.every((_, idx) => expandedCards[idx]);
+
+  return (
+    <section className="rounded-2xl border border-border bg-surface shadow-2xs overflow-hidden transition-all">
+      {/* ─── 1. SECTION HEADER (CLICKABLE COLLAPSIBLE) ─── */}
+      <div
+        onClick={() => setIsSectionOpen(!isSectionOpen)}
+        className="p-3.5 sm:p-4 bg-surface-muted/50 border-b border-border flex flex-wrap items-center justify-between gap-2.5 cursor-pointer select-none hover:bg-surface-muted/80 transition-colors group"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 text-brand flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+            <Layers size={15} />
+          </span>
+          <div className="min-w-0">
+            <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-text-primary group-hover:text-brand transition-colors flex items-center gap-1.5 truncate">
+              <span>Kế hoạch Milestone đề xuất</span>
+              <ChevronDown
+                size={16}
+                className={`text-text-muted transition-transform duration-200 shrink-0 ${isSectionOpen ? 'rotate-180 text-brand' : ''}`}
+              />
+            </h4>
+            <div className="flex items-center gap-2 text-[11px] text-text-muted">
+              <span className="font-semibold">{milestonePlans.length} mốc</span>
+              {totalWorkItems > 0 && (
+                <>
+                  <span>•</span>
+                  <span>{totalWorkItems} đầu việc WBS</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Action: Total Budget Badge + Expand/Collapse Toggle */}
+        <div className="flex items-center gap-2 ml-auto" onClick={e => e.stopPropagation()}>
+          <span className="inline-flex items-center gap-1.5 font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-lg border border-brand/20 text-xs sm:text-sm shadow-2xs">
+            <GCoinIcon size={13} />
+            <span>{formatGigCoinNumber(totalAmount)} G-coin</span>
+            <span className="text-[10px] font-normal text-text-muted hidden sm:inline">
+              (≈ {formatGigCoinToVnd(totalAmount)})
+            </span>
+          </span>
+
+          {isSectionOpen && (
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="text-[10.5px] font-bold text-text-muted hover:text-brand bg-surface border border-border px-2.5 py-1 rounded-lg shadow-2xs transition-colors cursor-pointer"
+            >
+              {allCardsExpanded ? 'Thu gọn' : 'Mở rộng'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ─── 2. SECTION CONTENT ─── */}
+      {isSectionOpen && (
+        <div className="p-3 sm:p-4 space-y-3 bg-surface/50">
+          {milestonePlans.map((item, index) => {
+            const milestoneAmount = Number(item.amount) || 0;
+            const isExpanded = Boolean(expandedCards[index]);
+            const workItemsCount = item.workItems?.length || 0;
+
+            return (
+              <div
+                key={item.id || index}
+                className={`rounded-xl border transition-all shadow-2xs overflow-hidden ${
+                  isExpanded ? 'border-border bg-surface' : 'border-border/70 bg-surface-muted/20 hover:border-brand/40'
+                }`}
+              >
+                {/* Milestone Row Header (Click to toggle) */}
+                <div
+                  onClick={() => toggleCard(index)}
+                  className="p-3 flex flex-wrap items-center justify-between gap-2 cursor-pointer select-none hover:bg-surface-hover/60 transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex h-5 px-2 shrink-0 items-center justify-center rounded-md bg-gradient-to-r from-[var(--brand)] to-[#6366f1] text-white text-[10px] font-black shadow-2xs">
+                      Mốc {index + 1}
+                    </span>
+                    <h5 className="text-xs sm:text-sm font-bold text-text-primary truncate">
+                      {item.title || `Milestone ${index + 1}`}
+                    </h5>
+                  </div>
+
+                  <div className="flex items-center gap-2 ml-auto">
+                    {!isExpanded && item.estimatedDuration && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[10.5px] text-text-muted font-semibold bg-surface px-2 py-0.5 rounded border border-border">
+                        <Clock3 size={11} />
+                        <span>{item.estimatedDuration}</span>
+                      </span>
+                    )}
+                    {!isExpanded && workItemsCount > 0 && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[10.5px] text-brand font-semibold bg-brand/5 px-2 py-0.5 rounded border border-brand/20">
+                        <Layers size={11} />
+                        <span>{workItemsCount} WBS</span>
+                      </span>
+                    )}
+
+                    <span className="inline-flex items-center gap-1 font-bold text-brand bg-surface px-2 py-0.5 rounded-md border border-border text-xs">
+                      <GCoinIcon size={12} />
+                      <span>{formatGigCoinNumber(milestoneAmount)} G</span>
+                    </span>
+
+                    <ChevronDown
+                      size={15}
+                      className={`text-text-muted transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-brand' : ''}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Milestone Expanded Details */}
+                {isExpanded && (
+                  <div className="p-3.5 pt-0 space-y-3 border-t border-border/50 text-xs">
+                    {/* Meta Chips */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2.5 text-xs">
+                      {item.estimatedDuration && (
+                        <span className="inline-flex items-center gap-1 font-semibold bg-surface-muted px-2 py-1 rounded-md border border-border text-text-primary text-[11px]">
+                          <Clock3 size={11} className="text-text-muted shrink-0" />
+                          <span>Thời lượng: {item.estimatedDuration}</span>
+                        </span>
+                      )}
+                      {item.dueDate && (
+                        <span className="inline-flex items-center gap-1 font-semibold bg-surface-muted px-2 py-1 rounded-md border border-border text-text-primary text-[11px]">
+                          <Calendar size={11} className="text-text-muted shrink-0" />
+                          <span>Hạn chót: {item.dueDate}</span>
+                        </span>
+                      )}
+                      {workItemsCount > 0 && (
+                        <span className="inline-flex items-center gap-1 font-semibold bg-brand/5 px-2 py-1 rounded-md border border-brand/20 text-brand text-[11px]">
+                          <Layers size={11} className="shrink-0" />
+                          <span>{workItemsCount} đầu việc (WBS)</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    {item.description && (
+                      <div className="text-xs text-text-muted leading-relaxed whitespace-pre-wrap bg-surface-muted/30 p-2.5 rounded-lg border border-border/60">
+                        {item.description}
+                      </div>
+                    )}
+
+                    {/* Deliverables & Acceptance Criteria in 2 columns */}
+                    {(item.deliverables || item.acceptanceCriteria) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {item.deliverables && (
+                          <div className="rounded-lg bg-surface-muted/40 border border-border p-2.5 space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+                              <Package size={11} className="text-brand" />
+                              Sản phẩm bàn giao
+                            </span>
+                            <p className="text-xs text-text-primary font-medium">{item.deliverables}</p>
+                          </div>
+                        )}
+
+                        {item.acceptanceCriteria && (
+                          <div className="rounded-lg bg-surface-muted/40 border border-border p-2.5 space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+                              <CheckCircle2 size={11} className="text-emerald-500" />
+                              Tiêu chí nghiệm thu
+                            </span>
+                            <p className="text-xs text-text-primary font-medium">{item.acceptanceCriteria}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Nested Work Items (WBS) */}
+                    {workItemsCount > 0 && (
+                      <div className="pt-2 border-t border-border/60 space-y-1.5">
+                        <span className="text-[10.5px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+                          <Layers size={11} className="text-brand" />
+                          Chi tiết hạng mục công việc (WBS)
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {item.workItems?.map((w, wIdx) => (
+                            <div key={w.id || wIdx} className="rounded-lg border border-border bg-surface-muted/20 p-2 text-xs space-y-0.5">
+                              <div className="flex items-center justify-between gap-1">
+                                <strong className="font-bold text-text-primary truncate">{w.title || `Hạng mục ${wIdx + 1}`}</strong>
+                                {w.estimatedDuration && (
+                                  <span className="text-[9.5px] text-text-muted font-semibold bg-surface px-1.5 py-0.5 rounded border border-border shrink-0">
+                                    {w.estimatedDuration}
+                                  </span>
+                                )}
+                              </div>
+                              {w.description && <p className="text-[11px] text-text-muted line-clamp-2">{w.description}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 };
 
@@ -697,38 +955,24 @@ export function ProposalDetailModal({
                     {renderAnnotatedDetailSection('Giả định dự án', detail.assumptions, aiAuditData?.highlights)}
                     {renderAnnotatedDetailSection('Các hạng mục ngoài phạm vi', detail.outOfScope, aiAuditData?.highlights)}
 
-                    <section className="space-y-3.5 pt-2">
-                      <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-text-muted flex items-center gap-2">
-                        <Layers size={16} className="text-brand shrink-0" />
-                        Kế hoạch Milestone đề xuất
-                      </h4>
-                      <div className="space-y-3.5">
-                        {detail.milestonePlans?.length ? detail.milestonePlans.map((item: ProposalMilestonePlanDto, index: number) => (
-                          <div key={item.id || index} className="rounded-2xl border border-border/80 bg-surface-card/60 p-4.5 text-sm space-y-3 shadow-2xs">
-                            <div className="flex justify-between items-center gap-3 border-b border-border/60 pb-2.5">
-                              <strong className="text-sm sm:text-base font-bold text-text-primary">{index + 1}. {item.title || 'Mốc chưa đặt tên'}</strong>
-                              <span className="font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400">{formatGigCoin(item.amount)}</span>
-                            </div>
-                            {item.estimatedDuration && (
-                              <div className="text-xs sm:text-sm text-text-muted">
-                                <strong>Thời gian:</strong> {item.estimatedDuration}
-                              </div>
-                            )}
-                            {item.dueDate && (
-                              <div className="text-xs sm:text-sm text-text-muted">
-                                <strong>Hạn hoàn thành:</strong> {item.dueDate}
-                              </div>
-                            )}
-                            {item.description && (
-                              <div className="space-y-1.5">
-                                <span className="block text-xs font-black uppercase text-text-muted tracking-wider">Mô tả</span>
-                                <p className="leading-relaxed whitespace-pre-wrap bg-surface-muted/40 p-3.5 rounded-xl border border-border/50 text-text-primary text-sm sm:text-base">{item.description}</p>
-                              </div>
-                            )}
-                          </div>
-                        )) : <p className="text-sm text-text-muted italic">Proposal không kèm kế hoạch milestone cụ thể.</p>}
-                      </div>
-                    </section>
+                    {/* ═══ 1. FREELANCER PROPOSED MILESTONES (COLLAPSIBLE) ═══════ */}
+                    <ProposedMilestonesSection milestonePlans={detail.milestonePlans || []} />
+
+                    {/* ═══ 2. SIDE-BY-SIDE MILESTONE PLAN COMPARISON ═══════════════ */}
+                    {originalMilestones && originalMilestones.length > 0 && (
+                      <section className="space-y-3.5 pt-2">
+                        <MilestonePlanComparison
+                          clientMilestones={originalMilestones as EditableMilestonePlan[]}
+                          freelancerMilestones={(detail.milestonePlans || []) as EditableMilestonePlan[]}
+                          clientLabel="Khách hàng"
+                          freelancerLabel="Freelancer"
+                          addedLabel="Freelancer thêm mới"
+                          removedLabel="Freelancer đã xoá"
+                          emptyLabel="Không có dữ liệu để so sánh"
+                          workItemsLabel="Hạng mục công việc"
+                        />
+                      </section>
+                    )}
                   </>
                 )}
               </div>

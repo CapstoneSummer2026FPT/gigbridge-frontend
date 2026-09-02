@@ -1,0 +1,141 @@
+/* =========================================================
+   Top Freelancers Leaderboard - Component Styles
+   ========================================================= */
+
+.freelancer-ranking-card {
+  border-radius: 1.25rem;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, rgba(229, 231, 235, 0.8));
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.04);
+}
+
+.freelancer-ranking-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.freelancer-ranking-title {
+  font-size: 1rem;
+  font-weight: 850;
+  color: var(--text-primary, #111827);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.875rem;
+  background: var(--surface-hover, rgba(249, 250, 251, 0.8));
+  border: 1px solid var(--border, rgba(229, 231, 235, 0.6));
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.ranking-item:hover {
+  background: var(--surface, #ffffff);
+  border-color: var(--brand-soft, rgba(73, 75, 231, 0.3));
+  transform: translateX(3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.ranking-item-top1 {
+  background: linear-gradient(90deg, var(--cp-accent-dim, rgba(99, 102, 241, 0.12)) 0%, var(--surface, #ffffff) 100%) !important;
+  border-color: var(--cp-border, rgba(99, 102, 241, 0.3)) !important;
+}
+
+.ranking-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.ranking-position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-weight: 850;
+  font-size: 0.75rem;
+  color: var(--text-muted, #9ca3af);
+  flex-shrink: 0;
+}
+
+.ranking-position-top1 {
+  color: var(--brand, #494be7) !important;
+}
+
+.ranking-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--border, rgba(229, 231, 235, 0.8));
+  flex-shrink: 0;
+}
+
+.ranking-avatar-top1 {
+  border-color: var(--brand, #494be7) !important;
+  box-shadow: 0 0 0 2px var(--cp-accent-dim, rgba(99, 102, 241, 0.2));
+}
+
+.ranking-text-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.ranking-name {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  width: 100%;
+}
+
+.ranking-role {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  width: 100%;
+  margin-top: 1px;
+}
+
+.ranking-elo-value {
+  font-family: monospace;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--brand, #494be7);
+}
+
+.ranking-elo-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--text-muted, #9ca3af);
+  letter-spacing: 0.05em;
+}
