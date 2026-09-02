@@ -320,7 +320,8 @@
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 1;
 }
 
 @media (min-width: 640px) {
@@ -333,6 +334,7 @@
   transform: translateY(-3px);
   border-color: var(--brand-soft, rgba(73, 75, 231, 0.3));
   box-shadow: 0 12px 28px -4px rgba(73, 75, 231, 0.1), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+  z-index: 40;
 }
 
 .browse-jobs-job-card::before {
@@ -342,6 +344,8 @@
   left: 0;
   width: 4px;
   height: 100%;
+  border-top-left-radius: 1.25rem;
+  border-bottom-left-radius: 1.25rem;
   background: var(--brand, #494be7);
   opacity: 0;
   transition: opacity 0.25s ease;
@@ -356,17 +360,35 @@
 }
 
 .browse-jobs-save-icon {
-  color: var(--text-muted, #9ca3af);
-  transition: all 0.2s ease;
+  color: var(--text-secondary, #4b5563);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, rgba(229, 231, 235, 0.9));
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.browse-jobs-save-icon:hover {
+.browse-jobs-save-icon:hover:not(:disabled) {
   color: var(--brand, #494be7);
-  transform: scale(1.1);
+  background: var(--brand-soft, rgba(73, 75, 231, 0.12));
+  border-color: var(--brand, #494be7);
+  transform: translateY(-1px) scale(1.06);
+  box-shadow: 0 4px 14px rgba(73, 75, 231, 0.25);
 }
 
 .browse-jobs-save-icon-active {
-  color: #f59e0b;
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.browse-jobs-save-icon-active:hover:not(:disabled) {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.7);
+  transform: translateY(-1px) scale(1.06);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
 }
 
 .browse-jobs-pagination {
@@ -585,9 +607,15 @@
 
 .ranking-item:hover {
   background: var(--surface, #ffffff);
-  border-color: var(--brand-soft, rgba(73, 75, 231, 0.3));
+  border-color: var(--brand, #494be7);
   transform: translateX(3px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 14px rgba(73, 75, 231, 0.12);
+}
+
+.ranking-item:hover .ranking-position {
+  color: var(--brand, #494be7);
+  font-weight: 900;
+  transform: scale(1.1);
 }
 
 .ranking-item-top1 {
@@ -611,8 +639,9 @@
   height: 24px;
   font-weight: 850;
   font-size: 0.75rem;
-  color: var(--text-muted, #9ca3af);
+  color: var(--text-secondary, #4b5563);
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .ranking-position-top1 {

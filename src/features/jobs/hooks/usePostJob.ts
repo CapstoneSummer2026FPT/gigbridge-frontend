@@ -1138,7 +1138,7 @@ export function usePostJob() {
         target?.focus();
       });
       return {
-        message: t('postJobWizard.validation.milestoneIncomplete'),
+        message: errors[firstErrorKey] || t('postJobWizard.validation.milestoneIncomplete'),
         section: 'hiringPlan',
         fieldSelector: `[data-milestone-field="${index}.${field}"]`,
       };
