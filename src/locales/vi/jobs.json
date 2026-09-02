@@ -360,7 +360,12 @@
         "userLocked": "Cố định",
         "userLockedTitle": "Mốc đang cố định (User-locked). Nhấp để mở khóa tự động cân bằng.",
         "autoBalanced": "Tự động",
-        "autoBalancedTitle": "Mốc đang tự động cân bằng. Nhấp để khóa cố định."
+        "autoBalancedTitle": "Mốc đang tự động cân bằng. Nhấp để khóa cố định.",
+        "expandAll": "Mở rộng tất cả",
+        "collapseAll": "Thu gọn tất cả",
+        "percentOfBudget": "{{percent}}% tổng ngân sách",
+        "budgetShort": "NS",
+        "dragToReorder": "Kéo để sắp xếp lại mốc"
       }
     },
     "review": {

@@ -25,6 +25,7 @@ export interface CustomSelectProps {
   emptyMessage?: string;
   popoverAlign?: 'left' | 'right';
   variant?: 'default' | 'compact' | 'pill';
+  popoverMinWidth?: number;
 }
 
 export function CustomSelect({
@@ -41,6 +42,7 @@ export function CustomSelect({
   emptyMessage = 'No options found.',
   popoverAlign = 'left',
   variant = 'default',
+  popoverMinWidth,
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,16 +76,18 @@ export function CustomSelect({
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const isRight = popoverAlign === 'right';
+    const isCompact = variant === 'compact' || className.includes('cs-compact') || (!searchable && options.length <= 5);
     
     const estimatedHeight = 240;
     const spaceBelow = window.innerHeight - rect.bottom;
     const shouldFlip = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
 
     const top = shouldFlip ? Math.max(8, rect.top - estimatedHeight - 6) : rect.bottom + 6;
-    const width = Math.max(rect.width, 220);
+    const defaultMinWidth = isCompact ? Math.max(rect.width, 96) : 220;
+    const width = Math.max(rect.width, popoverMinWidth ?? defaultMinWidth);
 
     let left: number;
-    if (isRight) {
+    if (isRight || isCompact) {
       const idealLeft = rect.right - width;
       if (idealLeft >= 8) {
         left = Math.min(idealLeft, window.innerWidth - width - 8);
@@ -99,7 +103,7 @@ export function CustomSelect({
       left,
       width,
     });
-  }, [popoverAlign]);
+  }, [popoverAlign, variant, className, searchable, options.length, popoverMinWidth]);
 
   useLayoutEffect(() => {
     if (open) {
@@ -190,7 +194,7 @@ export function CustomSelect({
         createPortal(
           <div
             ref={popoverRef}
-            className="cs-popover is-portal"
+            className={`cs-popover is-portal ${className.includes('cs-compact') || variant === 'compact' ? 'cs-popover-compact' : ''}`}
             style={{
               position: 'fixed',
               top: `${coords.top}px`,

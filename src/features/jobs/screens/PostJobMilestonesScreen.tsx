@@ -229,6 +229,8 @@ export default function PostJobMilestonesScreen() {
                 workItemsTotalLabel: t('postJobWizard.plan.milestoneCopy.workItemsTotalLabel', 'Total'),
                 workItemsRemainingLabel: t('postJobWizard.plan.milestoneCopy.workItemsRemainingLabel', 'Remaining'),
                 workItemsOverageLabel: t('postJobWizard.plan.milestoneCopy.workItemsOverageLabel', 'Work items exceed milestone duration by {{days}} day(s).'),
+                expandAll: t('postJobWizard.plan.milestoneCopy.expandAll', 'Mở rộng tất cả'),
+                collapseAll: t('postJobWizard.plan.milestoneCopy.collapseAll', 'Thu gọn tất cả'),
               }}
               fieldHints={{
                 fixedProjectBudget: t('postJob.baselineBudgetHint'),
