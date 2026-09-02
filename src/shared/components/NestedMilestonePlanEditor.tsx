@@ -497,7 +497,7 @@ export function NestedMilestonePlanEditor({
                 title={uiCopy.resetBalanceTooltip || 'Xóa tất cả mốc cố định và chia đều tổng ngân sách'}
               >
                 <RotateCcw size={13} />
-                <span>{uiCopy.resetBalance || '↺ Chia đều lại ngân sách'}</span>
+                <span>{uiCopy.resetBalance || 'Chia đều lại ngân sách'}</span>
               </button>
             </div>
           )}

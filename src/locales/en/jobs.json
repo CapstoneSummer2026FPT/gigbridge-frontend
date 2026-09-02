@@ -358,7 +358,7 @@
         "autoBalanceOff": "Auto-balance: OFF",
         "autoBalanceOnDesc": "Edits auto-balance remaining unlocked milestones.",
         "autoBalanceOffDesc": "Auto-balance is OFF. Values remain exact.",
-        "resetBalance": "↺ Reset & Split Budget",
+        "resetBalance": "Reset & Split Budget",
         "resetBalanceTooltip": "Clear all user locks and split budget equally across milestones",
         "userLocked": "Fixed",
         "userLockedTitle": "Fixed milestone (User-locked). Click to unlock auto-balancing.",
