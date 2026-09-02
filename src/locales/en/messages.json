@@ -34,6 +34,7 @@
       "milestonePlan": "Milestone plan",
       "milestoneDescription": "Enter the payment outcome for each milestone. Duration and internal work items are generated automatically.",
       "useJobPostMilestones": "Use Milestones from Job Post",
+      "useFreelancerMilestones": "Use Freelancer Milestone",
       "comparisonTitle": "Milestone Comparison: Freelancer vs Client",
       "comparisonFreelancerLabel": "Freelancer",
       "comparisonClientLabel": "Client",

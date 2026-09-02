@@ -406,6 +406,7 @@ export default function MessagesScreen() {
     dealOverallDuration,
     handleSaveDealMilestones,
     handleUseJobPostMilestones,
+    handleUseFreelancerMilestones,
     messageInput,
     setMessageInput,
     chatAttachments,
@@ -1470,6 +1471,7 @@ export default function MessagesScreen() {
                     onSubmit={() => void handleProposeDeal()}
                     onClose={() => setShowDealPrice(false)}
                     onUseJobPostMilestones={() => void handleUseJobPostMilestones()}
+                    onUseFreelancerMilestones={handleUseFreelancerMilestones}
                   />
                 )}
 

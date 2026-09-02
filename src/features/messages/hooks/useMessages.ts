@@ -2144,6 +2144,7 @@ export function useMessages() {
     dealOverallDuration,
     handleSaveDealMilestones,
     handleUseJobPostMilestones,
+    handleUseFreelancerMilestones,
     messageInput,
     setMessageInput,
     chatAttachments,

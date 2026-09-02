@@ -17,14 +17,25 @@ interface MatchedPair<T> {
   freelancer: T | null;
 }
 
-type Keyable = { id?: string | null; orderIndex: number };
+type Keyable = { id?: string | null };
 
 // Matches client vs freelancer items deterministically: id first (covers a
 // freshly-seeded proposal milestone, which spreads the job post milestone's id
 // verbatim until first save, and a reopened persisted proposal whose ids no
-// longer overlap with the job post at all), falling back to orderIndex for
-// everything left unmatched (covers the common in-progress-edit case where
-// freelancer items have no id yet).
+// longer overlap with the job post at all), falling back to ARRAY POSITION
+// (not the `orderIndex` field) for everything left unmatched.
+//
+// Position, not orderIndex: backends are inconsistent about whether that
+// field is scoped locally per-milestone or globally across the whole plan —
+// e.g. ProposalWorkBreakdownItem.OrderIndex is a flat sequence across every
+// milestone in the proposal, while JobPostWorkItem.OrderIndex resets to 0 per
+// milestone (SubmitProposalCommandHandler.cs vs
+// SaveDraftJobPostCommandHandler.cs). Comparing by that field caused every
+// milestone after the first to misalign (e.g. work item "1" shown paired
+// against work item "3"). The arrays passed in here are already scoped to
+// what's being compared (a milestone's own work items, or the whole
+// milestone list), so plain position is the only value guaranteed to mean
+// the same thing on both sides.
 function matchItems<T extends Keyable>(clientItems: T[], freelancerItems: T[]): MatchedPair<T>[] {
   const freelancerById = new Map<string, T>();
   freelancerItems.forEach(item => {
@@ -46,19 +57,17 @@ function matchItems<T extends Keyable>(clientItems: T[], freelancerItems: T[]): 
   });
 
   const freelancerRemaining = freelancerItems.filter(item => !matchedFreelancer.has(item));
-  const freelancerByOrderIndex = new Map<number, T>();
-  freelancerRemaining.forEach(item => freelancerByOrderIndex.set(item.orderIndex, item));
 
   const orderMatched: MatchedPair<T>[] = [];
-  const matchedByOrder = new Set<T>();
-  clientRemaining.forEach(clientItem => {
-    const freelancerItem = freelancerByOrderIndex.get(clientItem.orderIndex) || null;
-    if (freelancerItem) matchedByOrder.add(freelancerItem);
+  const matchedByPosition = new Set<T>();
+  clientRemaining.forEach((clientItem, position) => {
+    const freelancerItem = freelancerRemaining[position] ?? null;
+    if (freelancerItem) matchedByPosition.add(freelancerItem);
     orderMatched.push({ client: clientItem, freelancer: freelancerItem });
   });
 
   const freelancerOnly = freelancerRemaining
-    .filter(item => !matchedByOrder.has(item))
+    .filter(item => !matchedByPosition.has(item))
     .map(item => ({ client: null, freelancer: item }));
 
   return [...idMatched, ...orderMatched, ...freelancerOnly];

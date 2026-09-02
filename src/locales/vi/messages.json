@@ -34,6 +34,7 @@
       "milestonePlan": "Kế hoạch milestone",
       "milestoneDescription": "Nhập kết quả thanh toán cho từng milestone. Thời lượng và work item nội bộ sẽ được tự động tạo.",
       "useJobPostMilestones": "Dùng Milestone từ Job Post",
+      "useFreelancerMilestones": "Dùng Milestone Freelancer",
       "comparisonTitle": "So sánh Milestone: Freelancer vs Khách hàng",
       "comparisonFreelancerLabel": "Freelancer",
       "comparisonClientLabel": "Khách hàng",

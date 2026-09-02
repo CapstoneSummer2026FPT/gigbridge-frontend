@@ -26,6 +26,7 @@ interface FinalOfferEditorProps {
   onSubmit: () => void;
   onClose: () => void;
   onUseJobPostMilestones: () => void;
+  onUseFreelancerMilestones: () => void;
 }
 
 export function FinalOfferEditor({
@@ -43,6 +44,7 @@ export function FinalOfferEditor({
   onSubmit,
   onClose,
   onUseJobPostMilestones,
+  onUseFreelancerMilestones,
 }: FinalOfferEditorProps) {
   const { t } = useTranslation();
   const [openMilestoneIndexes, setOpenMilestoneIndexes] = useState<number[]>(() => Array.from(new Set([
@@ -174,7 +176,15 @@ export function FinalOfferEditor({
               </div>
             ) : (
               <div className="final-offer-editor-body">
-                <div className="mb-3 flex justify-end">
+                <div className="mb-3 flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={onUseFreelancerMilestones}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted transition cursor-pointer"
+                  >
+                    <FileDown size={13} />
+                    {t('messages.finalOfferEditor.useFreelancerMilestones')}
+                  </button>
                   <button
                     type="button"
                     onClick={onUseJobPostMilestones}
