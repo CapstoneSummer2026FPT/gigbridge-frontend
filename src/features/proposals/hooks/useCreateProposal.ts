@@ -24,7 +24,7 @@ import {
   extractCustomWorkItems,
   resolveProposalMilestonePlan,
 } from '../utils/proposalMilestonePlan';
-import { parseJobDuration } from '../../jobs/utils/jobDuration';
+import { parseJobDuration, computeWorkItemDurationSummary } from '../../jobs/utils/jobDuration';
 
 const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
   title: '',
@@ -246,6 +246,16 @@ export function useCreateProposal() {
         errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in week(s), month(s), or year(s).';
       }
       if (!item.deliverables?.trim()) errors[`${index}.deliverables`] = t('createProposal.errMilestoneDeliverablesRequired');
+
+      const milestoneWorkItems = workItems.filter(w => w.milestoneOrderIndex === index);
+      const summary = computeWorkItemDurationSummary({
+        estimatedDuration: item.estimatedDuration,
+        workItems: milestoneWorkItems,
+      });
+      if (summary.overageDays > 0) {
+        errors[`${index}.workItems`] = t('postJobWizard.validation.milestoneWorkItemsExceedDuration', { days: summary.overageDays })
+          || `Work items exceed milestone duration by ${summary.overageDays} day(s).`;
+      }
     });
     const firstErrorKey = Object.keys(errors)[0];
     if (firstErrorKey) {
@@ -260,7 +270,7 @@ export function useCreateProposal() {
         target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         target?.focus();
       });
-      return t('createProposal.errMilestoneFields');
+      return errors[firstErrorKey] || t('createProposal.errMilestoneFields');
     }
     if (!proposedBudget || proposedBudget <= 0) return t('createProposal.errRate');
     if (!proposedDuration) return t('createProposal.errDuration');
