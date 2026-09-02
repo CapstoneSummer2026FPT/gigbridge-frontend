@@ -20,13 +20,14 @@ import {
 import {
   addDaysToDateString,
   computeChainedDueDates,
+  computeWorkItemDurationSummary,
   durationToWeeks,
   formatJobDuration,
   isValidJobDurationValue,
   parseJobDuration,
   type JobDurationUnit,
 } from '../utils/jobDuration';
-import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from '../utils/milestoneClamping';
+import { clampMilestonesToExpectedTargets, clampWorkItemsToMilestoneDuration, resolveCanonicalBudget } from '../utils/milestoneClamping';
 import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
 import { publishJobPost } from '../utils/publishJobPost';
 
@@ -171,13 +172,6 @@ const createDraftJobPostOnce = async (): Promise<string> => {
 };
 
 const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: true });
-
-const withoutWorkBreakdownItems = (
-  milestones: readonly JobPostMilestonePlanDto[],
-): JobPostMilestonePlanDto[] => milestones.map(milestone => ({
-  ...milestone,
-  workItems: [],
-}));
 
 const normalizeSkillName = (value: string): string => value.trim().toLowerCase()
   .replaceAll('#', 'sharp').replaceAll('+', 'plus').replaceAll('&', 'and')
@@ -343,7 +337,7 @@ export function usePostJob() {
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
   const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
-    withoutWorkBreakdownItems(initialJobData?.milestonePlans || []));
+    initialJobData?.milestonePlans || []);
   const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
   const [hasAiInterview, setHasAiInterview] = useState<boolean>(() =>
     Boolean(initialJobData?.hasAiInterview)
@@ -517,7 +511,7 @@ export function usePostJob() {
         });
         const activeBudget = Number(hasBudgetFromWizardNavigation ? form.budget : loadedForm.budget) || null;
         const activeWeeks = loadedForm.estimatedDurationValue ? durationToWeeks(loadedForm.estimatedDurationValue, loadedForm.estimatedDurationUnit) : 0;
-        const hydratedPlans = withoutWorkBreakdownItems(job.milestonePlans || []);
+        const hydratedPlans = job.milestonePlans || [];
         setMilestonePlans(clampMilestonesToExpectedTargets(hydratedPlans, activeBudget, activeWeeks));
         setAttachments(job.attachments || []);
         setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
@@ -956,10 +950,13 @@ export function usePostJob() {
       let nextQuestions: QuestionInput[] = [];
 
       if (rawMilestones && rawMilestones.length > 0) {
-        const strippedMilestones = withoutWorkBreakdownItems(rawMilestones);
         const targetBudgetValue = generatedData.budgetMin ?? generatedData.budgetMax ?? (form.budget ? Number(form.budget) : null);
         const targetWeeksValue = duration.value ? durationToWeeks(duration.value, duration.unit) : expectedDurationWeeks;
-        nextMilestones = clampMilestonesToExpectedTargets(strippedMilestones, targetBudgetValue, targetWeeksValue);
+        const clampedMilestones = clampMilestonesToExpectedTargets(rawMilestones, targetBudgetValue, targetWeeksValue);
+        nextMilestones = clampedMilestones.map(milestone => ({
+          ...milestone,
+          workItems: clampWorkItemsToMilestoneDuration(milestone.workItems || [], milestone.estimatedDuration),
+        }));
       }
       if (rawQuestions && rawQuestions.length > 0) {
         nextQuestions = rawQuestions.map((qText: string) => ({
@@ -1123,6 +1120,11 @@ export function usePostJob() {
       }
       if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = t('postJobWizard.validation.milestoneDeliverablesRequired');
       if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = t('postJobWizard.validation.milestoneAcceptanceRequired');
+
+      const { overageDays } = computeWorkItemDurationSummary(milestone);
+      if (overageDays > 0) {
+        errors[`${index}.workItems`] = t('postJobWizard.validation.milestoneWorkItemsExceedDuration', { days: overageDays });
+      }
     }
 
     const firstErrorKey = Object.keys(errors)[0];
@@ -1198,7 +1200,10 @@ export function usePostJob() {
         ...milestone,
         amount: Number(milestone.amount) || 0,
         orderIndex,
-        workItems: [],
+        workItems: (milestone.workItems || []).map((workItem, workItemIndex) => ({
+          ...workItem,
+          orderIndex: workItemIndex,
+        })),
       })),
       hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
     };
@@ -1511,7 +1516,10 @@ export function usePostJob() {
               const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
 
               if (rawMilestones && rawMilestones.length > 0) {
-                const mappedMilestones = withoutWorkBreakdownItems(rawMilestones);
+                const mappedMilestones = (rawMilestones as JobPostMilestonePlanDto[]).map(milestone => ({
+                  ...milestone,
+                  workItems: clampWorkItemsToMilestoneDuration(milestone.workItems || [], milestone.estimatedDuration),
+                }));
                 setMilestonePlans(mappedMilestones);
                 finalMilestones = mappedMilestones;
               }

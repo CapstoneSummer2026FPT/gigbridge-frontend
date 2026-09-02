@@ -150,6 +150,7 @@
     "nextContractSetup": "Publish Project Request",
     "publishProjectRequest": "Publish Project Request",
     "durationUnits": {
+      "days": "Days",
       "weeks": "Weeks",
       "months": "Months",
       "years": "Years"
