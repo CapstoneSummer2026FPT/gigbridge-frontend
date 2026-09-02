@@ -13,6 +13,7 @@ import { ClientContractDetails } from '../components/ClientContractDetails';
 import { FreelancerContractDetails } from '../components/FreelancerContractDetails';
 import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
+import { useContractDetailsConfirmedEvent } from '../hooks/useContractDetailsConfirmedEvent';
 import { useContractCancelledEvent } from '../hooks/useContractCancelledEvent';
 import { useContractEscrowFundedEvent } from '../hooks/useContractEscrowFundedEvent';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
@@ -175,6 +176,12 @@ export default function ViewContractDetailsScreen() {
   useEffect(() => {
     void loadContractDetails();
   }, [loadContractDetails]);
+
+  useContractDetailsConfirmedEvent(
+    contractId,
+    userRole === 'client' && contract?.status === ContractStatus.PendingContractConfirmation,
+    loadContractDetails
+  );
 
   useContractReadyForEscrowEvent(
     contractId,
