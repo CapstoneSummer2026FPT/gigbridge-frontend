@@ -29,6 +29,20 @@
   box-shadow: 0 0 8px rgba(73, 75, 231, 0.25);
 }
 
+.conic-border-wrap.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.conic-border-wrap.is-disabled:hover {
+  transform: none;
+  box-shadow: 0 0 4px rgba(73, 75, 231, 0.15);
+}
+
+.conic-border-wrap.is-disabled::before {
+  animation-play-state: paused;
+}
+
 .conic-border-wrap::before {
   content: '';
   position: absolute;

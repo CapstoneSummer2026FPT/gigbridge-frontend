@@ -319,6 +319,8 @@
       "standardDesc": "Freelancers answer these questions directly when submitting proposals, helping you evaluate their approach and experience without endless chat back-and-forth.",
       "aiTitle": "2. Automated AI Interview (Premium Plan ✦)",
       "aiDesc": "When AI Interviewer is enabled, these questions serve as the prompt basis for the AI Agent to conduct 1-on-1 interviews with applicants and generate detailed evaluation scores!",
+      "aiQuestionRequired": "Add at least one interview question to enable AI Interview.",
+      "aiQuestionRequiredBadge": "Add a question",
       "presetTitle": "Popular question suggestions (Click to add):",
       "presetSimilar": "Have you worked on a project of similar scope before?",
       "presetPortfolio": "Please share a link to your most relevant work or portfolio.",
@@ -353,7 +355,6 @@
         "workItemTitle": "Work item title",
         "estimatedDuration": "Estimated duration",
         "taskDescription": "Task description",
-        "workItemDeliverables": "Work item deliverables",
         "autoBalanceOn": "Auto-balance: ON",
         "autoBalanceOff": "Auto-balance: OFF",
         "autoBalanceOnDesc": "Edits auto-balance remaining unlocked milestones.",
@@ -368,7 +369,11 @@
         "collapseAll": "Collapse all",
         "percentOfBudget": "{{percent}}% of total budget",
         "budgetShort": "Budget",
-        "dragToReorder": "Drag to reorder milestone"
+        "dragToReorder": "Drag to reorder milestone",
+        "workItemsTotalLabel": "Total",
+        "workItemsRemainingLabel": "Remaining",
+        "workItemsOverageLabel": "Work items exceed milestone duration by {{days}} day(s).",
+        "workItemDueDate": "Deadline"
       }
     },
     "review": {
@@ -425,7 +430,8 @@
       "attachmentSize": "Each image must be between 1 byte and 5 MB.",
       "attachmentLimit": "A project request may contain at most 5 images.",
       "attachmentUploadFailed": "The project image could not be uploaded.",
-      "attachmentDeleteFailed": "The project image could not be deleted."
+      "attachmentDeleteFailed": "The project image could not be deleted.",
+      "milestoneWorkItemsExceedDuration": "Work items exceed the milestone duration by {{days}} day(s)."
     },
     "messages": {
       "aiGenerated": "Project details generated. Review them before continuing.",

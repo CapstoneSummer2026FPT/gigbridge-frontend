@@ -233,7 +233,7 @@ export default function EarlyPayoutScreen() {
       await loadData();
       window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     } else {
-      setError(getResponseMessage(response.message, t('wallet.errorCreateWithdrawal', { defaultValue: 'Không thể tạo yêu cầu rút tiền.' })));
+      setError(getResponseMessage(response.message, t('withdrawalsScreen.errorCreateWithdrawal', { defaultValue: 'Không thể tạo yêu cầu rút tiền.' })));
     }
 
     setSubmitting(false);
@@ -784,8 +784,17 @@ export default function EarlyPayoutScreen() {
                         {withdrawal.completedAt && (
                           <div className="text-emerald-600 dark:text-emerald-400 font-bold">Hoàn tất: {formatDate(withdrawal.completedAt)}</div>
                         )}
-                        {withdrawal.failureReason && (
-                          <div className="text-rose-500 font-bold text-[11px] max-w-xs">{withdrawal.failureReason}</div>
+                        {/* SyncRequired rows carry their cause in lastSyncError, not failureReason -
+                            showing only the latter is why these rows looked blank. */}
+                        {(withdrawal.failureReason || withdrawal.lastSyncError) && (
+                          <div className="text-rose-500 font-bold text-[11px] max-w-xs">
+                            {withdrawal.failureReason || withdrawal.lastSyncError}
+                          </div>
+                        )}
+                        {withdrawal.providerRawStatus && !isTerminalStatus(withdrawal.status) && (
+                          <div className="font-mono text-[10px] text-text-muted max-w-xs">
+                            {withdrawal.providerRawStatus}
+                          </div>
                         )}
                         {!isTerminalStatus(withdrawal.status) && (
                           <button

@@ -1,0 +1,230 @@
+import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { useApp } from '../../../app/providers/AppProvider';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { UserRole } from '../../../types/models/User';
+import { MilestoneCompletedModal } from '../components/MilestoneCompletedModal';
+import { WorkItemDeliveryRow } from '../components/WorkItemDeliveryRow';
+import { WorkItemReviewRow } from '../components/WorkItemReviewRow';
+import { useDeliverySpace } from '../hooks/useDeliverySpace';
+
+/**
+ * The milestone's delivery ledger, shared by both parties.
+ *
+ * Client and freelancer see the same work items, the same statuses and the same file history; only
+ * the control on each row differs. That is deliberate — the previous design split this across two
+ * screens with two hooks and two realtime subscriptions, and they drifted.
+ */
+const DeliverySpaceScreen = () => {
+  const { contractId, milestoneId } = useParams<{ contractId: string; milestoneId?: string }>();
+  const navigate = useNavigate();
+  const { role } = useApp();
+  const { t } = useTranslation(['contracts', 'workspace', 'common']);
+
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [revisionReason, setRevisionReason] = useState('');
+  const [isRevising, setIsRevising] = useState(false);
+
+  const space = useDeliverySpace(contractId, milestoneId);
+  const isClient = role === UserRole.Client;
+
+  const labels: Record<string, string> = {
+    todo: t('contracts.workItemStatus.todo', 'To do'),
+    inProgress: t('contracts.workItemStatus.inProgress', 'In progress'),
+    completed: t('contracts.workItemStatus.completed', 'Completed'),
+    revisionRequired: t('contracts.workItemStatus.revisionRequired', 'Needs changes'),
+    submitted: t('contracts.workItemStatus.submitted', 'Awaiting review'),
+    approved: t('contracts.workItemStatus.approved', 'Approved'),
+    awaitingReview: t('contracts.workItemStatus.submitted', 'Awaiting review'),
+    notePlaceholder: t('contracts.deliverySpace.notePlaceholder', 'Add a note for the client (optional)'),
+    attachFile: t('contracts.deliverySpace.attachFile', 'Attach file'),
+    removeFile: t('common.remove', 'Remove'),
+    noSubmissions: t('contracts.deliverySpace.noSubmissions', 'Nothing submitted yet.'),
+    revision: t('contracts.deliverySpace.revision', 'Revision'),
+    reason: t('contracts.deliverySpace.reason', 'Reason'),
+    selectForReview: t('contracts.deliverySpace.selectForReview', 'Select'),
+  };
+
+  const modalLabels: Record<string, string> = {
+    title: t('contracts.deliverySpace.milestoneCompleteTitle', 'Milestone complete'),
+    completedMovingTo: t('contracts.deliverySpace.milestoneCompleteMovingTo', 'is complete. Moving on to'),
+    completedFinal: t('contracts.deliverySpace.milestoneCompleteFinal', 'is complete.'),
+    dismiss: t('common.close', 'Close'),
+  };
+
+  if (space.isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400" aria-hidden />
+      </div>
+    );
+  }
+
+  if (space.error || !space.activeMilestone) {
+    return (
+      <div className="mx-auto max-w-3xl p-6">
+        <p className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          {space.error ?? t('contracts.deliverySpace.noMilestone', 'This contract has no milestone to deliver yet.')}
+        </p>
+      </div>
+    );
+  }
+
+  const milestone = space.activeMilestone;
+
+  const runSubmit = async () => {
+    const failure = await space.submitSelected();
+    setFeedback(failure ?? t('contracts.deliverySpace.submitSuccess', 'Deliverables submitted.'));
+  };
+
+  const runReview = async (approve: boolean) => {
+    const failure = await space.reviewSelected(approve, revisionReason);
+    if (!failure) {
+      setRevisionReason('');
+      setIsRevising(false);
+    }
+    setFeedback(failure ?? t('contracts.deliverySpace.reviewSuccess', 'Review saved.'));
+  };
+
+  return (
+    <div className="mx-auto max-w-4xl p-4 sm:p-6">
+      <button
+        type="button"
+        onClick={() => navigate(`/workspace/${contractId}`)}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        {t('contracts.deliverySpace.backToWorkspace', 'Back to workspace')}
+      </button>
+
+      <header className="mb-5">
+        <h1 className="text-lg font-semibold text-slate-900">{milestone.title}</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          {t('contracts.deliverySpace.progress', 'Approved')}: {space.deliveredCount}/{space.workItems.length}
+          {space.pendingReviewCount > 0
+            ? ` · ${space.pendingReviewCount} ${t('contracts.deliverySpace.awaitingReview', 'awaiting review')}`
+            : ''}
+        </p>
+      </header>
+
+      {/* A disputed contract rejects every submit and review server-side. Say so, rather than
+          leaving buttons that can only fail. */}
+      {space.isDisputed ? (
+        <p className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          {t('contracts.deliverySpace.disputedNotice',
+            'This contract is under dispute. Submitting and reviewing are paused until an admin resolves it.')}
+        </p>
+      ) : null}
+
+      {!space.usesWorkItems ? (
+        <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+          {t('contracts.deliverySpace.legacyNotice',
+            'This contract delivers at milestone level. Use the milestone submit and approve actions in the workspace.')}
+        </p>
+      ) : null}
+
+      {feedback ? (
+        <p className="mb-4 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{feedback}</p>
+      ) : null}
+
+      <ul className="space-y-3">
+        {space.workItems.map(workItem =>
+          isClient ? (
+            <WorkItemReviewRow
+              key={workItem.workItemId}
+              workItem={workItem}
+              selected={space.selectedIds.includes(workItem.workItemId)}
+              disabled={space.isBusy || space.isDisputed || !space.usesWorkItems}
+              labels={labels}
+              onToggle={() => space.toggleSelected(workItem.workItemId)}
+            />
+          ) : (
+            <WorkItemDeliveryRow
+              key={workItem.workItemId}
+              workItem={workItem}
+              draft={space.getDraft(workItem.workItemId)}
+              disabled={space.isBusy || space.isDisputed || !space.usesWorkItems}
+              labels={labels}
+              onAttach={file => {
+                const failure = space.attachFile(workItem.workItemId, file);
+                if (failure) setFeedback(t(`workspace.${failure}FileError`, 'That file was rejected.'));
+              }}
+              onDetach={fileName => space.detachFile(workItem.workItemId, fileName)}
+              onNoteChange={note => space.updateNote(workItem.workItemId, note)}
+            />
+          ))}
+      </ul>
+
+      {space.usesWorkItems && !space.isDisputed ? (
+        <div className="sticky bottom-0 mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+          {isClient ? (
+            <div className="space-y-3">
+              {isRevising ? (
+                <textarea
+                  value={revisionReason}
+                  onChange={event => setRevisionReason(event.target.value)}
+                  rows={2}
+                  placeholder={t('contracts.deliverySpace.revisionReasonPlaceholder',
+                    'Explain what needs to change')}
+                  className="w-full rounded-lg border border-slate-200 p-2 text-sm"
+                />
+              ) : null}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm text-slate-600">
+                  {space.selectedIds.length} {t('contracts.deliverySpace.selected', 'selected')}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={space.isBusy || space.selectedIds.length === 0 ||
+                      (isRevising && !revisionReason.trim())}
+                    onClick={() => (isRevising ? void runReview(false) : setIsRevising(true))}
+                    className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                  >
+                    {t('contracts.deliverySpace.requestRevision', 'Request revision')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={space.isBusy || space.selectedIds.length === 0}
+                    onClick={() => void runReview(true)}
+                    className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {t('contracts.deliverySpace.approveSelected', 'Approve selected')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-sm text-slate-600">
+                {space.readyToSubmitIds.length} {t('contracts.deliverySpace.readyToSubmit', 'ready to submit')}
+                {space.uploadProgress !== null ? ` · ${space.uploadProgress}%` : ''}
+              </span>
+              <button
+                type="button"
+                disabled={space.isBusy || space.readyToSubmitIds.length === 0}
+                onClick={() => void runSubmit()}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                {t('contracts.deliverySpace.submitSelected', 'Submit selected')}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {space.completion ? (
+        <MilestoneCompletedModal
+          completion={space.completion}
+          labels={modalLabels}
+          onDismiss={space.dismissCompletion}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+export default DeliverySpaceScreen;

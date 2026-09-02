@@ -30,6 +30,7 @@ import {
 import { clampMilestonesToExpectedTargets, clampWorkItemsToMilestoneDuration, resolveCanonicalBudget } from '../utils/milestoneClamping';
 import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
 import { publishJobPost } from '../utils/publishJobPost';
+import { hasAnsweredInterviewQuestions, resolveAiInterviewEnabled } from '../utils/interviewQuestions';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -375,6 +376,15 @@ export function usePostJob() {
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
     [questions]
   );
+  const hasInterviewQuestions = useMemo(
+    () => hasAnsweredInterviewQuestions(questions),
+    [questions]
+  );
+  const isAiInterviewEnabled = resolveAiInterviewEnabled(hasAiInterview, questions);
+
+  useEffect(() => {
+    if (!hasInterviewQuestions) setHasAiInterview(false);
+  }, [hasInterviewQuestions]);
 
   const hasSavableDraftContent = useMemo(() => {
     const visibility = Number(form.visibility);
@@ -683,6 +693,7 @@ export function usePostJob() {
     setSkillNameById({});
     setForm(initialFormFromState(null));
     setQuestions([emptyQuestion()]);
+    setHasAiInterview(false);
     setMilestonePlans([]);
     setAttachments([]);
     setAttachmentError(null);
@@ -1215,7 +1226,10 @@ export function usePostJob() {
           orderIndex: workItemIndex,
         })),
       })),
-      hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
+      hasAiInterview: resolveAiInterviewEnabled(
+        overrides?.hasAiInterview ?? hasAiInterview,
+        finalQuestions,
+      ),
     };
   };
 
@@ -1229,7 +1243,6 @@ export function usePostJob() {
     skillNameById,
     interviewQuestions: (overrides?.questions || questions).map((question, index) => ({ ...question, orderIndex: index })),
     attachments,
-    hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
   });
 
   const buildNavigationState = (
@@ -1377,7 +1390,7 @@ export function usePostJob() {
         autosaveTimerRef.current = null;
       }
     };
-  }, [form, questions, milestonePlans, isDraftInitializing, hasSavableDraftContent]);
+  }, [form, questions, milestonePlans, isAiInterviewEnabled, isDraftInitializing, hasSavableDraftContent]);
 
   const retryAutosave = async (): Promise<void> => {
     try {
@@ -1596,7 +1609,7 @@ export function usePostJob() {
       }
 
       if (mode === 'publish') {
-        const publishResult = await publishJobPost(jobAPI, currentJobPostId, hasAiInterview);
+        const publishResult = await publishJobPost(jobAPI, currentJobPostId, isAiInterviewEnabled);
         if (publishResult.aiInterviewError) {
           toast.warning(t('postJobWizard.messages.publishedWithoutAiInterview'), {
             description: publishResult.aiInterviewError,
@@ -1806,7 +1819,7 @@ export function usePostJob() {
     backgroundHiringPlanError,
     handleApproveDetails,
     handleCancelDetails,
-    hasAiInterview,
+    hasAiInterview: isAiInterviewEnabled,
     setHasAiInterview,
   };
 }

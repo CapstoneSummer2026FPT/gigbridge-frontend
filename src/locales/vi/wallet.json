@@ -427,6 +427,7 @@
     "errorLoadWallet": "Không thể tải thông tin ví.",
     "errorLoadHistory": "Không thể tải lịch sử rút tiền.",
     "errorLoadSettings": "Không thể tải cấu hình rút tiền.",
+    "errorCreateWithdrawal": "Không thể tạo yêu cầu rút tiền.",
     "errorSync": "Không thể đồng bộ trạng thái rút tiền.",
     "maintenanceNotice": "Chức năng rút tiền hiện đang tạm khóa để bảo trì hệ thống chi tự động."
   }

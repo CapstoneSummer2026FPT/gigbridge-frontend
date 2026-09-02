@@ -296,20 +296,26 @@ const handleResponse = <T>(response: AxiosResponse<unknown>): ApiResponse<T> => 
       const responseData = data.data ?? data.Data;
       const errors = normalizeErrors(data.errors ?? data.Errors);
 
+      const resolvedSuccess =
+        typeof success === 'boolean' ? success : status >= 200 && status < 300;
+
       return {
-        success: typeof success === 'boolean' ? success : status >= 200 && status < 300,
+        success: resolvedSuccess,
         statusCode: typeof statusCode === 'number' ? statusCode : status,
-        message: responseMessage(data, 'Success'),
+        // A failed envelope with no message must not fall back to 'Success' - callers show this
+        // string in an error banner. An empty string lets each screen use its own copy.
+        message: responseMessage(data, resolvedSuccess ? 'Success' : ''),
         ...(responseData === undefined ? {} : { data: responseData as T }),
         ...(errors ? { errors } : {}),
       };
     }
   }
 
+  const succeeded = status >= 200 && status < 300;
   return {
-    success: status >= 200 && status < 300,
+    success: succeeded,
     statusCode: status,
-    message: 'Success',
+    message: succeeded ? 'Success' : '',
     data: data as T,
   };
 };

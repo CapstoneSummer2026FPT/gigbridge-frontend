@@ -13,11 +13,11 @@ import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceeded
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
 import { BrandSweepBackButton } from '../components/BrandSweepBackButton';
+import { PostJobAiInterviewToggle } from '../components/PostJobAiInterviewToggle';
 import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { computeWorkItemDurationSummary, JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS } from '../utils/jobDuration';
-import '../../../shared/components/styles/conic-border-button.css';
 
 export default function PostJobMilestonesScreen() {
   const navigate = useNavigate();
@@ -40,13 +40,17 @@ export default function PostJobMilestonesScreen() {
     hasAiInterview, setHasAiInterview,
   } = usePostJob();
 
-  const isAiInterviewEnabled = hasAiInterview;
+  const questionCount = questions.filter(question => question.questionText.trim()).length;
+  const hasInterviewQuestions = questionCount > 0;
+  const isAiInterviewEnabled = hasInterviewQuestions && hasAiInterview;
 
   const handleToggleAiInterview = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    if (!hasInterviewQuestions) return;
+
     if (!isPremium) {
       toast.info(
         t('postJobWizard.plan.aiPremiumRequired', {
@@ -67,7 +71,6 @@ export default function PostJobMilestonesScreen() {
       return next;
     });
   };
-  const questionCount = questions.filter(question => question.questionText.trim()).length;
   const [milestonesOpen, setMilestonesOpen] = useState(true);
   const [questionsOpen, setQuestionsOpen] = useState(questionCount > 0);
 
@@ -215,7 +218,6 @@ export default function PostJobMilestonesScreen() {
                 workItemTitle: t('postJobWizard.plan.milestoneCopy.workItemTitle'),
                 estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
                 taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
-                workItemDeliverables: t('postJobWizard.plan.milestoneCopy.workItemDeliverables'),
                 autoBalanceOn: t('postJobWizard.plan.milestoneCopy.autoBalanceOn', 'Auto-balance: ON'),
                 autoBalanceOff: t('postJobWizard.plan.milestoneCopy.autoBalanceOff', 'Auto-balance: OFF'),
                 autoBalanceOnDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOnDesc', 'Editing any milestone automatically rebalances the remaining budget across all unlocked milestones.'),
@@ -313,84 +315,15 @@ export default function PostJobMilestonesScreen() {
                   </p>
                 </div>
 
-                {/* AI Interview Benefit (Premium with Conic Running Border & Brand/Mint Theme) */}
-                <div className="conic-border-wrap conic-border-card rounded-xl cursor-pointer">
-                  <div
-                    onClick={handleToggleAiInterview}
-                    className={`conic-border-card-inner rounded-[calc(0.75rem-1.5px)] justify-between items-stretch p-3.5 space-y-1.5 text-left transition-all duration-300 ${
-                      isAiInterviewEnabled
-                        ? 'bg-[var(--brand,#494be7)]/10 dark:bg-[var(--brand,#494be7)]/20'
-                        : 'bg-card'
-                    }`}
-                  >
-                    <style>{`
-                      @keyframes cp-nudge-thumb {
-                        0%, 100% {
-                          transform: translateX(0);
-                          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-                        }
-                        30% {
-                          transform: translateX(7px);
-                          box-shadow: 0 0 10px rgba(73, 75, 231, 0.6);
-                        }
-                        50% {
-                          transform: translateX(2px);
-                        }
-                        70% {
-                          transform: translateX(9px);
-                          box-shadow: 0 0 12px rgba(73, 75, 231, 0.7);
-                        }
-                      }
-                    `}</style>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <strong className="font-black text-[var(--brand,#494be7)] flex items-center gap-1.5 text-xs">
-                            <Sparkles size={15} className="shrink-0 animate-pulse text-[var(--brand,#494be7)]" />
-                            {t('postJobWizard.plan.aiTitle', '2. AI Phỏng vấn tự động (Gói Premium ✦)')}
-                          </strong>
-                          <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
-                              isAiInterviewEnabled
-                                ? 'bg-[var(--brand,#494be7)] text-white shadow-xs'
-                                : 'bg-[var(--brand,#494be7)]/15 text-[var(--brand,#494be7)] border border-[var(--brand,#494be7)]/30'
-                            }`}
-                          >
-                            {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
-                          </span>
-                        </div>
-
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
-                        </p>
-                      </div>
-
-                      {/* Toggle Switch (iOS / Bento Style with Magnetic Nudge Animation) */}
-                      <div className="pt-0.5 shrink-0">
-                        <div
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-all duration-300 ease-in-out focus:outline-none ${
-                            isAiInterviewEnabled
-                              ? 'bg-gradient-to-r from-[var(--brand,#494be7)] to-[#6366f1] border-[var(--brand,#494be7)] shadow-md shadow-[var(--brand,#494be7)]/30 ring-2 ring-[var(--brand,#494be7)]/20'
-                              : 'bg-muted border-border'
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
-                              isAiInterviewEnabled
-                                ? 'translate-x-5'
-                                : 'translate-x-0'
-                            }`}
-                            style={
-                              !isAiInterviewEnabled
-                                ? { animation: 'cp-nudge-thumb 2.8s infinite ease-in-out' }
-                                : undefined
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <PostJobAiInterviewToggle
+                  enabled={isAiInterviewEnabled}
+                  questionCount={questionCount}
+                  title={t('postJobWizard.plan.aiTitle', '2. AI Phỏng vấn tự động (Gói Premium ✦)')}
+                  description={t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
+                  disabledReason={t('postJobWizard.plan.aiQuestionRequired')}
+                  disabledStatusLabel={t('postJobWizard.plan.aiQuestionRequiredBadge')}
+                  onToggle={handleToggleAiInterview}
+                />
               </div>
             </div>
 

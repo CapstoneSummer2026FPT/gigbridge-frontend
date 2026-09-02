@@ -14,6 +14,7 @@ import { FreelancerContractDetails } from '../components/FreelancerContractDetai
 import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
 import { useContractCancelledEvent } from '../hooks/useContractCancelledEvent';
+import { useContractEscrowFundedEvent } from '../hooks/useContractEscrowFundedEvent';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 
@@ -184,6 +185,16 @@ export default function ViewContractDetailsScreen() {
   useContractCancelledEvent(
     contractId,
     userRole === 'client' || userRole === 'freelancer',
+    loadContractDetails
+  );
+
+  // Swaps the freelancer's "waiting for escrow funding" card straight into the Active
+  // contract view the moment the client funds, without a reload.
+  useContractEscrowFundedEvent(
+    contractId,
+    (userRole === 'client' || userRole === 'freelancer') &&
+      contract?.status !== undefined &&
+      contract.status < ContractStatus.Active,
     loadContractDetails
   );
 

@@ -238,7 +238,6 @@ export function FinalOfferEditor({
                   workItemTitle: t('messages.finalOfferEditor.workItemTitle'),
                   estimatedDuration: t('messages.finalOfferEditor.workItemDuration'),
                   taskDescription: t('messages.finalOfferEditor.workItemDescription'),
-                  workItemDeliverables: t('messages.finalOfferEditor.workItemDeliverables'),
                 }}
                 fieldPlaceholders={{
                   milestoneTitle: t('messages.finalOfferEditor.milestoneTitlePlaceholder'),
@@ -248,7 +247,6 @@ export function FinalOfferEditor({
                   workItemTitle: t('messages.finalOfferEditor.workItemTitlePlaceholder'),
                   workItemDuration: t('messages.finalOfferEditor.workItemDurationPlaceholder'),
                   workItemDescription: t('messages.finalOfferEditor.workItemDescriptionPlaceholder'),
-                  workItemDeliverables: t('messages.finalOfferEditor.workItemDeliverablesPlaceholder'),
                 }}
                 />
                 {freelancerBaseline.length > 0 && (

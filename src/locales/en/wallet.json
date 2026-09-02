@@ -427,6 +427,7 @@
     "errorLoadWallet": "Failed to load wallet data.",
     "errorLoadHistory": "Failed to load withdrawal history.",
     "errorLoadSettings": "Failed to load withdrawal settings.",
+    "errorCreateWithdrawal": "Could not create the withdrawal request.",
     "errorSync": "Failed to synchronize withdrawal status.",
     "maintenanceNotice": "Withdrawal service is currently under maintenance."
   }

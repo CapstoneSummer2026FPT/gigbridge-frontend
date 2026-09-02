@@ -270,7 +270,6 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
           workItemTitle: t('postJobWizard.plan.milestoneCopy.workItemTitle'),
           estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
           taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
-          workItemDeliverables: t('postJobWizard.plan.milestoneCopy.workItemDeliverables'),
         }}
         fieldHints={{
           fixedProjectBudget: t('postJob.baselineBudgetHint'),

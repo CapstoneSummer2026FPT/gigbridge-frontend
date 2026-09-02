@@ -8,10 +8,8 @@ import type { AdminJobPostListResponse } from '../../../types/models/Job';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import type {
   SystemTrackingSnapshot,
-  SystemRequestLog,
-  AdminAuditLog,
-  PageResult,
 } from '../../../types/systemTracking';
+import type { AdminAuditLog, PageResult } from '../../../types/models/AdminPhase1';
 import { createSystemTrackingHubConnection } from '../services/systemTrackingHubConnection';
 import {
   type TabType,

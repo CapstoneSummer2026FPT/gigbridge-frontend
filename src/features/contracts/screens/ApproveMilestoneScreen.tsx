@@ -26,7 +26,7 @@ import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloo
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import type { ContractDto, Milestone, MilestoneAttachment } from '../../../types/models/Contract';
-import { MilestoneStatus } from '../../../types/models/Contract';
+import { MilestoneStatus, MilestoneDeliveryMode } from '../../../types/models/Contract';
 import {
   canApproveMilestone,
   formatContractDate,
@@ -77,6 +77,15 @@ export default function ApproveMilestoneScreen() {
         if (!milestoneResponse.success || !milestoneResponse.data) {
           throw new Error(milestoneResponse.message || 'contracts.loadingMilestone');
         }
+
+        // A work item contract delivers and reviews per work item. Bookmarks, emails and
+        // notifications sent before that change still point here, so redirect rather than showing a
+        // milestone-level screen that the API will refuse.
+        if (Number(milestoneResponse.data.deliveryMode ?? 0) === MilestoneDeliveryMode.WorkItem) {
+          navigate(`/deliveryspace/${contractId}/milestones/${milestoneId}`, { replace: true });
+          return;
+        }
+
         setMilestone(milestoneResponse.data);
         const attachmentsResponse = await contractGetAPI.getMilestoneAttachments(contractId, milestoneId);
         if (attachmentsResponse.success && attachmentsResponse.data) setAttachments(attachmentsResponse.data);
