@@ -162,7 +162,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
 
     try {
       while (remaining > 0) {
-        const response = await proposalPostAPI.judgeAllProposals(jobPostId, 10);
+        const response = await proposalPostAPI.judgeAllProposals(jobPostId, 1);
         if (!response.success || !response.data || response.data.processedCount === 0) {
           setBatchError(!response.success ? (response.message || 'Batch evaluation encountered an error.') : 'Evaluation stopped: some proposals could not be processed by the AI.');
           break;
