@@ -280,7 +280,7 @@
     "allWorkItemsCompletedNotice": "Tất cả công việc đã hoàn thành! Sẵn sàng nộp sản phẩm.",
     "deliverablesSubmittedNotice": "Freelancer đã nộp sản phẩm. Vui lòng kiểm tra và duyệt giải ngân.",
     "completeWorkItemsNotice": "Hoàn thành tất cả đầu việc trước khi nộp.",
-    "openDeliverySpace": "Mở trang nộp sản phẩm",
+    "openDeliverySpace": "Nộp sản phẩm",
     "reviewWorkItems": "Duyệt đầu việc",
     "deliverableTasks": "Đầu việc",
     "startWorkItem": "Bắt đầu đầu việc",
@@ -290,7 +290,7 @@
     "workItemsAwaitingDelivery_other": "Còn {{count}} đầu việc chưa nộp sản phẩm.",
     "workItemsAllDelivered": "Đã nộp hết, đang chờ client duyệt.",
     "workItemsAwaitingReview_other": "Có {{count}} đầu việc đang chờ bạn duyệt.",
-    "openDeliverySpaceFor": "Mở trang nộp sản phẩm của {{title}}"
+    "openDeliverySpaceFor": "Xem & nộp sản phẩm của {{title}}"
   },
   "projects": {
     "title": "Dự Án",

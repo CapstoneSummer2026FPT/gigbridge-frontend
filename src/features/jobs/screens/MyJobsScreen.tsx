@@ -513,9 +513,8 @@ export default function MyJobsScreen() {
                 <button
                   type="button"
                   onClick={() => setIsCompact(false)}
-                  className={`p-1.5 rounded-lg transition cursor-pointer ${
-                    !isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${!isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
+                    }`}
                   title="Grid View"
                 >
                   <LayoutGrid size={15} />
@@ -523,9 +522,8 @@ export default function MyJobsScreen() {
                 <button
                   type="button"
                   onClick={() => setIsCompact(true)}
-                  className={`p-1.5 rounded-lg transition cursor-pointer ${
-                    isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
+                    }`}
                   title="Compact View"
                 >
                   <AlignJustify size={15} />
@@ -571,18 +569,16 @@ export default function MyJobsScreen() {
                     if (hasMovedRef.current) return;
                     setStatusFilter(tab.key);
                   }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer shrink-0 border select-none ${
-                    isActive
-                      ? 'bg-brand text-white border-brand shadow-sm shadow-brand/25 ring-2 ring-brand/20'
-                      : 'bg-surface-card text-text-muted hover:text-text-primary border-border/70 hover:border-brand/40'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer shrink-0 border select-none ${isActive
+                    ? 'bg-brand text-white border-brand shadow-sm shadow-brand/25 ring-2 ring-brand/20'
+                    : 'bg-surface-card text-text-muted hover:text-text-primary border-border/70 hover:border-brand/40'
+                    }`}
                 >
                   <Icon size={13} className={isActive ? 'text-white' : 'text-text-muted'} />
                   <span>{tab.label}</span>
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'
-                    }`}
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${isActive ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'
+                      }`}
                   >
                     {tab.count}
                   </span>
@@ -978,7 +974,7 @@ export default function MyJobsScreen() {
                       )}
 
                       {canChangeVisibility(job) && (
-                        <div className="w-36 shrink-0">
+                        <div className="w-40 sm:w-40 shrink-0 min-w-[160px]">
                           <CustomSelect
                             value={String(job.visibility ?? JobPostVisibility.Public)}
                             onChange={val => void patchVisibility(job, Number(val) as JobPostVisibility)}
@@ -986,6 +982,7 @@ export default function MyJobsScreen() {
                             disabled={isPending || job.visibility === 3}
                             searchable={false}
                             ariaLabel={t('myJobs.visibility.ariaLabel', { defaultValue: 'Quyền riêng tư' })}
+                            popoverMinWidth={180}
                           />
                         </div>
                       )}
@@ -1030,11 +1027,10 @@ export default function MyJobsScreen() {
                           setActiveMenuJobId(null);
                         }}
                         title="Tính năng AI"
-                        className={`inline-flex items-center justify-center gap-1 h-9 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
-                          isAiMenuOpen || job.hasAiInterview
-                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                        }`}
+                        className={`inline-flex items-center justify-center gap-1 h-9 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${isAiMenuOpen || job.hasAiInterview
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                          }`}
                       >
                         <Sparkles size={13} className="animate-pulse" />
                         <span>AI</span>
@@ -1131,11 +1127,10 @@ export default function MyJobsScreen() {
                           setActiveAiMenuJobId(null);
                         }}
                         title="Tùy chọn khác"
-                        className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${
-                          isMenuOpen
-                            ? 'bg-surface-muted text-text-primary border-brand'
-                            : 'bg-surface-muted/60 text-text-muted border-border/70 hover:text-text-primary'
-                        }`}
+                        className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${isMenuOpen
+                          ? 'bg-surface-muted text-text-primary border-brand'
+                          : 'bg-surface-muted/60 text-text-muted border-border/70 hover:text-text-primary'
+                          }`}
                       >
                         <MoreVertical size={14} />
                       </button>
@@ -1166,11 +1161,10 @@ export default function MyJobsScreen() {
                                 setActiveMenuJobId(null);
                                 void patchVisibility(job, Number(opt.value) as JobPostVisibility);
                               }}
-                              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-left cursor-pointer ${
-                                String(job.visibility) === opt.value
-                                  ? 'bg-brand/10 text-brand'
-                                  : 'hover:bg-muted text-text-muted'
-                              }`}
+                              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-left cursor-pointer ${String(job.visibility) === opt.value
+                                ? 'bg-brand/10 text-brand'
+                                : 'hover:bg-muted text-text-muted'
+                                }`}
                             >
                               {opt.icon}
                               <span>{opt.label}</span>
@@ -1247,13 +1241,13 @@ export default function MyJobsScreen() {
         description={
           confirmAction.actionType === 'cancel'
             ? t('myJobs.confirmCancelDesc', {
-                defaultValue: 'Bạn có chắc chắn muốn hủy tin tuyển dụng "{{title}}"? Hành động hủy tin tuyển dụng không thể hoàn tác.',
-                title: confirmAction.job?.title || '',
-              })
+              defaultValue: 'Bạn có chắc chắn muốn hủy tin tuyển dụng "{{title}}"? Hành động hủy tin tuyển dụng không thể hoàn tác.',
+              title: confirmAction.job?.title || '',
+            })
             : t('myJobs.confirmCloseDesc', {
-                defaultValue: 'Bạn có chắc chắn muốn đóng tin tuyển dụng "{{title}}"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.',
-                title: confirmAction.job?.title || '',
-              })
+              defaultValue: 'Bạn có chắc chắn muốn đóng tin tuyển dụng "{{title}}"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.',
+              title: confirmAction.job?.title || '',
+            })
         }
         confirmText={
           confirmAction.actionType === 'cancel'

@@ -1,5 +1,5 @@
 import { type ReactNode, useId, useState } from 'react';
-import { Calendar, Check, ChevronDown, ChevronRight, ChevronsUpDown, Clock3, Coins, GripVertical, Lock, Percent, Plus, RotateCcw, Trash2, TrendingDown, TrendingUp, Zap } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, ChevronDown, ChevronRight, ChevronsUpDown, Clock3, Coins, GripVertical, Lock, Percent, Plus, RotateCcw, Trash2, TrendingDown, TrendingUp, Zap } from 'lucide-react';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
 import { CustomSelect } from './CustomSelect';
 import GCoinIcon from './GCoinIcon';
@@ -1111,26 +1111,61 @@ export function NestedMilestonePlanEditor({
                   {milestone.workItems.length > 0 && (() => {
                     const summary = computeWorkItemDurationSummary(milestone);
                     if (!showWorkItemsSummary && summary.overageDays <= 0) return null;
+                    const hasOverage = summary.overageDays > 0;
                     return (
-                      <div className={`mt-1 rounded-lg border p-3 text-xs ${summary.overageDays > 0 ? 'border-red-500/80 bg-red-500/10 dark:bg-red-950/20 text-red-600 dark:text-red-400 font-medium' : 'border-border bg-muted/30 text-muted-foreground'}`}>
-                        <ul className="space-y-1 font-mono">
+                      <div className="mt-2.5 rounded-xl border border-border bg-surface-muted p-3.5 space-y-3 text-xs">
+                        {/* Work Items Hierarchy Breakdown */}
+                        <ul className="space-y-1.5 font-mono text-xs">
                           {milestone.workItems.map((workItem, workIndex) => (
-                            <li key={workItem.id || workIndex} className="flex items-baseline gap-1.5">
-                              <span>{workIndex === milestone.workItems.length - 1 ? '└──' : '├──'}</span>
-                              <span className="min-w-0 flex-1 truncate">{workItem.title || uiCopy.workItem || 'Work item'}</span>
-                              <span className="shrink-0">{workItem.estimatedDuration || '—'}</span>
+                            <li key={workItem.id || workIndex} className="flex items-center gap-2">
+                              <span className="text-text-muted select-none font-bold">
+                                {workIndex === milestone.workItems.length - 1 ? '└──' : '├──'}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate font-medium text-text-primary text-xs">
+                                {workItem.title || uiCopy.workItem || 'Work item'}
+                              </span>
+                              <span className="shrink-0 font-bold text-[11px] px-2 py-0.5 rounded-md bg-surface border border-border text-text-secondary">
+                                {workItem.estimatedDuration || '—'}
+                              </span>
                             </li>
                           ))}
                         </ul>
-                        <div className={`mt-2 flex flex-wrap items-center justify-between gap-x-3 border-t pt-2 font-semibold ${summary.overageDays > 0 ? 'border-red-500/30 text-red-600 dark:text-red-400' : 'border-border text-foreground'}`}>
-                          <span>{uiCopy.workItemsTotalLabel || 'Total'}: {summary.totalWorkItemDays} / {summary.milestoneDays} days</span>
-                          <span>{uiCopy.workItemsRemainingLabel || 'Remaining'}: {summary.remainingDays} day(s)</span>
+
+                        {/* Summary Metrics Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-text-secondary font-medium">{uiCopy.workItemsTotalLabel || 'Total'}:</span>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[11px] bg-surface border ${
+                              hasOverage
+                                ? 'border-rose-500 text-rose-600 dark:text-rose-400'
+                                : 'border-border text-text-primary'
+                            }`}>
+                              {hasOverage && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block shrink-0" />}
+                              {summary.totalWorkItemDays} / {summary.milestoneDays} days
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-text-secondary font-medium">{uiCopy.workItemsRemainingLabel || 'Remaining'}:</span>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[11px] bg-surface border ${
+                              summary.remainingDays > 0
+                                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                                : 'border-border text-text-muted'
+                            }`}>
+                              {summary.remainingDays > 0 && <Check size={11} className="stroke-[2.5]" />}
+                              {summary.remainingDays} day(s)
+                            </span>
+                          </div>
                         </div>
-                        {summary.overageDays > 0 && (
-                          <p className="mt-1.5 font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
-                            <span>⚠</span>
-                            <span>{(uiCopy.workItemsOverageLabel || 'Work items exceed milestone duration by {{days}} day(s).').replace('{{days}}', String(summary.overageDays))}</span>
-                          </p>
+
+                        {/* Overage Warning Callout Banner (Solid Monochromatic with Theme Tokens) */}
+                        {hasOverage && (
+                          <div className="flex items-start sm:items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-rose-500 text-rose-600 dark:text-rose-400 text-xs font-bold leading-relaxed">
+                            <AlertTriangle size={14} className="text-rose-500 shrink-0 mt-0.5 sm:mt-0" />
+                            <span className="text-text-primary font-semibold">
+                              {(uiCopy.workItemsOverageLabel || 'Work items exceed milestone duration by {{days}} day(s).').replace('{{days}}', String(summary.overageDays))}
+                            </span>
+                          </div>
                         )}
                       </div>
                     );

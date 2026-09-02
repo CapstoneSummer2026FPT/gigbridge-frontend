@@ -70,6 +70,7 @@ export interface ManageMilestoneProps {
   setMilestoneActionPendingId: (val: string | null) => void;
   isWorkspaceLocked: boolean;
   navigate: (path: string) => void;
+  onOpenDeliverySpaceModal?: (milestoneId: string) => void;
 }
 
 export function ManageMilestone({
@@ -100,6 +101,7 @@ export function ManageMilestone({
   setMilestoneActionPendingId,
   isWorkspaceLocked,
   navigate,
+  onOpenDeliverySpaceModal,
 }: ManageMilestoneProps) {
   const { t } = useTranslation();
 
@@ -404,7 +406,13 @@ export function ManageMilestone({
               const outstandingCount = workItems.length - deliveredCount - awaitingReviewCount;
               // In work item delivery the card is a read-only overview; every real action lives in the
               // delivery space, so the whole card becomes the way in.
-              const openDeliverySpace = () => navigate(deliverySpacePath);
+              const openDeliverySpace = () => {
+                if (onOpenDeliverySpaceModal) {
+                  onOpenDeliverySpaceModal(milestone.id);
+                } else {
+                  navigate(deliverySpacePath);
+                }
+              };
               const cardNavigationProps = usesWorkItemDelivery
                 ? {
                     role: 'button' as const,
@@ -457,7 +465,7 @@ export function ManageMilestone({
                   <div
                     {...cardNavigationProps}
                     aria-label={usesWorkItemDelivery
-                      ? t('workspace.openDeliverySpaceFor', { title: milestone.title, defaultValue: `Open delivery space for ${milestone.title}` })
+                      ? t('workspace.openDeliverySpaceFor', { title: milestone.title, defaultValue: `Nộp sản phẩm cho ${milestone.title}` })
                       : undefined}
                     className={`flex-1 min-w-0 bg-surface-card/60 hover:bg-surface-card border border-border rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-2xs hover:shadow-sm ${
                       usesWorkItemDelivery ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand' : ''
@@ -647,10 +655,9 @@ export function ManageMilestone({
                           className="w-full sm:w-auto bg-brand hover:bg-brand-hover text-brand-foreground font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
                           <Upload size={14} />
-                          {/* The button opens a page in work item mode — it does not submit anything. */}
                           <span>
                             {usesWorkItemDelivery
-                              ? t('workspace.openDeliverySpace', { defaultValue: 'Open delivery space' })
+                              ? t('workspace.openDeliverySpace', { defaultValue: 'Nộp sản phẩm' })
                               : t('workspace.submitDeliverables', { defaultValue: 'Nộp sản phẩm' })}
                           </span>
                         </button>
@@ -672,9 +679,11 @@ export function ManageMilestone({
                           type="button"
                           onClick={event => {
                             stopCardNavigation(event);
-                            navigate(usesWorkItemDelivery
-                              ? deliverySpacePath
-                              : `/contracts/${activeProjectId}/milestones/${milestone.id}/approve`);
+                            if (usesWorkItemDelivery) {
+                              openDeliverySpace();
+                            } else {
+                              navigate(`/contracts/${activeProjectId}/milestones/${milestone.id}/approve`);
+                            }
                           }}
                           className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
