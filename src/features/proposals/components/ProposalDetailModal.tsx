@@ -949,8 +949,7 @@ export function ProposalDetailModal({
                     )}
 
                     {renderAnnotatedDetailSection('Giới thiệu & Tổng quan', detail.coverLetter, aiAuditData?.highlights)}
-                    {renderAnnotatedDetailSection('Phân tích vấn đề', detail.analysisSummary, aiAuditData?.highlights)}
-                    {renderAnnotatedDetailSection('Giải pháp & Hướng tiếp cận kỹ thuật', detail.solutionApproach, aiAuditData?.highlights)}
+                    {renderAnnotatedDetailSection('Giải pháp & Hướng tiếp cận kỹ thuật', detail.solutionApproach || detail.analysisSummary, aiAuditData?.highlights)}
                     {renderAnnotatedDetailSection('Sản phẩm bàn giao', detail.deliverables, aiAuditData?.highlights)}
                     {renderAnnotatedDetailSection('Giả định dự án', detail.assumptions, aiAuditData?.highlights)}
                     {renderAnnotatedDetailSection('Các hạng mục ngoài phạm vi', detail.outOfScope, aiAuditData?.highlights)}
