@@ -5,6 +5,7 @@ import { CustomSelect } from './CustomSelect';
 import GCoinIcon from './GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
 import { recalculateMilestonesBidirectional, resetAndEqualizeMilestones } from '../../features/jobs/utils/milestoneClamping';
+import { computeWorkItemDurationSummary } from '../../features/jobs/utils/jobDuration';
 
 export interface EditablePlanWorkItem {
   id?: string | null;
@@ -86,6 +87,9 @@ export interface MilestonePlanUiCopy {
   userLockedTitle?: string;
   autoBalanced?: string;
   autoBalancedTitle?: string;
+  workItemsTotalLabel?: string;
+  workItemsRemainingLabel?: string;
+  workItemsOverageLabel?: string;
 }
 
 export interface MilestoneDurationUnitOption {
@@ -102,6 +106,7 @@ interface Props {
   showDueDate?: boolean;
   dueDateReadOnly?: boolean;
   showWorkItems?: boolean;
+  showWorkItemsSummary?: boolean;
   showBudgetSummary?: boolean;
   simplifiedMilestoneFields?: boolean;
   advancedIndexes?: readonly number[];
@@ -115,6 +120,7 @@ interface Props {
   fieldHints?: MilestonePlanFieldCopy;
   fieldPlaceholders?: MilestonePlanFieldCopy;
   durationUnits?: readonly MilestoneDurationUnitOption[];
+  workItemDurationUnits?: readonly MilestoneDurationUnitOption[];
   uiCopy?: MilestonePlanUiCopy;
   milestoneTitleMaxLength?: number;
   workItemTitleMaxLength?: number;
@@ -150,9 +156,10 @@ const parseStructuredDuration = (
 
   const rawUnit = match[2].trim().toLowerCase().replace(/s$/, '');
   const normalizedUnitKey =
-    ['week', 'tuần', 'tuan'].includes(rawUnit) ? 'weeks' :
-      ['month', 'tháng', 'thang'].includes(rawUnit) ? 'months' :
-        ['year', 'năm', 'nam'].includes(rawUnit) ? 'years' : null;
+    ['day', 'ngày', 'ngay'].includes(rawUnit) ? 'days' :
+      ['week', 'tuần', 'tuan'].includes(rawUnit) ? 'weeks' :
+        ['month', 'tháng', 'thang'].includes(rawUnit) ? 'months' :
+          ['year', 'năm', 'nam'].includes(rawUnit) ? 'years' : null;
 
   const targetKey = normalizedUnitKey || rawUnit;
   const unit = units.find(option =>
@@ -179,6 +186,7 @@ export function NestedMilestonePlanEditor({
   showDueDate = false,
   dueDateReadOnly = false,
   showWorkItems = true,
+  showWorkItemsSummary = false,
   showBudgetSummary = true,
   simplifiedMilestoneFields = false,
   advancedIndexes = [],
@@ -192,6 +200,7 @@ export function NestedMilestonePlanEditor({
   fieldHints = {},
   fieldPlaceholders = {},
   durationUnits,
+  workItemDurationUnits,
   uiCopy = {},
   milestoneTitleMaxLength,
   workItemTitleMaxLength,
@@ -868,14 +877,74 @@ export function NestedMilestonePlanEditor({
                   {milestone.workItems.map((workItem, workIndex) => {
                     const workItemErrorFor = (field: string) => errors[`${index}.workItems.${workIndex}.${field}`];
                     const workItemFieldClass = (field: string) => `${inputClass} mt-1 ${workItemErrorFor(field) ? 'border-red-500 focus:ring-red-500' : ''}`;
+                    const structuredWorkItemDuration = workItemDurationUnits
+                      ? parseStructuredDuration(workItem.estimatedDuration, workItemDurationUnits)
+                      : null;
                     return <div key={workItem.id || workIndex} className={`grid gap-2 rounded-lg border p-3 md:grid-cols-2 ${workItemErrorFor('title') || workItemErrorFor('description') ? 'border-red-500/60' : 'border-border'}`}>
                       <div className="flex items-center justify-between md:col-span-2"><strong className="text-xs">{uiCopy.workItem || 'Work item'} {workIndex + 1}</strong>{!readOnly && <button type="button" title={uiCopy.deleteWorkItem || 'Delete work item'} onClick={() => updateMilestone(index, { workItems: milestone.workItems.filter((_, itemIndex) => itemIndex !== workIndex).map((item, orderIndex) => ({ ...item, orderIndex })) })} className="p-1 text-red-500"><Trash2 size={13} /></button>}</div>
                       <label className="text-xs font-semibold">{uiCopy.workItemTitle || 'Work item title'}<input data-work-item-field={`${index}.${workIndex}.title`} disabled={readOnly} maxLength={workItemTitleMaxLength} value={workItem.title || ''} onChange={e => updateWorkItem(index, workIndex, { title: e.target.value })} placeholder={fieldPlaceholders.workItemTitle || 'Work item title'} aria-label={uiCopy.workItemTitle ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.workItemTitle}` : `Work item ${workIndex + 1} title`} aria-describedby={describedBy(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)} className={workItemFieldClass('title')} />{renderHint(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)}{workItemErrorFor('title') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('title')}</span>}</label>
-                      <label className="text-xs font-semibold">{uiCopy.estimatedDuration || 'Estimated duration'}<input disabled={readOnly} maxLength={durationMaxLength} value={workItem.estimatedDuration || ''} onChange={e => updateWorkItem(index, workIndex, { estimatedDuration: e.target.value })} placeholder={fieldPlaceholders.workItemDuration || 'Estimated duration'} aria-describedby={describedBy(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)} className={`${inputClass} mt-1`} />{renderHint(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)}</label>
+                      <label className="text-xs font-semibold">{uiCopy.estimatedDuration || 'Estimated duration'}
+                        {structuredWorkItemDuration && workItemDurationUnits ? (
+                          <div data-work-item-field={`${index}.${workIndex}.estimatedDuration`} className={`mt-1 flex items-center gap-1 rounded-lg border bg-background p-1 ${workItemErrorFor('estimatedDuration') ? 'border-red-500' : 'border-border'}`}>
+                            <input
+                              disabled={readOnly}
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={structuredWorkItemDuration.amount}
+                              onChange={e => updateWorkItem(index, workIndex, { estimatedDuration: serializeStructuredDuration(e.target.value, structuredWorkItemDuration.unit) })}
+                              placeholder={fieldPlaceholders.workItemDuration || '2'}
+                              aria-label={uiCopy.estimatedDuration || 'Estimated duration amount'}
+                              className="w-full min-w-0 border-none bg-transparent px-1 text-sm font-semibold text-foreground outline-none focus:outline-none focus:ring-0"
+                            />
+                            <div className="w-24 shrink-0">
+                              <CustomSelect
+                                disabled={readOnly}
+                                value={structuredWorkItemDuration.unit}
+                                options={workItemDurationUnits.map(unit => ({ value: unit.value, label: unit.label }))}
+                                onChange={newUnit => updateWorkItem(index, workIndex, { estimatedDuration: serializeStructuredDuration(structuredWorkItemDuration.amount, newUnit) })}
+                                ariaLabel={uiCopy.durationUnit || 'Duration unit'}
+                                searchable={false}
+                                placeholder={uiCopy.durationUnit || 'Unit'}
+                                className="cs-compact"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <input disabled={readOnly} maxLength={durationMaxLength} value={workItem.estimatedDuration || ''} onChange={e => updateWorkItem(index, workIndex, { estimatedDuration: e.target.value })} placeholder={fieldPlaceholders.workItemDuration || 'Estimated duration'} aria-describedby={describedBy(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)} className={`${inputClass} mt-1`} />
+                        )}
+                        {renderHint(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)}
+                        {workItemErrorFor('estimatedDuration') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('estimatedDuration')}</span>}
+                      </label>
                       <label className="text-xs font-semibold">{uiCopy.taskDescription || 'Task description'}<textarea data-work-item-field={`${index}.${workIndex}.description`} disabled={readOnly} value={workItem.description || ''} onChange={e => updateWorkItem(index, workIndex, { description: e.target.value })} placeholder={fieldPlaceholders.workItemDescription || 'Task description'} aria-label={uiCopy.taskDescription ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.taskDescription}` : `Work item ${workIndex + 1} description`} aria-describedby={describedBy(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)} rows={2} className={workItemFieldClass('description')} />{renderHint(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)}{workItemErrorFor('description') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('description')}</span>}</label>
                       <label className="text-xs font-semibold">{uiCopy.workItemDeliverables || 'Work item deliverables'}<textarea disabled={readOnly} value={workItem.deliverables || ''} onChange={e => updateWorkItem(index, workIndex, { deliverables: e.target.value })} placeholder={fieldPlaceholders.workItemDeliverables || 'Work item deliverables'} aria-describedby={describedBy(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)} rows={2} className={`${inputClass} mt-1`} />{renderHint(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)}</label>
                     </div>;
                   })}
+                  {showWorkItemsSummary && milestone.workItems.length > 0 && (() => {
+                    const summary = computeWorkItemDurationSummary(milestone);
+                    return (
+                      <div className="mt-1 rounded-lg border border-border bg-muted/30 p-3 text-xs">
+                        <ul className="space-y-1 font-mono">
+                          {milestone.workItems.map((workItem, workIndex) => (
+                            <li key={workItem.id || workIndex} className="flex items-baseline gap-1.5 text-muted-foreground">
+                              <span>{workIndex === milestone.workItems.length - 1 ? '└──' : '├──'}</span>
+                              <span className="min-w-0 flex-1 truncate">{workItem.title || uiCopy.workItem || 'Work item'}</span>
+                              <span className="shrink-0">{workItem.estimatedDuration || '—'}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className={`mt-2 flex flex-wrap items-center justify-between gap-x-3 border-t border-border pt-2 font-semibold ${summary.overageDays > 0 ? 'text-red-500' : ''}`}>
+                          <span>{uiCopy.workItemsTotalLabel || 'Total'}: {summary.totalWorkItemDays} / {summary.milestoneDays} days</span>
+                          <span>{uiCopy.workItemsRemainingLabel || 'Remaining'}: {summary.remainingDays} day(s)</span>
+                        </div>
+                        {summary.overageDays > 0 && (
+                          <p className="mt-1 font-semibold text-red-500">
+                            ⚠ {(uiCopy.workItemsOverageLabel || 'Work items exceed milestone duration by {{days}} day(s).').replace('{{days}}', String(summary.overageDays))}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div> : null}
               </div>
             )}

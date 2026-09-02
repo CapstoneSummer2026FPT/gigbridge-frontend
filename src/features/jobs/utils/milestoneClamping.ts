@@ -1,5 +1,5 @@
-import type { JobPostMilestonePlanDto } from '../../../types/models/Job';
-import { parseJobDuration, durationToWeeks } from './jobDuration';
+import type { JobPostMilestonePlanDto, JobPostWorkItemDto } from '../../../types/models/Job';
+import { parseJobDuration, durationToWeeks, workItemDurationToDays } from './jobDuration';
 
 /**
  * Resolves a single canonical budget string from min/max budget values.
@@ -146,6 +146,81 @@ export function clampMilestonesToExpectedTargets(
 
 
   return result;
+}
+
+/**
+ * Scales work-item estimated durations in-place (returning a new array) so their total
+ * never exceeds the milestone's own duration, merging excess items into the last kept one
+ * if even a 1-day floor per item would still overflow. No-op when already within budget or
+ * when the milestone's own duration isn't set/parseable — this is a client-side UX safety
+ * net mirroring the backend's clamp_work_item_durations (Python) equivalent; the backend
+ * validator remains the actual source of truth regardless of what this produces.
+ */
+export function clampWorkItemsToMilestoneDuration(
+  workItems: JobPostWorkItemDto[],
+  milestoneDuration: string | null | undefined
+): JobPostWorkItemDto[] {
+  if (!workItems || workItems.length === 0) return workItems;
+
+  const { value, unit } = parseJobDuration(milestoneDuration);
+  const milestoneDurationDays = value ? durationToWeeks(value, unit) * 7 : 0;
+  if (milestoneDurationDays <= 0) return workItems;
+
+  const individualDays = workItems.map(item => Math.max(1, workItemDurationToDays(item.estimatedDuration)));
+  const totalDays = individualDays.reduce((sum, d) => sum + d, 0);
+  if (totalDays <= milestoneDurationDays) return workItems;
+
+  const targetDays = Math.max(1, Math.round(milestoneDurationDays));
+
+  let result = workItems.map(item => ({ ...item }));
+  if (result.length > targetDays) {
+    const keepCount = targetDays;
+    const merged = result.slice(0, keepCount).map(item => ({ ...item }));
+    const lastKept = merged[keepCount - 1];
+
+    for (let i = keepCount; i < result.length; i++) {
+      const excess = result[i];
+      if (excess.title && (!lastKept.title || !lastKept.title.includes(excess.title))) {
+        lastKept.title = lastKept.title ? `${lastKept.title} | ${excess.title}` : excess.title;
+      }
+      if (excess.description && (!lastKept.description || !lastKept.description.includes(excess.description))) {
+        lastKept.description = lastKept.description ? `${lastKept.description} | ${excess.description}` : excess.description;
+      }
+      if (excess.deliverables && (!lastKept.deliverables || !lastKept.deliverables.includes(excess.deliverables))) {
+        lastKept.deliverables = lastKept.deliverables ? `${lastKept.deliverables} | ${excess.deliverables}` : excess.deliverables;
+      }
+    }
+
+    result = merged;
+  }
+
+  const weights = result.map(item => Math.max(1, workItemDurationToDays(item.estimatedDuration)));
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0) || result.length;
+
+  const scaledDays: number[] = [];
+  for (let i = 0; i < weights.length - 1; i++) {
+    scaledDays.push(Math.max(1, Math.round((weights[i] / totalWeight) * targetDays)));
+  }
+
+  let lastDays = targetDays - scaledDays.reduce((sum, d) => sum + d, 0);
+  if (lastDays < 1) {
+    let needed = 1 - lastDays;
+    lastDays = 1;
+    for (let i = scaledDays.length - 1; i >= 0 && needed > 0; i--) {
+      if (scaledDays[i] > 1) {
+        const deduct = Math.min(needed, scaledDays[i] - 1);
+        scaledDays[i] -= deduct;
+        needed -= deduct;
+      }
+    }
+  }
+  scaledDays.push(lastDays);
+
+  return result.map((item, index) => ({
+    ...item,
+    estimatedDuration: `${scaledDays[index]} ${scaledDays[index] === 1 ? 'day' : 'days'}`,
+    orderIndex: index,
+  }));
 }
 
 export interface MilestoneAmountItem {

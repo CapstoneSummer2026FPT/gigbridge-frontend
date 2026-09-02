@@ -39,6 +39,15 @@
       "years": "years"
     }
   },
+  "proposalMilestoneComparison": {
+    "title": "Milestone Comparison: Client vs Freelancer",
+    "clientLabel": "Client",
+    "freelancerLabel": "Freelancer",
+    "addedLabel": "Added",
+    "removedLabel": "Removed",
+    "emptyLabel": "Nothing to compare",
+    "workItemsLabel": "Work items"
+  },
   "proposalAnswers": {
     "proposalIdMissing": "Proposal ID is missing.",
     "proposalLoadFailed": "Proposal could not be loaded.",

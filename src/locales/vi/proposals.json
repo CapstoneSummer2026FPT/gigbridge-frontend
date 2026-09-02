@@ -39,6 +39,15 @@
       "years": "năm"
     }
   },
+  "proposalMilestoneComparison": {
+    "title": "So sánh Milestone: Khách hàng vs Freelancer",
+    "clientLabel": "Khách hàng",
+    "freelancerLabel": "Freelancer",
+    "addedLabel": "Freelancer thêm mới",
+    "removedLabel": "Freelancer đã xoá",
+    "emptyLabel": "Không có dữ liệu để so sánh",
+    "workItemsLabel": "Hạng mục công việc"
+  },
   "proposalAnswers": {
     "proposalIdMissing": "Thiếu ID đề xuất.",
     "proposalLoadFailed": "Không thể tải đề xuất.",
