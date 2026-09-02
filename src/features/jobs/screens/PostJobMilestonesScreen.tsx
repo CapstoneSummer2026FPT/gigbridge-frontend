@@ -16,7 +16,7 @@ import { BrandSweepBackButton } from '../components/BrandSweepBackButton';
 import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { JOB_DURATION_UNITS } from '../utils/jobDuration';
+import { computeWorkItemDurationSummary, JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS } from '../utils/jobDuration';
 import '../../../shared/components/styles/conic-border-button.css';
 
 export default function PostJobMilestonesScreen() {
@@ -85,6 +85,7 @@ export default function PostJobMilestonesScreen() {
   const completeMilestones = milestonePlans.filter(milestone =>
     milestone.title?.trim() && Number(milestone.amount) > 0
     && milestone.deliverables?.trim() && milestone.acceptanceCriteria?.trim()
+    && computeWorkItemDurationSummary(milestone).overageDays === 0
   ).length;
   const completionParts = [
     milestonePlans.length === 0 || completeMilestones === milestonePlans.length,
@@ -177,13 +178,15 @@ export default function PostJobMilestonesScreen() {
               optional
               showDueDate
               dueDateReadOnly
-              showWorkItems={false}
+              showWorkItems
+              showWorkItemsSummary
               title={t('postJob.baselineMilestoneTitle')}
               description={t('postJob.baselineMilestoneDescription')}
               expandedIndexes={expandedMilestones}
               onExpandedIndexesChange={setExpandedMilestones}
               errors={milestoneErrors}
               durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
+              workItemDurationUnits={WORK_ITEM_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
               uiCopy={{
                 optional: t('postJobWizard.plan.milestoneCopy.optional'),
                 addMilestone: t('postJobWizard.plan.milestoneCopy.addMilestone'),
@@ -223,6 +226,9 @@ export default function PostJobMilestonesScreen() {
                 userLockedTitle: t('postJobWizard.plan.milestoneCopy.userLockedTitle', 'Fixed milestone (User-locked). Click to unlock auto-balancing.'),
                 autoBalanced: t('postJobWizard.plan.milestoneCopy.autoBalanced', 'Auto'),
                 autoBalancedTitle: t('postJobWizard.plan.milestoneCopy.autoBalancedTitle', 'Dynamically calculated. Click to lock amount.'),
+                workItemsTotalLabel: t('postJobWizard.plan.milestoneCopy.workItemsTotalLabel', 'Total'),
+                workItemsRemainingLabel: t('postJobWizard.plan.milestoneCopy.workItemsRemainingLabel', 'Remaining'),
+                workItemsOverageLabel: t('postJobWizard.plan.milestoneCopy.workItemsOverageLabel', 'Work items exceed milestone duration by {{days}} day(s).'),
               }}
               fieldHints={{
                 fixedProjectBudget: t('postJob.baselineBudgetHint'),

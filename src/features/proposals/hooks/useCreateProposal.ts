@@ -40,6 +40,23 @@ const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
 const normalizeOrder = <T extends { orderIndex: number }>(items: T[]) =>
   items.map((item, orderIndex) => ({ ...item, orderIndex }));
 
+// Flattens the Job Post's nested per-milestone Work Breakdown items into the
+// Proposal's flat ProposalWorkBreakdownItemDto[] shape, linked via
+// milestoneOrderIndex — the same linking convention extractCustomWorkItems/
+// hydrateProposal already use for an existing draft's work items.
+const jobWorkItemsToProposalWorkItems = (
+  milestones: JobPostDetailDto['milestonePlans'],
+): ProposalWorkBreakdownItemDto[] =>
+  (milestones || []).flatMap((milestone, milestoneIndex) =>
+    (milestone.workItems || []).map((item, orderIndex) => ({
+      title: item.title ?? '',
+      description: item.description ?? '',
+      deliverables: item.deliverables ?? '',
+      estimatedDuration: item.estimatedDuration ?? '',
+      milestoneOrderIndex: milestoneIndex,
+      orderIndex,
+    })));
+
 // Public job detail 404s for Invite Only jobs; fall back to the freelancer's
 // own applied/invited job detail endpoint, which allows access regardless of visibility.
 const fetchJobPostDetailForFreelancer = async (id: string) => {
@@ -156,9 +173,11 @@ export function useCreateProposal() {
             : tRef.current('createProposal.readOnlyNotice', { status: getStatusLabel(existingResponse.data.status) }));
         } else if (jobResponse.data.milestonePlans?.length) {
           const baseline = normalizeOrder(jobResponse.data.milestonePlans.map(item => ({ ...item, workItems: undefined })));
+          const baselineWorkItems = jobWorkItemsToProposalWorkItems(jobResponse.data.milestonePlans);
+          const editableItems = extractCustomWorkItems(baseline, baselineWorkItems);
+          setWorkItems(editableItems.customWorkItems);
+          setAdvancedMilestoneIndexes(editableItems.customMilestoneIndexes);
           setMilestones(baseline);
-          setWorkItems([]);
-          setAdvancedMilestoneIndexes([]);
           setExpandedMilestones(baseline.map((_, i) => i));
           setNotice(tRef.current('createProposal.baselineCopiedNotice'));
         }

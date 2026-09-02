@@ -24,6 +24,8 @@ import {
 } from '../../../types/models/Proposal';
 import { AIProposalVerdictCard } from './AIProposalVerdictCard';
 import { AISideBySideMilestoneMatrix } from './AISideBySideMilestoneMatrix';
+import { MilestonePlanComparison } from '../../../shared/components/MilestonePlanComparison';
+import type { EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import { getCriteriaColorTheme } from '../utils/criteriaColors';
 import '../../../shared/components/styles/conic-border-button.css';
 import type { BusyAction } from '../hooks/useClientProposals';
@@ -729,6 +731,25 @@ export function ProposalDetailModal({
                         )) : <p className="text-sm text-text-muted italic">Proposal không kèm kế hoạch milestone cụ thể.</p>}
                       </div>
                     </section>
+
+                    {originalMilestones && originalMilestones.length > 0 && (
+                      <section className="space-y-3.5 pt-2">
+                        <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-text-muted flex items-center gap-2">
+                          <Layers size={16} className="text-brand shrink-0" />
+                          So sánh Milestone: Khách hàng vs Freelancer
+                        </h4>
+                        <MilestonePlanComparison
+                          clientMilestones={originalMilestones as EditableMilestonePlan[]}
+                          freelancerMilestones={(detail.milestonePlans || []) as EditableMilestonePlan[]}
+                          clientLabel="Khách hàng"
+                          freelancerLabel="Freelancer"
+                          addedLabel="Freelancer thêm mới"
+                          removedLabel="Freelancer đã xoá"
+                          emptyLabel="Không có dữ liệu để so sánh"
+                          workItemsLabel="Hạng mục công việc"
+                        />
+                      </section>
+                    )}
                   </>
                 )}
               </div>

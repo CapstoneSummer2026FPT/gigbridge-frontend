@@ -25,6 +25,7 @@ import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { MarkdownEditor } from '../../../shared/components/MarkdownEditor';
 import { NestedMilestonePlanEditor } from '../../../shared/components/NestedMilestonePlanEditor';
+import { MilestonePlanComparison } from '../../../shared/components/MilestonePlanComparison';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { useCreateProposal } from '../hooks/useCreateProposal';
@@ -455,6 +456,21 @@ export default function CreateProposalScreen() {
                 onAdvancedIndexesChange={setAdvancedMilestoneIndexes}
                 errors={milestoneErrors}
               />
+              {jobPost?.milestonePlans?.length ? (
+                <div className="mt-6">
+                  <MilestonePlanComparison
+                    clientMilestones={jobPost.milestonePlans}
+                    freelancerMilestones={nestedMilestones}
+                    title={t('proposalMilestoneComparison.title')}
+                    clientLabel={t('proposalMilestoneComparison.clientLabel')}
+                    freelancerLabel={t('proposalMilestoneComparison.freelancerLabel')}
+                    addedLabel={t('proposalMilestoneComparison.addedLabel')}
+                    removedLabel={t('proposalMilestoneComparison.removedLabel')}
+                    emptyLabel={t('proposalMilestoneComparison.emptyLabel')}
+                    workItemsLabel={t('proposalMilestoneComparison.workItemsLabel')}
+                  />
+                </div>
+              ) : null}
             </section>
 
             {/* ══════ SECTION 3: FINANCIAL & DURATION SUMMARY ══════ */}

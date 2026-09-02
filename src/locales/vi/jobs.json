@@ -151,6 +151,7 @@
     "nextContractSetup": "Đăng Project Request",
     "publishProjectRequest": "Đăng Project Request",
     "durationUnits": {
+      "days": "Ngày",
       "weeks": "Tuần",
       "months": "Tháng",
       "years": "Năm"

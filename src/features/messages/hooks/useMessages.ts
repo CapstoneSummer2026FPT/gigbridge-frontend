@@ -16,6 +16,8 @@ import {
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { messagePutAPI } from '../../../api/messageAPI/PUT';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
 import {
   onChatHubReconnected,
   onChatHubStatusChanged,
@@ -348,6 +350,9 @@ export function useMessages() {
   const [showInfo, setShowInfo] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1280 : false));
   const [showDealPrice, setShowDealPrice] = useState(false);
   const [dealMilestones, setDealMilestones] = useState<NegotiationMilestoneDto[]>([]);
+  // Read-only snapshot of the freelancer's original Proposal, fetched once per
+  // negotiation and never mutated — the Final Offer comparison's fixed baseline.
+  const [dealFreelancerBaseline, setDealFreelancerBaseline] = useState<NegotiationMilestoneDto[]>([]);
   const [dealAdvancedIndexes, setDealAdvancedIndexes] = useState<number[]>([]);
   const [dealMilestoneErrors, setDealMilestoneErrors] = useState<Record<string, string>>({});
   const [dealMilestonesLoading, setDealMilestonesLoading] = useState(false);
@@ -569,6 +574,7 @@ export function useMessages() {
   useEffect(() => {
     if (!activeConvId || activeConv?.roomType !== 'negotiation') {
       setDealMilestones([]);
+      setDealFreelancerBaseline([]);
       setDealAdvancedIndexes([]);
       setDealMilestoneErrors({});
       return;
@@ -587,8 +593,20 @@ export function useMessages() {
       if (active) setDealMilestonesLoading(false);
     });
 
+    const proposalId = activeConv?.proposalId;
+    if (proposalId) {
+      proposalGetAPI.getProposalDetail(proposalId).then(response => {
+        if (!active || !response.success || !response.data?.milestonePlans?.length) return;
+        setDealFreelancerBaseline(normalizeNegotiationMilestones(
+          response.data.milestonePlans as unknown as NegotiationMilestoneDto[],
+        ));
+      }).catch(() => undefined);
+    } else {
+      setDealFreelancerBaseline([]);
+    }
+
     return () => { active = false; };
-  }, [activeConv?.roomType, activeConvId]);
+  }, [activeConv?.roomType, activeConv?.proposalId, activeConvId]);
 
   // Fetch conversations on mount
   const loadConversations = useCallback(async () => {
@@ -1689,6 +1707,33 @@ export function useMessages() {
     }
   };
 
+  // Replaces the client's in-progress draft with the Job Post's original milestone
+  // plan (including work items). Local-only — does not persist until the client
+  // explicitly Saves/Sends; always a full replace, never an append, so no
+  // duplicates are possible.
+  const handleUseJobPostMilestones = async () => {
+    if (!activeConv?.job.id) return;
+    const response = await jobGetAPI.getMyJobPostById(activeConv.job.id);
+    if (!response.success || !response.data?.milestonePlans?.length) return;
+    const prepared = prepareNegotiationMilestonesForEditing(
+      response.data.milestonePlans as unknown as NegotiationMilestoneDto[],
+    );
+    setDealMilestones(prepared.milestones);
+    setDealAdvancedIndexes(prepared.advancedIndexes);
+    setDealMilestoneErrors({});
+  };
+
+  // Resets the client's in-progress draft back to the freelancer's original
+  // Proposal baseline. Local-only, full replace — same pattern as
+  // handleUseJobPostMilestones, so no duplicates are possible.
+  const handleUseFreelancerMilestones = () => {
+    if (!dealFreelancerBaseline.length) return;
+    const prepared = prepareNegotiationMilestonesForEditing(dealFreelancerBaseline);
+    setDealMilestones(prepared.milestones);
+    setDealAdvancedIndexes(prepared.advancedIndexes);
+    setDealMilestoneErrors({});
+  };
+
   const handleAcceptDeal = async (negotiationOfferId?: string | null, offeredAmount?: number) => {
     const offerId = negotiationOfferId ?? activeConv?.lastOfferId;
     if (!offerId || !activeConvId) return;
@@ -2089,6 +2134,7 @@ export function useMessages() {
     setShowDealPrice,
     dealMilestones: dealEditorMilestones,
     updateDealMilestones,
+    dealFreelancerBaseline,
     dealAdvancedIndexes,
     setDealAdvancedIndexes,
     dealMilestoneErrors,
@@ -2097,6 +2143,8 @@ export function useMessages() {
     dealMilestoneTotal,
     dealOverallDuration,
     handleSaveDealMilestones,
+    handleUseJobPostMilestones,
+    handleUseFreelancerMilestones,
     messageInput,
     setMessageInput,
     chatAttachments,
