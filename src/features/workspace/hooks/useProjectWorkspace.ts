@@ -32,6 +32,8 @@ interface WorkspaceMilestone {
   status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'disputed' | 'completed';
   completedAt?: string;
   workItems: ContractWorkItem[];
+  /** Persisted contract delivery mode; decides which submit/review screen the buttons open. */
+  deliveryMode: number;
 }
 
 interface WorkspaceProject {
@@ -148,6 +150,7 @@ const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
   status: mapMilestoneStatus(milestone.status),
   completedAt: milestone.paid_at ?? undefined,
   workItems: milestone.workItems || [],
+  deliveryMode: Number(milestone.deliveryMode ?? 0),
 });
 
 const buildProject = (contract: ContractDto, milestones: Milestone[]): WorkspaceProject => {
@@ -709,6 +712,9 @@ export function useProjectWorkspace(initialContractId: string) {
       'ContractProgressUpdated',
       'WorkItemUpdated',
       'WorkItemStatusChanged',
+      'WorkItemSubmitted',
+      'WorkItemReviewed',
+      'MilestoneAutoCompleted',
       'DeliverableSubmitted',
       'EarlyStartRequested',
       'EarlyStartResponded',

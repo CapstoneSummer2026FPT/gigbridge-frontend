@@ -147,7 +147,6 @@
     "conversationClosedDescription": "Messages can no longer be sent after the dispute was closed.",
     "conversationClosedCompletedTitle": "This conversation has been locked because the contract has been completed.",
     "conversationClosedCompletedDescription": "Messages can no longer be sent.",
-    "disputedBadge": "Disputed",
     "openDispute": "Open Dispute",
     "version": "Version {{version}}",
     "endProjectModalTitle": "End Project",
@@ -275,7 +274,14 @@
     "reportSystemReason": "Reason",
     "reportSystemAction": "Action",
     "reportParticipant": "A contract participant",
-    "reportUnavailable": "This report is no longer available."
+    "reportUnavailable": "This report is no longer available.",
+    "submitDeliverables": "Submit deliverables",
+    "approveMilestone": "Approve & release",
+    "allWorkItemsCompletedNotice": "All work items are done. Ready to submit.",
+    "deliverablesSubmittedNotice": "The freelancer submitted deliverables. Please review and release payment.",
+    "completeWorkItemsNotice": "Complete all work items before submitting.",
+    "openDeliverySpace": "Open delivery space",
+    "reviewWorkItems": "Review work items"
   },
   "projects": {
     "title": "Projects",

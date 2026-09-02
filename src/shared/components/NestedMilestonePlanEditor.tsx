@@ -5,7 +5,7 @@ import { CustomSelect } from './CustomSelect';
 import GCoinIcon from './GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
 import { recalculateMilestonesBidirectional, resetAndEqualizeMilestones } from '../../features/jobs/utils/milestoneClamping';
-import { computeWorkItemDurationSummary } from '../../features/jobs/utils/jobDuration';
+import { addDaysToDateString, computeChainedDueDates, computeWorkItemDurationSummary } from '../../features/jobs/utils/jobDuration';
 
 export interface EditablePlanWorkItem {
   id?: string | null;
@@ -72,7 +72,8 @@ export interface MilestonePlanUiCopy {
   workItemTitle?: string;
   estimatedDuration?: string;
   taskDescription?: string;
-  workItemDeliverables?: string;
+  /** Label for the derived, read-only work item deadline. */
+  workItemDueDate?: string;
   advancedDetails?: string;
   derivedDuration?: string;
   milestoneSummaryDesc?: string;
@@ -1036,13 +1037,29 @@ export function NestedMilestonePlanEditor({
 
                 {showWorkItems && (!simplifiedMilestoneFields || isAdvancedOpen) ? <div className="space-y-3 rounded-lg border border-border bg-card p-3">
                   <div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-bold">{uiCopy.workBreakdown || 'Work Breakdown Structure'}</h3>{renderHint(`${index}-work-breakdown`, fieldHints.workBreakdown)}</div>{!readOnly && <button type="button" onClick={() => updateMilestone(index, { workItems: [...milestone.workItems, newWorkItem(milestone.workItems.length)] })} className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-2 py-1 text-xs font-semibold"><Plus size={13} /> {uiCopy.addWorkItem || 'Add work item'}</button>}</div>
+                  {/* One chain per milestone. The anchor is the milestone's own start, i.e. the day
+                      before its deadline window opens, so work item 1 begins with the milestone and
+                      the last one lands on the milestone deadline when the durations add up. */}
                   {milestone.workItems.map((workItem, workIndex) => {
+                    // milestone.dueDate is the LAST day of the milestone, so subtracting its full
+                    // length lands on the day before it starts — the anchor computeChainedDueDates wants.
+                    const milestoneSpanDays = computeWorkItemDurationSummary(milestone).milestoneDays;
+                    const workItemDueDates = milestone.dueDate && milestoneSpanDays > 0
+                      ? computeChainedDueDates(
+                          addDaysToDateString(milestone.dueDate, -milestoneSpanDays),
+                          milestone.workItems.map(item => item.estimatedDuration))
+                      : milestone.workItems.map(() => null);
                     const workItemErrorFor = (field: string) => errors[`${index}.workItems.${workIndex}.${field}`];
                     const workItemFieldClass = (field: string) => `${inputClass} mt-1 ${workItemErrorFor(field) ? 'border-red-500 focus:ring-red-500' : ''}`;
                     const effectiveWorkItemDurationUnits = workItemDurationUnits || durationUnits;
                     const structuredWorkItemDuration = effectiveWorkItemDurationUnits
                       ? parseStructuredDuration(workItem.estimatedDuration, effectiveWorkItemDurationUnits)
                       : null;
+                    // Derived, never typed: work item deadlines chain inside the milestone exactly as
+                    // milestones chain inside the project, anchored on the milestone's own start (the
+                    // day before it begins). Server-computed on save; shown here so the plan is legible
+                    // while it is being written.
+                    const workItemDueDate = workItemDueDates[workIndex] ?? null;
                     return <div key={workItem.id || workIndex} className={`grid gap-2 rounded-lg border p-3 md:grid-cols-2 ${workItemErrorFor('title') || workItemErrorFor('description') ? 'border-red-500/60' : 'border-border'}`}>
                       <div className="flex items-center justify-between md:col-span-2"><strong className="text-xs">{uiCopy.workItem || 'Work item'} {workIndex + 1}</strong>{!readOnly && <button type="button" title={uiCopy.deleteWorkItem || 'Delete work item'} onClick={() => updateMilestone(index, { workItems: milestone.workItems.filter((_, itemIndex) => itemIndex !== workIndex).map((item, orderIndex) => ({ ...item, orderIndex })) })} className="p-1 text-red-500"><Trash2 size={13} /></button>}</div>
                       <label className="text-xs font-semibold">{uiCopy.workItemTitle || 'Work item title'}<input data-work-item-field={`${index}.${workIndex}.title`} disabled={readOnly} maxLength={workItemTitleMaxLength} value={workItem.title || ''} onChange={e => updateWorkItem(index, workIndex, { title: e.target.value })} placeholder={fieldPlaceholders.workItemTitle || 'Work item title'} aria-label={uiCopy.workItemTitle ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.workItemTitle}` : `Work item ${workIndex + 1} title`} aria-describedby={describedBy(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)} className={workItemFieldClass('title')} />{renderHint(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)}{workItemErrorFor('title') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('title')}</span>}</label>
@@ -1081,9 +1098,14 @@ export function NestedMilestonePlanEditor({
                         )}
                         {renderHint(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)}
                         {workItemErrorFor('estimatedDuration') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('estimatedDuration')}</span>}
+                        {workItemDueDate && <span className="mt-1 block text-[11px] font-normal text-muted-foreground">{uiCopy.workItemDueDate || 'Deadline'}: {workItemDueDate}</span>}
                       </label>
                       <label className="text-xs font-semibold">{uiCopy.taskDescription || 'Task description'}<textarea data-work-item-field={`${index}.${workIndex}.description`} disabled={readOnly} value={workItem.description || ''} onChange={e => updateWorkItem(index, workIndex, { description: e.target.value })} placeholder={fieldPlaceholders.workItemDescription || 'Task description'} aria-label={uiCopy.taskDescription ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.taskDescription}` : `Work item ${workIndex + 1} description`} aria-describedby={describedBy(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)} rows={2} className={workItemFieldClass('description')} />{renderHint(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)}{workItemErrorFor('description') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('description')}</span>}</label>
-                      <label className="text-xs font-semibold">{uiCopy.workItemDeliverables || 'Work item deliverables'}<textarea disabled={readOnly} value={workItem.deliverables || ''} onChange={e => updateWorkItem(index, workIndex, { deliverables: e.target.value })} placeholder={fieldPlaceholders.workItemDeliverables || 'Work item deliverables'} aria-describedby={describedBy(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)} rows={2} className={`${inputClass} mt-1`} />{renderHint(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)}</label>
+                      {/* A work item is authored with three fields: title, estimated duration and task
+                          description. The deliverables textarea used to be a fourth, but it duplicated
+                          the description in practice and no longer drives anything — the deliverable is
+                          the file the freelancer uploads against this item in the delivery space. The
+                          column is retained for contracts signed before that change. */}
                     </div>;
                   })}
                   {milestone.workItems.length > 0 && (() => {

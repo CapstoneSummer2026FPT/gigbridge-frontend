@@ -15,7 +15,7 @@ import {
   Play,
 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { ContractStatus, ContractWorkItemStatus, MilestoneDeliveryMode, isWorkItemDelivered, isWorkItemAwaitingReview } from '../../../types/models/Contract';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
 import { ProjectReceiptCard } from '../../receipts/components/ProjectReceiptCard';
@@ -32,6 +32,8 @@ export interface MilestoneItem {
     title: string;
     status: ContractWorkItemStatus;
   }>;
+  /** 0 = Legacy (milestone-level), 1 = WorkItem (per work item, via the delivery space). */
+  deliveryMode?: number;
 }
 
 export interface ManageMilestoneProps {
@@ -379,9 +381,20 @@ export function ManageMilestone({
                 withdrawalEligibility.isAtCap &&
                 !isReleasedInFull;
               const workItems = milestone.workItems || [];
-              const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
-              const canFreelancerSubmit = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && allWorkItemsCompleted;
-              const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+              // Read through the shared predicate: the legacy flow marks work done as Completed and
+              // the work item flow as Approved, and that difference must not be re-guessed per screen.
+              const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => isWorkItemDelivered(item.status));
+              // Persisted on the contract, never inferred from how many work items exist — historical
+              // contracts carry work items and must stay on the milestone-level flow.
+              const usesWorkItemDelivery =
+                Number(milestone.deliveryMode ?? MilestoneDeliveryMode.Legacy) === MilestoneDeliveryMode.WorkItem;
+              const deliverySpacePath = `/deliveryspace/${activeProjectId}/milestones/${milestone.id}`;
+              // In work item delivery the freelancer submits per item, so the entry point opens as soon
+              // as the milestone is workable rather than waiting for every item to be ticked off.
+              const canFreelancerSubmit = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone &&
+                (usesWorkItemDelivery || allWorkItemsCompleted);
+              const canClientReview = !isWorkspaceLocked && isClient &&
+                (usesWorkItemDelivery ? workItems.some(item => isWorkItemAwaitingReview(item.status)) || isSubmitted : isSubmitted);
               const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending && isPreviousMilestoneStarted;
               const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
               const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
@@ -574,7 +587,9 @@ export function ManageMilestone({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setSubmitModal({ milestoneId: milestone.id, title: milestone.title })}
+                          onClick={() => usesWorkItemDelivery
+                            ? navigate(deliverySpacePath)
+                            : setSubmitModal({ milestoneId: milestone.id, title: milestone.title })}
                           className="w-full sm:w-auto bg-brand hover:bg-brand-hover text-brand-foreground font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
                           <Upload size={14} />
@@ -594,7 +609,9 @@ export function ManageMilestone({
                         </div>
                         <button
                           type="button"
-                          onClick={() => navigate(`/contracts/${activeProjectId}/milestones/${milestone.id}/approve`)}
+                          onClick={() => navigate(usesWorkItemDelivery
+                            ? deliverySpacePath
+                            : `/contracts/${activeProjectId}/milestones/${milestone.id}/approve`)}
                           className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
                           <CheckCircle size={14} />

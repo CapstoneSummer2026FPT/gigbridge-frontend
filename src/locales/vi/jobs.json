@@ -316,6 +316,8 @@
       "standardDesc": "Freelancer sẽ trả lời các câu hỏi này ngay khi gửi Proposal. Giúp bạn đánh giá tư duy, thái độ và kinh nghiệm thực tế của ứng viên mà không cần chat qua lại nhiều lần.",
       "aiTitle": "2. AI Phỏng vấn tự động (Gói Premium ✦)",
       "aiDesc": "Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!",
+      "aiQuestionRequired": "Thêm ít nhất một câu hỏi phỏng vấn để bật AI Interview.",
+      "aiQuestionRequiredBadge": "Thêm câu hỏi",
       "presetTitle": "Gợi ý câu hỏi phổ biến (Click để thêm):",
       "presetSimilar": "Bạn đã từng thực hiện dự án nào có quy mô tương tự chưa?",
       "presetPortfolio": "Hãy gửi link sản phẩm hoặc portfolio tiêu biểu nhất của bạn.",
@@ -350,7 +352,6 @@
         "workItemTitle": "Tên hạng mục",
         "estimatedDuration": "Thời lượng dự kiến",
         "taskDescription": "Mô tả công việc",
-        "workItemDeliverables": "Sản phẩm bàn giao của hạng mục",
         "autoBalanceOn": "Cân bằng tự động: BẬT",
         "autoBalanceOff": "Cân bằng tự động: TẮT",
         "autoBalanceOnDesc": "Thay đổi mốc sẽ tự động cân bằng các mốc chưa cố định.",
@@ -365,7 +366,11 @@
         "collapseAll": "Thu gọn tất cả",
         "percentOfBudget": "{{percent}}% tổng ngân sách",
         "budgetShort": "NS",
-        "dragToReorder": "Kéo để sắp xếp lại mốc"
+        "dragToReorder": "Kéo để sắp xếp lại mốc",
+        "workItemsTotalLabel": "Tổng",
+        "workItemsRemainingLabel": "Còn lại",
+        "workItemsOverageLabel": "Các đầu việc vượt quá thời lượng milestone {{days}} ngày.",
+        "workItemDueDate": "Hạn chót"
       }
     },
     "review": {
@@ -422,7 +427,8 @@
       "attachmentSize": "Mỗi ảnh phải có dung lượng từ 1 byte đến 5 MB.",
       "attachmentLimit": "Mỗi Project Request được đính kèm tối đa 5 ảnh.",
       "attachmentUploadFailed": "Không thể tải hình ảnh dự án lên.",
-      "attachmentDeleteFailed": "Không thể xóa hình ảnh dự án."
+      "attachmentDeleteFailed": "Không thể xóa hình ảnh dự án.",
+      "milestoneWorkItemsExceedDuration": "Các đầu việc vượt quá thời lượng của milestone {{days}} ngày."
     },
     "messages": {
       "aiGenerated": "Đã tạo thông tin dự án. Vui lòng kiểm tra trước khi tiếp tục.",

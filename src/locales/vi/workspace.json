@@ -14,7 +14,7 @@
     "tabAll": "Tất cả",
     "activeBadge": "Đang làm",
     "completedBadge": "Hoàn thành",
-    "disputedBadge": "Tranh chấp",
+    "disputedBadge": "Đang tranh chấp",
     "disputeClosedBadge": "Đã đóng tranh chấp",
     "noProjectsInTab": "Không có dự án nào thuộc nhóm này.",
     "milestoneManagement": "Quản Lý Cột Mốc",
@@ -147,7 +147,6 @@
     "conversationClosedDescription": "Không thể gửi tin nhắn sau khi phiếu tranh chấp được đóng.",
     "conversationClosedCompletedTitle": "Cuộc hội thoại này đã bị khóa vì hợp đồng đã hoàn thành.",
     "conversationClosedCompletedDescription": "Không thể gửi tin nhắn nữa.",
-    "disputedBadge": "Đang tranh chấp",
     "openDispute": "Mở tranh chấp",
     "version": "Phiên bản {{version}}",
     "endProjectModalTitle": "Kết thúc dự án",
@@ -275,7 +274,14 @@
     "reportSystemReason": "Lý do",
     "reportSystemAction": "Hành động",
     "reportParticipant": "Một bên tham gia hợp đồng",
-    "reportUnavailable": "Báo cáo này không còn khả dụng."
+    "reportUnavailable": "Báo cáo này không còn khả dụng.",
+    "submitDeliverables": "Nộp sản phẩm",
+    "approveMilestone": "Duyệt & Giải ngân",
+    "allWorkItemsCompletedNotice": "Tất cả công việc đã hoàn thành! Sẵn sàng nộp sản phẩm.",
+    "deliverablesSubmittedNotice": "Freelancer đã nộp sản phẩm. Vui lòng kiểm tra và duyệt giải ngân.",
+    "completeWorkItemsNotice": "Hoàn thành tất cả đầu việc trước khi nộp.",
+    "openDeliverySpace": "Mở trang nộp sản phẩm",
+    "reviewWorkItems": "Duyệt đầu việc"
   },
   "projects": {
     "title": "Dự Án",

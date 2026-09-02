@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractDto, ContractEscrowDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest, WorkspaceFileDto } from '../../types/models/Contract';
+import type { ContractDto, ContractEscrowDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, ContractWorkItemSubmission, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest, WorkspaceFileDto } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 
@@ -303,14 +303,55 @@ export const normalizeMilestone = (milestone: unknown): Milestone => {
       'submissionDescription',
       'SubmissionDescription',
     ) ?? null,
-    workItems: (getValue<ContractWorkItem[]>(source, 'workItems', 'WorkItems') || []).map(item => ({
-      ...item,
-      workItemId: String((item as any).workItemId ?? (item as any).WorkItemId ?? ''),
-      milestoneId: String((item as any).milestoneId ?? (item as any).MilestoneId ?? id),
-      orderIndex: Number((item as any).orderIndex ?? (item as any).OrderIndex ?? 0),
-      status: Number((item as any).status ?? (item as any).Status ?? 0),
-    })),
+    workItems: (getValue<ContractWorkItem[]>(source, 'workItems', 'WorkItems') || []).map(item => {
+      const raw = item as unknown as Record<string, unknown>;
+      const workItemId = String(raw.workItemId ?? raw.WorkItemId ?? '');
+
+      return {
+        ...item,
+        workItemId,
+        milestoneId: String(raw.milestoneId ?? raw.MilestoneId ?? id),
+        dueDate: (raw.dueDate ?? raw.DueDate ?? null) as string | null,
+        orderIndex: Number(raw.orderIndex ?? raw.OrderIndex ?? 0),
+        status: Number(raw.status ?? raw.Status ?? 0),
+        submissions: normalizeWorkItemSubmissions(raw.submissions ?? raw.Submissions, workItemId),
+      };
+    }),
+    deliveryMode: Number(getValue(source, 'deliveryMode', 'DeliveryMode') ?? 0),
   };
+};
+
+/**
+ * The attempt history is what the delivery space renders as "Revision 1 / Revision 2", so it is
+ * normalized alongside the work item rather than left in whatever casing the envelope arrived in.
+ */
+const normalizeWorkItemSubmissions = (
+  value: unknown,
+  workItemId: string,
+): ContractWorkItemSubmission[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value.map(entry => {
+    const raw = entry as Record<string, unknown>;
+    const attachments = raw.attachments ?? raw.Attachments;
+
+    return {
+      submissionId: String(raw.submissionId ?? raw.SubmissionId ?? ''),
+      workItemId: String(raw.workItemId ?? raw.WorkItemId ?? workItemId),
+      revisionNumber: Number(raw.revisionNumber ?? raw.RevisionNumber ?? 1),
+      note: (raw.note ?? raw.Note ?? null) as string | null,
+      submittedAt: String(raw.submittedAt ?? raw.SubmittedAt ?? ''),
+      submittedByUserId: String(raw.submittedByUserId ?? raw.SubmittedByUserId ?? ''),
+      reviewStatus: Number(raw.reviewStatus ?? raw.ReviewStatus ?? 0),
+      reviewedAt: (raw.reviewedAt ?? raw.ReviewedAt ?? null) as string | null,
+      reviewedByUserId: (raw.reviewedByUserId ?? raw.ReviewedByUserId ?? null) as string | null,
+      reviewReason: (raw.reviewReason ?? raw.ReviewReason ?? null) as string | null,
+      attachments: Array.isArray(attachments)
+        ? attachments.map(attachment =>
+            normalizeMilestoneAttachment(attachment as BackendMilestoneAttachmentResponse))
+        : [],
+    };
+  });
 };
 
 export const contractGetAPI = {

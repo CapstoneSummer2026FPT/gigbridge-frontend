@@ -9,6 +9,7 @@ import { JobPostVisibility } from '../../../types/models/Job';
 import { useApp } from '../../../app/providers/AppProvider';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
+import { PostJobAiInterviewToggle } from '../components/PostJobAiInterviewToggle';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobVisibilityModal } from '../components/PostJobVisibilityModal';
 import {
@@ -23,7 +24,6 @@ import {
   type PostJobReviewSection,
   type PostJobRouteState,
 } from '../hooks/usePostJob';
-import '../../../shared/components/styles/conic-border-button.css';
 import { renderDescription } from '../utils/descriptionFormatter';
 
 const normalizePublishVisibility = (visibility: string): JobPostVisibility => {
@@ -57,13 +57,17 @@ export default function PostJobReviewScreen() {
   const [isFinishingEdit, setIsFinishingEdit] = useState(false);
   const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false);
   const [publishVisibility, setPublishVisibility] = useState<JobPostVisibility>(JobPostVisibility.Public);
-  const isAiInterviewEnabled = hasAiInterview;
+  const answeredQuestions = questions.filter(question => question.questionText.trim());
+  const hasInterviewQuestions = answeredQuestions.length > 0;
+  const isAiInterviewEnabled = hasInterviewQuestions && hasAiInterview;
 
   const handleToggleAiInterview = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    if (!hasInterviewQuestions) return;
+
     if (!isPremium) {
       toast.info(
         t('postJobWizard.plan.aiPremiumRequired', {
@@ -89,7 +93,6 @@ export default function PostJobReviewScreen() {
     if (!routeState?.jobPostId && !routeState?.jobData) navigate('/jobs/post', { replace: true });
   }, [navigate, routeState]);
 
-  const answeredQuestions = questions.filter(question => question.questionText.trim());
   const allSkills = [...selectedOfficialSkills.map(skill => skill.name), ...form.customSkillNames];
   const optional = (value?: string | null) => value?.trim() || t('postJobWizard.notProvided');
   const completion = [
@@ -604,79 +607,16 @@ export default function PostJobReviewScreen() {
         </div>
 
         <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 pt-0.5 sm:pt-1">
-          {/* Card 1: AI Interviewer Toggle (With Conic Running Border & Brand/Mint Theme) */}
-          <div className="conic-border-wrap conic-border-card rounded-2xl cursor-pointer">
-            <div
-              onClick={handleToggleAiInterview}
-              className={`conic-border-card-inner rounded-[calc(1rem-1.5px)] justify-between items-stretch p-4 sm:p-5 space-y-2 text-left transition-all duration-300 ${isAiInterviewEnabled
-                  ? 'bg-[var(--brand,#494be7)]/10 dark:bg-[var(--brand,#494be7)]/20'
-                  : 'bg-card'
-                }`}
-            >
-              <style>{`
-                @keyframes cp-nudge-thumb-review {
-                  0%, 100% {
-                    transform: translateX(0);
-                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-                  }
-                  30% {
-                    transform: translateX(7px);
-                    box-shadow: 0 0 10px rgba(73, 75, 231, 0.6);
-                  }
-                  50% {
-                    transform: translateX(2px);
-                  }
-                  70% {
-                    transform: translateX(9px);
-                    box-shadow: 0 0 12px rgba(73, 75, 231, 0.7);
-                  }
-                }
-              `}</style>
-
-              <div className="space-y-2.5 sm:space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
-                    <strong className="font-black text-[var(--brand,#494be7)] flex items-center gap-1.5 text-xs sm:text-sm">
-                      <Sparkles size={15} className="shrink-0 animate-pulse text-[var(--brand,#494be7)]" />
-                      {t('postJobWizard.plan.aiTitleReview', 'AI Phỏng vấn tự động (Gói Premium ✦)')}
-                    </strong>
-                    <span
-                      className={`text-[9.5px] sm:text-[10px] font-black px-2 sm:px-2.5 py-0.5 rounded-full uppercase tracking-wider transition-all ${isAiInterviewEnabled
-                          ? 'bg-[var(--brand,#494be7)] text-white shadow-xs'
-                          : 'bg-[var(--brand,#494be7)]/15 text-[var(--brand,#494be7)] border border-[var(--brand,#494be7)]/30'
-                        }`}
-                    >
-                      {isAiInterviewEnabled ? '✓ ACTIVE ✦' : 'RECOMMENDED'}
-                    </span>
-                  </div>
-
-                  {/* Toggle Switch */}
-                  <div className="pt-0.5 shrink-0">
-                    <div
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-all duration-300 ease-in-out focus:outline-none ${isAiInterviewEnabled
-                          ? 'bg-gradient-to-r from-[var(--brand,#494be7)] to-[#6366f1] border-[var(--brand,#494be7)] shadow-md shadow-[var(--brand,#494be7)]/30 ring-2 ring-[var(--brand,#494be7)]/20'
-                          : 'bg-muted border-border'
-                        }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${isAiInterviewEnabled ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        style={
-                          !isAiInterviewEnabled
-                            ? { animation: 'cp-nudge-thumb-review 2.8s infinite ease-in-out' }
-                            : undefined
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
-                </p>
-              </div>
-            </div>
-          </div>
+          <PostJobAiInterviewToggle
+            enabled={isAiInterviewEnabled}
+            questionCount={answeredQuestions.length}
+            title={t('postJobWizard.plan.aiTitleReview', 'AI Phỏng vấn tự động (Gói Premium ✦)')}
+            description={t('postJobWizard.plan.aiDesc', 'Khi bật AI Interviewer, bộ câu hỏi sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!')}
+            disabledReason={t('postJobWizard.plan.aiQuestionRequired')}
+            disabledStatusLabel={t('postJobWizard.plan.aiQuestionRequiredBadge')}
+            onToggle={handleToggleAiInterview}
+            variant="review"
+          />
 
           {/* Card 2: Job Post Visibility */}
           <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 space-y-3 shadow-2xs hover:border-[var(--brand)]/40 transition-all flex flex-col justify-between">
