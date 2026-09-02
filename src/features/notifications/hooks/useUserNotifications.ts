@@ -216,6 +216,11 @@ const getActionUrl = (
         if (targetConvId) return `/messages?conversationId=${targetConvId}`;
         return referenceId ? `/messages?proposalId=${referenceId}` : '/messages';
       }
+
+      const targetJobPostId =
+        metadata?.jobPostId || metadata?.jobPostsId || metadata?.JobPostId || metadata?.JobPostsId;
+      if (targetJobPostId) return `/proposals?job=${targetJobPostId}`;
+
       return '/proposals';
     }
     case 'contract':
