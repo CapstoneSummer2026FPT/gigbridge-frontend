@@ -448,6 +448,7 @@
       "generating": "Generating...",
       "lockedTitle": "AI drafting is a Premium feature",
       "lockedDescription": "Upgrade your client plan to generate structured project details and interview questions.",
+      "upgrade": "Upgrade",
       "attachFile": "Attach document (.docx, .pdf, .txt, .md)",
       "aiPromptTab": "AI Job Prompt",
       "createWithDocTab": "Create Job With Your Document",
