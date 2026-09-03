@@ -352,6 +352,7 @@
         "workItemTitle": "Tên hạng mục",
         "estimatedDuration": "Thời lượng dự kiến",
         "taskDescription": "Mô tả công việc",
+        "workItemDeliverables": "Kết quả bàn giao",
         "autoBalanceOn": "Cân bằng tự động: BẬT",
         "autoBalanceOff": "Cân bằng tự động: TẮT",
         "autoBalanceOnDesc": "Thay đổi mốc sẽ tự động cân bằng các mốc chưa cố định.",

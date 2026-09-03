@@ -355,6 +355,7 @@
         "workItemTitle": "Work item title",
         "estimatedDuration": "Estimated duration",
         "taskDescription": "Task description",
+        "workItemDeliverables": "Deliverables",
         "autoBalanceOn": "Auto-balance: ON",
         "autoBalanceOff": "Auto-balance: OFF",
         "autoBalanceOnDesc": "Edits auto-balance remaining unlocked milestones.",

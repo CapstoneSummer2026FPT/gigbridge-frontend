@@ -213,6 +213,7 @@ export default function CreateProposalScreen() {
     workItemTitle: t('postJobWizard.plan.milestoneCopy.workItemTitle'),
     estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
     taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
+    workItemDeliverables: t('postJobWizard.plan.milestoneCopy.workItemDeliverables'),
     autoBalanceOn: t('postJobWizard.plan.milestoneCopy.autoBalanceOn', '⚡ Auto-balance: ON'),
     autoBalanceOff: t('postJobWizard.plan.milestoneCopy.autoBalanceOff', '⚡ Auto-balance: OFF'),
     autoBalanceOnDesc: t('postJobWizard.plan.milestoneCopy.autoBalanceOnDesc', 'Editing any milestone automatically rebalances the remaining budget across all unlocked milestones.'),

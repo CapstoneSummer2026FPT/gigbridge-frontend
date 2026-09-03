@@ -72,6 +72,7 @@ export interface MilestonePlanUiCopy {
   workItemTitle?: string;
   estimatedDuration?: string;
   taskDescription?: string;
+  workItemDeliverables?: string;
   /** Label for the derived, read-only work item deadline. */
   workItemDueDate?: string;
   advancedDetails?: string;
@@ -1101,11 +1102,7 @@ export function NestedMilestonePlanEditor({
                         {workItemDueDate && <span className="mt-1 block text-[11px] font-normal text-muted-foreground">{uiCopy.workItemDueDate || 'Deadline'}: {workItemDueDate}</span>}
                       </label>
                       <label className="text-xs font-semibold">{uiCopy.taskDescription || 'Task description'}<textarea data-work-item-field={`${index}.${workIndex}.description`} disabled={readOnly} value={workItem.description || ''} onChange={e => updateWorkItem(index, workIndex, { description: e.target.value })} placeholder={fieldPlaceholders.workItemDescription || 'Task description'} aria-label={uiCopy.taskDescription ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.taskDescription}` : `Work item ${workIndex + 1} description`} aria-describedby={describedBy(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)} rows={2} className={workItemFieldClass('description')} />{renderHint(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)}{workItemErrorFor('description') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('description')}</span>}</label>
-                      {/* A work item is authored with three fields: title, estimated duration and task
-                          description. The deliverables textarea used to be a fourth, but it duplicated
-                          the description in practice and no longer drives anything — the deliverable is
-                          the file the freelancer uploads against this item in the delivery space. The
-                          column is retained for contracts signed before that change. */}
+                      <label className="text-xs font-semibold">{uiCopy.workItemDeliverables || 'Work item deliverables'}<textarea data-work-item-field={`${index}.${workIndex}.deliverables`} disabled={readOnly} value={workItem.deliverables || ''} onChange={e => updateWorkItem(index, workIndex, { deliverables: e.target.value })} placeholder={fieldPlaceholders.workItemDeliverables || 'Work item deliverables'} aria-label={uiCopy.workItemDeliverables ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.workItemDeliverables}` : `Work item ${workIndex + 1} deliverables`} aria-describedby={describedBy(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)} rows={2} className={workItemFieldClass('deliverables')} />{renderHint(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)}{workItemErrorFor('deliverables') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('deliverables')}</span>}</label>
                     </div>;
                   })}
                   {milestone.workItems.length > 0 && (() => {
