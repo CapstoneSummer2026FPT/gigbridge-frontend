@@ -16,6 +16,11 @@ import {
   Package,
   CheckCircle2,
   ChevronDown,
+  Target,
+  ClipboardList,
+  HelpCircle,
+  SlidersHorizontal,
+  Info,
 } from 'lucide-react';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
@@ -36,7 +41,7 @@ import { getCriteriaColorTheme } from '../utils/criteriaColors';
 import '../../../shared/components/styles/conic-border-button.css';
 import type { BusyAction } from '../hooks/useClientProposals';
 import { getStatusLabel } from '../utils/statusHelpers';
-import { useLanguage } from '../../../hooks/useTranslation';
+import { useTranslation, useLanguage } from '../../../hooks/useTranslation';
 
 export interface ProposalDetailModalProps {
   isOpen: boolean;
@@ -75,6 +80,13 @@ const getScoreColorClass = (score?: number | null) => {
   return 'border-rose-500/40 text-rose-600 bg-rose-500/10 dark:text-rose-400 font-black';
 };
 
+const getScoreTextColor = (score?: number | null) => {
+  if (typeof score !== 'number') return 'text-text-muted';
+  if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
+  if (score >= 60) return 'text-amber-600 dark:text-amber-400';
+  return 'text-rose-600 dark:text-rose-400';
+};
+
 function SubcriteriaDefinitionTooltip({
   title,
   titleEn,
@@ -82,6 +94,8 @@ function SubcriteriaDefinitionTooltip({
   score,
   definition,
   definitionEn,
+  align = 'auto',
+  className = '',
   children,
 }: {
   title: string;
@@ -90,11 +104,17 @@ function SubcriteriaDefinitionTooltip({
   score: number;
   definition: string;
   definitionEn?: string;
+  align?: 'left' | 'center' | 'right' | 'auto';
+  className?: string;
   children: React.ReactNode;
 }) {
   const [isVisible, setIsVisible] = React.useState(false);
-  const { currentLanguage } = useLanguage();
-  const isEn = currentLanguage === 'en';
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = React.useState<'top' | 'bottom'>('top');
+  const [computedAlign, setComputedAlign] = React.useState<'left' | 'center' | 'right'>(
+    align === 'auto' ? 'center' : align
+  );
+  const { t } = useTranslation();
 
   const getScoreBadgeClass = (val: number) => {
     if (val >= 80) return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
@@ -102,31 +122,67 @@ function SubcriteriaDefinitionTooltip({
     return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
   };
 
-  const displayTitle = isEn && titleEn ? titleEn : title;
-  const displayDefinition = isEn && definitionEn ? definitionEn : definition;
+  React.useLayoutEffect(() => {
+    if (!isVisible || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+
+    // Check vertical space (needs ~220px above)
+    if (rect.top < 230) {
+      setPlacement('bottom');
+    } else {
+      setPlacement('top');
+    }
+
+    if (align !== 'auto') {
+      setComputedAlign(align);
+      return;
+    }
+
+    // Dynamic horizontal collision detection
+    const tooltipWidth = 300;
+    const center = rect.left + rect.width / 2;
+    if (center - tooltipWidth / 2 < 24) {
+      setComputedAlign('left');
+    } else if (center + tooltipWidth / 2 > window.innerWidth - 24) {
+      setComputedAlign('right');
+    } else {
+      setComputedAlign('center');
+    }
+  }, [isVisible, align]);
 
   return (
     <div
-      className="relative group inline-block w-full"
+      ref={containerRef}
+      className={`relative group w-full h-full flex flex-col ${className}`}
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >
       {children}
 
       {isVisible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 w-64 sm:w-72 z-50 p-3.5 rounded-xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-xl text-left pointer-events-none animate-in fade-in duration-150">
+        <div
+          className={`absolute ${
+            placement === 'top' ? 'bottom-full mb-2.5' : 'top-full mt-2.5'
+          } ${
+            computedAlign === 'left'
+              ? 'left-0'
+              : computedAlign === 'right'
+              ? 'right-0'
+              : 'left-1/2 -translate-x-1/2'
+          } w-72 sm:w-80 z-50 p-4 rounded-2xl border border-brand bg-surface shadow-2xl text-left pointer-events-none transition-all animate-in fade-in duration-150`}
+        >
           <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2 mb-2">
             <span className="font-black text-xs text-text-primary flex items-center gap-1.5">
-              🎯 {displayTitle}
+              <Target size={13} className="text-text-primary shrink-0" /> {title}
             </span>
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted bg-surface-muted px-2 py-0.5 rounded-full border border-border/40">
-              {isEn ? 'Weight:' : 'Trọng số:'} {weight}
+              {t('proposalModal.weight', 'Weight:')} {weight}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[11px] font-bold text-text-muted">
-              {isEn ? 'Candidate Score:' : 'Điểm ứng viên:'}
+              {t('proposalModal.candidateScore', 'Candidate Score:')}
             </span>
             <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${getScoreBadgeClass(score)}`}>
               {score} / 100
@@ -135,15 +191,27 @@ function SubcriteriaDefinitionTooltip({
 
           <div className="space-y-1">
             <span className="block text-[10px] font-black uppercase text-brand tracking-wider">
-              {isEn ? 'Criteria Description & AI Scoring:' : 'Mô tả tiêu chí & Cách AI đánh giá:'}
+              {t('proposalModal.criteriaDesc', 'Criteria Description & AI Scoring:')}
             </span>
             <p className="text-xs text-text-primary font-normal leading-relaxed">
-              {displayDefinition}
+              {definition}
             </p>
           </div>
 
-          {/* Bottom Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-card/95" />
+          {/* Dynamic Arrow */}
+          <div
+            className={`absolute ${
+              placement === 'top'
+                ? 'top-full -mt-[1px] border-t-brand border-x-transparent border-b-transparent'
+                : 'bottom-full -mb-[1px] border-b-brand border-x-transparent border-t-transparent'
+            } ${
+              computedAlign === 'left'
+                ? 'left-8'
+                : computedAlign === 'right'
+                ? 'right-8'
+                : 'left-1/2 -translate-x-1/2'
+            } w-0 h-0 border-solid border-4`}
+          />
         </div>
       )}
     </div>
@@ -882,7 +950,7 @@ export function ProposalDetailModal({
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              <FileText size={16} /> Proposal
+              <FileText size={16} /> {t('proposalModal.tabProposal', 'Proposal')}
             </button>
             <button
               type="button"
@@ -893,7 +961,7 @@ export function ProposalDetailModal({
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              <FileQuestion size={16} /> Q&A
+              <FileQuestion size={16} /> {t('proposalModal.tabQA', 'Q&A')}
             </button>
             {showAiReportTab && (
               modalTab === 'aiReport' ? (
@@ -903,7 +971,7 @@ export function ProposalDetailModal({
                     onClick={() => setModalTab('aiReport')}
                     className="conic-border-btn !py-2.5 !text-sm sm:!text-base !bg-brand !text-white flex items-center justify-center gap-2 font-black w-full"
                   >
-                    <Brain size={16} className="text-[#AFDBFF]" /> AI Report
+                    <Brain size={16} className="text-white" /> {t('proposalModal.tabAIReport', 'AI Report')}
                   </button>
                 </div>
               ) : (
@@ -912,7 +980,7 @@ export function ProposalDetailModal({
                   onClick={() => setModalTab('aiReport')}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 font-black transition-all cursor-pointer text-brand hover:text-text-primary"
                 >
-                  <Brain size={16} className="text-brand" /> AI Report
+                  <Brain size={16} className="text-brand" /> {t('proposalModal.tabAIReport', 'AI Report')}
                 </button>
               )
             )}
@@ -938,12 +1006,14 @@ export function ProposalDetailModal({
                       <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-surface-card p-4 flex flex-wrap items-center justify-between gap-2.5 text-sm shadow-2xs">
                         <div className="flex items-center gap-2.5">
                           <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
-                          <span className="font-black text-emerald-800 dark:text-emerald-200 text-sm sm:text-base">
-                            📋 {aiAuditData.fulfilledCount} / {aiAuditData.totalReqs} Criteria Matched ({aiAuditData.scopeCoveragePct.toFixed(0)}% Scope Coverage)
+                          <span className="font-black text-emerald-800 dark:text-emerald-200 text-sm sm:text-base flex items-center gap-1.5">
+                            <ClipboardList size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <span>{aiAuditData.fulfilledCount} / {aiAuditData.totalReqs} Criteria Matched ({aiAuditData.scopeCoveragePct.toFixed(0)}% Scope Coverage)</span>
                           </span>
                         </div>
-                        <span className="rounded-full bg-emerald-500/20 px-3.5 py-1 text-xs font-black text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs">
-                          ✨ AI Evidence Sentences Highlighted in Proposal Below
+                        <span className="rounded-full bg-emerald-500/20 px-3.5 py-1 text-xs font-black text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs flex items-center gap-1">
+                          <Sparkles size={12} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          <span>AI Evidence Sentences Highlighted in Proposal Below</span>
                         </span>
                       </div>
                     )}
@@ -1038,7 +1108,7 @@ export function ProposalDetailModal({
               <>
                 {evalLoading && (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                    <LemniscateBloomLoader label="Đang tải Báo cáo AI..." size={48} />
+                    <LemniscateBloomLoader label={t('proposalModal.aiReportLoading', 'Đang tải Báo cáo AI...')} size={48} />
                   </div>
                 )}
 
@@ -1052,9 +1122,9 @@ export function ProposalDetailModal({
                   <div className="rounded-2xl border border-border bg-surface-muted/20 p-12 text-center text-xs text-muted-foreground space-y-3">
                     <Brain size={38} className="mx-auto text-brand/60" />
                     <div>
-                      <p className="font-bold text-foreground text-sm">Chưa có Báo cáo Đánh giá AI cho proposal này.</p>
+                      <p className="font-bold text-foreground text-sm">{t('proposalModal.aiReportEmptyTitle', 'Chưa có Báo cáo Đánh giá AI cho proposal này.')}</p>
                       {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
-                        <p className="text-muted-foreground mt-1">Proposal này chưa được AI chấm điểm phỏng vấn.</p>
+                        <p className="text-muted-foreground mt-1">{t('proposalModal.aiReportEmptyDesc', 'Proposal này chưa được AI chấm điểm phỏng vấn.')}</p>
                       )}
                     </div>
                   </div>
@@ -1082,29 +1152,30 @@ export function ProposalDetailModal({
                   {/* Questions Breakdown linked to Pillar 2 (Screening Q&A 30%) */}
                   {displayQuestions.length > 0 && (
                     <div className="space-y-4 pt-2">
-                      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-surface-card p-4 space-y-2 text-sm">
+                      <div className="rounded-2xl border border-border bg-surface-muted/50 p-4 space-y-2 text-sm">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-black text-xs sm:text-sm text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                            ❓ Screening Q&A Accuracy & Reasoning (30%) Audit
+                          <span className="font-black text-xs sm:text-sm text-text-primary uppercase tracking-wider flex items-center gap-1.5">
+                            <HelpCircle size={15} className="text-text-primary shrink-0" />
+                            {t('proposalModal.pillar2Title', 'Screening Q&A Accuracy & Reasoning (30%) Audit')}
                           </span>
                           <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-1 text-xs font-black text-amber-800 dark:text-amber-200">
-                              Score: {pillar2Score.toFixed(1)} / 100
+                            <span className="rounded-full bg-surface-card border border-border px-3 py-1 text-xs font-black text-text-primary shadow-2xs">
+                              {t('proposalModal.scoreLabel', 'Score: {{score}} / 100', { score: pillar2Score.toFixed(1) })}
                             </span>
-                            <span className="text-xs font-extrabold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
-                              Pillar 2 Evidence Source ({displayQuestions.length} câu hỏi sàng lọc)
+                            <span className="text-xs font-extrabold text-text-primary bg-surface-card border border-border px-2.5 py-0.5 rounded-full shadow-2xs">
+                              {t('proposalModal.pillar2EvidenceSource', 'Pillar 2 Evidence Source ({{count}} câu hỏi sàng lọc)', { count: displayQuestions.length })}
                             </span>
                           </div>
                         </div>
                         <p className="text-xs sm:text-sm text-text-muted font-normal">
-                          Bảng dưới đây liệt kê chi tiết từng câu hỏi sàng lọc, câu trả lời của ứng viên và điểm đối soát 5 tiêu chí kỹ thuật cấu thành nên điểm <strong>Screening Q&A (30% Weight)</strong>.
+                          {t('proposalModal.pillar2Desc', 'Bảng dưới đây liệt kê chi tiết từng câu hỏi sàng lọc, câu trả lời của ứng viên và điểm đối soát 5 tiêu chí kỹ thuật cấu thành nên điểm Screening Q&A (30% Weight).')}
                         </p>
                       </div>
 
                       <h4 className="text-xs sm:text-sm font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-2.5 flex items-center justify-between">
                         <span>{t('proposalAnswers.questionBreakdown', 'Chi tiết điểm từng câu hỏi & Feedback từ AI')}</span>
                         <span className="text-xs font-bold text-text-muted">
-                          {displayQuestions.length} câu hỏi sàng lọc
+                          {t('proposalModal.screeningQuestionsCount', '{{count}} câu hỏi sàng lọc', { count: displayQuestions.length })}
                         </span>
                       </h4>
 
@@ -1123,7 +1194,7 @@ export function ProposalDetailModal({
                           {/* Candidate Answer Box */}
                           <div className="rounded-xl bg-surface-muted/50 border border-border/60 p-3.5 text-sm space-y-1.5">
                             <span className="block text-xs font-black uppercase text-text-muted tracking-wider">
-                              Câu trả lời của ứng viên
+                              {t('proposalAnswers.candidateAnswerLabel', 'Câu trả lời của ứng viên')}
                             </span>
                             <p className="text-text-primary whitespace-pre-wrap leading-relaxed font-normal text-sm sm:text-base">
                               {q.candidateAnswer || t('proposalAnswers.noAnswerProvided', 'Không có câu trả lời')}
@@ -1131,103 +1202,221 @@ export function ProposalDetailModal({
                           </div>
 
                           {/* 5-Subcriteria Technical Evaluation Grid */}
-                          <div className="rounded-xl border border-brand/20 bg-brand/5 p-4 space-y-3">
-                            <span className="block text-xs font-black uppercase tracking-wider text-brand">
-                              📊 {isEn ? '5 Sub-Criteria Technical Breakdown' : 'Chi tiết đánh giá 5 Tiêu chí Kỹ thuật (5 Sub-criteria Breakdown)'}
-                            </span>
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs sm:text-sm">
+                          <div className="rounded-2xl border border-border bg-surface-muted/40 p-3.5 sm:p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+                              <span className="text-xs font-black uppercase tracking-wider text-text-primary flex items-center gap-2">
+                                <SlidersHorizontal size={14} className="text-brand shrink-0" />
+                                <span>{t('proposalAnswers.subcriteriaBreakdown', 'Chi tiết đánh giá 5 Tiêu chí Kỹ thuật (5 Sub-criteria Breakdown)')}</span>
+                              </span>
+                              <span className="text-[11px] font-medium text-text-muted hidden sm:inline-flex items-center gap-1.5">
+                                <Info size={12} className="text-brand shrink-0" />
+                                <span>{t('proposalAnswers.hoverHint', 'Rê chuột để xem tiêu chí & cách chấm')}</span>
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3 w-full items-stretch">
                               {/* 1. Độ chính xác */}
                               <SubcriteriaDefinitionTooltip
-                                title="Độ chính xác"
-                                titleEn="Answer Correctness"
+                                title={t('proposalAnswers.correctnessTitle', 'Độ chính xác')}
                                 weight="40%"
+                                align="left"
+                                className="w-full h-full flex flex-col"
                                 score={q.subcriteria.correctness}
-                                definition="Đánh giá độ chính xác thực tế, khái niệm kỹ thuật và mức độ đáp ứng đúng yêu cầu của câu hỏi."
-                                definitionEn="Evaluates factual accuracy, technical concepts, and how directly the response fulfills question requirements."
+                                definition={t('proposalAnswers.correctnessDef', 'Đánh giá độ chính xác thực tế, khái niệm kỹ thuật và mức độ đáp ứng đúng yêu cầu của câu hỏi.')}
                               >
-                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
-                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
-                                    {isEn ? 'Correctness (40%)' : 'Độ chính xác (40%)'}
-                                  </span>
-                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.correctness)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                    {q.subcriteria.correctness}/100
-                                  </strong>
+                                <div className="w-full h-full min-h-[105px] sm:min-h-[115px] flex flex-col justify-between rounded-xl bg-surface border border-border/80 p-3 text-center cursor-help transition-all duration-200 hover:border-brand hover:shadow-md hover:-translate-y-0.5 group">
+                                  <div className="flex-1 flex flex-col justify-center items-center gap-1">
+                                    <span className="block text-[11px] sm:text-xs font-black uppercase tracking-wider text-text-primary text-center line-clamp-2 leading-tight">
+                                      {t('proposalAnswers.correctnessTitle', 'Độ chính xác')}
+                                    </span>
+                                    <span className="inline-flex items-center text-[10px] font-black text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full">
+                                      40%
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-border/60">
+                                    <div className="flex items-center justify-center gap-1 leading-none">
+                                      <span className={`text-sm sm:text-base font-black ${getScoreTextColor(q.subcriteria.correctness)}`}>
+                                        {q.subcriteria.correctness}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-text-muted">/100</span>
+                                    </div>
+                                    <div className="w-full bg-surface-muted rounded-full h-1 mt-1.5 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          q.subcriteria.correctness >= 80
+                                            ? 'bg-emerald-500'
+                                            : q.subcriteria.correctness >= 60
+                                            ? 'bg-amber-500'
+                                            : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.max(0, q.subcriteria.correctness))}%` }}
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               </SubcriteriaDefinitionTooltip>
 
                               {/* 2. Tư duy Kỹ thuật */}
                               <SubcriteriaDefinitionTooltip
-                                title="Tư duy Kỹ thuật"
-                                titleEn="Technical Reasoning"
+                                title={t('proposalAnswers.reasoningTitle', 'Tư duy Kỹ thuật')}
                                 weight="25%"
+                                align="left"
+                                className="w-full h-full flex flex-col"
                                 score={q.subcriteria.reasoning}
-                                definition="Đánh giá độ sâu của logic giải quyết vấn đề, lập luận kỹ thuật và lý do đưa ra các giải pháp hoặc lựa chọn đánh đổi (trade-offs)."
-                                definitionEn="Evaluates the depth of problem-solving logic, technical rationale, and trade-off decision justification."
+                                definition={t('proposalAnswers.reasoningDef', 'Đánh giá độ sâu của logic giải quyết vấn đề, lập luận kỹ thuật và lý do đưa ra các giải pháp hoặc lựa chọn đánh đổi (trade-offs).')}
                               >
-                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
-                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
-                                    {isEn ? 'Reasoning (25%)' : 'Tư duy Kỹ thuật (25%)'}
-                                  </span>
-                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.reasoning)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                    {q.subcriteria.reasoning}/100
-                                  </strong>
+                                <div className="w-full h-full min-h-[105px] sm:min-h-[115px] flex flex-col justify-between rounded-xl bg-surface border border-border/80 p-3 text-center cursor-help transition-all duration-200 hover:border-brand hover:shadow-md hover:-translate-y-0.5 group">
+                                  <div className="flex-1 flex flex-col justify-center items-center gap-1">
+                                    <span className="block text-[11px] sm:text-xs font-black uppercase tracking-wider text-text-primary text-center line-clamp-2 leading-tight">
+                                      {t('proposalAnswers.reasoningTitle', 'Tư duy Kỹ thuật')}
+                                    </span>
+                                    <span className="inline-flex items-center text-[10px] font-black text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full">
+                                      25%
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-border/60">
+                                    <div className="flex items-center justify-center gap-1 leading-none">
+                                      <span className={`text-sm sm:text-base font-black ${getScoreTextColor(q.subcriteria.reasoning)}`}>
+                                        {q.subcriteria.reasoning}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-text-muted">/100</span>
+                                    </div>
+                                    <div className="w-full bg-surface-muted rounded-full h-1 mt-1.5 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          q.subcriteria.reasoning >= 80
+                                            ? 'bg-emerald-500'
+                                            : q.subcriteria.reasoning >= 60
+                                            ? 'bg-amber-500'
+                                            : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.max(0, q.subcriteria.reasoning))}%` }}
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               </SubcriteriaDefinitionTooltip>
 
                               {/* 3. Độ liên quan */}
                               <SubcriteriaDefinitionTooltip
-                                title="Độ liên quan"
-                                titleEn="Question Relevance"
+                                title={t('proposalAnswers.relevanceTitle', 'Độ liên quan')}
                                 weight="15%"
+                                align="center"
+                                className="w-full h-full flex flex-col"
                                 score={q.subcriteria.relevance}
-                                definition="Đánh giá mức độ trả lời trực tiếp vào đúng trọng tâm câu hỏi được hỏi, không đi lạc đề hoặc viết dài dòng sáo rỗng."
-                                definitionEn="Evaluates directness in answering the exact question asked without off-topic tangents or padded fluff."
+                                definition={t('proposalAnswers.relevanceDef', 'Đánh giá mức độ trả lời trực tiếp vào đúng trọng tâm câu hỏi được hỏi, không đi lạc đề hoặc viết dài dòng sáo rỗng.')}
                               >
-                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
-                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
-                                    {isEn ? 'Relevance (15%)' : 'Độ liên quan (15%)'}
-                                  </span>
-                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.relevance)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                    {q.subcriteria.relevance}/100
-                                  </strong>
+                                <div className="w-full h-full min-h-[105px] sm:min-h-[115px] flex flex-col justify-between rounded-xl bg-surface border border-border/80 p-3 text-center cursor-help transition-all duration-200 hover:border-brand hover:shadow-md hover:-translate-y-0.5 group">
+                                  <div className="flex-1 flex flex-col justify-center items-center gap-1">
+                                    <span className="block text-[11px] sm:text-xs font-black uppercase tracking-wider text-text-primary text-center line-clamp-2 leading-tight">
+                                      {t('proposalAnswers.relevanceTitle', 'Độ liên quan')}
+                                    </span>
+                                    <span className="inline-flex items-center text-[10px] font-black text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full">
+                                      15%
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-border/60">
+                                    <div className="flex items-center justify-center gap-1 leading-none">
+                                      <span className={`text-sm sm:text-base font-black ${getScoreTextColor(q.subcriteria.relevance)}`}>
+                                        {q.subcriteria.relevance}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-text-muted">/100</span>
+                                    </div>
+                                    <div className="w-full bg-surface-muted rounded-full h-1 mt-1.5 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          q.subcriteria.relevance >= 80
+                                            ? 'bg-emerald-500'
+                                            : q.subcriteria.relevance >= 60
+                                            ? 'bg-amber-500'
+                                            : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.max(0, q.subcriteria.relevance))}%` }}
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               </SubcriteriaDefinitionTooltip>
 
                               {/* 4. Độ sâu */}
                               <SubcriteriaDefinitionTooltip
-                                title="Độ sâu Kỹ thuật"
-                                titleEn="Technical Depth"
+                                title={t('proposalAnswers.depthTitle', 'Độ sâu Kỹ thuật')}
                                 weight="10%"
+                                align="right"
+                                className="w-full h-full flex flex-col"
                                 score={q.subcriteria.depth}
-                                definition="Đánh giá tính cụ thể của các công cụ, công nghệ, framework, schema dữ liệu hoặc quy trình kỹ thuật so với các phát biểu chung chung."
-                                definitionEn="Evaluates technical specificity (naming concrete tools, frameworks, schemas, or workflow mechanics) vs generic high-level statements."
+                                definition={t('proposalAnswers.depthDef', 'Đánh giá tính cụ thể của các công cụ, công nghệ, framework, schema dữ liệu hoặc quy trình kỹ thuật so với các phát biểu chung chung.')}
                               >
-                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
-                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
-                                    {isEn ? 'Depth (10%)' : 'Độ sâu (10%)'}
-                                  </span>
-                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.depth)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                    {q.subcriteria.depth}/100
-                                  </strong>
+                                <div className="w-full h-full min-h-[105px] sm:min-h-[115px] flex flex-col justify-between rounded-xl bg-surface border border-border/80 p-3 text-center cursor-help transition-all duration-200 hover:border-brand hover:shadow-md hover:-translate-y-0.5 group">
+                                  <div className="flex-1 flex flex-col justify-center items-center gap-1">
+                                    <span className="block text-[11px] sm:text-xs font-black uppercase tracking-wider text-text-primary text-center line-clamp-2 leading-tight">
+                                      {t('proposalAnswers.depthTitle', 'Độ sâu Kỹ thuật')}
+                                    </span>
+                                    <span className="inline-flex items-center text-[10px] font-black text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full">
+                                      10%
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-border/60">
+                                    <div className="flex items-center justify-center gap-1 leading-none">
+                                      <span className={`text-sm sm:text-base font-black ${getScoreTextColor(q.subcriteria.depth)}`}>
+                                        {q.subcriteria.depth}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-text-muted">/100</span>
+                                    </div>
+                                    <div className="w-full bg-surface-muted rounded-full h-1 mt-1.5 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          q.subcriteria.depth >= 80
+                                            ? 'bg-emerald-500'
+                                            : q.subcriteria.depth >= 60
+                                            ? 'bg-amber-500'
+                                            : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.max(0, q.subcriteria.depth))}%` }}
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               </SubcriteriaDefinitionTooltip>
 
                               {/* 5. Ví dụ thực tế */}
                               <SubcriteriaDefinitionTooltip
-                                title="Ví dụ thực tế"
-                                titleEn="Practical Examples"
+                                title={t('proposalAnswers.examplesTitle', 'Ví dụ thực tế')}
                                 weight="10%"
+                                align="right"
+                                className="col-span-2 sm:col-span-1 w-full h-full flex flex-col"
                                 score={q.subcriteria.examples}
-                                definition="Đánh giá việc đưa ra các kịch bản dự án thực tế, chi tiết kinh nghiệm triển khai đã qua hoặc quy trình thực thi thực tiễn."
-                                definitionEn="Evaluates inclusion of concrete real-world project scenarios, past production experience details, or realistic execution workflows."
+                                definition={t('proposalAnswers.examplesDef', 'Đánh giá việc đưa ra các kịch bản dự án thực tế, chi tiết kinh nghiệm triển khai đã qua hoặc quy trình thực thi thực tiễn.')}
                               >
-                                <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 text-center col-span-2 sm:col-span-1 cursor-help hover:border-brand/50 hover:bg-brand/5 transition-all">
-                                  <span className="block text-[10px] sm:text-xs font-bold uppercase text-text-muted">
-                                    {isEn ? 'Practical Examples (10%)' : 'Ví dụ thực tế (10%)'}
-                                  </span>
-                                  <strong className={`font-black ${getScoreColorClass(q.subcriteria.examples)} border-0 bg-transparent p-0 block mt-1 text-xs sm:text-sm`}>
-                                    {q.subcriteria.examples}/100
-                                  </strong>
+                                <div className="w-full h-full min-h-[105px] sm:min-h-[115px] flex flex-col justify-between rounded-xl bg-surface border border-border/80 p-3 text-center cursor-help transition-all duration-200 hover:border-brand hover:shadow-md hover:-translate-y-0.5 group">
+                                  <div className="flex-1 flex flex-col justify-center items-center gap-1">
+                                    <span className="block text-[11px] sm:text-xs font-black uppercase tracking-wider text-text-primary text-center line-clamp-2 leading-tight">
+                                      {t('proposalAnswers.examplesTitle', 'Ví dụ thực tế')}
+                                    </span>
+                                    <span className="inline-flex items-center text-[10px] font-black text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full">
+                                      10%
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-border/60">
+                                    <div className="flex items-center justify-center gap-1 leading-none">
+                                      <span className={`text-sm sm:text-base font-black ${getScoreTextColor(q.subcriteria.examples)}`}>
+                                        {q.subcriteria.examples}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-text-muted">/100</span>
+                                    </div>
+                                    <div className="w-full bg-surface-muted rounded-full h-1 mt-1.5 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          q.subcriteria.examples >= 80
+                                            ? 'bg-emerald-500'
+                                            : q.subcriteria.examples >= 60
+                                            ? 'bg-amber-500'
+                                            : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.max(0, q.subcriteria.examples))}%` }}
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               </SubcriteriaDefinitionTooltip>
                             </div>
@@ -1238,10 +1427,10 @@ export function ProposalDetailModal({
                             <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs sm:text-sm text-rose-700 dark:text-rose-300 space-y-1.5 shadow-2xs">
                               <div className="flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-rose-600 dark:text-rose-400">
                                 <AlertTriangle size={16} className="text-rose-500 shrink-0" />
-                                <span>⚠️ Cảnh báo: Phát hiện dấu hiệu câu trả lời do AI (ChatGPT/Claude) tạo</span>
+                                <span>{t('proposalAnswers.aiGeneratedWarning', 'Cảnh báo: Phát hiện dấu hiệu câu trả lời do AI (ChatGPT/Claude) tạo')}</span>
                               </div>
                               <p className="text-xs sm:text-sm font-medium leading-relaxed">
-                                {q.aiDetectionReason || 'Câu trả lời có dấu hiệu sao chép từ AI generator (định dạng lý thuyết, thiếu ví dụ thực tế hoặc trải nghiệm cá nhân).'}
+                                {q.aiDetectionReason || t('proposalAnswers.aiDetectionDefault', 'Câu trả lời có dấu hiệu sao chép từ AI generator (định dạng lý thuyết, thiếu ví dụ thực tế hoặc trải nghiệm cá nhân).')}
                               </p>
                             </div>
                           )}

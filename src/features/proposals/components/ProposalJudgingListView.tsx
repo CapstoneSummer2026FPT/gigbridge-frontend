@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
+  AlertTriangle,
   Brain,
   Sparkles,
   RefreshCw,
@@ -22,6 +23,7 @@ import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { CustomSelect } from '../../../shared/components/CustomSelect';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../../../shared/components/styles/conic-border-button.css';
 
 interface ProposalJudgingListViewProps {
@@ -86,6 +88,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
   canAct,
   onRefreshProposals,
 }) => {
+  const { t } = useTranslation();
   const [filterRec, setFilterRec] = useState<FilterRec>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortByOption>('aiScore');
@@ -503,29 +506,44 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                     {candidate.aiSummary ? (
                         <div className={`rounded-xl border p-3.5 space-y-1 text-xs sm:text-sm leading-relaxed shadow-2xs break-all [overflow-wrap:anywhere] ${
                           (candidate.aiVerdictBadge === 'high_risk' || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60 || (candidate.aiScopeCompletenessPercent ?? 100) < 50)
-                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-100 font-semibold'
-                            : 'border-brand/30 bg-brand/10 text-brand-950 dark:text-brand-100 font-medium'
+                            ? 'border-rose-500/30 bg-rose-500/10 text-text-primary font-medium'
+                            : 'border-brand/30 bg-brand/10 text-text-primary font-medium'
                         }`}>
                           {candidate.aiSummary.startsWith('Technical Quality:') ? (
                             (candidate.aiVerdictBadge === 'high_risk' || (candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0) < 60 || (candidate.aiScopeCompletenessPercent ?? 100) < 50) ? (
-                              <p>
-                                <strong className="font-black text-rose-600 dark:text-rose-400 mr-1">⚠️ High Risk Candidate:</strong>
-                                Candidate scored <span className="font-black">{candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0}/100</span> on technical quality and covers only <span className="font-black">{(candidate.aiScopeCompletenessPercent ?? 100).toFixed(0)}%</span> of required project scope deliverables.
+                              <p className="text-text-primary">
+                                <strong className="font-black text-rose-600 dark:text-rose-400 mr-1.5 inline-flex items-center gap-1">
+                                  <AlertTriangle size={15} className="text-rose-500 shrink-0" />
+                                  {t('aiVerdict.highRiskNotice', '⚠️ High Risk Candidate:')}
+                                </strong>
+                                <span className="text-text-primary font-medium">
+                                  {t('aiVerdict.highRiskSummaryDesc', 'Candidate scored {{score}}/100 on technical quality and covers only {{scope}}% of required project scope deliverables.', {
+                                    score: candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0,
+                                    scope: (candidate.aiScopeCompletenessPercent ?? 100).toFixed(0),
+                                  })}
+                                </span>
                               </p>
                             ) : (
-                              <p>
-                                <strong className="font-black text-brand mr-1">💡 Candidate Assessment:</strong>
-                                Candidate evaluated with <span className="font-black">{candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0}/100</span> technical quality and <span className="font-black">{(candidate.aiSavingsRatioPercent ?? 0).toFixed(1)}%</span> cost savings vs budget.
+                              <p className="text-text-primary">
+                                <strong className="font-black text-brand mr-1.5 inline-flex items-center gap-1">
+                                  <Sparkles size={15} className="text-brand shrink-0" />
+                                  {t('aiVerdict.assessmentNotice', '💡 Candidate Assessment:')}
+                                </strong>
+                                <span className="text-text-primary font-medium">
+                                  {t('aiVerdict.assessmentSummaryDesc', 'Candidate evaluated with {{score}}/100 technical quality and {{savings}}% cost savings vs budget.', {
+                                    score: candidate.aiTechnicalQualityScore ?? candidate.aiScore ?? 0,
+                                    savings: (candidate.aiSavingsRatioPercent ?? 0).toFixed(1),
+                                  })}
+                                </span>
                               </p>
                             )
                           ) : (
-                            <p className="italic">"{candidate.aiSummary}"</p>
+                            <p className="italic text-text-primary font-medium">"{candidate.aiSummary}"</p>
                           )}
                         </div>
-                      )
- : (
+                      ) : (
                         <p className="text-xs text-text-muted italic">
-                          Chưa có đánh giá AI. Nhấn "Chấm tất cả" để chấm điểm.
+                          {t('aiVerdict.notEvaluatedYet', 'Chưa có đánh giá AI. Nhấn "Chấm tất cả" để chấm điểm.')}
                         </p>
                       )}
 
