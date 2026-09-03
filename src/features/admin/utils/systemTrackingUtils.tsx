@@ -6,12 +6,13 @@ import {
   Coins,
   FileSignature,
   Activity,
+  AlertCircle,
 } from 'lucide-react';
 import type { ApiResponse } from '../../../types/common';
 import type { AdminUserDto } from '../../../types/models/User';
 import type { JobPostSummaryDto } from '../../../types/models/Job';
 import type { ProposalDto } from '../../../types/models/Proposal';
-import type { AdminAuditLog } from '../../../types/models/AdminPhase1';
+import type { AdminAuditLog } from '../../../types/systemTracking';
 
 export type TabType = 'overview' | 'audit' | 'errors' | 'alerts';
 export type LogLevel = 'info' | 'warning' | 'error' | 'critical';
@@ -168,35 +169,35 @@ export const getActionTheme = (action: string): { category: string; icon: ReactN
   return { category: 'category-system', icon: <Activity size={13} /> };
 };
 
-export const formatActionTitle = (action: string, t?: (key: string, options?: any) => string): string => {
+export const formatActionTitle = (action: string, t: (key: string, fallback?: string) => string): string => {
   if (!action) return 'Hoạt động';
   const normalized = action.replace(/[.\s-]/g, '_');
   const translationKey = `adminSystemTracking.actions.${normalized}`;
-  const translated = t ? t(translationKey, { defaultValue: '' }) : '';
+  const translated = t(translationKey);
   if (translated && translated !== translationKey) return translated;
 
   const directKey = `adminSystemTracking.actions.${action}`;
-  const directTranslated = t ? t(directKey, { defaultValue: '' }) : '';
+  const directTranslated = t(directKey);
   if (directTranslated && directTranslated !== directKey) return directTranslated;
 
   // Direct lookups for common cases
   const directLookup: Record<string, string> = {
-    'Dispute.RequestEvidence': t ? t('adminSystemTracking.actions.Dispute_RequestEvidence', { defaultValue: 'Yêu cầu bổ sung bằng chứng tranh chấp' }) : 'Yêu cầu bổ sung bằng chứng tranh chấp',
-    'Dispute.FinalResolution': t ? t('adminSystemTracking.actions.Dispute_FinalResolution', { defaultValue: 'Phán quyết tranh chấp cuối cùng' }) : 'Phán quyết tranh chấp cuối cùng',
-    'Dispute.SubmitEvidence': t ? t('adminSystemTracking.actions.Dispute_SubmitEvidence', { defaultValue: 'Nộp bằng chứng tranh chấp' }) : 'Nộp bằng chứng tranh chấp',
-    'Dispute.AcceptResolution': t ? t('adminSystemTracking.actions.Dispute_AcceptResolution', { defaultValue: 'Chấp nhận phán quyết tranh chấp' }) : 'Chấp nhận phán quyết tranh chấp',
-    'Dispute.RejectResolution': t ? t('adminSystemTracking.actions.Dispute_RejectResolution', { defaultValue: 'Từ chối phán quyết tranh chấp' }) : 'Từ chối phán quyết tranh chấp',
-    'ContractReportInvestigationViewed': t ? t('adminSystemTracking.actions.ContractReportInvestigationViewed', { defaultValue: 'Xem điều tra báo cáo hợp đồng' }) : 'Xem điều tra báo cáo hợp đồng',
-    'ReportInvestigationViewed': t ? t('adminSystemTracking.actions.ReportInvestigationViewed', { defaultValue: 'Xem điều tra báo cáo vi phạm' }) : 'Xem điều tra báo cáo vi phạm',
-    'DisputeInvestigationViewed': t ? t('adminSystemTracking.actions.DisputeInvestigationViewed', { defaultValue: 'Xem điều tra tranh chấp' }) : 'Xem điều tra tranh chấp',
-    'Withdrawal.Retry': t ? t('adminSystemTracking.actions.Withdrawal_Retry', { defaultValue: 'Thử lại xử lý lệnh rút tiền' }) : 'Thử lại xử lý lệnh rút tiền',
-    'Withdrawal.Process': t ? t('adminSystemTracking.actions.Withdrawal_Process', { defaultValue: 'Xử lý lệnh rút tiền' }) : 'Xử lý lệnh rút tiền',
-    'Withdrawal.Approve': t ? t('adminSystemTracking.actions.Withdrawal_Approve', { defaultValue: 'Phê duyệt lệnh rút tiền' }) : 'Phê duyệt lệnh rút tiền',
-    'Withdrawal.Reject': t ? t('adminSystemTracking.actions.Withdrawal_Reject', { defaultValue: 'Từ chối lệnh rút tiền' }) : 'Từ chối lệnh rút tiền',
-    'Withdrawal_Retry': t ? t('adminSystemTracking.actions.Withdrawal_Retry', { defaultValue: 'Thử lại xử lý lệnh rút tiền' }) : 'Thử lại xử lý lệnh rút tiền',
-    'Withdrawal_Process': t ? t('adminSystemTracking.actions.Withdrawal_Process', { defaultValue: 'Xử lý lệnh rút tiền' }) : 'Xử lý lệnh rút tiền',
-    'Withdrawal_Approve': t ? t('adminSystemTracking.actions.Withdrawal_Approve', { defaultValue: 'Phê duyệt lệnh rút tiền' }) : 'Phê duyệt lệnh rút tiền',
-    'Withdrawal_Reject': t ? t('adminSystemTracking.actions.Withdrawal_Reject', { defaultValue: 'Từ chối lệnh rút tiền' }) : 'Từ chối lệnh rút tiền',
+    'Dispute.RequestEvidence': t('adminSystemTracking.actions.Dispute_RequestEvidence', 'Yêu cầu bổ sung bằng chứng tranh chấp'),
+    'Dispute.FinalResolution': t('adminSystemTracking.actions.Dispute_FinalResolution', 'Phán quyết tranh chấp cuối cùng'),
+    'Dispute.SubmitEvidence': t('adminSystemTracking.actions.Dispute_SubmitEvidence', 'Nộp bằng chứng tranh chấp'),
+    'Dispute.AcceptResolution': t('adminSystemTracking.actions.Dispute_AcceptResolution', 'Chấp nhận phán quyết tranh chấp'),
+    'Dispute.RejectResolution': t('adminSystemTracking.actions.Dispute_RejectResolution', 'Từ chối phán quyết tranh chấp'),
+    'ContractReportInvestigationViewed': t('adminSystemTracking.actions.ContractReportInvestigationViewed', 'Xem điều tra báo cáo hợp đồng'),
+    'ReportInvestigationViewed': t('adminSystemTracking.actions.ReportInvestigationViewed', 'Xem điều tra báo cáo vi phạm'),
+    'DisputeInvestigationViewed': t('adminSystemTracking.actions.DisputeInvestigationViewed', 'Xem điều tra tranh chấp'),
+    'Withdrawal.Retry': t('adminSystemTracking.actions.Withdrawal_Retry', 'Thử lại xử lý lệnh rút tiền'),
+    'Withdrawal.Process': t('adminSystemTracking.actions.Withdrawal_Process', 'Xử lý lệnh rút tiền'),
+    'Withdrawal.Approve': t('adminSystemTracking.actions.Withdrawal_Approve', 'Phê duyệt lệnh rút tiền'),
+    'Withdrawal.Reject': t('adminSystemTracking.actions.Withdrawal_Reject', 'Từ chối lệnh rút tiền'),
+    'Withdrawal_Retry': t('adminSystemTracking.actions.Withdrawal_Retry', 'Thử lại xử lý lệnh rút tiền'),
+    'Withdrawal_Process': t('adminSystemTracking.actions.Withdrawal_Process', 'Xử lý lệnh rút tiền'),
+    'Withdrawal_Approve': t('adminSystemTracking.actions.Withdrawal_Approve', 'Phê duyệt lệnh rút tiền'),
+    'Withdrawal_Reject': t('adminSystemTracking.actions.Withdrawal_Reject', 'Từ chối lệnh rút tiền'),
   };
   if (directLookup[action]) return directLookup[action];
 
@@ -206,10 +207,9 @@ export const formatActionTitle = (action: string, t?: (key: string, options?: an
     .trim();
 };
 
-export const formatResourceText = (log: AuditLog, t?: (key: string, options?: any) => string): string => {
+export const formatResourceText = (log: AuditLog, t: (key: string, fallback?: string) => string): string => {
   if (log.entityType) {
-    const fallback = log.entityType.replace(/([a-z])([A-Z])/g, '$1 $2');
-    const translatedEntity = t ? t(`adminSystemTracking.entityTypes.${log.entityType}`, { defaultValue: fallback }) : fallback;
+    const translatedEntity = t(`adminSystemTracking.entityTypes.${log.entityType}`, log.entityType.replace(/([a-z])([A-Z])/g, '$1 $2'));
     const shortId = log.entityId ? (log.entityId.length > 12 ? `#${log.entityId.slice(0, 8)}...` : `#${log.entityId}`) : '';
     return `${translatedEntity} ${shortId}`.trim();
   }
@@ -258,7 +258,7 @@ export const safeParseJson = (val: unknown): Record<string, any> | null => {
       try {
         const parsed = JSON.parse(trimmed);
         if (typeof parsed === 'object' && parsed !== null) return parsed;
-      } catch {}
+      } catch { }
     }
   }
   return null;
@@ -290,24 +290,19 @@ export const toAuditLogs = (
     details: `User status changed to ${user.accountStatus === 1 ? 'Active' : 'Inactive'}`,
   }));
 
-  const jobLogs: AuditLog[] = jobs.map(job => {
-    const budgetText = job.budgetMin != null && job.budgetMax != null
-      ? `${job.budgetMin} - ${job.budgetMax}`
-      : (job.budgetMin ?? job.budgetMax ?? 'N/A');
-    return {
-      id: `job_${job.jobPostsId}`,
-      timestamp: job.createdAt || new Date().toISOString(),
-      userName: job.clientFullName || 'Client',
-      action: 'job.created',
-      resource: job.title,
-      ipAddress: '-',
-      userAgent: 'GigBridge Web',
-      details: `Job post "${job.title}" created with budget ${budgetText} GIG`,
-    };
-  });
+  const jobLogs: AuditLog[] = jobs.map(job => ({
+    id: `job_${job.jobPostId}`,
+    timestamp: job.createdAt || new Date().toISOString(),
+    userName: job.clientName || 'Client',
+    action: 'job.created',
+    resource: job.title,
+    ipAddress: '-',
+    userAgent: 'GigBridge Web',
+    details: `Job post "${job.title}" created with budget ${job.budget} GIG`,
+  }));
 
   const proposalLogs: AuditLog[] = proposals.map(proposal => ({
-    id: `proposal_${proposal.proposalsId}`,
+    id: `proposal_${proposal.proposalId}`,
     timestamp: proposal.submittedAt || new Date().toISOString(),
     userName: proposal.freelancerName || 'Freelancer',
     action: 'proposal.submitted',

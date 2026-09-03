@@ -726,6 +726,14 @@
       "deliverableFilesLabel": "Delivered Files ({{count}}):",
       "revisionReasonTitle": "Revision Reason from Client:",
       "congratsTitle": "Congratulations!"
+    },
+    "planChangeRequest": {
+      "badge": "Changes requested",
+      "title": "The freelancer asked you to rework the project plan",
+      "description": "Update the milestones and work breakdown below, then submit the plan again for review.",
+      "reasonLabel": "What the freelancer asked for",
+      "requestedBy": "Requested by {{name}} on {{date}}",
+      "affectedMilestones": "Milestones flagged"
     }
   }
 }

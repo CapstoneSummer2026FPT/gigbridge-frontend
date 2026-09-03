@@ -11,7 +11,7 @@ import {
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { JOB_DURATION_UNITS } from '../../jobs/utils/jobDuration';
+import { JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS } from '../../jobs/utils/jobDuration';
 import {
   calculateContractMilestoneBudget,
   prepareContractMilestonesForEditing,
@@ -43,9 +43,8 @@ export function ClientContractPlanEditor({
   const { t } = useTranslation(['contracts', 'messages', 'proposals', 'jobs']);
   const prepared = useMemo(() => prepareContractMilestonesForEditing(milestones), [milestones]);
   const [plans, setPlans] = useState<EditableMilestonePlan[]>(prepared.milestones);
-  const [advancedIndexes, setAdvancedIndexes] = useState<number[]>(prepared.advancedIndexes);
   const [expandedIndexes, setExpandedIndexes] = useState<number[]>(
-    uniqueSortedIndexes([...(prepared.milestones.length ? [0] : []), ...prepared.advancedIndexes]),
+    prepared.milestones.length ? [0] : [],
   );
   const [generatedWorkItemIds, setGeneratedWorkItemIds] = useState<Record<string, string>>(
     prepared.generatedWorkItemIdsByMilestoneId,
@@ -56,11 +55,7 @@ export function ClientContractPlanEditor({
 
   useEffect(() => {
     setPlans(prepared.milestones);
-    setAdvancedIndexes(prepared.advancedIndexes);
-    setExpandedIndexes(uniqueSortedIndexes([
-      ...(prepared.milestones.length ? [0] : []),
-      ...prepared.advancedIndexes,
-    ]));
+    setExpandedIndexes(prepared.milestones.length ? [0] : []);
     setGeneratedWorkItemIds(prepared.generatedWorkItemIdsByMilestoneId);
     setErrors({});
     setBudgetError('');
@@ -113,7 +108,6 @@ export function ClientContractPlanEditor({
         t(`messages.finalOfferEditor.validation.${code}`),
       ]));
       setErrors(translatedErrors);
-      setAdvancedIndexes(indexes => uniqueSortedIndexes([...indexes, ...validation.advancedIndexes]));
       const message = t(`messages.finalOfferEditor.validation.${validation.firstError || 'milestoneRequired'}`);
       toast.error(message);
       const firstField = Object.keys(validation.errors)[0];
@@ -198,13 +192,12 @@ export function ClientContractPlanEditor({
         </div>
 
         {/* Budget Sum Badge */}
-        <div className={`shrink-0 rounded-2xl border p-3.5 sm:px-4 sm:py-3 text-right shadow-xs ${
-          budgetMatches
-            ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400'
-            : budgetExceeded
-              ? 'border-rose-500/30 bg-rose-500/5 text-rose-500'
-              : 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400'
-        }`}>
+        <div className={`shrink-0 rounded-2xl border p-3.5 sm:px-4 sm:py-3 text-right shadow-xs ${budgetMatches
+          ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400'
+          : budgetExceeded
+            ? 'border-rose-500/30 bg-rose-500/5 text-rose-500'
+            : 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400'
+          }`}>
           <span className="block text-[10px] font-black uppercase tracking-wider">
             {t('contracts.sum')}: {budgetMatches ? t('contracts.budgetMatched') : budgetExceeded ? t('contracts.budgetExceeded') : t('contracts.budgetAllocating')}
           </span>
@@ -243,14 +236,17 @@ export function ClientContractPlanEditor({
           description={t('messages.finalOfferEditor.milestoneDescription')}
           expandedIndexes={expandedIndexes}
           onExpandedIndexesChange={setExpandedIndexes}
-          advancedIndexes={advancedIndexes}
-          onAdvancedIndexesChange={setAdvancedIndexes}
           errors={errors}
           showDueDate
           dueDateReadOnly
+          showWorkItems
+          showWorkItemsSummary
           showBudgetSummary={false}
-          simplifiedMilestoneFields
           durationUnits={JOB_DURATION_UNITS.map(unit => ({
+            value: unit,
+            label: t(`postJob.durationUnits.${unit}`),
+          }))}
+          workItemDurationUnits={WORK_ITEM_DURATION_UNITS.map(unit => ({
             value: unit,
             label: t(`postJob.durationUnits.${unit}`),
           }))}
@@ -258,38 +254,61 @@ export function ClientContractPlanEditor({
           workItemTitleMaxLength={200}
           durationMaxLength={100}
           uiCopy={{
-            addMilestone: t('messages.finalOfferEditor.addMilestone'),
-            fixedProjectBudget: t('messages.finalOfferEditor.finalPrice'),
-            noBaselinePlan: t('messages.finalOfferEditor.noMilestones'),
-            noBaselinePlanDescription: t('messages.finalOfferEditor.noMilestonesDescription'),
-            addFirstMilestone: t('messages.finalOfferEditor.addFirstMilestone'),
-            untitledMilestone: t('messages.finalOfferEditor.untitledMilestone'),
-            moveUp: t('messages.finalOfferEditor.moveUp'),
-            moveDown: t('messages.finalOfferEditor.moveDown'),
-            deleteMilestone: t('messages.finalOfferEditor.deleteMilestone'),
-            milestoneTitle: t('messages.finalOfferEditor.milestoneTitle'),
-            amount: t('messages.finalOfferEditor.amount'),
-            deadline: t('messages.finalOfferEditor.deadline'),
-            deliverables: t('messages.finalOfferEditor.deliverables'),
-            advancedDetails: t('proposalMilestoneEditor.advancedDetails'),
-            derivedDuration: t('proposalMilestoneEditor.derivedDuration'),
-            acceptanceCriteria: t('proposalMilestoneEditor.acceptanceCriteria'),
-            workBreakdown: t('proposalMilestoneEditor.workBreakdown'),
-            addWorkItem: t('proposalMilestoneEditor.addWorkItem'),
-            workItem: t('messages.finalOfferEditor.workItem'),
-            deleteWorkItem: t('messages.finalOfferEditor.deleteWorkItem'),
-            workItemTitle: t('messages.finalOfferEditor.workItemTitle'),
-            estimatedDuration: t('messages.finalOfferEditor.workItemDuration'),
-            taskDescription: t('messages.finalOfferEditor.workItemDescription'),
+            addMilestone: t('postJobWizard.plan.milestoneCopy.addMilestone'),
+            fixedProjectBudget: t('postJobWizard.plan.milestoneCopy.fixedProjectBudget'),
+            noBaselinePlan: t('postJobWizard.plan.milestoneCopy.noBaselinePlan'),
+            noBaselinePlanDescription: t('postJobWizard.plan.milestoneCopy.noBaselinePlanDescription'),
+            addFirstMilestone: t('postJobWizard.plan.milestoneCopy.addFirstMilestone'),
+            untitledMilestone: t('postJobWizard.plan.milestoneCopy.untitledMilestone'),
+            milestoneLabel: t('postJobWizard.plan.milestoneLabel', 'Mốc {{number}}'),
+            workItems: t('postJobWizard.plan.milestoneCopy.workItems'),
+            moveUp: t('postJobWizard.plan.milestoneCopy.moveUp'),
+            moveDown: t('postJobWizard.plan.milestoneCopy.moveDown'),
+            deleteMilestone: t('postJobWizard.plan.milestoneCopy.deleteMilestone'),
+            milestoneTitle: t('postJobWizard.plan.milestoneCopy.milestoneTitle'),
+            amount: t('postJobWizard.plan.milestoneCopy.amount'),
+            duration: t('postJobWizard.plan.milestoneCopy.duration'),
+            durationUnit: t('postJobWizard.plan.milestoneCopy.durationUnit'),
+            deadline: t('postJobWizard.plan.milestoneCopy.deadline'),
+            description: t('postJobWizard.plan.milestoneCopy.description'),
+            deliverables: t('postJobWizard.plan.milestoneCopy.deliverables'),
+            acceptanceCriteria: t('postJobWizard.plan.milestoneCopy.acceptanceCriteria'),
+            workBreakdown: t('postJobWizard.plan.milestoneCopy.workBreakdown'),
+            addWorkItem: t('postJobWizard.plan.milestoneCopy.addWorkItem'),
+            workItem: t('postJobWizard.plan.milestoneCopy.workItem'),
+            deleteWorkItem: t('postJobWizard.plan.milestoneCopy.deleteWorkItem'),
+            workItemTitle: t('postJobWizard.plan.milestoneCopy.workItemTitle'),
+            estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
+            taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
+            workItemsTotalLabel: t('postJobWizard.plan.milestoneCopy.workItemsTotalLabel', 'Total'),
+            workItemsRemainingLabel: t('postJobWizard.plan.milestoneCopy.workItemsRemainingLabel', 'Remaining'),
+            workItemsOverageLabel: t('postJobWizard.plan.milestoneCopy.workItemsOverageLabel', 'Work items exceed milestone duration by {{days}} day(s).'),
+            expandAll: t('postJobWizard.plan.milestoneCopy.expandAll', 'Mở rộng tất cả'),
+            collapseAll: t('postJobWizard.plan.milestoneCopy.collapseAll', 'Thu gọn tất cả'),
+          }}
+          fieldHints={{
+            milestoneTitle: t('postJob.baselineMilestoneTitleHint'),
+            amount: t('postJob.baselineAmountHint'),
+            duration: t('postJob.baselineDurationHint'),
+            deadline: t('postJob.baselineDeadlineHint'),
+            description: t('postJob.baselineDescriptionHint'),
+            deliverables: t('postJob.baselineDeliverablesHint'),
+            acceptanceCriteria: t('postJob.baselineAcceptanceCriteriaHint'),
+            workBreakdown: t('postJob.baselineWorkBreakdownHint'),
+            workItemTitle: t('postJob.baselineWorkItemTitleHint'),
+            workItemDuration: t('postJob.baselineWorkItemDurationHint'),
+            workItemDescription: t('postJob.baselineWorkItemDescriptionHint'),
           }}
           fieldPlaceholders={{
-            milestoneTitle: t('messages.finalOfferEditor.milestoneTitlePlaceholder'),
-            amount: t('messages.finalOfferEditor.amountPlaceholder'),
-            deliverables: t('messages.finalOfferEditor.deliverablesPlaceholder'),
-            acceptanceCriteria: t('messages.finalOfferEditor.acceptancePlaceholder'),
-            workItemTitle: t('messages.finalOfferEditor.workItemTitlePlaceholder'),
-            workItemDuration: t('messages.finalOfferEditor.workItemDurationPlaceholder'),
-            workItemDescription: t('messages.finalOfferEditor.workItemDescriptionPlaceholder'),
+            milestoneTitle: t('postJob.baselineMilestoneTitlePlaceholder'),
+            amount: t('postJob.baselineAmountPlaceholder'),
+            duration: t('postJob.baselineDurationPlaceholder'),
+            description: t('postJob.baselineDescriptionPlaceholder'),
+            deliverables: t('postJob.baselineDeliverablesPlaceholder'),
+            acceptanceCriteria: t('postJob.baselineAcceptanceCriteriaPlaceholder'),
+            workItemTitle: t('postJob.baselineWorkItemTitlePlaceholder'),
+            workItemDuration: t('postJob.baselineWorkItemDurationPlaceholder'),
+            workItemDescription: t('postJob.baselineWorkItemDescriptionPlaceholder'),
           }}
         />
       </div>

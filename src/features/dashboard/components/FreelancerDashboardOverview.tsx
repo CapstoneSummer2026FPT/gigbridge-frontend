@@ -221,11 +221,11 @@ export function FreelancerDashboardOverview({
                   </PieChart>
                 </ResponsiveContainer>
               )}
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center px-1">
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
                 <strong className="text-2xl sm:text-3xl font-black leading-none tracking-tight text-text-primary">
                   {isLoading ? '—' : trackedWorkCount}
                 </strong>
-                <span className="mt-1 text-[9px] font-bold uppercase tracking-wide text-text-muted max-w-[84px] leading-tight">
+                <span className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-muted">
                   {t('dashboard.tracked', 'Total Tracked')}
                 </span>
               </div>

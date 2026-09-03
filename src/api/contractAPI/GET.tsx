@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractDto, ContractEscrowDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, ContractWorkItemSubmission, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest, WorkspaceFileDto } from '../../types/models/Contract';
+import type { ContractDto, ContractEscrowDto, ContractPlanChangeRequest, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, ContractWorkItemSubmission, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest, WorkspaceFileDto } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 
@@ -348,7 +348,7 @@ const normalizeWorkItemSubmissions = (
       reviewReason: (raw.reviewReason ?? raw.ReviewReason ?? null) as string | null,
       attachments: Array.isArray(attachments)
         ? attachments.map(attachment =>
-            normalizeMilestoneAttachment(attachment as BackendMilestoneAttachmentResponse))
+          normalizeMilestoneAttachment(attachment as BackendMilestoneAttachmentResponse))
         : [],
     };
   });
@@ -503,6 +503,22 @@ export const contractGetAPI = {
   },
 
   /**
+   * GET /api/contracts/{contractId}/details/change-request
+   * The open "rework the plan" request from the freelancer, or null when there is none.
+   */
+  getOpenPlanChangeRequest: async (
+    contractId: string
+  ): Promise<ApiResponse<ContractPlanChangeRequest | null>> => {
+    const response = await apiService.get<unknown>(
+      `contracts/${contractId}/details/change-request`
+    );
+    return {
+      ...response,
+      data: response.data ? normalizePlanChangeRequest(response.data) : null,
+    };
+  },
+
+  /**
    * GET /api/contracts/{contractId}/milestones/{milestoneId}/attachments
    * Get milestone attachments within their contract.
    */
@@ -642,3 +658,21 @@ const normalizeWorkspaceFile = (raw: RawWorkspaceFileDto): WorkspaceFileDto => {
   };
 };
 
+const normalizePlanChangeRequest = (raw: unknown): ContractPlanChangeRequest => {
+  const source = raw as Record<string, unknown>;
+  const toIdList = (value: unknown): string[] =>
+    Array.isArray(value) ? value.map(item => String(item)) : [];
+
+  return {
+    contractPlanChangeRequestId: String(
+      getValue(source, 'contractPlanChangeRequestId', 'ContractPlanChangeRequestId') ?? ''),
+    contractId: String(getValue(source, 'contractId', 'ContractId') ?? ''),
+    requestedByUserId: String(getValue(source, 'requestedByUserId', 'RequestedByUserId') ?? ''),
+    requestedByName: String(getValue(source, 'requestedByName', 'RequestedByName') ?? ''),
+    reason: String(getValue(source, 'reason', 'Reason') ?? ''),
+    affectedMilestoneIds: toIdList(getValue(source, 'affectedMilestoneIds', 'AffectedMilestoneIds')),
+    affectedWorkItemIds: toIdList(getValue(source, 'affectedWorkItemIds', 'AffectedWorkItemIds')),
+    origin: Number(getValue(source, 'origin', 'Origin') ?? 0),
+    createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? ''),
+  };
+};

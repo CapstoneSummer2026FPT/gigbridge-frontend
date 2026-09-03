@@ -146,7 +146,7 @@ export function ClientDashboardOverview({
             <div className="flex flex-col @[340px]:flex-row items-center justify-between gap-4 my-auto py-2">
               {/* Circular Gauge */}
               <div
-                className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 flex items-center justify-center"
+                className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 flex items-center justify-center"
                 role="img"
                 aria-label={t('dashboard.eloScoreAria', {
                   defaultValue: 'Current Elo score: {{score}}',
@@ -183,11 +183,11 @@ export function ClientDashboardOverview({
                     className="freelancer-elo-donut-ring transition-all duration-700 ease-out"
                   />
                 </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-1">
-                  <strong className="text-2xl sm:text-3xl font-black leading-none text-text-primary tracking-tight">
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  <strong className="text-xl sm:text-2xl font-black leading-none text-text-primary tracking-tight">
                     {isLoading || eloScore == null ? '—' : eloScore.toLocaleString()}
                   </strong>
-                  <span className="text-[9px] font-bold uppercase text-brand tracking-wide mt-1">
+                  <span className="text-[8px] font-black uppercase text-brand tracking-widest mt-1">
                     Elo Score
                   </span>
                 </div>
@@ -251,7 +251,7 @@ export function ClientDashboardOverview({
             <div className="flex flex-col @[340px]:flex-row items-center justify-between gap-4 my-auto py-2">
               {/* Donut Ring */}
               <div
-                className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 flex items-center justify-center"
+                className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 flex items-center justify-center"
                 role="img"
                 aria-label={t(
                   'dashboard.proposalChartAria',
@@ -272,10 +272,10 @@ export function ClientDashboardOverview({
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        innerRadius={44}
-                        outerRadius={60}
+                        innerRadius={36}
+                        outerRadius={50}
                         paddingAngle={trackedProposalCount > 0 ? 4 : 0}
-                        cornerRadius={5}
+                        cornerRadius={4}
                         stroke="none"
                         isAnimationActive={trackedProposalCount > 0}
                       >
@@ -298,11 +298,11 @@ export function ClientDashboardOverview({
                     </PieChart>
                   </ResponsiveContainer>
                 )}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-1">
-                  <strong className="text-2xl sm:text-3xl font-black leading-none text-text-primary tracking-tight">
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  <strong className="text-xl sm:text-2xl font-black leading-none text-text-primary tracking-tight">
                     {isLoading ? '—' : trackedProposalCount}
                   </strong>
-                  <span className="text-[9px] font-bold uppercase text-text-muted tracking-wide mt-1 max-w-[84px] leading-tight">
+                  <span className="text-[8px] font-black uppercase text-text-muted tracking-widest mt-1">
                     {t('dashboard.tracked', 'Total Tracked')}
                   </span>
                 </div>

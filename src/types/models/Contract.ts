@@ -430,3 +430,27 @@ export interface ContractQueryParams {
   status?: ContractStatus;
   searchTerm?: string;
 }
+
+/** Mirrors Domain.Enums.Contracts.ContractPlanChangeOrigin — never renumber, append only. */
+export enum ContractPlanChangeOrigin {
+  /** Freelancer reviewed the submitted plan before signing. */
+  ContractDetails = 0,
+  /** Freelancer sent the milestones back after signing, before escrow funding. */
+  MilestoneReview = 1,
+}
+
+/**
+ * The open "rework the plan" request the freelancer sent back, or null when there is none.
+ * Drives the badge the client sees on step 1 of the contract workspace.
+ */
+export interface ContractPlanChangeRequest {
+  contractPlanChangeRequestId: string;
+  contractId: string;
+  requestedByUserId: string;
+  requestedByName: string;
+  reason: string;
+  affectedMilestoneIds: string[];
+  affectedWorkItemIds: string[];
+  origin: ContractPlanChangeOrigin;
+  createdAt: string;
+}

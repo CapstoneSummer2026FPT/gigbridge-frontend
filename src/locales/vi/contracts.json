@@ -727,6 +727,14 @@
       "deliverableFilesLabel": "Tệp sản phẩm bàn giao ({{count}}):",
       "revisionReasonTitle": "Lý do yêu cầu sửa đổi từ Client:",
       "congratsTitle": "Chúc mừng!"
+    },
+    "planChangeRequest": {
+      "badge": "Cần chỉnh sửa",
+      "title": "Freelancer yêu cầu bạn chỉnh sửa lại kế hoạch dự án",
+      "description": "Hãy cập nhật các cột mốc và cấu trúc công việc bên dưới, sau đó gửi lại kế hoạch để freelancer duyệt.",
+      "reasonLabel": "Nội dung freelancer yêu cầu",
+      "requestedBy": "Yêu cầu bởi {{name}} vào {{date}}",
+      "affectedMilestones": "Cột mốc được đánh dấu"
     }
   }
 }
