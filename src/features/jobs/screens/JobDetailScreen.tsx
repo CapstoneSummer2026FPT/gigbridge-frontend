@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserRole } from '../../../types/models/User';
-import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
+import { canEditProposal, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import { useProposalAnswersModal } from '../../proposals/hooks/useProposalAnswersModal';
 import { ProposalAnswersModal } from '../../proposals/components/ProposalAnswersModal';
 import { useJobDetail } from '../hooks/useJobDetail';
@@ -490,9 +490,7 @@ export default function JobDetailScreen() {
                         style={{ background: 'var(--brand)', boxShadow: '0 4px 14px -2px rgba(73,75,231,0.3)' }}
                       >
                         <Bot size={14} />
-                        {myProposal.aiInterviewInProgress || localStorage.getItem(`ai_interview_session_${job.id}`)
-                          ? (t('aiInterview.proposal.continueAction') || 'Continue AI Interview')
-                          : (t('aiInterview.proposal.startAction') || 'Start AI Interview')}
+                        {t('aiInterview.proposal.continueAction') || 'Continue AI Interview'}
                       </button>
                     )}
 
@@ -503,7 +501,7 @@ export default function JobDetailScreen() {
                         disabled={isApplying}
                       >
                         <Edit3 size={14} />
-                        {t('jobDetail.continueEditing')}
+                        {t('proposalQuestions.continueInterview') || 'Continue Interview'}
                       </button>
                     )}
 
@@ -514,17 +512,6 @@ export default function JobDetailScreen() {
                         disabled={isApplying}
                       >
                         {t('jobDetail.withdraw')}
-                      </button>
-                    )}
-
-                    {!(job.hasAiInterview && !myProposal.aiInterviewCompleted) && canViewProposalAnswers(myProposal.status) && (
-                      <button
-                        type="button"
-                        className="jd-btn-secondary"
-                        onClick={() => void answersModal.openModal(myProposal.proposalId, job.title, myProposal.status, job.id)}
-                      >
-                        <FileText size={14} />
-                        {t('jobDetail.viewAnswers')}
                       </button>
                     )}
                   </div>
