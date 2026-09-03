@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, Paperclip, UploadCloud, X, Layers, FileCheck } from 'lucide-react';
+import { CalendarDays, Clock, Paperclip, UploadCloud, X, FileCheck } from 'lucide-react';
 import { useRef } from 'react';
 import { canSubmitWorkItem, type ContractWorkItem } from '../../../types/models/Contract';
 import { MILESTONE_FILE_ACCEPT } from '../utils/workItemSubmission';

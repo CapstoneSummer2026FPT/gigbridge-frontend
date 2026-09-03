@@ -81,8 +81,24 @@ export const isGeneratedMilestoneWorkItem = (
   normalizeText(item.deliverables) === normalizeText(milestone.deliverables) &&
   normalizeText(item.estimatedDuration) === normalizeText(milestone.estimatedDuration);
 
+export interface PrepareMilestonePlanOptions {
+  /**
+   * Keep the single work item that `resolveMilestonePlan` synthesises for a milestone with no
+   * hand-authored breakdown, instead of hiding it again.
+   *
+   * A plan still being drafted (a negotiation offer) hides it: the item is an artefact of sending,
+   * not something the author wrote, and re-showing it would put words in their mouth. A plan that
+   * is already saved contract state shows it: the freelancer reviews those work items and delivery
+   * runs against them, so the client's editor has to mirror what is actually stored — otherwise a
+   * contract bounced back for rework reopens with an empty Work Breakdown while the freelancer is
+   * looking at a populated one.
+   */
+  keepGeneratedWorkItems?: boolean;
+}
+
 export const prepareMilestonePlanForEditing = <T extends MilestonePlanValue>(
   milestones: readonly T[],
+  options: PrepareMilestonePlanOptions = {},
 ): PreparedMilestonePlan<T> => {
   const advancedIndexes: number[] = [];
   const generatedWorkItemIdsByMilestoneId: Record<string, string> = {};
@@ -92,7 +108,9 @@ export const prepareMilestonePlanForEditing = <T extends MilestonePlanValue>(
       if (milestone.id && workItems[0].id) {
         generatedWorkItemIdsByMilestoneId[milestone.id] = workItems[0].id;
       }
-      return { ...milestone, workItems: [] } as T;
+      if (!options.keepGeneratedWorkItems) {
+        return { ...milestone, workItems: [] } as T;
+      }
     }
     if (workItems.length > 0) advancedIndexes.push(index);
     return milestone;

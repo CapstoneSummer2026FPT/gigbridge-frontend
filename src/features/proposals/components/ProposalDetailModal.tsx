@@ -41,7 +41,7 @@ import { getCriteriaColorTheme } from '../utils/criteriaColors';
 import '../../../shared/components/styles/conic-border-button.css';
 import type { BusyAction } from '../hooks/useClientProposals';
 import { getStatusLabel } from '../utils/statusHelpers';
-import { useTranslation, useLanguage } from '../../../hooks/useTranslation';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 export interface ProposalDetailModalProps {
   isOpen: boolean;
@@ -69,7 +69,7 @@ export interface ProposalDetailModalProps {
   acceptForNegotiation: (id: string) => void;
   openNegotiation: (id: string) => void;
   badgeClass: (status: number) => string;
-  t: (key: string, options?: any) => string;
+  t: any;
   showAiReportTab?: boolean;
 }
 
@@ -89,11 +89,11 @@ const getScoreTextColor = (score?: number | null) => {
 
 function SubcriteriaDefinitionTooltip({
   title,
-  titleEn,
+  titleEn: _titleEn,
   weight,
   score,
   definition,
-  definitionEn,
+  definitionEn: _definitionEn,
   align = 'auto',
   className = '',
   children,
@@ -702,8 +702,6 @@ export function ProposalDetailModal({
   t,
   showAiReportTab = true,
 }: ProposalDetailModalProps) {
-  const { currentLanguage } = useLanguage();
-  const isEn = currentLanguage === 'en';
   const activeProposal = proposals.find(p => p.proposalsId === activeId);
 
   const aiAuditData = useMemo(() => {

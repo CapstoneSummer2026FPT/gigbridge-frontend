@@ -38,7 +38,7 @@ export interface AuditActivityDetailViewProps {
   userMap?: Map<string, AdminUserDto>;
 }
 
-const formatLogDetails = (log: AuditLog, t?: (key: string, options?: any) => string): string => {
+const formatLogDetails = (log: AuditLog, t: (...args: any[]) => any): string => {
   if (!log.details) return `Ghi nhận hoạt động ${formatActionTitle(log.action, t)} thành công.`;
 
   // If details is backend raw technical Before/After string
@@ -291,13 +291,13 @@ export function AuditActivityDetailView({
       const clientViolation = parsedNew?.clientViolation || parsedNew?.ClientViolation;
 
       const resolutionDisplay =
-        resolution === 'FreelancerFavored' ? { label: t('adminSystemTracking.verdictFreelancerFavored', { defaultValue: 'Freelancer Thắng (Freelancer Favored)' }), icon: <Award size={15} className="text-white" />, badgeBg: 'bg-emerald-600 text-white shadow-sm' } :
-        resolution === 'ClientFavored' ? { label: t('adminSystemTracking.verdictClientFavored', { defaultValue: 'Khách Hàng Thắng (Client Favored)' }), icon: <ShieldCheck size={15} className="text-white" />, badgeBg: 'bg-sky-600 text-white shadow-sm' } :
-        resolution === 'Split' ? { label: t('adminSystemTracking.verdictSplit', { defaultValue: 'Hòa Giải Chia Tỷ Lệ (Split Award)' }), icon: <Scale size={15} className="text-white" />, badgeBg: 'bg-amber-600 text-white shadow-sm' } :
-        { label: resolution || formatActionTitle(log.action, t), icon: <CheckCircle size={15} className="text-white" />, badgeBg: 'bg-brand text-white shadow-sm' };
+        resolution === 'FreelancerFavored' ? { label: t('adminSystemTracking.verdictFreelancerFavored', 'Freelancer Thắng (Freelancer Favored)'), icon: <Award size={15} className="text-white" />, badgeBg: 'bg-emerald-600 text-white shadow-sm' } :
+          resolution === 'ClientFavored' ? { label: t('adminSystemTracking.verdictClientFavored', 'Khách Hàng Thắng (Client Favored)'), icon: <ShieldCheck size={15} className="text-white" />, badgeBg: 'bg-sky-600 text-white shadow-sm' } :
+            resolution === 'Split' ? { label: t('adminSystemTracking.verdictSplit', 'Hòa Giải Chia Tỷ Lệ (Split Award)'), icon: <Scale size={15} className="text-white" />, badgeBg: 'bg-amber-600 text-white shadow-sm' } :
+              { label: resolution || formatActionTitle(log.action, t), icon: <CheckCircle size={15} className="text-white" />, badgeBg: 'bg-brand text-white shadow-sm' };
 
       const contractActionLabel = contractAction
-        ? t(`adminSystemTracking.contractActions.${contractAction}`, { defaultValue: String(contractAction) })
+        ? String(t(`adminSystemTracking.contractActions.${contractAction}`, contractAction))
         : null;
 
       return (
@@ -311,7 +311,7 @@ export function AuditActivityDetailView({
               </span>
               {contractActionLabel && (
                 <span className="px-2 py-0.5 rounded text-[11px] font-extrabold uppercase bg-red-600 text-white shadow-sm">
-                  {t('adminSystemTracking.contractAction', { defaultValue: 'Hợp đồng' })}: {contractActionLabel}
+                  {String(t('adminSystemTracking.contractAction', 'Hợp đồng'))}: {contractActionLabel}
                 </span>
               )}
             </div>
