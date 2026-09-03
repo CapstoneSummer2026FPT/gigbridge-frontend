@@ -56,7 +56,6 @@ const AdminReviewsScreen = lazy(() => import('../features/admin/screens/AdminRev
 const AdminNotificationsScreen = lazy(() => import('../features/admin/screens/AdminNotificationsScreen'));
 const AdminContractAuditScreen = lazy(() => import('../features/admin/screens/AdminContractAuditScreen'));
 const AdminContractTemplatesScreen = lazy(() => import('../features/admin/screens/AdminContractTemplatesScreen'));
-const AdminAssetsScreen = lazy(() => import('../features/admin/screens/AdminAssetsScreen'));
 const AdminFAQManagementScreen = lazy(() => import('../features/admin/screens/AdminFAQManagementScreen'));
 const AdminDisputeManagementScreen = lazy(() => import('../features/admin/screens/AdminDisputeManagementScreen'));
 const AdminEloOverviewScreen = lazy(() => import('../features/admin/screens/AdminEloOverviewScreen'));
@@ -308,7 +307,6 @@ export const router = createBrowserRouter([
       { path: 'admin/proposals/:proposalId', element: <AdminRoute><AdminProposalDetailScreen /></AdminRoute> },
       { path: 'admin/contracts', element: <AdminRoute><AdminContractAuditScreen /></AdminRoute> },
       { path: 'admin/contracts/esign', element: <AdminRoute><ESignContractsScreen /></AdminRoute> },
-      { path: 'admin/assets', element: <AdminRoute><AdminAssetsScreen /></AdminRoute> },
       { path: 'admin/contract-audit', element: <AdminRoute><Navigate to="/admin/contracts" replace /></AdminRoute> },
       { path: 'admin/contract-templates', element: <AdminRoute><AdminContractTemplatesScreen /></AdminRoute> },
       { path: 'admin/faq-management', element: <AdminRoute><AdminFAQManagementScreen /></AdminRoute> },

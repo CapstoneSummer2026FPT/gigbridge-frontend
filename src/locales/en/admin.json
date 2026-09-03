@@ -11,7 +11,6 @@
     },
     "accountReports": "Account Reports",
     "contractReports": "Contract Reports",
-    "assets": "Assets & Handoffs",
     "esign": "E-sign Agreements"
   },
   "adminDashboard": {
@@ -76,7 +75,6 @@
       "accountReports": "Investigate reports involving user accounts",
       "contractReports": "Investigate contract execution reports",
       "reviews": "Moderate platform reviews and related reports",
-      "assets": "Inspect platform deliverables and handoff assets",
       "contracts": "Inspect contract, milestone, and escrow workflows",
       "esign": "Review electronic agreement and signature state",
       "analytics": "Track revenue, transactions, and marketplace opportunities",
