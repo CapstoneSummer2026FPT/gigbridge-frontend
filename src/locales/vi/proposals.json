@@ -665,6 +665,7 @@
     "aiVerdictLabel": "Đánh giá AI:",
     "aiVerdictFull": "Bao phủ đầy đủ",
     "aiVerdictReview": "Cần rà soát bổ sung",
+    "aiVerdictDetail": "Nhận xét đối soát:",
     "thClient": "MỐC BAN ĐẦU (CLIENT BASELINE)",
     "thOriginalReq": "Yêu cầu gốc",
     "thFreelancer": "ĐỀ XUẤT FREELANCER (PROPOSAL)",
@@ -696,12 +697,17 @@
     "evidenceQuote": "Bằng chứng trích dẫn từ đề xuất",
     "missingScopeGap": "Lý do chưa đáp ứng yêu cầu",
     "fasterBy": "Nhanh hơn {{count}} tuần",
-    "slowerBy": "Thêm {{count}} tuần"
+    "slowerBy": "Thêm {{count}} tuần",
+    "criteriaIndexTitle": "Tiêu chí #{{num}} tương ứng màu đánh dấu trong Đề xuất",
+    "highlightColorHint": "Được đánh dấu màu #{{num}} trong tab Đề xuất"
   },
   "proposalModal": {
     "tabProposal": "Proposal",
     "tabQA": "Q&A",
     "tabAIReport": "AI Report",
+    "criteriaMatchedBanner": "{{count}} / {{total}} Tiêu chí khớp chuẩn ({{pct}}% Phạm vi)",
+    "aiHighlightedNotice": "Các câu bằng chứng AI được đánh dấu màu bên dưới",
+    "matchedCriteriaTag": "Khớp tiêu chí #{{num}}",
     "weight": "Trọng số:",
     "candidateScore": "Điểm ứng viên:",
     "criteriaDesc": "Mô tả tiêu chí & Cách AI đánh giá:",

@@ -665,6 +665,7 @@
     "aiVerdictLabel": "AI Verdict:",
     "aiVerdictFull": "Fully Covered",
     "aiVerdictReview": "Needs Follow-up Review",
+    "aiVerdictDetail": "AI Audit Note:",
     "thClient": "CLIENT BASELINE MILESTONE",
     "thOriginalReq": "Original Baseline",
     "thFreelancer": "FREELANCER PROPOSED MILESTONE",
@@ -696,12 +697,17 @@
     "evidenceQuote": "Evidence quote from proposal",
     "missingScopeGap": "Scope gap reason",
     "fasterBy": "{{count}} weeks faster",
-    "slowerBy": "{{count}} weeks additional"
+    "slowerBy": "{{count}} weeks additional",
+    "criteriaIndexTitle": "Criteria #{{num}} matching highlighted color in Proposal",
+    "highlightColorHint": "Highlighted in color #{{num}} in Proposal tab"
   },
   "proposalModal": {
     "tabProposal": "Proposal",
     "tabQA": "Q&A",
     "tabAIReport": "AI Report",
+    "criteriaMatchedBanner": "{{count}} / {{total}} Criteria Matched ({{pct}}% Scope)",
+    "aiHighlightedNotice": "AI Evidence Sentences Highlighted in Color Below",
+    "matchedCriteriaTag": "Matched Criteria #{{num}}",
     "weight": "Weight:",
     "candidateScore": "Candidate Score:",
     "criteriaDesc": "Criteria Description & AI Scoring:",
