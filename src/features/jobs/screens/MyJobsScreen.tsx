@@ -49,7 +49,10 @@ import '../../premium/styles/premium.css';
 import '../styles/my-jobs-screen.css';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import { ConfirmationModal } from '../../../shared/components/ConfirmationModal';
-import { getAllowedJobPostVisibilities } from '../utils/jobPostEditing';
+import {
+  getAllowedJobPostVisibilities,
+  shouldConfirmPublicJobPostVisibilityChange,
+} from '../utils/jobPostEditing';
 
 type StatusFilter = 'all' | 'open' | 'draft' | 'closed' | 'cancelled';
 
@@ -137,6 +140,8 @@ export default function MyJobsScreen() {
     job?: GetMyJobPostDto;
     actionType?: 'close' | 'cancel';
   }>({ isOpen: false });
+  const [visibilityConfirmationJob, setVisibilityConfirmationJob] =
+    useState<GetMyJobPostDto | null>(null);
 
   // Mouse Drag-to-Scroll for Status Ribbon
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -334,7 +339,7 @@ export default function MyJobsScreen() {
   );
 
   const getVisibilitySelectOptions = (job: GetMyJobPostDto): SelectOption[] => {
-    const allowed = new Set(getAllowedJobPostVisibilities(job.visibility));
+    const allowed = new Set(getAllowedJobPostVisibilities(job.status, job.visibility));
     return visibilitySelectOptions.filter(option => allowed.has(Number(option.value) as JobPostVisibility));
   };
 
@@ -388,6 +393,25 @@ export default function MyJobsScreen() {
 
     updateLocalJob(job.jobPostsId, { visibility });
     toast.success(t('myJobs.visibilityUpdated', { defaultValue: 'Đã cập nhật quyền riêng tư tin tuyển dụng.' }));
+  };
+
+  const requestVisibilityChange = (
+    job: GetMyJobPostDto,
+    visibility: JobPostVisibility,
+  ): void => {
+    if (shouldConfirmPublicJobPostVisibilityChange(job.status, job.visibility, visibility)) {
+      setVisibilityConfirmationJob(job);
+      return;
+    }
+
+    void patchVisibility(job, visibility);
+  };
+
+  const handleConfirmPublicVisibility = async (): Promise<void> => {
+    if (!visibilityConfirmationJob) return;
+
+    await patchVisibility(visibilityConfirmationJob, JobPostVisibility.Public);
+    setVisibilityConfirmationJob(null);
   };
 
   const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
@@ -977,7 +1001,7 @@ export default function MyJobsScreen() {
                         <div className="w-40 sm:w-40 shrink-0 min-w-[160px]">
                           <CustomSelect
                             value={String(job.visibility ?? JobPostVisibility.Public)}
-                            onChange={val => void patchVisibility(job, Number(val) as JobPostVisibility)}
+                            onChange={val => requestVisibilityChange(job, Number(val) as JobPostVisibility)}
                             options={getVisibilitySelectOptions(job)}
                             disabled={isPending || job.visibility === 3}
                             searchable={false}
@@ -1159,7 +1183,7 @@ export default function MyJobsScreen() {
                               type="button"
                               onClick={() => {
                                 setActiveMenuJobId(null);
-                                void patchVisibility(job, Number(opt.value) as JobPostVisibility);
+                                requestVisibilityChange(job, Number(opt.value) as JobPostVisibility);
                               }}
                               className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-left cursor-pointer ${String(job.visibility) === opt.value
                                 ? 'bg-brand/10 text-brand'
@@ -1254,6 +1278,26 @@ export default function MyJobsScreen() {
             ? t('myJobs.actions.cancelJob', { defaultValue: 'Hủy Tin' })
             : t('myJobs.actions.closeJob', { defaultValue: 'Đóng Tin' })
         }
+      />
+
+      <ConfirmationModal
+        isOpen={visibilityConfirmationJob !== null}
+        onClose={() => setVisibilityConfirmationJob(null)}
+        onConfirm={() => void handleConfirmPublicVisibility()}
+        isLoading={pendingJobId === visibilityConfirmationJob?.jobPostsId}
+        variant="warning"
+        icon={<Globe size={22} />}
+        title={t('myJobs.confirmPublicVisibilityTitle', {
+          defaultValue: 'Chuyển tin sang Công khai?',
+        })}
+        description={t('myJobs.confirmPublicVisibilityDesc', {
+          defaultValue:
+            'Sau khi chuyển tin “{{title}}” từ Chỉ mời sang Công khai, bạn sẽ không thể chuyển lại sang Chỉ mời. Bạn có chắc chắn muốn tiếp tục?',
+          title: visibilityConfirmationJob?.title || '',
+        })}
+        confirmText={t('myJobs.confirmPublicVisibilityAction', {
+          defaultValue: 'Chuyển sang Công khai',
+        })}
       />
     </AppLayout>
   );
