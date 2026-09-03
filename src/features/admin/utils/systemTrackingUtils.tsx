@@ -248,7 +248,7 @@ export const formatTimestamp = (timestamp: string): string => {
 
 export const safeParseJson = (val: unknown): Record<string, any> | null => {
   if (!val) return null;
-  if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+  if (typeof val === 'object' && !Array.isArray(val)) {
     return Object.keys(val as object).length > 0 ? (val as Record<string, any>) : null;
   }
   if (typeof val === 'string') {

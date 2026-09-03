@@ -26,6 +26,7 @@ export interface CustomSelectProps {
   popoverAlign?: 'left' | 'right';
   variant?: 'default' | 'compact' | 'pill';
   popoverMinWidth?: number;
+  zIndex?: number;
 }
 
 export function CustomSelect({
@@ -43,18 +44,29 @@ export function CustomSelect({
   popoverAlign = 'left',
   variant = 'default',
   popoverMinWidth,
+  zIndex,
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number }>({
+  const [coords, setCoords] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    isFlipped: boolean;
+  }>({
     top: 0,
     left: 0,
     width: 220,
+    isFlipped: false,
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const isInsideModal = Boolean(containerRef.current?.closest('[role="dialog"], .modal-backdrop, .modal-card, [data-modal]'));
+  const effectiveZIndex = zIndex ?? (isInsideModal ? 99999 : 40);
 
   const selectedOption = useMemo(
     () => options.find(opt => opt.value === value),
@@ -78,11 +90,17 @@ export function CustomSelect({
     const isRight = popoverAlign === 'right';
     const isCompact = variant === 'compact' || className.includes('cs-compact') || (!searchable && options.length <= 5);
     
-    const estimatedHeight = 240;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const shouldFlip = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+    // Accurately calculate popover height (or estimate based on actual content)
+    const measuredHeight = popoverRef.current?.offsetHeight;
+    const estimatedHeight = measuredHeight && measuredHeight > 0
+      ? measuredHeight
+      : Math.min(280, filteredOptions.length * 42 + (searchable ? 48 : 0) + 16);
 
-    const top = shouldFlip ? Math.max(8, rect.top - estimatedHeight - 6) : rect.bottom + 6;
+    const TOP_NAV_HEIGHT = 76;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top - TOP_NAV_HEIGHT;
+    const shouldFlip = spaceBelow < estimatedHeight && spaceAbove >= estimatedHeight;
+
     const defaultMinWidth = isCompact ? Math.max(rect.width, 96) : 220;
     const width = Math.max(rect.width, popoverMinWidth ?? defaultMinWidth);
 
@@ -98,12 +116,24 @@ export function CustomSelect({
       left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
     }
 
-    setCoords({
-      top,
-      left,
-      width,
-    });
-  }, [popoverAlign, variant, className, searchable, options.length, popoverMinWidth]);
+    if (shouldFlip) {
+      setCoords({
+        bottom: Math.max(8, window.innerHeight - rect.top + 6),
+        top: undefined,
+        left,
+        width,
+        isFlipped: true,
+      });
+    } else {
+      setCoords({
+        top: rect.bottom + 6,
+        bottom: undefined,
+        left,
+        width,
+        isFlipped: false,
+      });
+    }
+  }, [popoverAlign, variant, className, searchable, options.length, filteredOptions.length, popoverMinWidth]);
 
   useLayoutEffect(() => {
     if (open) {
@@ -114,7 +144,21 @@ export function CustomSelect({
   useEffect(() => {
     if (!open) return;
 
-    const handleScrollOrResize = () => {
+    const handleScrollOrResize = (e: Event) => {
+      // Ignore scroll events originating from inside the popover itself (e.g. scrolling options list)
+      if (popoverRef.current && e.target && popoverRef.current.contains(e.target as Node)) {
+        return;
+      }
+
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        // Auto-close if trigger has scrolled under sticky TopNav or off-screen
+        if (rect.top < 76 || rect.bottom < 0 || rect.top > window.innerHeight) {
+          setOpen(false);
+          return;
+        }
+      }
+
       updatePosition();
     };
 
@@ -194,15 +238,16 @@ export function CustomSelect({
         createPortal(
           <div
             ref={popoverRef}
-            className={`cs-popover is-portal ${className.includes('cs-compact') || variant === 'compact' ? 'cs-popover-compact' : ''}`}
+            className={`cs-popover is-portal ${coords.isFlipped ? 'is-flipped' : ''} ${className.includes('cs-compact') || variant === 'compact' ? 'cs-popover-compact' : ''}`}
             style={{
               position: 'fixed',
-              top: `${coords.top}px`,
+              ...(coords.top !== undefined ? { top: `${coords.top}px` } : {}),
+              ...(coords.bottom !== undefined ? { bottom: `${coords.bottom}px` } : {}),
               left: `${coords.left}px`,
               width: `${coords.width}px`,
               minWidth: `${coords.width}px`,
               maxWidth: 'calc(100vw - 16px)',
-              zIndex: 99999,
+              zIndex: effectiveZIndex,
             }}
           >
             {searchable && (
