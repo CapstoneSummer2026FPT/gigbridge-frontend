@@ -254,6 +254,7 @@
   --color-brand-foreground: var(--brand-foreground);
 
   --color-surface: var(--surface);
+  --color-surface-card: var(--surface);
   --color-surface-hover: var(--surface-hover);
   --color-surface-muted: var(--surface-muted);
   --color-border-strong: var(--border-strong);
