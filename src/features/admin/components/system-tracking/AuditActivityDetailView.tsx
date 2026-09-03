@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   Scale,
-  UserCheck,
   Briefcase,
   Coins,
   FileSignature,
@@ -39,7 +38,7 @@ export interface AuditActivityDetailViewProps {
   userMap?: Map<string, AdminUserDto>;
 }
 
-const formatLogDetails = (log: AuditLog, t: (key: string, fallback?: string) => string): string => {
+const formatLogDetails = (log: AuditLog, t: (...args: any[]) => any): string => {
   if (!log.details) return `Ghi nhận hoạt động ${formatActionTitle(log.action, t)} thành công.`;
 
   // If details is backend raw technical Before/After string
@@ -298,7 +297,7 @@ export function AuditActivityDetailView({
               { label: resolution || formatActionTitle(log.action, t), icon: <CheckCircle size={15} className="text-white" />, badgeBg: 'bg-brand text-white shadow-sm' };
 
       const contractActionLabel = contractAction
-        ? t(`adminSystemTracking.contractActions.${contractAction}`, contractAction)
+        ? String(t(`adminSystemTracking.contractActions.${contractAction}`, contractAction))
         : null;
 
       return (
@@ -312,7 +311,7 @@ export function AuditActivityDetailView({
               </span>
               {contractActionLabel && (
                 <span className="px-2 py-0.5 rounded text-[11px] font-extrabold uppercase bg-red-600 text-white shadow-sm">
-                  {t('adminSystemTracking.contractAction', 'Hợp đồng')}: {contractActionLabel}
+                  {String(t('adminSystemTracking.contractAction', 'Hợp đồng'))}: {contractActionLabel}
                 </span>
               )}
             </div>

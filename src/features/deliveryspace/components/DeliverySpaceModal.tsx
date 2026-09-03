@@ -1,5 +1,4 @@
 import {
-  AlertTriangle,
   CheckCircle2,
   Layers,
   Loader2,
@@ -622,7 +621,7 @@ interface FreelancerUploaderCardProps {
 }
 
 function FreelancerUploaderCard({
-  workItem,
+  workItem: _workItem,
   draft,
   disabled,
   labels,

@@ -51,7 +51,7 @@ function isTitleMatch(titleA?: string | null, titleB?: string | null): boolean {
 
 function sumMilestoneDurations(
   milestones: any[],
-  t: (k: string, f: string, opt?: any) => string
+  t: any
 ): string | null {
   if (!milestones || milestones.length === 0) return null;
   let totalWeeks = 0;

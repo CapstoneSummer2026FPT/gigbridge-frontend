@@ -6,13 +6,12 @@ import {
   Coins,
   FileSignature,
   Activity,
-  AlertCircle,
 } from 'lucide-react';
 import type { ApiResponse } from '../../../types/common';
 import type { AdminUserDto } from '../../../types/models/User';
 import type { JobPostSummaryDto } from '../../../types/models/Job';
 import type { ProposalDto } from '../../../types/models/Proposal';
-import type { AdminAuditLog } from '../../../types/systemTracking';
+import type { AdminAuditLog } from '../../../types/models/AdminPhase1';
 
 export type TabType = 'overview' | 'audit' | 'errors' | 'alerts';
 export type LogLevel = 'info' | 'warning' | 'error' | 'critical';
@@ -169,7 +168,7 @@ export const getActionTheme = (action: string): { category: string; icon: ReactN
   return { category: 'category-system', icon: <Activity size={13} /> };
 };
 
-export const formatActionTitle = (action: string, t: (key: string, fallback?: string) => string): string => {
+export const formatActionTitle = (action: string, t: (...args: any[]) => any): string => {
   if (!action) return 'Hoạt động';
   const normalized = action.replace(/[.\s-]/g, '_');
   const translationKey = `adminSystemTracking.actions.${normalized}`;
@@ -207,7 +206,7 @@ export const formatActionTitle = (action: string, t: (key: string, fallback?: st
     .trim();
 };
 
-export const formatResourceText = (log: AuditLog, t: (key: string, fallback?: string) => string): string => {
+export const formatResourceText = (log: AuditLog, t: (...args: any[]) => any): string => {
   if (log.entityType) {
     const translatedEntity = t(`adminSystemTracking.entityTypes.${log.entityType}`, log.entityType.replace(/([a-z])([A-Z])/g, '$1 $2'));
     const shortId = log.entityId ? (log.entityId.length > 12 ? `#${log.entityId.slice(0, 8)}...` : `#${log.entityId}`) : '';
@@ -291,18 +290,18 @@ export const toAuditLogs = (
   }));
 
   const jobLogs: AuditLog[] = jobs.map(job => ({
-    id: `job_${job.jobPostId}`,
+    id: `job_${job.jobPostsId}`,
     timestamp: job.createdAt || new Date().toISOString(),
-    userName: job.clientName || 'Client',
+    userName: job.clientFullName || 'Client',
     action: 'job.created',
     resource: job.title,
     ipAddress: '-',
     userAgent: 'GigBridge Web',
-    details: `Job post "${job.title}" created with budget ${job.budget} GIG`,
+    details: `Job post "${job.title}" created with budget ${job.budgetMin ?? job.budgetMax ?? 0} GIG`,
   }));
 
   const proposalLogs: AuditLog[] = proposals.map(proposal => ({
-    id: `proposal_${proposal.proposalId}`,
+    id: `proposal_${proposal.proposalsId}`,
     timestamp: proposal.submittedAt || new Date().toISOString(),
     userName: proposal.freelancerName || 'Freelancer',
     action: 'proposal.submitted',

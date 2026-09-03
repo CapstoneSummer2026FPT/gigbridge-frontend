@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Percent,
   XCircle,
-  Fingerprint,
   Calculator,
   HelpCircle,
   Sparkles,
@@ -262,7 +261,7 @@ function PillarArcGauge({
 }
 
 // ── Explanation Popover Triggered by '?' Button ─────────────────────────────
-function PillarExplanationButton({
+export function PillarExplanationButton({
   title,
   iconColor,
   content,
@@ -526,7 +525,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
   };
 
   // Format AI explanation text: keep static labels unhighlighted, highlight metrics AFTER colon in pillar theme color
-  const renderFormattedExplanation = (rawText: string, pillarKey: string) => {
+  const renderFormattedExplanation = (rawText: string, _pillarKey?: string) => {
     if (!rawText) return null;
     const lines = rawText.split('\n');
 

@@ -31,17 +31,7 @@ export interface TrackingOverviewTabProps {
     method: string;
     status: string;
   };
-  setApiLogFilters: React.Dispatch<React.SetStateAction<{
-    startDate: string;
-    endDate: string;
-    username: string;
-    url: string;
-    minDuration: string;
-    maxDuration: string;
-    method: string;
-    status: string;
-    ip: string;
-  }>>;
+  setApiLogFilters: React.Dispatch<React.SetStateAction<TrackingOverviewTabProps['apiLogFilters']>>;
   apiLogSortOrder: 'asc' | 'desc';
   setApiLogSortOrder: (order: 'asc' | 'desc') => void;
   apiLogPage: number;
