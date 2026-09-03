@@ -16,12 +16,61 @@ import {
   ShieldCheck,
   Sparkles,
   Square,
+  Timer,
   Volume2,
   Zap,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { useAiInterview, formatDuration } from '../hooks/useAiInterview';
+import { useAiInterview, formatDuration, QUESTION_MAX_SECONDS } from '../hooks/useAiInterview';
 import '../styles/ai-interview-screen.css';
+
+function formatRemainingTime(seconds: number) {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60).toString().padStart(2, '0');
+  const remainingSeconds = Math.floor(safeSeconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${remainingSeconds}`;
+}
+
+function TimerRing({ seconds, maxSeconds = 180, size = 52 }: { seconds: number; maxSeconds?: number; size?: number }) {
+  const radius = (size - 8) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.max(0, Math.min(1, seconds / maxSeconds));
+  const strokeDashoffset = circumference * (1 - progress);
+  const isLow = seconds <= 30;
+  const isCritical = seconds <= 10;
+
+  return (
+    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="absolute -rotate-90" style={{ overflow: 'visible' }}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth={3.5}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={isCritical ? '#ef4444' : isLow ? '#f59e0b' : 'var(--brand)'}
+          strokeWidth={3.5}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.3s ease' }}
+        />
+      </svg>
+      <span className={`relative z-10 text-xs font-black tabular-nums ${
+        isCritical ? 'text-rose-500 animate-pulse' : isLow ? 'text-amber-500' : 'text-brand'
+      }`}>
+        {formatRemainingTime(seconds)}
+      </span>
+    </div>
+  );
+}
 
 export default function AIInterviewScreen() {
   const {
@@ -34,6 +83,7 @@ export default function AIInterviewScreen() {
     answerState, transcript, sttProvider, sttConfidence,
     recordingSeconds, ttsState, ttsProvider,
     subtitleCueIndex, subtitleCues, silenceCountdown,
+    questionRemainingSeconds,
     isStarting, startError, actionError,
     startInterview,
     beginAnswer, finishAnswer, cancelAnswer, recordAgain, confirmAnswer,
@@ -48,16 +98,20 @@ export default function AIInterviewScreen() {
       a: t('aiInterview.faq.a1', 'Số lượng câu hỏi được khởi tạo tự động linh hoạt dựa trên yêu cầu kỹ năng và mức độ phức tạp của từng dự án tuyển dụng.'),
     },
     {
-      q: t('aiInterview.faq.q2', 'Nếu câu trả lời của tôi chưa rõ ràng thì sao?'),
-      a: t('aiInterview.faq.a2', 'Sau khi phát biểu xong, GigBridge AI sẽ chuyển giọng nói thành văn bản. Bạn hoàn toàn có thể chọn "Nói lại" để thu âm lại câu trả lời bất kỳ lúc nào.'),
+      q: t('aiInterview.faq.q2', 'Thời gian cho mỗi câu hỏi là bao lâu?'),
+      a: t('aiInterview.faq.a2', 'Giống phỏng vấn tiêu chuẩn, mỗi câu hỏi phỏng vấn AI có đúng 3 phút (180 giây) đếm ngược. Hệ thống sẽ tự động ghi nhận và chuyển câu tiếp theo khi hết giờ.'),
     },
     {
-      q: t('aiInterview.faq.q3', 'GigBridge AI hỗ trợ những ngôn ngữ nào?'),
-      a: t('aiInterview.faq.a3', 'Hệ thống nhận dạng thông minh cả tiếng Việt và tiếng Anh (tự động điều chỉnh theo ngôn ngữ hiển thị trên giao diện của bạn).'),
+      q: t('aiInterview.faq.q3', 'Nếu câu trả lời của tôi chưa rõ ràng thì sao?'),
+      a: t('aiInterview.faq.a3', 'Sau khi phát biểu xong, GigBridge AI sẽ chuyển giọng nói thành văn bản. Bạn hoàn toàn có thể chọn "Nói lại" để thu âm lại câu trả lời bất kỳ lúc nào trong thời gian quy định.'),
     },
     {
-      q: t('aiInterview.faq.q4', 'Kết quả phỏng vấn sẽ gửi cho nhà tuyển dụng như thế nào?'),
-      a: t('aiInterview.faq.a4', 'Ngay khi hoàn thành, đánh giá từ GigBridge AI và văn bản câu trả lời sẽ tự động đính kèm vào Đề xuất (Proposal) gửi đến Khách hàng.'),
+      q: t('aiInterview.faq.q4', 'GigBridge AI hỗ trợ những ngôn ngữ nào?'),
+      a: t('aiInterview.faq.a4', 'Hệ thống nhận dạng thông minh cả tiếng Việt và tiếng Anh (tự động điều chỉnh theo ngôn ngữ hiển thị trên giao diện của bạn).'),
+    },
+    {
+      q: t('aiInterview.faq.q5', 'Kết quả phỏng vấn sẽ gửi cho nhà tuyển dụng như thế nào?'),
+      a: t('aiInterview.faq.a5', 'Ngay khi hoàn thành, đánh giá từ GigBridge AI và văn bản câu trả lời sẽ tự động đính kèm vào Đề xuất (Proposal) gửi đến Khách hàng.'),
     },
   ];
 
@@ -139,8 +193,13 @@ export default function AIInterviewScreen() {
                   )}
                 </div>
 
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 20, padding: '6px 14px', borderRadius: 999, background: 'var(--surface-muted, var(--surface))', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
-                  <Volume2 size={14} color="var(--brand)" /> {t('aiInterview.tips.quietRoom', '💡 Mẹo: Nên phỏng vấn ở phòng kín, yên tĩnh để có trải nghiệm và nhận dạng giọng nói tốt nhất.')}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 20 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 999, background: 'var(--surface-muted, var(--surface))', border: '1px solid var(--border)', fontSize: 12, color: 'var(--brand)', fontWeight: 800 }}>
+                    <Timer size={14} color="var(--brand)" /> 3 phút / câu hỏi (Có tính giờ)
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 999, background: 'var(--surface-muted, var(--surface))', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                    <Volume2 size={14} color="var(--brand)" /> {t('aiInterview.tips.quietRoom', '💡 Mẹo: Nên phỏng vấn ở phòng kín, yên tĩnh để có trải nghiệm tốt nhất.')}
+                  </div>
                 </div>
               </div>
 
@@ -180,7 +239,7 @@ export default function AIInterviewScreen() {
                     <div className="ai-step-num">02 / STEP</div>
                     <h4 className="ai-step-title">{t('aiInterview.steps.aTitle', 'Trả lời qua Micro')}</h4>
                     <p className="ai-step-desc">
-                      {t('aiInterview.intro.steps.answer', 'Bật Micro và phát biểu ý kiến. Hệ thống tự nhận diện 3s yên lặng để ngắt.')}
+                      {t('aiInterview.intro.steps.answer', 'Bật Micro và phát biểu ý kiến. Mỗi câu hỏi có đúng 3 phút tính giờ.')}
                     </p>
                   </div>
 
@@ -249,21 +308,28 @@ export default function AIInterviewScreen() {
         {stage === 'interview' && (
           <section>
             {/* Topbar */}
-            <div className="ai-room-topbar">
-              <div className="ai-room-title-block">
+            <div className="ai-room-topbar flex items-center justify-between gap-4">
+              <div className="ai-room-title-block min-w-0">
                 <span className="ai-bento-eyebrow-dot" />
-                <h1>{jobTitle || t('aiInterview.room.defaultTitle', 'Phỏng vấn thoại — GigBridge AI')}</h1>
+                <h1 className="truncate">{jobTitle || t('aiInterview.room.defaultTitle', 'Phỏng vấn thoại — GigBridge AI')}</h1>
               </div>
 
-              <div className="ai-room-progress-wrap">
-                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--ai-text-secondary)' }}>
-                  {t('aiInterview.room.questionOf', { current: questionIndex, total: questionCount })}
-                </span>
-                <div className="ai-progress-track">
-                  <div
-                    className="ai-progress-fill"
-                    style={{ width: `${(questionIndex / questionCount) * 100}%` }}
-                  />
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="ai-room-progress-wrap hidden sm:flex">
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--ai-text-secondary)' }}>
+                    {t('aiInterview.room.questionOf', { current: questionIndex, total: questionCount })}
+                  </span>
+                  <div className="ai-progress-track">
+                    <div
+                      className="ai-progress-fill"
+                      style={{ width: `${(questionIndex / questionCount) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Per-Question Countdown Timer Ring */}
+                <div className="flex items-center gap-2 rounded-2xl border px-3 py-1.5 shadow-sm" style={{ background: 'var(--surface-muted, var(--surface))', borderColor: 'var(--border)' }}>
+                  <TimerRing seconds={questionRemainingSeconds} maxSeconds={QUESTION_MAX_SECONDS} size={50} />
                 </div>
               </div>
             </div>
@@ -278,6 +344,7 @@ export default function AIInterviewScreen() {
             <div className="ai-interview-grid-bento">
               {/* LEFT CARD — GIGBRIDGE AI INTERVIEWER */}
               <div className="ai-stage-bento-card">
+
                 <div className="ai-avatar-flex">
                   <div className="ai-hero-orb-shell" style={{ width: 140, height: 140 }}>
                     <div className="ai-orb-ring-spin" />
@@ -321,7 +388,7 @@ export default function AIInterviewScreen() {
 
               {/* RIGHT CARD — ANSWER PANEL */}
               <div className="ai-stage-bento-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <span style={{ fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--brand)' }}>
                     {t('aiInterview.answer.yourTurn', 'Phần phát biểu của bạn')}
                   </span>
@@ -330,6 +397,30 @@ export default function AIInterviewScreen() {
                     {answerState === 'recording' ? t('aiInterview.answer.micOn', 'Micro Đang Mở') : t('aiInterview.answer.micOff', 'Micro Tắt')}
                   </span>
                 </div>
+
+                {/* Question Timer Urgency Banner */}
+                {questionRemainingSeconds <= 30 && questionRemainingSeconds > 0 && (
+                  <div style={{
+                    color: questionRemainingSeconds <= 10 ? '#ef4444' : '#f59e0b',
+                    padding: '8px 14px',
+                    borderRadius: '12px',
+                    background: questionRemainingSeconds <= 10 ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                    border: `1px solid ${questionRemainingSeconds <= 10 ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                    marginBottom: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <Timer size={15} className={questionRemainingSeconds <= 10 ? 'animate-pulse shrink-0' : 'shrink-0'} />
+                    <span>
+                      {questionRemainingSeconds <= 10
+                        ? 'Sắp hết 3 phút! Hệ thống sẽ tự động hoàn tất và chuyển câu hỏi khi về 00:00.'
+                        : 'Còn dưới 30 giây cho câu hỏi này! Vui lòng chuẩn bị nộp câu trả lời.'}
+                    </span>
+                  </div>
+                )}
 
                 {/* State: Idle */}
                 {answerState === 'idle' && (
@@ -398,7 +489,7 @@ export default function AIInterviewScreen() {
                       <button className="ai-bento-btn ghost" onClick={recordAgain}>
                         <RotateCcw size={14} /> {t('aiInterview.actions.speakAgain', 'Nói lại')}
                       </button>
-                      <button className="ai-bento-btn" style={{ flex: 1 }} onClick={confirmAnswer}>
+                      <button className="ai-bento-btn" style={{ flex: 1 }} onClick={() => void confirmAnswer()}>
                         {t('aiInterview.actions.submitAnswer', 'Xác nhận & Nộp')} <Send size={14} />
                       </button>
                     </div>
