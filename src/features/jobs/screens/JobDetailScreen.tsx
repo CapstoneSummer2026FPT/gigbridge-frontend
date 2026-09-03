@@ -496,7 +496,7 @@ export default function JobDetailScreen() {
                       </button>
                     )}
 
-                    {canEditProposal(myProposal.status) && (
+                    {!(job.hasAiInterview && !myProposal.aiInterviewCompleted) && canEditProposal(myProposal.status) && (
                       <button
                         className="jd-btn-secondary"
                         onClick={handleContinueEditingProposal}
@@ -517,7 +517,7 @@ export default function JobDetailScreen() {
                       </button>
                     )}
 
-                    {canViewProposalAnswers(myProposal.status) && (
+                    {!(job.hasAiInterview && !myProposal.aiInterviewCompleted) && canViewProposalAnswers(myProposal.status) && (
                       <button
                         type="button"
                         className="jd-btn-secondary"

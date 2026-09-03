@@ -617,7 +617,7 @@ export default function FreelancerProposalsScreen() {
 
                 {/* Actions Toolbar */}
                 <div className="flex flex-wrap items-center gap-2 pb-2">
-                  {canEditProposal(activeProposal.status) && (
+                  {!(activeProposal.hasAiInterview && !activeProposal.aiInterviewCompleted) && canEditProposal(activeProposal.status) && (
                     <button
                       type="button"
                       onClick={() => navigate(`/proposals/${activeProposal.proposalsId}/edit`)}
@@ -629,7 +629,7 @@ export default function FreelancerProposalsScreen() {
                     </button>
                   )}
 
-                  {canViewProposalAnswers(activeProposal.status) && (
+                  {!(activeProposal.hasAiInterview && !activeProposal.aiInterviewCompleted) && canViewProposalAnswers(activeProposal.status) && (
                     <button
                       type="button"
                       onClick={() => void answersModal.openModal(activeProposal.proposalsId, activeProposal.jobTitle, activeProposal.status, activeProposal.jobPostsId)}
