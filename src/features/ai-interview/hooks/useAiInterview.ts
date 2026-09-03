@@ -15,6 +15,8 @@ export type InterviewStage = 'intro' | 'interview' | 'results';
 export type AnswerState = 'idle' | 'recording' | 'transcribing' | 'review' | 'submitting';
 export type TtsState = 'idle' | 'streaming' | 'ready' | 'playing' | 'failed';
 
+export const QUESTION_MAX_SECONDS = 180;
+
 interface InterviewRouteState {
   jobPostId?: string;
   jobTitle?: string;
@@ -156,6 +158,11 @@ export function useAiInterview() {
   const [startError, setStartError] = useState('');
   const [actionError, setActionError] = useState('');
 
+  // Per-Question Timer State
+  const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
+  const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState(QUESTION_MAX_SECONDS);
+  const handlingTimeoutRef = useRef(false);
+
   const subtitleCues = useMemo(() => splitSubtitleCues(questionText), [questionText]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
@@ -225,6 +232,13 @@ export function useAiInterview() {
           setQuestionText(parsed.questionText || '');
           setInterviewLanguage(parsed.interviewLanguage || 'auto');
           setTtsProvider(parsed.ttsProvider || 'streaming');
+          const now = Date.now();
+          const savedStartedAt = typeof parsed.timerStartedAt === 'number' ? parsed.timerStartedAt : now;
+          const elapsed = Math.floor((now - savedStartedAt) / 1000);
+          const remaining = Math.max(0, QUESTION_MAX_SECONDS - elapsed);
+          setTimerStartedAt(savedStartedAt);
+          setQuestionRemainingSeconds(remaining);
+          handlingTimeoutRef.current = false;
           setStage('interview');
           setAnswerState('idle');
         }
@@ -250,6 +264,32 @@ export function useAiInterview() {
     return clearQuestionAudio;
   }, [audioAccessToken, questionIndex, stage]);
 
+  // Question Timer Countdown & Auto-Timeout Loop
+  useEffect(() => {
+    if (stage !== 'interview' || !timerStartedAt) return undefined;
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - timerStartedAt) / 1000);
+      const remaining = Math.max(0, QUESTION_MAX_SECONDS - elapsed);
+      setQuestionRemainingSeconds(remaining);
+      if (remaining <= 0 && !handlingTimeoutRef.current) {
+        handlingTimeoutRef.current = true;
+        toast.warning(t('aiInterview.timer.expired', 'Đã hết thời gian 3 phút cho câu hỏi này! Đang chuyển sang câu hỏi tiếp theo.'));
+        const recorder = mediaRecorderRef.current;
+        if (recorder?.state === 'recording') {
+          setAnswerState('transcribing');
+          recorder.stop();
+        } else if (answerState === 'review') {
+          void confirmAnswer();
+        } else if (answerState === 'idle' || answerState === 'transcribing') {
+          void confirmAnswer('[Hết thời gian trả lời / Timed out]');
+        }
+      }
+    };
+    tick();
+    const intervalId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [answerState, stage, timerStartedAt]);
+
   // ── Actions ────────────────────────────────────────────────────────────────
   const startInterview = async () => {
     if (!jobPostId) { setStartError(t('aiInterview.errors.chooseJob')); return; }
@@ -274,6 +314,7 @@ export function useAiInterview() {
       const nextTts = responseValue<string | null>(data, 'ttsProvider', 'tts_provider');
       const lang = data.language || language;
       if (!nextSessionId || !nextQuestion) { setStartError(t('aiInterview.errors.incompleteSession')); return; }
+      const now = Date.now();
       setSessionId(nextSessionId);
       setAudioAccessToken(nextToken || '');
       setQuestionText(nextQuestion);
@@ -281,12 +322,16 @@ export function useAiInterview() {
       setQuestionCount(Math.max(nextIndex, nextCount));
       setTtsProvider(nextTts || 'streaming');
       setInterviewLanguage(lang || 'auto');
+      setTimerStartedAt(now);
+      setQuestionRemainingSeconds(QUESTION_MAX_SECONDS);
+      handlingTimeoutRef.current = false;
       setAnswerState('idle');
       setStage('interview');
       localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify({
         sessionId: nextSessionId, audioAccessToken: nextToken || '',
         questionIndex: nextIndex, questionCount: Math.max(nextIndex, nextCount),
-        questionText: nextQuestion, interviewLanguage: lang || 'auto', ttsProvider: nextTts || 'streaming'
+        questionText: nextQuestion, interviewLanguage: lang || 'auto', ttsProvider: nextTts || 'streaming',
+        timerStartedAt: now,
       }));
     } catch { setStartError(t('aiInterview.errors.startFailed')); }
     finally { setIsStarting(false); }
@@ -307,6 +352,11 @@ export function useAiInterview() {
     setSttProvider(draft.sttProvider ?? draft.stt_provider ?? 'speech-to-text');
     setSttConfidence(draft.confidence);
     setAnswerState('review');
+
+    // If timeout handling was activated while recording/transcribing, auto-confirm
+    if (handlingTimeoutRef.current) {
+      void confirmAnswer(draft.transcript || '[Hết thời gian trả lời / Timed out]');
+    }
   };
 
   const beginAnswer = async () => {
@@ -392,9 +442,8 @@ export function useAiInterview() {
 
   const recordAgain = () => { setTranscript(''); setSttProvider(''); setSttConfidence(null); setActionError(''); setAnswerState('idle'); };
 
-  const confirmAnswer = async () => {
-    const correctedText = transcript.trim();
-    if (!correctedText) { setActionError(t('aiInterview.errors.noTranscript')); return; }
+  const confirmAnswer = async (textOverride?: string) => {
+    const correctedText = (textOverride !== undefined ? textOverride : transcript).trim() || '[Hết thời gian trả lời / Timed out]';
     setActionError(''); setAnswerState('submitting');
     const response = await aiInterviewAPI.confirmAnswer(sessionId, correctedText);
     const data = response.data;
@@ -424,14 +473,17 @@ export function useAiInterview() {
     const nextCount = responseValue<number>(data, 'questionCount', 'question_count');
     const nextTts = responseValue<string | null>(data, 'ttsProvider', 'tts_provider');
     if (!nextQuestion || !nextIndex) { setActionError(t('aiInterview.errors.nextQuestionMissing')); setAnswerState('review'); return; }
+    const now = Date.now();
     setQuestionText(nextQuestion); setQuestionIndex(nextIndex);
     if (nextCount) setQuestionCount(Math.max(nextIndex, nextCount));
     setTtsProvider(nextTts || 'streaming'); setInterviewLanguage(data.language || interviewLanguage);
     setTranscript(''); setSttProvider(''); setSttConfidence(null); setRecordingSeconds(0); setSilenceCountdown(null); setAnswerState('idle');
+    setTimerStartedAt(now); setQuestionRemainingSeconds(QUESTION_MAX_SECONDS); handlingTimeoutRef.current = false;
     localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify({
       sessionId, audioAccessToken, questionIndex: nextIndex,
       questionCount: nextCount ? Math.max(nextIndex, nextCount) : questionCount,
-      questionText: nextQuestion, interviewLanguage: data.language || interviewLanguage, ttsProvider: nextTts || 'streaming'
+      questionText: nextQuestion, interviewLanguage: data.language || interviewLanguage, ttsProvider: nextTts || 'streaming',
+      timerStartedAt: now,
     }));
   };
 
@@ -517,6 +569,8 @@ export function useAiInterview() {
     answerState, transcript, sttProvider, sttConfidence,
     recordingSeconds, ttsState, ttsProvider,
     subtitleCueIndex, subtitleCues, silenceCountdown,
+    // Timer state
+    questionRemainingSeconds,
     // Intro state
     isStarting, startError,
     // Error
@@ -527,3 +581,4 @@ export function useAiInterview() {
     playQuestion,
   };
 }
+
