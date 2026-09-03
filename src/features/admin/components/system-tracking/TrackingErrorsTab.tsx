@@ -187,15 +187,15 @@ export function TrackingErrorsTab({
 
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead className="border-b border-border bg-surface-muted">
               <tr>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-16">#</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thLevel', 'Level')}</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thService', 'Service / Scope')}</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-12">#</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-24">{t('adminSystemTracking.thLevel', 'Level')}</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-32">{t('adminSystemTracking.thService', 'Service / Scope')}</th>
                 <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thErrorDetails', 'Thông điệp lỗi')}</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thOccurrences', 'Số lần')}</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-28">{t('adminSystemTracking.thOccurrences', 'Số lần')}</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-36">
                   <button
                     onClick={() => setErrorSortOrder(errorSortOrder === 'desc' ? 'asc' : 'desc')}
                     className="inline-flex items-center gap-1 hover:text-brand transition-colors font-bold"
@@ -226,20 +226,20 @@ export function TrackingErrorsTab({
                           {log.level.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-surface-muted text-primary border border-border">
+                      <td className="px-4 py-3.5 overflow-hidden">
+                        <span className="inline-block max-w-full truncate align-bottom px-2 py-0.5 rounded text-xs font-mono font-bold bg-surface-muted text-primary border border-border">
                           {log.service}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <div className="tracking-url-box max-w-md">
+                      <td className="px-4 py-3.5 overflow-hidden">
+                        <div className="tracking-url-box max-w-full min-w-0">
                           <span className="font-bold text-primary truncate block font-mono text-xs" title={log.message}>
                             {log.message}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold text-white bg-red-600 shadow-sm">
+                        <span className="inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-[11px] font-extrabold text-white bg-red-600 shadow-sm">
                           {log.count || 1} {t('adminSystemTracking.occurrences', 'lần')}
                         </span>
                       </td>

@@ -30,7 +30,6 @@ export interface TrackingOverviewTabProps {
     maxDuration: string;
     method: string;
     status: string;
-    ip: string;
   };
   setApiLogFilters: React.Dispatch<React.SetStateAction<{
     startDate: string;
@@ -137,7 +136,7 @@ export function TrackingOverviewTab({
 
           {/* Advanced Filters Drawer */}
           {showAdvancedFilters && (
-            <div className="pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-4 gap-3 animate-in fade-in duration-200">
+            <div className="pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in duration-200">
               <input
                 type="datetime-local"
                 value={apiLogFilters.startDate}
@@ -168,16 +167,6 @@ export function TrackingOverviewTab({
                 }}
                 className="tracking-input"
               />
-              <input
-                type="text"
-                placeholder={t('adminSystemTracking.filterIpPlaceholder', 'Lọc IP...')}
-                value={apiLogFilters.ip}
-                onChange={e => {
-                  setApiLogFilters(prev => ({ ...prev, ip: e.target.value }));
-                  setApiLogPage(1);
-                }}
-                className="tracking-input"
-              />
             </div>
           )}
         </div>
@@ -197,14 +186,14 @@ export function TrackingOverviewTab({
 
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead className="border-b border-border bg-surface-muted">
               <tr>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-16">#</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thMethodUrl', 'Method / Endpoint')}</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thStatus', 'Status')}</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thUserIp', 'User / IP')}</th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-12">#</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-[30%]">{t('adminSystemTracking.thMethodUrl', 'Method / Endpoint')}</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-24">{t('adminSystemTracking.thStatus', 'Status')}</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-40">{t('adminSystemTracking.thUser', 'User')}</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-36">
                   <button
                     onClick={() => setApiLogSortOrder(apiLogSortOrder === 'desc' ? 'asc' : 'desc')}
                     className="inline-flex items-center gap-1 hover:text-brand transition-colors font-bold"
@@ -213,7 +202,7 @@ export function TrackingOverviewTab({
                     {apiLogSortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
                   </button>
                 </th>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider">{t('adminSystemTracking.thLatency', 'Độ trễ')}</th>
+                <th className="text-left px-4 py-3.5 text-[11px] font-bold text-secondary uppercase tracking-wider w-24">{t('adminSystemTracking.thLatency', 'Độ trễ')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -224,13 +213,13 @@ export function TrackingOverviewTab({
                       #{((apiLogPage - 1) * apiLogsPerPage) + index + 1}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2.5 max-w-xl">
-                      <span className={`method-pill method-${log.method}`}>
+                  <td className="px-4 py-3.5 overflow-hidden">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={`method-pill method-${log.method} flex-shrink-0`}>
                         {log.method}
                       </span>
-                      <div className="tracking-url-box group/url">
-                        <span className="truncate max-w-sm font-bold font-mono" title={log.url}>
+                      <div className="tracking-url-box group/url min-w-0">
+                        <span className="truncate font-bold font-mono" title={log.url}>
                           {log.url}
                         </span>
                         <button
@@ -249,17 +238,14 @@ export function TrackingOverviewTab({
                       <span>{log.status}</span>
                     </span>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <div className="tracking-user-chip">
+                  <td className="px-4 py-3.5 overflow-hidden">
+                    <div className="tracking-user-chip min-w-0">
                       <UserAvatar
                         name={log.user || 'Guest'}
                         size="sm"
                         className="!w-7 !h-7 !text-[11px] flex-shrink-0"
                       />
-                      <div>
-                        <div className="text-xs text-primary font-bold">{log.user || 'Guest'}</div>
-                        <div className="text-[11px] text-muted font-mono">{log.ip}</div>
-                      </div>
+                      <span className="text-xs text-primary font-bold truncate" title={log.user || 'Guest'}>{log.user || 'Guest'}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3.5 text-xs text-secondary font-mono whitespace-nowrap">
