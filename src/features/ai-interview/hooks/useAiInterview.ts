@@ -6,6 +6,8 @@ import {
   aiInterviewAPI,
   type AiInterviewQuestionResponse,
 } from '../../../api/externalAPI/aiInterviewAPI';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import type { JobPostQuestionDto } from '../../../types/models/Job';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { toast } from 'sonner';
@@ -157,11 +159,20 @@ export function useAiInterview() {
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [jobQuestions, setJobQuestions] = useState<JobPostQuestionDto[]>([]);
 
   // Per-Question Timer State
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState(QUESTION_MAX_SECONDS);
   const handlingTimeoutRef = useRef(false);
+
+  // Requirement status of current question
+  const currentQuestionMeta = useMemo(() => {
+    if (!jobQuestions.length) return null;
+    return jobQuestions[questionIndex - 1] || null;
+  }, [jobQuestions, questionIndex]);
+
+  const currentIsRequired = currentQuestionMeta ? (currentQuestionMeta.isRequired ?? true) : true;
 
   const subtitleCues = useMemo(() => splitSubtitleCues(questionText), [questionText]);
 
@@ -218,6 +229,15 @@ export function useAiInterview() {
   };
 
   // ── Effects ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!jobPostId) return;
+    jobGetAPI.getJobPostQuestions(jobPostId).then(res => {
+      if (res.success && res.data) {
+        setJobQuestions([...res.data].sort((a, b) => a.orderIndex - b.orderIndex));
+      }
+    }).catch(() => {});
+  }, [jobPostId]);
+
   useEffect(() => {
     if (!jobPostId) return;
     const saved = localStorage.getItem(`ai_interview_session_${jobPostId}`);
@@ -281,7 +301,7 @@ export function useAiInterview() {
         } else if (answerState === 'review') {
           void confirmAnswer();
         } else if (answerState === 'idle' || answerState === 'transcribing') {
-          void confirmAnswer('[Hết thời gian trả lời / Timed out]');
+          void confirmAnswer(t('aiInterview.placeholder.timedOut', '[Timed out]'));
         }
       }
     };
@@ -355,7 +375,7 @@ export function useAiInterview() {
 
     // If timeout handling was activated while recording/transcribing, auto-confirm
     if (handlingTimeoutRef.current) {
-      void confirmAnswer(draft.transcript || '[Hết thời gian trả lời / Timed out]');
+      void confirmAnswer(draft.transcript || t('aiInterview.placeholder.timedOut', '[Timed out]'));
     }
   };
 
@@ -442,49 +462,56 @@ export function useAiInterview() {
 
   const recordAgain = () => { setTranscript(''); setSttProvider(''); setSttConfidence(null); setActionError(''); setAnswerState('idle'); };
 
+  const submittingRef = useRef(false);
+
   const confirmAnswer = async (textOverride?: string) => {
-    const correctedText = (textOverride !== undefined ? textOverride : transcript).trim() || '[Hết thời gian trả lời / Timed out]';
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    const correctedText = (textOverride !== undefined ? textOverride : transcript).trim() || t('aiInterview.placeholder.noAnswer', '[No answer provided]');
     setActionError(''); setAnswerState('submitting');
-    const response = await aiInterviewAPI.confirmAnswer(sessionId, correctedText);
-    const data = response.data;
-    if (!response.success || !data) {
-      setActionError(t('aiInterview.errors.submitFailed'));
-      if (response.statusCode === 401 || response.statusCode === 404 || response.message?.includes('not found')) {
-        localStorage.removeItem(`ai_interview_session_${jobPostId}`); setStage('intro');
+    try {
+      const response = await aiInterviewAPI.confirmAnswer(sessionId, correctedText);
+      const data = response.data;
+      if (!response.success || !data) {
+        setActionError(t('aiInterview.errors.submitFailed'));
+        if (response.statusCode === 401 || response.statusCode === 404 || response.message?.includes('not found')) {
+          localStorage.removeItem(`ai_interview_session_${jobPostId}`); setStage('intro');
+        }
+        setAnswerState('review'); return;
       }
-      setAnswerState('review'); return;
-    }
-    const completed = responseValue<boolean>(data, 'isCompleted', 'is_completed') ?? false;
-    if (completed) {
-      localStorage.removeItem(`ai_interview_session_${jobPostId}`);
-      if (proposalId) {
-        setAnswerState('submitting');
-        try {
-          const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, { status: ProposalStatus.Pending });
-          if (!statusResponse.success) { setActionError(statusResponse.message || 'Proposal could not be submitted.'); setAnswerState('review'); return; }
-          toast.success(t('aiInterview.proposal.submitted') || 'Proposal submitted successfully!');
-          navigate('/proposals', { state: { submittedProposalId: proposalId } }); return;
-        } catch { setActionError('Failed to submit proposal. Please try again.'); setAnswerState('review'); return; }
+      const completed = responseValue<boolean>(data, 'isCompleted', 'is_completed') ?? false;
+      if (completed) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+        if (proposalId) {
+          try {
+            const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, { status: ProposalStatus.Pending });
+            if (!statusResponse.success) { setActionError(statusResponse.message || 'Proposal could not be submitted.'); setAnswerState('review'); return; }
+            toast.success(t('aiInterview.proposal.submitted') || 'Proposal submitted successfully!');
+            navigate('/proposals', { state: { submittedProposalId: proposalId } }); return;
+          } catch { setActionError('Failed to submit proposal. Please try again.'); setAnswerState('review'); return; }
+        }
+        setStage('results'); setAnswerState('idle'); return;
       }
-      setStage('results'); setAnswerState('idle'); return;
+      const nextQuestion = responseValue<string | null>(data, 'questionText', 'question_text');
+      const nextIndex = responseValue<number>(data, 'questionIndex', 'question_index');
+      const nextCount = responseValue<number>(data, 'questionCount', 'question_count');
+      const nextTts = responseValue<string | null>(data, 'ttsProvider', 'tts_provider');
+      if (!nextQuestion || !nextIndex) { setActionError(t('aiInterview.errors.nextQuestionMissing')); setAnswerState('review'); return; }
+      const now = Date.now();
+      setQuestionText(nextQuestion); setQuestionIndex(nextIndex);
+      if (nextCount) setQuestionCount(Math.max(nextIndex, nextCount));
+      setTtsProvider(nextTts || 'streaming'); setInterviewLanguage(data.language || interviewLanguage);
+      setTranscript(''); setSttProvider(''); setSttConfidence(null); setRecordingSeconds(0); setSilenceCountdown(null); setAnswerState('idle');
+      setTimerStartedAt(now); setQuestionRemainingSeconds(QUESTION_MAX_SECONDS); handlingTimeoutRef.current = false;
+      localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify({
+        sessionId, audioAccessToken, questionIndex: nextIndex,
+        questionCount: nextCount ? Math.max(nextIndex, nextCount) : questionCount,
+        questionText: nextQuestion, interviewLanguage: data.language || interviewLanguage, ttsProvider: nextTts || 'streaming',
+        timerStartedAt: now,
+      }));
+    } finally {
+      submittingRef.current = false;
     }
-    const nextQuestion = responseValue<string | null>(data, 'questionText', 'question_text');
-    const nextIndex = responseValue<number>(data, 'questionIndex', 'question_index');
-    const nextCount = responseValue<number>(data, 'questionCount', 'question_count');
-    const nextTts = responseValue<string | null>(data, 'ttsProvider', 'tts_provider');
-    if (!nextQuestion || !nextIndex) { setActionError(t('aiInterview.errors.nextQuestionMissing')); setAnswerState('review'); return; }
-    const now = Date.now();
-    setQuestionText(nextQuestion); setQuestionIndex(nextIndex);
-    if (nextCount) setQuestionCount(Math.max(nextIndex, nextCount));
-    setTtsProvider(nextTts || 'streaming'); setInterviewLanguage(data.language || interviewLanguage);
-    setTranscript(''); setSttProvider(''); setSttConfidence(null); setRecordingSeconds(0); setSilenceCountdown(null); setAnswerState('idle');
-    setTimerStartedAt(now); setQuestionRemainingSeconds(QUESTION_MAX_SECONDS); handlingTimeoutRef.current = false;
-    localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify({
-      sessionId, audioAccessToken, questionIndex: nextIndex,
-      questionCount: nextCount ? Math.max(nextIndex, nextCount) : questionCount,
-      questionText: nextQuestion, interviewLanguage: data.language || interviewLanguage, ttsProvider: nextTts || 'streaming',
-      timerStartedAt: now,
-    }));
   };
 
   const playQuestion = async () => {
@@ -551,6 +578,16 @@ export function useAiInterview() {
     } finally { if (questionAudioAbortRef.current === controller) questionAudioAbortRef.current = null; }
   };
 
+  const skipQuestion = async () => {
+    if (currentIsRequired) {
+      setActionError(t('aiInterview.errors.questionRequired', 'Câu hỏi này là bắt buộc. Vui lòng trả lời trước khi chuyển tiếp.'));
+      return;
+    }
+    setActionError('');
+    cancelAnswer();
+    await confirmAnswer(t('aiInterview.placeholder.skipped', '[Skipped]'));
+  };
+
   useEffect(() => {
     if (stage !== 'interview' || !audioAccessToken || autoPlayedQuestionRef.current === questionIndex) return;
     autoPlayedQuestionRef.current = questionIndex;
@@ -571,13 +608,15 @@ export function useAiInterview() {
     subtitleCueIndex, subtitleCues, silenceCountdown,
     // Timer state
     questionRemainingSeconds,
+    // Question Requirement meta
+    currentQuestionMeta, currentIsRequired,
     // Intro state
     isStarting, startError,
     // Error
     actionError,
     // Actions
     startInterview,
-    beginAnswer, finishAnswer, cancelAnswer, recordAgain, confirmAnswer,
+    beginAnswer, finishAnswer, cancelAnswer, recordAgain, confirmAnswer, skipQuestion,
     playQuestion,
   };
 }

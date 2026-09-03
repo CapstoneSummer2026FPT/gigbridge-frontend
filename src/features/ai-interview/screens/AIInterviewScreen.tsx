@@ -84,9 +84,10 @@ export default function AIInterviewScreen() {
     recordingSeconds, ttsState, ttsProvider,
     subtitleCueIndex, subtitleCues, silenceCountdown,
     questionRemainingSeconds,
+    currentIsRequired,
     isStarting, startError, actionError,
     startInterview,
-    beginAnswer, finishAnswer, cancelAnswer, recordAgain, confirmAnswer,
+    beginAnswer, finishAnswer, cancelAnswer, recordAgain, confirmAnswer, skipQuestion,
     playQuestion,
   } = useAiInterview();
 
@@ -344,6 +345,15 @@ export default function AIInterviewScreen() {
             <div className="ai-interview-grid-bento">
               {/* LEFT CARD — GIGBRIDGE AI INTERVIEWER */}
               <div className="ai-stage-bento-card">
+                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-start' }}>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                    currentIsRequired
+                      ? 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                      : 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20'
+                  }`}>
+                    {currentIsRequired ? t('proposalQuestions.required', 'Bắt buộc') : t('proposalQuestions.optional', 'Tùy chọn')}
+                  </span>
+                </div>
 
                 <div className="ai-avatar-flex">
                   <div className="ai-hero-orb-shell" style={{ width: 140, height: 140 }}>
@@ -398,6 +408,26 @@ export default function AIInterviewScreen() {
                   </span>
                 </div>
 
+                {/* Required question warning notice */}
+                {currentIsRequired && (
+                  <div style={{
+                    color: '#ef4444',
+                    padding: '8px 14px',
+                    borderRadius: '12px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    marginBottom: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <AlertCircle size={15} className="shrink-0" />
+                    <span>{t('aiInterview.errors.questionRequired', 'Câu hỏi này là bắt buộc. Vui lòng trả lời trước khi chuyển tiếp.')}</span>
+                  </div>
+                )}
+
                 {/* Question Timer Urgency Banner */}
                 {questionRemainingSeconds <= 30 && questionRemainingSeconds > 0 && (
                   <div style={{
@@ -416,8 +446,8 @@ export default function AIInterviewScreen() {
                     <Timer size={15} className={questionRemainingSeconds <= 10 ? 'animate-pulse shrink-0' : 'shrink-0'} />
                     <span>
                       {questionRemainingSeconds <= 10
-                        ? 'Sắp hết 3 phút! Hệ thống sẽ tự động hoàn tất và chuyển câu hỏi khi về 00:00.'
-                        : 'Còn dưới 30 giây cho câu hỏi này! Vui lòng chuẩn bị nộp câu trả lời.'}
+                        ? t('aiInterview.timer.critical', 'Sắp hết 3 phút! Hệ thống sẽ tự động hoàn tất và chuyển câu hỏi khi về 00:00.')
+                        : t('aiInterview.timer.warning', 'Còn dưới 30 giây cho câu hỏi này! Vui lòng chuẩn bị nộp câu trả lời.')}
                     </span>
                   </div>
                 )}
@@ -433,6 +463,17 @@ export default function AIInterviewScreen() {
                     >
                       <Mic size={18} /> {t('aiInterview.actions.answerQuestion', 'Bắt đầu phát biểu')}
                     </button>
+
+                    {!currentIsRequired && (
+                      <button
+                        className="ai-bento-btn ghost"
+                        style={{ marginTop: 14, padding: '10px 20px', fontSize: 13, borderStyle: 'dashed' }}
+                        onClick={() => void skipQuestion()}
+                      >
+                        <ArrowRight size={14} /> {t('aiInterview.actions.skipQuestion', 'Bỏ qua câu hỏi này')}
+                      </button>
+                    )}
+
                     <p style={{ fontSize: 13, color: 'var(--ai-text-secondary)', marginTop: 16 }}>
                       {t('aiInterview.answer.microphoneHint', 'Nói rõ ràng vào micro. Hệ thống sẽ tự động hoàn tất sau 3 giây yên lặng.')}
                     </p>
