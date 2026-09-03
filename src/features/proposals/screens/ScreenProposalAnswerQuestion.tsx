@@ -553,7 +553,7 @@ export default function ScreenProposalAnswerQuestion() {
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <AppLayout hideTopNav hideAIWidget excludeMeshGradient>
+      <AppLayout hideTopNav hideAIWidget showSidebar={false} excludeMeshGradient>
         <div className="flex min-h-screen items-center justify-center">
           <LemniscateBloomLoader label="Đang tải câu hỏi..." tag="Phỏng vấn" />
         </div>
@@ -562,7 +562,7 @@ export default function ScreenProposalAnswerQuestion() {
   }
 
   return (
-    <AppLayout hideTopNav hideAIWidget excludeMeshGradient>
+    <AppLayout hideTopNav hideAIWidget showSidebar={false} excludeMeshGradient>
       {/* Intro overlay */}
       {!interviewStarted && (
         <InterviewIntroOverlay
