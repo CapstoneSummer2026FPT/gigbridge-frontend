@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Calendar,
   CalendarDays,
@@ -19,6 +19,7 @@ import {
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import type { GoogleMeetConnectionStatus } from '../../../api/googleMeetAPI';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 export interface CreateScheduleModalProps {
   isOpen: boolean;
@@ -97,17 +98,11 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
 
   const remainingRequests = editingSchedule?.remainingRescheduleRequests ?? Math.max(0, 3 - (editingSchedule?.rescheduleRequestCount ?? 0));
 
-  const isSubmitDisabled =
-    scheduleSaving ||
-    !!scheduleConflict ||
-    googleMeetConnecting ||
-    (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) ||
-    (scheduleMode !== 'cancel' && isLateNight && !midnightConfirmed) ||
-    (isCancel
-      ? !scheduleReason.trim()
-      : isCounter
-        ? !scheduleTime
-        : !scheduleTitle.trim() || !scheduleTime);
+  const isSubmitDisabled = scheduleSaving || !!scheduleConflict || googleMeetConnecting;
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const midnightConfirmationRef = useRef<HTMLInputElement>(null);
 
   const datePart = scheduleTime ? scheduleTime.slice(0, 10) : '';
   const timePart = scheduleTime ? scheduleTime.slice(11, 16) : '';
@@ -133,6 +128,37 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
     const combined = `${date}T${newTime}`;
     setScheduleTime(combined);
     setMidnightConfirmed(Number(newTime.slice(0, 2)) >= 2);
+  };
+
+  const handleSubmit = (): void => {
+    const validationMessages: string[] = [];
+    if (isCancel && !scheduleReason.trim()) {
+      validationMessages.push('Vui lòng nhập lý do hủy lịch hẹn.');
+    }
+    if (!isCancel && !isCounter && !scheduleTitle.trim()) {
+      validationMessages.push('Vui lòng nhập tiêu đề lịch hẹn.');
+    }
+    if (!isCancel && !scheduleTime) {
+      validationMessages.push('Vui lòng chọn ngày và giờ hẹn.');
+    }
+    if (!isCancel && isLateNight && !midnightConfirmed) {
+      validationMessages.push('Vui lòng xác nhận khung giờ hẹn từ 00:00 đến 02:00.');
+    }
+    if (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) {
+      validationMessages.push('Connect your Google account before adding a Google Meet room.');
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Unable to save schedule.' });
+      if (isCancel && !scheduleReason.trim()) reasonRef.current?.focus();
+      else if (!isCounter && !scheduleTitle.trim()) titleRef.current?.focus();
+      else if (!scheduleTime) dateRef.current?.focus();
+      else if (isLateNight && !midnightConfirmed) midnightConfirmationRef.current?.focus();
+      else document.querySelector<HTMLElement>('[data-connect-google-meet]')?.focus();
+      return;
+    }
+
+    submitSchedule();
   };
 
   return (
@@ -186,6 +212,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                 Lý do hủy cuộc hẹn <span className="text-red-500">*</span>
               </label>
               <textarea
+                ref={reasonRef}
                 maxLength={1000}
                 value={scheduleReason}
                 onChange={e => setScheduleReason(e.target.value)}
@@ -204,6 +231,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                   <div className="relative">
                     <FileText size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
                     <input
+                      ref={titleRef}
                       maxLength={200}
                       value={scheduleTitle}
                       onChange={e => setScheduleTitle(e.target.value)}
@@ -228,6 +256,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                       Ngày hẹn
                     </span>
                     <input
+                      ref={dateRef}
                       type="date"
                       value={datePart}
                       onChange={e => handleDateChange(e.target.value)}
@@ -262,6 +291,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                     </div>
                     <label className="flex items-center gap-2.5 font-bold cursor-pointer pt-2 text-foreground border-t border-amber-500/20">
                       <input
+                        ref={midnightConfirmationRef}
                         type="checkbox"
                         checked={midnightConfirmed}
                         onChange={e => setMidnightConfirmed(e.target.checked)}
@@ -348,6 +378,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
                           </div>
                         ) : (
                           <button
+                            data-connect-google-meet
                             type="button"
                             onClick={connectGoogleMeet}
                             disabled={googleMeetConnecting}
@@ -419,7 +450,7 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
           <button
             type="button"
             disabled={isSubmitDisabled}
-            onClick={submitSchedule}
+            onClick={handleSubmit}
             className={`flex-1 py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-wider text-white transition-all cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isCancel
               ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20'
               : 'bg-[var(--brand)] hover:bg-[var(--brand)]/90 shadow-md shadow-blue-500/20 active:scale-[0.98]'

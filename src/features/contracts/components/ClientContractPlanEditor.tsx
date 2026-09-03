@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, Save, Send, Sparkles, AlertCircle } from 'lucide-react';
+import { FileText, Loader2, Save, Send, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -12,6 +12,8 @@ import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS } from '../../jobs/utils/jobDuration';
+import { useUndoableDeleteScope } from '../../../shared/hooks/useUndoableDeleteScope';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import {
   calculateContractMilestoneBudget,
   prepareContractMilestonesForEditing,
@@ -41,6 +43,7 @@ export function ClientContractPlanEditor({
   onRefresh,
 }: ClientContractPlanEditorProps) {
   const { t } = useTranslation(['contracts', 'messages', 'proposals', 'jobs']);
+  const undoDeleteController = useUndoableDeleteScope();
   const prepared = useMemo(() => prepareContractMilestonesForEditing(milestones), [milestones]);
   const [plans, setPlans] = useState<EditableMilestonePlan[]>(prepared.milestones);
   const [expandedIndexes, setExpandedIndexes] = useState<number[]>(
@@ -50,7 +53,7 @@ export function ClientContractPlanEditor({
     prepared.generatedWorkItemIdsByMilestoneId,
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [budgetError, setBudgetError] = useState('');
+  const [, setBudgetError] = useState('');
   const [persistAction, setPersistAction] = useState<PersistAction | null>(null);
 
   useEffect(() => {
@@ -108,8 +111,9 @@ export function ClientContractPlanEditor({
         t(`messages.finalOfferEditor.validation.${code}`),
       ]));
       setErrors(translatedErrors);
-      const message = t(`messages.finalOfferEditor.validation.${validation.firstError || 'milestoneRequired'}`);
-      toast.error(message);
+      showValidationToast(Object.values(translatedErrors), {
+        fallback: t(`messages.finalOfferEditor.validation.${validation.firstError || 'milestoneRequired'}`),
+      });
       const firstField = Object.keys(validation.errors)[0];
       if (firstField) focusFirstError(firstField);
       return false;
@@ -118,14 +122,14 @@ export function ClientContractPlanEditor({
     if (budgetExceeded) {
       const message = t('contracts.planEditor.budgetExceeded');
       setBudgetError(message);
-      toast.error(message);
+      showValidationToast(message, { fallback: message });
       return false;
     }
 
     if (action === 'submit' && !budgetMatches) {
       const message = t('contracts.allocatedMilestonesSumMatch');
       setBudgetError(message);
-      toast.error(message);
+      showValidationToast(message, { fallback: message });
       return false;
     }
 
@@ -134,7 +138,9 @@ export function ClientContractPlanEditor({
   };
 
   const persist = async (action: PersistAction) => {
-    if (persistAction || !validateForPersist(action)) return;
+    if (persistAction) return;
+    await undoDeleteController.finalizeAll();
+    if (!validateForPersist(action)) return;
 
     setPersistAction(action);
     try {
@@ -143,14 +149,22 @@ export function ClientContractPlanEditor({
         toUpdateContractDetailsRequest(resolvedPlans),
       );
       if (!updateResponse.success) {
-        toast.error(updateResponse.message || t('contracts.planEditor.updateFailed'));
+        if (isValidationResponse(updateResponse)) {
+          showValidationToast(updateResponse, { fallback: t('contracts.planEditor.updateFailed') });
+        } else {
+          toast.error(updateResponse.message || t('contracts.planEditor.updateFailed'));
+        }
         return;
       }
 
       if (action === 'submit') {
         const submitResponse = await contractPostAPI.submitDetails(contractId);
         if (!submitResponse.success) {
-          toast.error(submitResponse.message || t('contracts.planEditor.submitFailed'));
+          if (isValidationResponse(submitResponse)) {
+            showValidationToast(submitResponse, { fallback: t('contracts.planEditor.submitFailed') });
+          } else {
+            toast.error(submitResponse.message || t('contracts.planEditor.submitFailed'));
+          }
           await onRefresh();
           return;
         }
@@ -232,6 +246,7 @@ export function ClientContractPlanEditor({
         <NestedMilestonePlanEditor
           value={editorPlans}
           onChange={handlePlansChange}
+          undoDeleteController={undoDeleteController}
           title={t('messages.finalOfferEditor.milestonePlan')}
           description={t('messages.finalOfferEditor.milestoneDescription')}
           expandedIndexes={expandedIndexes}
@@ -312,13 +327,6 @@ export function ClientContractPlanEditor({
           }}
         />
       </div>
-
-      {budgetError && (
-        <div role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2.5 shadow-xs">
-          <AlertCircle size={16} className="shrink-0" />
-          <span>{budgetError}</span>
-        </div>
-      )}
 
       <div className="flex flex-col sm:flex-row justify-end gap-3 border-t border-border pt-5">
         <button

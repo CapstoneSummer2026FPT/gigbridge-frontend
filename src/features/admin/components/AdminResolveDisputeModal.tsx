@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Scale, X } from 'lucide-react';
+import { Scale, X } from 'lucide-react';
 import { UserViolationType, type AdminDisputeDetail } from '../../../types/models/AdminDispute';
 import { DisputeMilestoneOutcome, DisputeResolution } from '../../../types/models/Dispute';
 import { MilestoneStatus } from '../../../types/models/Contract';
@@ -108,9 +108,7 @@ export function AdminResolveDisputeModal({
     );
   };
 
-  const hasAnyAllocationError = relevantMilestones.some((m) => allocationHasError(m.milestoneId));
-  const hasViolationError = violationHasError(clientViolation) || violationHasError(freelancerViolation);
-  const canSubmit = !actionLoading && resolutionNote.trim() && !hasAnyAllocationError && !hasViolationError;
+  const canSubmit = !actionLoading;
 
   return (
     <div className="modal-backdrop z-50">
@@ -271,11 +269,13 @@ export function AdminResolveDisputeModal({
                         <div>
                           <label className="block text-[10px] font-bold uppercase text-text-muted mb-1">Release to Freelancer</label>
                           <input
+                            data-allocation-field={milestone.milestoneId}
                             type="number"
                             step="0.01"
                             min="0"
                             className="input-gb w-full py-1.5 px-2 text-xs font-bold"
                             value={decision.release}
+                            aria-invalid={isErr}
                             onChange={(e) => {
                               const release = e.target.value;
                               setMilestoneDecisions((prev) => ({
@@ -339,12 +339,6 @@ export function AdminResolveDisputeModal({
                         />
                       </div>
 
-                      {isErr && (
-                        <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                          <AlertTriangle size={13} />
-                          Sum of Release + Refund + Penalty must equal locked amount ({milestone.lockedAmount.toFixed(2)} GCoin) and reason is required for penalties/custom overrides.
-                        </p>
-                      )}
                     </div>
                   );
                 })}
@@ -369,7 +363,9 @@ export function AdminResolveDisputeModal({
               {clientViolation.isViolation && (
                 <div className="space-y-2 pt-2 border-t border-border/50">
                   <select
+                    data-client-violation-field
                     className="input-gb w-full py-2 px-3 text-xs font-semibold"
+                    aria-invalid={violationHasError(clientViolation)}
                     value={clientViolation.violationType ?? ''}
                     onChange={(e) => setClientViolation((prev: ViolationState) => ({ ...prev, violationType: e.target.value === '' ? null : Number(e.target.value) as UserViolationType }))}
                   >
@@ -418,7 +414,9 @@ export function AdminResolveDisputeModal({
               {freelancerViolation.isViolation && (
                 <div className="space-y-2 pt-2 border-t border-border/50">
                   <select
+                    data-freelancer-violation-field
                     className="input-gb w-full py-2 px-3 text-xs font-semibold"
+                    aria-invalid={violationHasError(freelancerViolation)}
                     value={freelancerViolation.violationType ?? ''}
                     onChange={(e) => setFreelancerViolation((prev: ViolationState) => ({ ...prev, violationType: e.target.value === '' ? null : Number(e.target.value) as UserViolationType }))}
                   >
@@ -458,6 +456,7 @@ export function AdminResolveDisputeModal({
                 {t('admin.disputes.dialog.publicNote', 'Resolution Verdict Note (Public to Parties)')} *
               </label>
               <textarea
+                id="admin-dispute-resolution-note"
                 className="input-gb w-full py-2.5 px-3 text-xs font-semibold"
                 rows={3}
                 value={resolutionNote}

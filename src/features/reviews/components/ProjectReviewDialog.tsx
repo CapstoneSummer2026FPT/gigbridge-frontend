@@ -7,6 +7,7 @@ import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { ContractDto } from '../../../types/models/Contract';
 import type { Review } from '../../../types/models/Job';
 import { UserRole } from '../../../types/models/User';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 interface ProjectReviewDialogProps {
   open: boolean;
@@ -153,7 +154,13 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
 
   const submitReview = async () => {
     setError('');
-    if (!allRated) { setError(t('reviews.criteriaRequired')); return; }
+    if (!allRated) {
+      const message = t('reviews.criteriaRequired');
+      showValidationToast(message, { fallback: message });
+      const groupIndex = communicationRating === 0 ? 0 : qualityRating === 0 ? 1 : 2;
+      document.querySelectorAll<HTMLElement>('.review-dialog-backdrop input[type="range"]')[groupIndex]?.focus();
+      return;
+    }
     setIsSubmitting(true);
     const response = await reviewPostAPI.createReview({
       contractId: contract.contractsId,
@@ -166,7 +173,11 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
     });
     setIsSubmitting(false);
     if (!response.success || !response.data) {
-      setError(response.message || t('reviews.submitError'));
+      if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: t('reviews.submitError') });
+      } else {
+        setError(response.message || t('reviews.submitError'));
+      }
       return;
     }
     onSubmitted(response.data);
@@ -301,7 +312,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
 
           {/* Scrollable Form Content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
-            <form className="flex flex-col h-full max-w-lg mx-auto gap-4 sm:gap-6" onSubmit={e => e.preventDefault()}>
+            <form className="flex flex-col h-full max-w-lg mx-auto gap-4 sm:gap-6" onSubmit={e => e.preventDefault()} noValidate>
               {/* Trust Dial */}
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">

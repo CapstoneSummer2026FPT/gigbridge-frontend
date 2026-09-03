@@ -22,6 +22,7 @@ import { adminAPI } from '../../../api/adminAPI';
 import type { FAQCategoryDto, FAQDto } from '../../../types/models/FAQ';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import '../styles/admin-faq-management-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 type FAQStatus = 'published' | 'draft';
 
@@ -55,6 +56,12 @@ const getStatus = (item: { isActive?: boolean | null }): FAQStatus =>
 
 export default function AdminFAQManagementScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const questionRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLSelectElement>(null);
+  const sortOrderRef = useRef<HTMLInputElement>(null);
+  const answerRef = useRef<HTMLTextAreaElement>(null);
+  const categoryNameRef = useRef<HTMLInputElement>(null);
+  const categorySlugRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<FAQCategoryDto[]>([]);
   const [articles, setArticles] = useState<FAQDto[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,19 +177,26 @@ export default function AdminFAQManagementScreen() {
     const answer = articleForm.answer.trim();
     const faqCategoryId = Number(articleForm.faqCategoryId);
     const sortOrder = articleForm.sortOrder.trim() ? Number(articleForm.sortOrder) : null;
+    const validationMessages: string[] = [];
 
-    if (!question || !answer || !faqCategoryId) {
-      setError('This field is required');
-      return;
-    }
+    if (!question) validationMessages.push('Question is required');
+    if (!answer) validationMessages.push('Answer is required');
+    if (!faqCategoryId) validationMessages.push('Category is required');
 
     if (question.length > 500) {
-      setError('Question must be 500 characters or less');
-      return;
+      validationMessages.push('Question must be 500 characters or less');
     }
 
     if (sortOrder !== null && Number.isNaN(sortOrder)) {
-      setError('Sort order must be a number');
+      validationMessages.push('Sort order must be a number');
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Please review the FAQ article' });
+      if (!question || question.length > 500) questionRef.current?.focus();
+      else if (!answer) answerRef.current?.focus();
+      else if (!faqCategoryId) categoryRef.current?.focus();
+      else sortOrderRef.current?.focus();
       return;
     }
 
@@ -198,7 +212,8 @@ export default function AdminFAQManagementScreen() {
       });
 
       if (!response.success) {
-        setError(response.message || 'Unable to update FAQ');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Unable to update FAQ' });
+        else setError(response.message || 'Unable to update FAQ');
         setIsSaving(false);
         return;
       }
@@ -213,7 +228,8 @@ export default function AdminFAQManagementScreen() {
       });
 
       if (!response.success || !response.data) {
-        setError(response.message || 'Unable to create FAQ');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Unable to create FAQ' });
+        else setError(response.message || 'Unable to create FAQ');
         setIsSaving(false);
         return;
       }
@@ -221,7 +237,8 @@ export default function AdminFAQManagementScreen() {
       if (articleForm.status === 'draft') {
         const draftResponse = await adminAPI.updateFAQ(response.data.id, { isActive: false });
         if (!draftResponse.success) {
-          setError(draftResponse.message || 'FAQ created, but could not move it to draft');
+          if (isValidationResponse(draftResponse)) showValidationToast(draftResponse, { fallback: 'FAQ created, but could not move it to draft' });
+          else setError(draftResponse.message || 'FAQ created, but could not move it to draft');
           setIsSaving(false);
           await loadData();
           return;
@@ -281,7 +298,13 @@ export default function AdminFAQManagementScreen() {
     clearMessages();
 
     if (!trimmedName || !trimmedSlug) {
-      setError('This field is required');
+      const validationMessages = [
+        ...(!trimmedName ? ['Category name is required'] : []),
+        ...(!trimmedSlug ? ['Category slug is required'] : []),
+      ];
+      showValidationToast(validationMessages, { fallback: 'This field is required' });
+      if (!trimmedName) categoryNameRef.current?.focus();
+      else categorySlugRef.current?.focus();
       return;
     }
 
@@ -294,7 +317,8 @@ export default function AdminFAQManagementScreen() {
       });
 
       if (!response.success) {
-        setError(response.message || 'Unable to update category');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Unable to update category' });
+        else setError(response.message || 'Unable to update category');
         setIsSaving(false);
         return;
       }
@@ -308,7 +332,8 @@ export default function AdminFAQManagementScreen() {
       });
 
       if (!response.success) {
-        setError(response.message || 'Unable to create category');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Unable to create category' });
+        else setError(response.message || 'Unable to create category');
         setIsSaving(false);
         return;
       }
@@ -476,6 +501,7 @@ export default function AdminFAQManagementScreen() {
 
                 <label htmlFor="faq-question">Question</label>
                 <input
+                  ref={questionRef}
                   id="faq-question"
                   value={articleForm.question}
                   onChange={(event) => setArticleForm({ ...articleForm, question: event.target.value })}
@@ -485,6 +511,7 @@ export default function AdminFAQManagementScreen() {
 
                 <label htmlFor="faq-category">Category</label>
                 <select
+                  ref={categoryRef}
                   id="faq-category"
                   value={articleForm.faqCategoryId}
                   onChange={(event) => setArticleForm({ ...articleForm, faqCategoryId: Number(event.target.value) })}
@@ -507,6 +534,7 @@ export default function AdminFAQManagementScreen() {
 
                 <label htmlFor="faq-sortorder">Sort Order</label>
                 <input
+                  ref={sortOrderRef}
                   id="faq-sortorder"
                   value={articleForm.sortOrder}
                   onChange={(event) => setArticleForm({ ...articleForm, sortOrder: event.target.value })}
@@ -515,6 +543,7 @@ export default function AdminFAQManagementScreen() {
 
                 <label htmlFor="faq-answer">Answer</label>
                 <textarea
+                  ref={answerRef}
                   id="faq-answer"
                   value={articleForm.answer}
                   onChange={(event) => setArticleForm({ ...articleForm, answer: event.target.value })}
@@ -547,6 +576,7 @@ export default function AdminFAQManagementScreen() {
 
                 <div className="category-create-row">
                   <input
+                    ref={categoryNameRef}
                     value={categoryName}
                     onChange={(event) => {
                       setCategoryName(event.target.value);
@@ -560,6 +590,7 @@ export default function AdminFAQManagementScreen() {
                   </button>
                 </div>
                 <input
+                  ref={categorySlugRef}
                   className="category-slug-input"
                   value={categorySlug}
                   onChange={(event) => setCategorySlug(slugify(event.target.value))}

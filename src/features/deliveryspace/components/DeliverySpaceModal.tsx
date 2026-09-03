@@ -16,7 +16,7 @@ import {
   ChevronRight,
   ArrowLeft,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { UserRole } from '../../../types/models/User';
@@ -26,6 +26,7 @@ import { WorkItemStatusPill } from '../../../shared/components/WorkItemStatusPil
 import { MilestoneCompletedModal } from './MilestoneCompletedModal';
 import { WorkItemSubmissionHistory } from './WorkItemSubmissionHistory';
 import { useDeliverySpace } from '../hooks/useDeliverySpace';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 export interface DeliverySpaceModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export function DeliverySpaceModal({
   const [isRevising, setIsRevising] = useState(false);
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null);
   const [mobileDetailView, setMobileDetailView] = useState(false);
+  const revisionReasonRef = useRef<HTMLTextAreaElement>(null);
 
   const space = useDeliverySpace(contractId, milestoneId);
   const isClient = role === UserRole.Client;
@@ -103,9 +105,17 @@ export function DeliverySpaceModal({
   };
 
   const runSubmit = async () => {
+    if (space.readyToSubmitIds.length === 0) {
+      showValidationToast('Attach a file to at least one work item before submitting.', {
+        fallback: 'Prepare at least one work item before submitting.',
+      });
+      return;
+    }
     const failure = await space.submitSelected();
     if (failure) {
-      setFeedback(failure);
+      if (failure.response && isValidationResponse(failure.response)) {
+        showValidationToast(failure.response, { fallback: failure.message });
+      } else setFeedback(failure.message);
     } else {
       setFeedback(t('contracts.deliverySpace.submitSuccess', 'Đã nộp các sản phẩm thành công.'));
       onActionComplete?.();
@@ -113,6 +123,14 @@ export function DeliverySpaceModal({
   };
 
   const runReview = async (approve: boolean) => {
+    const validationMessages: string[] = [];
+    if (space.selectedIds.length === 0) validationMessages.push('Select at least one work item.');
+    if (!approve && !revisionReason.trim()) validationMessages.push('Enter the requested revision details.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required review details.' });
+      if (!approve && !revisionReason.trim()) revisionReasonRef.current?.focus();
+      return;
+    }
     const failure = await space.reviewSelected(approve, revisionReason);
     if (!failure) {
       setRevisionReason('');
@@ -120,7 +138,10 @@ export function DeliverySpaceModal({
       setFeedback(t('contracts.deliverySpace.reviewSuccess', 'Đã lưu kết quả đánh giá.'));
       onActionComplete?.();
     } else {
-      setFeedback(failure);
+      if (failure.response && isValidationResponse(failure.response)) {
+        showValidationToast(failure.response, { fallback: failure.message });
+        if (!approve) revisionReasonRef.current?.focus();
+      } else setFeedback(failure.message);
     }
   };
 
@@ -476,7 +497,7 @@ export function DeliverySpaceModal({
                           labels={labels}
                           onAttach={file => {
                             const failure = space.attachFile(currentActiveItem.workItemId, file);
-                            if (failure) setFeedback(t(`workspace.${failure}FileError`, 'Tệp tải lên không hợp lệ.'));
+                            if (failure) showValidationToast(t(`workspace.${failure}FileError`, 'Tệp tải lên không hợp lệ.'), { fallback: 'Tệp tải lên không hợp lệ.' });
                           }}
                           onDetach={fileName => space.detachFile(currentActiveItem.workItemId, fileName)}
                           onNoteChange={note => space.updateNote(currentActiveItem.workItemId, note)}
@@ -518,7 +539,9 @@ export function DeliverySpaceModal({
                       })}
                     </label>
                     <textarea
+                      ref={revisionReasonRef}
                       value={revisionReason}
+                      aria-invalid={!revisionReason.trim()}
                       onChange={event => setRevisionReason(event.target.value)}
                       rows={2}
                       placeholder={t('contracts.deliverySpace.revisionReasonPlaceholder', 'Nhập chi tiết yêu cầu chỉnh sửa cho freelancer...')}
@@ -539,7 +562,7 @@ export function DeliverySpaceModal({
                   <div className="flex items-center gap-2.5">
                     <button
                       type="button"
-                      disabled={space.isBusy || space.selectedIds.length === 0 || (isRevising && !revisionReason.trim())}
+                      disabled={space.isBusy}
                       onClick={() => (isRevising ? void runReview(false) : setIsRevising(true))}
                       className="rounded-xl border border-border bg-surface-muted hover:bg-surface text-text-primary px-4 py-2.5 text-xs font-black transition cursor-pointer disabled:opacity-40 shadow-2xs flex items-center gap-1.5 active:scale-95"
                     >
@@ -549,7 +572,7 @@ export function DeliverySpaceModal({
 
                     <button
                       type="button"
-                      disabled={space.isBusy || space.selectedIds.length === 0}
+                      disabled={space.isBusy}
                       onClick={() => void runReview(true)}
                       className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 px-5 py-2.5 text-xs font-black text-white transition cursor-pointer disabled:opacity-40 shadow-md shadow-emerald-600/20 flex items-center gap-2"
                     >
@@ -581,7 +604,7 @@ export function DeliverySpaceModal({
 
                 <button
                   type="button"
-                  disabled={space.isBusy || space.readyToSubmitIds.length === 0}
+                  disabled={space.isBusy}
                   onClick={() => void runSubmit()}
                   className="rounded-xl bg-brand hover:bg-brand-hover active:scale-95 px-6 py-2.5 text-xs font-black text-white transition cursor-pointer disabled:opacity-40 shadow-lg shadow-brand/25 flex items-center gap-2"
                 >

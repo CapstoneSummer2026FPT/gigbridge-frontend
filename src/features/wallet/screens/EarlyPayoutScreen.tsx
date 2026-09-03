@@ -35,6 +35,7 @@ import type {
 import { useTranslation } from '../../../hooks/useTranslation';
 import { toast } from 'sonner';
 import '../styles/early-payout-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000, 5000];
 const PERCENTAGE_PRESETS = [0.25, 0.5, 0.75, 1];
@@ -121,6 +122,7 @@ export default function EarlyPayoutScreen() {
   const [historyFilter, setHistoryFilter] = useState<'all' | 'success' | 'processing' | 'failed'>('all');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const withdrawalDraftRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const activeBankAccounts = useMemo(
     () => bankAccounts.filter(account => account.status === BankAccountStatus.Active && Boolean(account.bankBin)),
@@ -197,19 +199,27 @@ export default function EarlyPayoutScreen() {
   }, []);
 
   const handleCreateWithdrawal = async () => {
+    const validationMessages: string[] = [];
     if (!selectedBank) {
-      setError(t('withdrawalsScreen.errorNoBank', { defaultValue: 'Vui lòng chọn tài khoản ngân hàng nhận tiền.' }));
-      return;
+      validationMessages.push(t('withdrawalsScreen.errorNoBank', { defaultValue: 'Vui lòng chọn tài khoản ngân hàng nhận tiền.' }));
     }
 
     if (!amountValid) {
-      setError(t('withdrawalsScreen.errorInvalidAmount', {
+      validationMessages.push(t('withdrawalsScreen.errorInvalidAmount', {
         min: settings?.minTokens ?? 1,
         max: withdrawMax.toLocaleString('vi-VN'),
         defaultValue: `Số GigCoin rút phải từ ${settings?.minTokens ?? 1} đến ${withdrawMax.toLocaleString('vi-VN')} và không vượt quá thu nhập có thể rút.`,
       }));
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('withdrawalsScreen.errorCreateWithdrawal') });
+      if (!selectedBank) document.querySelector<HTMLElement>('.eps-bank-picker-grid button')?.focus();
+      else amountInputRef.current?.focus();
       return;
     }
+
+    if (!selectedBank) return;
 
     setSubmitting(true);
     setError('');
@@ -233,7 +243,9 @@ export default function EarlyPayoutScreen() {
       await loadData();
       window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     } else {
-      setError(getResponseMessage(response.message, t('withdrawalsScreen.errorCreateWithdrawal', { defaultValue: 'Không thể tạo yêu cầu rút tiền.' })));
+      const fallback = getResponseMessage(response.message, t('withdrawalsScreen.errorCreateWithdrawal', { defaultValue: 'Không thể tạo yêu cầu rút tiền.' }));
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
     }
 
     setSubmitting(false);
@@ -250,7 +262,9 @@ export default function EarlyPayoutScreen() {
       await loadData();
       window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     } else {
-      setError(getResponseMessage(response.message, t('withdrawalsScreen.errorSync', { defaultValue: 'Không thể đồng bộ trạng thái rút tiền.' })));
+      const fallback = getResponseMessage(response.message, t('withdrawalsScreen.errorSync', { defaultValue: 'Không thể đồng bộ trạng thái rút tiền.' }));
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
     }
 
     setSyncingId(null);
@@ -585,6 +599,7 @@ export default function EarlyPayoutScreen() {
                         <GigCoinLogo size={20} />
                       </span>
                       <input
+                        ref={amountInputRef}
                         id="withdraw-amount-input"
                         type="number"
                         value={amount}
@@ -660,7 +675,7 @@ export default function EarlyPayoutScreen() {
                   <button
                     type="button"
                     onClick={() => void handleCreateWithdrawal()}
-                    disabled={submitting || !amountValid || !selectedBank || withdrawableTokens <= 0}
+                    disabled={submitting || withdrawableTokens <= 0 || !settings?.enabled}
                     className="eps-submit-btn"
                   >
                     {submitting ? (

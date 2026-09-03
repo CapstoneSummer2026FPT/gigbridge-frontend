@@ -271,23 +271,6 @@ export default function AIInterviewScreen() {
             {/* Topbar */}
             <div className="ai-room-topbar">
               <div className="ai-room-title-block">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(t('aiInterview.confirmExit', 'Bạn có chắc chắn muốn rời khỏi phòng phỏng vấn? Quá trình phỏng vấn chưa hoàn tất.') || 'Are you sure you want to leave the interview?')) {
-                      if (proposalId) {
-                        navigate('/proposals');
-                      } else {
-                        navigate(-1);
-                      }
-                    }
-                  }}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors hover:bg-[var(--surface-muted)] cursor-pointer"
-                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-                  title={t('common.back', 'Quay lại')}
-                >
-                  <ArrowLeft size={16} />
-                </button>
                 <span className="ai-bento-eyebrow-dot" />
                 <h1>{jobTitle || t('aiInterview.room.defaultTitle', 'Phỏng vấn thoại — GigBridge AI')}</h1>
               </div>

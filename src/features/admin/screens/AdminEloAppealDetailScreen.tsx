@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, FileText, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
@@ -13,6 +13,7 @@ import {
 } from '../../../types/elo';
 import { canResolveAppeal, eloAppealStatusKey, eloModeKey, eloReasonKey, eloSourceTypeKey } from '../../elo/utils/eloLabels';
 import '../styles/admin-elo-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 const formatDate = (value: string, language: string): string =>
   new Date(value).toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -46,6 +47,7 @@ export default function AdminEloAppealDetailScreen() {
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
+  const correctedDeltaRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,7 +69,9 @@ export default function AdminEloAppealDetailScreen() {
     const requiresDelta = option.requiresDelta;
     const correctedDelta = requiresDelta ? Number(delta) : null;
     if (requiresDelta && (!Number.isFinite(correctedDelta) || correctedDelta === 0)) {
-      setFormError(t('adminElo.adjustInvalidAmount'));
+      const message = t('adminElo.adjustInvalidAmount');
+      showValidationToast(message, { fallback: message });
+      correctedDeltaRef.current?.focus();
       return;
     }
     setSubmitting(true);
@@ -80,7 +84,8 @@ export default function AdminEloAppealDetailScreen() {
     });
     setSubmitting(false);
     if (!response.success) {
-      setFormError(response.message || t('adminElo.resolveError'));
+      if (isValidationResponse(response)) showValidationToast(response, { fallback: t('adminElo.resolveError') });
+      else setFormError(response.message || t('adminElo.resolveError'));
       return;
     }
     setNotice(t('adminElo.resolveSuccess'));
@@ -100,7 +105,8 @@ export default function AdminEloAppealDetailScreen() {
     });
     setSubmitting(false);
     if (!response.success) {
-      setError(response.message || t('adminElo.resolveError'));
+      if (isValidationResponse(response)) showValidationToast(response, { fallback: t('adminElo.resolveError') });
+      else setError(response.message || t('adminElo.resolveError'));
       return;
     }
     setNotice(t('adminElo.statusUnderReview'));
@@ -270,6 +276,7 @@ export default function AdminEloAppealDetailScreen() {
                     <label>
                       {t('adminElo.correctedDelta')}
                       <input
+                        ref={correctedDeltaRef}
                         type="number"
                         step="any"
                         aria-label={t('adminElo.correctedDelta')}

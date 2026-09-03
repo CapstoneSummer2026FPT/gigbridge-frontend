@@ -8,6 +8,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import '../styles/auth-screen.css';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 import { useTranslation } from '../../../hooks/useTranslation';
 import {
   getGoogleOAuth2,
@@ -24,10 +25,11 @@ export default function LoginScreen() {
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const isLoading = isEmailLoading || isGoogleLoading;
-  const [error, setError] = useState('');
   const [googleClient, setGoogleClient] = useState<GoogleCodeClient | null>(null);
   const [googleError, setGoogleError] = useState('');
   const isMounted = useRef(true);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -75,7 +77,6 @@ export default function LoginScreen() {
 
   const handleGoogleLogin = async (authCode: string) => {
     setIsGoogleLoading(true);
-    setError('');
     setGoogleError('');
     try {
       const selectedRoleStr = localStorage.getItem('selected_role');
@@ -145,8 +146,18 @@ export default function LoginScreen() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setGoogleError('');
+
+    const validationMessages: string[] = [];
+    if (!formData.email.trim()) validationMessages.push(`${t('auth.email')}: ${t('validation.required')}`);
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) validationMessages.push(t('validation.emailInvalid'));
+    if (!formData.password) validationMessages.push(`${t('auth.password')}: ${t('validation.required')}`);
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
+      (formData.email.trim() ? passwordInputRef.current : emailInputRef.current)?.focus();
+      return;
+    }
+
     setIsEmailLoading(true);
 
     try {
@@ -156,7 +167,9 @@ export default function LoginScreen() {
       
       if (role_signIn === null || role_signIn === undefined || (role_signIn !== UserRole.Client && role_signIn !== UserRole.Freelancer && role_signIn !== UserRole.Admin)) {
         if (isMounted.current) {
-          setError('Your account does not have a role set up yet. Please select a role or contact support.');
+          showValidationToast('Your account does not have a role set up yet. Please select a role or contact support.', {
+            fallback: t('validation.invalidFormat'),
+          });
           setIsEmailLoading(false);
         }
         if (appContext?.logout) {
@@ -191,7 +204,7 @@ export default function LoginScreen() {
       }
     } catch (err: unknown) {
       if (isMounted.current) {
-        setError(getErrorMessage(err));
+        showValidationToast(err, { fallback: getErrorMessage(err) });
       }
     } finally {
       if (isMounted.current) {
@@ -327,22 +340,17 @@ export default function LoginScreen() {
             <div className="flex-1 auth-divider" />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
-                {error}
-              </div>
-            )}
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             
             <div className="relative auth-form-animate">
               <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-              <input type="email" placeholder={t('auth.email')} value={formData.email}
+              <input ref={emailInputRef} type="email" placeholder={t('auth.email')} value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 className="input-gb w-full py-3 auth-input-with-icon" required />
             </div>
             <div className="relative auth-form-animate">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-              <input type={showPassword ? 'text' : 'password'} placeholder={t('auth.password')} value={formData.password}
+              <input ref={passwordInputRef} type={showPassword ? 'text' : 'password'} placeholder={t('auth.password')} value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
                 className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both" required />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -355,7 +363,7 @@ export default function LoginScreen() {
               <button type="button" className="text-sm auth-link-cyan" onClick={() => navigate('/auth/forgot-password')}>{t('auth.forgotPassword')}</button>
             </div>
 
-            <button type="submit" disabled={isLoading || !formData.email || !formData.password}
+            <button type="submit" disabled={isLoading}
               className="btn-cyan w-full py-3 flex items-center justify-center gap-2 auth-form-animate hover:scale-[1.01] transition-transform">
               {isLoading ? (
                 <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import gsap from 'gsap';
 import { parseJobDocument, combineAndTrimJobDocuments } from '../utils/documentParser';
 import { PostJobTrimWarningModal } from './PostJobTrimWarningModal';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 interface Props {
   isPremium: boolean;
@@ -409,11 +410,16 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
         setAttachedFiles(prev => [...prev, ...newItems]);
         setHasConfirmedTrim(false);
       }
-    } catch (err: any) {
-      if (err.message === 'FILE_TOO_LARGE') {
-        setParseError(t('postJobWizard.ai.fileTooLarge', 'File size exceeds 10 MB limit.'));
-      } else if (err.message === 'UNSUPPORTED_FORMAT') {
-        setParseError(t('postJobWizard.ai.unsupportedFormat', 'Unsupported format (.docx, .pdf, .txt, .md).'));
+    } catch (err: unknown) {
+      const errorCode = err instanceof Error ? err.message : '';
+      if (errorCode === 'FILE_TOO_LARGE') {
+        showValidationToast(t('postJobWizard.ai.fileTooLarge', 'File size exceeds 10 MB limit.'), {
+          fallback: t('postJobWizard.ai.parsingFailed', 'Could not read document. Please check the file.'),
+        });
+      } else if (errorCode === 'UNSUPPORTED_FORMAT') {
+        showValidationToast(t('postJobWizard.ai.unsupportedFormat', 'Unsupported format (.docx, .pdf, .txt, .md).'), {
+          fallback: t('postJobWizard.ai.parsingFailed', 'Could not read document. Please check the file.'),
+        });
       } else {
         setParseError(t('postJobWizard.ai.parsingFailed', 'Could not read document. Please check the file.'));
       }
@@ -481,7 +487,13 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
     if (event) event.preventDefault();
     if (!isPremium || isLoading || isParsingDoc) return;
     const { payload, source } = buildHybridPayload();
-    if (!payload) return;
+    if (!payload) {
+      showValidationToast(t('postJobWizard.ai.placeholder', 'Describe the job you want to create.'), {
+        fallback: 'Describe the job you want to create.',
+      });
+      textareaRef.current?.focus();
+      return;
+    }
 
     if (attachedFiles.length > 0 && rawTotalCharCount > 15000 && !hasConfirmedTrim) {
       setIsTrimModalOpen(true);
@@ -511,9 +523,6 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
       void onGenerate(payload, source);
     }
   };
-
-  const canSubmitPrompt = Boolean((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc);
-  const canSubmitDocument = Boolean((prompt.trim() || combinedDocs.text) && !isLoading && !isParsingDoc);
 
   if (!isPremium) {
     return (
@@ -741,7 +750,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
               </div>
 
               {/* Main Prompt Input Area */}
-              <form onSubmit={submitPrompt} className="job-post-ai-morph__prompt-body">
+              <form onSubmit={submitPrompt} noValidate className="job-post-ai-morph__prompt-body">
                 <div className="job-post-ai-morph__input-row">
                   <textarea
                     ref={textareaRef}
@@ -842,7 +851,7 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
                       <button
                         type="submit"
                         className="job-post-ai-bar__generate"
-                        disabled={!canSubmitPrompt}
+                        disabled={isLoading || isParsingDoc}
                         title={t('postJobWizard.ai.generate', 'Generate draft')}
                       >
                         <ArrowUp size={15} />
@@ -1192,10 +1201,10 @@ export function PostJobAiInput({ isPremium, isLoading, onGenerate, onAbort, onUp
                     </div>
                   ) : (
                     <button
-                      type="submit"
+                      type="button"
                       onClick={submitDocument}
                       className="job-post-ai-bar__generate"
-                      disabled={!canSubmitDocument}
+                      disabled={isLoading || isParsingDoc}
                       title={t('postJobWizard.ai.generate', 'Generate draft')}
                     >
                       <ArrowUp size={15} />

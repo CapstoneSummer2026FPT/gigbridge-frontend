@@ -49,11 +49,106 @@
   white-space: nowrap;
 }
 
-.cps-step-item.active {
+.cps-step-item.active,
+.cps-step-item.is-active {
   background: var(--gb-glass-bg, rgba(255, 255, 255, 0.9));
   color: var(--brand);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(73, 75, 231, 0.2);
+}
+
+.cps-step-item.is-done {
+  color: var(--success, #16a34a);
+}
+
+.cps-step-item.is-upcoming {
+  opacity: 0.75;
+}
+
+/* Numbered indicator, mirroring the Create Job Post stepper. */
+.cps-step-indicator {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  font-size: 0.68rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.cps-step-item.is-active .cps-step-indicator {
+  border-color: rgba(73, 75, 231, 0.4);
+  background: rgba(73, 75, 231, 0.12);
+  color: var(--brand);
+}
+
+.cps-step-item.is-done .cps-step-indicator {
+  border-color: var(--success, #16a34a);
+  background: var(--success, #16a34a);
+  color: #ffffff;
+}
+
+.cps-step-skipped {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.4rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* Review & Submit (step 3) */
+.cps-review-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.cps-readonly-block {
+  padding: 0.9rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 0.84rem;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cps-readonly-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.cps-answer-card {
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.cps-answer-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* Section Title */

@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { adminPatchAPI } from '../../../api/adminAPI/PATCH';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { AdminProposalListItem } from '../../../types/models/AdminProposal';
 import { ProposalModerationStatus } from '../../../types/models/AdminProposal';
@@ -76,6 +77,7 @@ export default function AdminProposalsScreen() {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const pageCache = useRef(new AdminPageCache<ProposalPageData>()).current;
   const latestRequest = useRef(0);
 
@@ -150,7 +152,12 @@ export default function AdminProposalsScreen() {
   }, [load]);
 
   const apply = async () => {
-    if (!action || !reason.trim()) return;
+    if (!action) return;
+    if (!reason.trim()) {
+      showValidationToast('Enter a moderation reason.', { fallback: 'Enter a moderation reason.' });
+      reasonRef.current?.focus();
+      return;
+    }
     setBusy(true);
     setActionError('');
 
@@ -160,7 +167,12 @@ export default function AdminProposalsScreen() {
     const response = await request;
 
     if (!response.success) {
-      setActionError(response.statusCode === 409 ? `Conflict: ${response.message}` : response.message || 'Moderation failed.');
+      if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: response.message || 'Moderation failed.' });
+        reasonRef.current?.focus();
+      } else {
+        setActionError(response.statusCode === 409 ? `Conflict: ${response.message}` : response.message || 'Moderation failed.');
+      }
     } else {
       setAction(null);
       setReason('');
@@ -418,11 +430,11 @@ export default function AdminProposalsScreen() {
               <button className="glass-button p-2 rounded-lg" aria-label="Close moderation dialog" onClick={() => setAction(null)}><X size={18} className="text-secondary" /></button>
             </header>
             <p className="text-sm text-secondary mb-4">Lifecycle, authored content, interview, negotiation, and contract history remain unchanged.</p>
-            <textarea className="input-gb w-full min-h-28 text-sm" autoFocus aria-label="Moderation reason" placeholder="Required reason" value={reason} onChange={event => setReason(event.target.value)} />
+            <textarea ref={reasonRef} className="input-gb w-full min-h-28 text-sm" autoFocus aria-invalid={!reason.trim()} aria-label="Moderation reason" placeholder="Required reason" value={reason} onChange={event => setReason(event.target.value)} />
             {actionError && <p className="mt-3 p-3 rounded-lg border border-red/30 bg-red/5 text-sm text-red" role="alert">{actionError}</p>}
             <div className="flex justify-end gap-3 mt-5">
               <button className="glass-button px-4 py-2 rounded-lg text-sm text-secondary" onClick={() => { setAction(null); setReason(''); setActionError(''); }}>Cancel</button>
-              <button className={`${action.moderationStatus === ProposalModerationStatus.Active ? 'btn-red' : 'btn-cyan'} px-5 py-2 text-sm`} disabled={busy || !reason.trim()} onClick={() => void apply()}>{busy ? 'Working…' : 'Confirm'}</button>
+              <button className={`${action.moderationStatus === ProposalModerationStatus.Active ? 'btn-red' : 'btn-cyan'} px-5 py-2 text-sm`} disabled={busy} onClick={() => void apply()}>{busy ? 'Working…' : 'Confirm'}</button>
             </div>
           </div>
         </div>

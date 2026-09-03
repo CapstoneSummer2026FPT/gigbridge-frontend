@@ -898,7 +898,7 @@ export default function AdminDisputeManagementScreen() {
                         <button
                           type="button"
                           onClick={() => void sendAdminDirective()}
-                          disabled={sendingMessage || !adminMessage.trim() || selectedDispute.status === DisputeStatus.Closed}
+                          disabled={sendingMessage || selectedDispute.status === DisputeStatus.Closed}
                           className="send-directive-btn"
                         >
                           <Send size={16} /> {t('common.send', 'Send')}
@@ -1272,6 +1272,7 @@ export default function AdminDisputeManagementScreen() {
                 <div>
                   <label className="block text-xs font-bold text-text-muted mb-1">{t('admin.disputes.dialog.evidenceReason', 'Evidence Request Reason')}</label>
                   <textarea
+                    id="admin-evidence-request-reason"
                     className="input-gb w-full py-2 px-3 text-xs font-semibold"
                     rows={3}
                     value={evidenceRequest.reason}
@@ -1298,7 +1299,7 @@ export default function AdminDisputeManagementScreen() {
                 <button
                   type="button"
                   onClick={() => void requestEvidenceSubmit()}
-                  disabled={actionLoading || !evidenceRequest.reason.trim()}
+                  disabled={actionLoading}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer shadow-sm disabled:opacity-50 min-h-[44px]"
                 >
                   {t('admin.disputes.dialog.sendRequest', 'Send Evidence Request')}

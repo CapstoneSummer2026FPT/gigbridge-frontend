@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { toast } from 'sonner';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import {
   AlertCircle, CheckCircle, Clock,
   FileText, Calendar, ArrowLeft, Shield,
@@ -80,6 +81,7 @@ export function FreelancerContractDetails({
   const [actionLoading, setActionLoading] = useState(false);
   const [changeRequestReason, setChangeRequestReason] = useState('');
   const [showChangeRequestModal, setShowChangeRequestModal] = useState(false);
+  const changeRequestReasonRef = useRef<HTMLTextAreaElement>(null);
 
   const esignDocumentState = useContractESignDocument(
     contract?.contractsId,
@@ -153,7 +155,8 @@ export function FreelancerContractDetails({
 
   const handleRequestChanges = async () => {
     if (!changeRequestReason.trim()) {
-      toast.error(t('contracts.alerts.reasonRequired'));
+      showValidationToast(t('contracts.alerts.reasonRequired'), { fallback: t('contracts.alerts.reasonRequired') });
+      changeRequestReasonRef.current?.focus();
       return;
     }
     try {
@@ -165,7 +168,12 @@ export function FreelancerContractDetails({
         setChangeRequestReason('');
         onRefresh();
       } else {
-        toast.error(res.message || t('contracts.alerts.failedChange'));
+        if (isValidationResponse(res)) {
+          showValidationToast(res, { fallback: res.message || t('contracts.alerts.failedChange') });
+          changeRequestReasonRef.current?.focus();
+        } else {
+          toast.error(res.message || t('contracts.alerts.failedChange'));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -523,7 +531,9 @@ export function FreelancerContractDetails({
                         </span>
                       </div>
                       <textarea
+                        ref={changeRequestReasonRef}
                         value={changeRequestReason}
+                        aria-invalid={!changeRequestReason.trim()}
                         onChange={(e) => setChangeRequestReason(e.target.value)}
                         className="w-full p-3.5 bg-background border border-border hover:border-border-hover focus:border-amber-500 rounded-xl text-xs font-semibold text-text-primary outline-none transition placeholder:text-text-muted"
                         placeholder={t('contracts.specifyChangeReasonPlaceholder')}
@@ -539,7 +549,7 @@ export function FreelancerContractDetails({
                         </button>
                         <button
                           type="button"
-                          disabled={actionLoading || !changeRequestReason.trim()}
+                          disabled={actionLoading}
                           onClick={handleRequestChanges}
                           className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white rounded-xl text-xs font-black shadow-sm shadow-amber-500/20 cursor-pointer border-none transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >

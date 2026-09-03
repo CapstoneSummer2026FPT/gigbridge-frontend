@@ -25,7 +25,7 @@ export function RootLayout() {
           <Suspense fallback={<RouteLoadingFallback />}>
             <Outlet />
           </Suspense>
-          <Toaster position="top-right" richColors />
+          <Toaster position="top-right" richColors expand />
         </NotificationsProvider>
       </PremiumStatusProvider>
     </AppProvider>

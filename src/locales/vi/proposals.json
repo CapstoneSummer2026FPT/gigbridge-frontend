@@ -135,6 +135,44 @@
     "continueInterview": "Tiếp tục phỏng vấn",
     "skipAndContinue": "Bỏ qua & tiếp tục"
   },
+  "proposalStepper": {
+    "label": "Các bước nộp đề xuất",
+    "details": "1. Nội dung đề xuất",
+    "interview": "2. Câu hỏi phỏng vấn",
+    "review": "3. Xem lại & nộp",
+    "skipped": "Đã bỏ qua",
+    "goToReview": "Tới bước xem lại"
+  },
+  "proposalSubmitReview": {
+    "eyebrow": "Bước 3 / 3",
+    "title": "Xem lại & nộp đề xuất",
+    "subtitle": "Yêu cầu dự án",
+    "loading": "Đang tải đề xuất của bạn...",
+    "backToProposals": "Quay lại Đề xuất của tôi",
+    "detailsSectionTitle": "Nội dung đề xuất",
+    "interviewSectionTitle": "Câu hỏi & câu trả lời phỏng vấn",
+    "readOnlyAnswers": "Chỉ xem",
+    "editDetails": "Chỉnh sửa",
+    "doneEdit": "Hoàn tất",
+    "cancelEdit": "Hủy",
+    "notProvided": "Chưa cung cấp",
+    "yourAnswer": "Câu trả lời của bạn",
+    "loadingAnswers": "Đang tải câu trả lời phỏng vấn...",
+    "retry": "Thử lại",
+    "errLoadAnswers": "Không thể tải câu hỏi phỏng vấn.",
+    "errSubmit": "Không thể nộp đề xuất. Đề xuất vẫn được lưu ở trạng thái nháp.",
+    "noQuestionsTitle": "Không có câu hỏi phỏng vấn",
+    "noQuestionsBody": "Yêu cầu dự án này không có câu hỏi phỏng vấn nên bước 2 đã được bỏ qua.",
+    "answerState": {
+      "answered": "Đã trả lời",
+      "timedOut": "Hết giờ",
+      "skipped": "Đã bỏ qua"
+    },
+    "answerEmpty": {
+      "timedOut": "Không có câu trả lời nào được ghi nhận trước khi hết giờ.",
+      "skipped": "Câu hỏi tùy chọn này đã bị bỏ qua hoặc hết giờ."
+    }
+  },
   "proposalReview": {
     "titleWord1": "Xem Xét",
     "titleWord2": "Đề Xuất",
@@ -390,6 +428,10 @@
     }
   },
   "createProposal": {
+    "continue": "Tiếp tục",
+    "saving": "Đang lưu...",
+    "saveAndExit": "Lưu & Thoát",
+    "errLoadQuestions": "Không thể tải danh sách câu hỏi làm rõ.",
     "newProposal": "Tạo Đề Xuất Mới",
     "editProposal": "Chỉnh Sửa Đề Xuất",
     "submitProposalTitle": "Nộp Hồ Sơ Đề Xuất",

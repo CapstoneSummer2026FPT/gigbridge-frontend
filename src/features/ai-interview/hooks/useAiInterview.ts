@@ -6,9 +6,7 @@ import {
   aiInterviewAPI,
   type AiInterviewQuestionResponse,
 } from '../../../api/externalAPI/aiInterviewAPI';
-import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
-import { ProposalStatus } from '../../../types/models/Proposal';
-import { toast } from 'sonner';
+import { getProposalReviewPath } from '../../proposals/utils/proposalRoutes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type InterviewStage = 'intro' | 'interview' | 'results';
@@ -408,14 +406,12 @@ export function useAiInterview() {
     const completed = responseValue<boolean>(data, 'isCompleted', 'is_completed') ?? false;
     if (completed) {
       localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+      // The AI interview is step 2 of the proposal flow. It never submits the proposal —
+      // the freelancer confirms everything on the review step instead.
       if (proposalId) {
-        setAnswerState('submitting');
-        try {
-          const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, { status: ProposalStatus.Pending });
-          if (!statusResponse.success) { setActionError(statusResponse.message || 'Proposal could not be submitted.'); setAnswerState('review'); return; }
-          toast.success(t('aiInterview.proposal.submitted') || 'Proposal submitted successfully!');
-          navigate('/proposals', { state: { submittedProposalId: proposalId } }); return;
-        } catch { setActionError('Failed to submit proposal. Please try again.'); setAnswerState('review'); return; }
+        setAnswerState('idle');
+        navigate(getProposalReviewPath(proposalId), { replace: true });
+        return;
       }
       setStage('results'); setAnswerState('idle'); return;
     }

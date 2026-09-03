@@ -1,4 +1,5 @@
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useId, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Calendar, Check, ChevronDown, ChevronRight, ChevronsUpDown, Clock3, Coins, GripVertical, Lock, Percent, Plus, RotateCcw, Trash2, TrendingDown, TrendingUp, Zap } from 'lucide-react';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
 import { CustomSelect } from './CustomSelect';
@@ -6,6 +7,11 @@ import GCoinIcon from './GCoinIcon';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../utils/gigcoin';
 import { recalculateMilestonesBidirectional, resetAndEqualizeMilestones } from '../../features/jobs/utils/milestoneClamping';
 import { addDaysToDateString, computeChainedDueDates, computeWorkItemDurationSummary } from '../../features/jobs/utils/jobDuration';
+import {
+  useUndoableDeleteScope,
+  useUndoableListDelete,
+  type UndoableDeleteController,
+} from '../hooks/useUndoableDeleteScope';
 
 export interface EditablePlanWorkItem {
   id?: string | null;
@@ -152,7 +158,46 @@ interface Props {
   enableAutoBalance?: boolean;
   baselineMilestones?: EditableMilestonePlan[];
   compactLayout?: boolean;
+  undoDeleteController?: UndoableDeleteController;
 }
+
+const milestoneClientKeys = new WeakMap<EditableMilestonePlan, string>();
+const workItemClientKeys = new WeakMap<EditablePlanWorkItem, string>();
+let nextEditorItemKey = 0;
+
+const getMilestoneKey = (milestone: EditableMilestonePlan): string => {
+  if (milestone.id) return `milestone:${milestone.id}`;
+  const existingKey = milestoneClientKeys.get(milestone);
+  if (existingKey) return existingKey;
+  const key = `milestone-client:${++nextEditorItemKey}`;
+  milestoneClientKeys.set(milestone, key);
+  return key;
+};
+
+const getWorkItemKey = (workItem: EditablePlanWorkItem): string => {
+  if (workItem.id) return `work-item:${workItem.id}`;
+  const existingKey = workItemClientKeys.get(workItem);
+  if (existingKey) return existingKey;
+  const key = `work-item-client:${++nextEditorItemKey}`;
+  workItemClientKeys.set(workItem, key);
+  return key;
+};
+
+const preserveMilestoneKey = (
+  source: EditableMilestonePlan,
+  target: EditableMilestonePlan,
+): EditableMilestonePlan => {
+  if (!target.id) milestoneClientKeys.set(target, getMilestoneKey(source));
+  return target;
+};
+
+const preserveWorkItemKey = (
+  source: EditablePlanWorkItem,
+  target: EditablePlanWorkItem,
+): EditablePlanWorkItem => {
+  if (!target.id) workItemClientKeys.set(target, getWorkItemKey(source));
+  return target;
+};
 
 const durationToDays = (val?: string | null): number => {
   if (!val) return 0;
@@ -180,11 +225,13 @@ const formatDurationDelta = (days: number, uiCopy: MilestonePlanUiCopy): string 
   return `${absDays} ${finalUnit}`;
 };
 
-const normalize = (items: EditableMilestonePlan[]) => items.map((item, orderIndex) => ({
-  ...item,
-  orderIndex,
-  workItems: item.workItems.map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
-}));
+const normalize = (items: EditableMilestonePlan[]) => items.map((item, orderIndex) => {
+  const workItems = item.workItems.map((workItem, workIndex) => preserveWorkItemKey(workItem, {
+    ...workItem,
+    orderIndex: workIndex,
+  }));
+  return preserveMilestoneKey(item, { ...item, orderIndex, workItems });
+});
 
 const newWorkItem = (orderIndex: number): EditablePlanWorkItem => ({
   title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex,
@@ -263,8 +310,15 @@ export function NestedMilestonePlanEditor({
   enableAutoBalance = true,
   baselineMilestones,
   compactLayout = false,
+  undoDeleteController,
 }: Props) {
+  const { t } = useTranslation('common');
   const editorId = useId();
+  const internalUndoDeleteController = useUndoableDeleteScope();
+  const activeUndoDeleteController = undoDeleteController ?? internalUndoDeleteController;
+  const undoableListDelete = useUndoableListDelete(activeUndoDeleteController);
+  const valueRef = useRef(value);
+  valueRef.current = value;
   const [lockedIndices, setLockedIndices] = useState<Set<number>>(new Set());
   const [isAutoBalanceActive, setIsAutoBalanceActive] = useState<boolean>(enableAutoBalance);
 
@@ -327,14 +381,27 @@ export function NestedMilestonePlanEditor({
   const expanded = expandedIndex === undefined ? internalExpanded : expandedIndex;
   const multipleExpansionEnabled = expandedIndexes !== undefined;
   const openIndexes = expandedIndexes ?? internalExpandedIndexes;
+  const expandedRef = useRef(expanded);
+  const openIndexesRef = useRef<readonly number[]>(openIndexes);
+  const advancedIndexesRef = useRef<readonly number[]>(advancedIndexes);
+  expandedRef.current = expanded;
+  openIndexesRef.current = openIndexes;
+  advancedIndexesRef.current = advancedIndexes;
   const setExpanded = (index: number | null) => {
+    expandedRef.current = index;
     setInternalExpanded(index);
     onExpandedChange?.(index);
   };
   const setOpenIndexes = (indexes: readonly number[]) => {
     const normalizedIndexes = Array.from(new Set(indexes)).sort((left, right) => left - right);
+    openIndexesRef.current = normalizedIndexes;
     setInternalExpandedIndexes(normalizedIndexes);
     onExpandedIndexesChange?.(normalizedIndexes);
+  };
+  const setAdvancedIndexes = (indexes: readonly number[]) => {
+    const normalizedIndexes = Array.from(new Set(indexes)).sort((left, right) => left - right);
+    advancedIndexesRef.current = normalizedIndexes;
+    onAdvancedIndexesChange?.(normalizedIndexes);
   };
   const openMilestone = (index: number) => {
     if (multipleExpansionEnabled) {
@@ -386,29 +453,128 @@ export function NestedMilestonePlanEditor({
   const renderHint = (id: string, hint?: string) =>
     hint ? <span id={describedBy(id, hint)} className={hintClass}>{hint}</span> : null;
 
-  const updateMilestone = (index: number, patch: Partial<EditableMilestonePlan>) =>
-    onChange(value.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
-  const updateWorkItem = (milestoneIndex: number, workIndex: number, patch: Partial<EditablePlanWorkItem>) =>
+  const updateMilestone = (index: number, patch: Partial<EditableMilestonePlan>) => {
+    const nextValue = value.map((item, itemIndex) => itemIndex === index
+      ? preserveMilestoneKey(item, { ...item, ...patch })
+      : item);
+    valueRef.current = nextValue;
+    onChange(nextValue);
+  };
+  const updateWorkItem = (milestoneIndex: number, workIndex: number, patch: Partial<EditablePlanWorkItem>) => {
+    const milestone = value[milestoneIndex];
+    if (!milestone) return;
     updateMilestone(milestoneIndex, {
-      workItems: value[milestoneIndex].workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, ...patch } : item),
+      workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex
+        ? preserveWorkItemKey(item, { ...item, ...patch })
+        : item),
     });
+  };
   const deleteMilestone = (index: number) => {
-    onChange(normalize(value.filter((_, itemIndex) => itemIndex !== index)));
-    onAdvancedIndexesChange?.(advancedIndexes
-      .filter(advancedIndex => advancedIndex !== index)
-      .map(advancedIndex => advancedIndex > index ? advancedIndex - 1 : advancedIndex));
-    if (multipleExpansionEnabled) {
-      setOpenIndexes(openIndexes
-        .filter(openIndex => openIndex !== index)
-        .map(openIndex => openIndex > index ? openIndex - 1 : openIndex));
-    }
+    const milestone = value[index];
+    if (!milestone) return;
+
+    const milestoneKey = getMilestoneKey(milestone);
+    const wasAdvancedOpen = advancedIndexesRef.current.includes(index);
+    const wasExpanded = multipleExpansionEnabled
+      ? openIndexesRef.current.includes(index)
+      : expandedRef.current === index;
+    const shiftAfterRemoval = (indexes: readonly number[]): number[] => indexes
+      .filter(itemIndex => itemIndex !== index)
+      .map(itemIndex => itemIndex > index ? itemIndex - 1 : itemIndex);
+
+    undoableListDelete.scheduleDelete({
+      collectionKey: `${editorId}:milestones`,
+      index,
+      getItems: () => valueRef.current,
+      setItems: nextItems => {
+        const normalizedItems = normalize(nextItems);
+        valueRef.current = normalizedItems;
+        onChange(normalizedItems);
+      },
+      getItemKey: getMilestoneKey,
+      normalize,
+      message: t('undoDelete.milestoneDeleted', {
+        name: milestone.title?.trim() || t('undoDelete.untitledMilestone'),
+      }),
+      undoLabel: t('undoDelete.action'),
+      onApplied: () => {
+        setLockedIndices(new Set());
+        setAdvancedIndexes(shiftAfterRemoval(advancedIndexesRef.current));
+        if (multipleExpansionEnabled) {
+          setOpenIndexes(shiftAfterRemoval(openIndexesRef.current));
+        } else {
+          const currentExpanded = expandedRef.current;
+          setExpanded(currentExpanded === index
+            ? null
+            : currentExpanded !== null && currentExpanded > index
+              ? currentExpanded - 1
+              : currentExpanded);
+        }
+      },
+      onRollback: restoredItems => {
+        const restoredIndex = restoredItems.findIndex(item => getMilestoneKey(item) === milestoneKey);
+        if (restoredIndex < 0) return;
+
+        const shiftAfterInsertion = (indexes: readonly number[]): number[] => indexes
+          .map(itemIndex => itemIndex >= restoredIndex ? itemIndex + 1 : itemIndex);
+        const restoredAdvancedIndexes = shiftAfterInsertion(advancedIndexesRef.current);
+        setAdvancedIndexes(wasAdvancedOpen
+          ? [...restoredAdvancedIndexes, restoredIndex]
+          : restoredAdvancedIndexes);
+
+        if (multipleExpansionEnabled) {
+          const restoredOpenIndexes = shiftAfterInsertion(openIndexesRef.current);
+          setOpenIndexes(wasExpanded
+            ? [...restoredOpenIndexes, restoredIndex]
+            : restoredOpenIndexes);
+        } else {
+          const currentExpanded = expandedRef.current;
+          const shiftedExpanded = currentExpanded !== null && currentExpanded >= restoredIndex
+            ? currentExpanded + 1
+            : currentExpanded;
+          setExpanded(wasExpanded ? restoredIndex : shiftedExpanded);
+        }
+      },
+    });
+  };
+
+  const deleteWorkItem = (milestoneIndex: number, workIndex: number): void => {
+    const milestone = value[milestoneIndex];
+    const workItem = milestone?.workItems[workIndex];
+    if (!milestone || !workItem) return;
+
+    const milestoneKey = getMilestoneKey(milestone);
+    undoableListDelete.scheduleDelete({
+      collectionKey: `${editorId}:${milestoneKey}:work-items`,
+      index: workIndex,
+      getItems: () => valueRef.current
+        .find(item => getMilestoneKey(item) === milestoneKey)?.workItems ?? [],
+      setItems: nextWorkItems => {
+        const currentValue = valueRef.current;
+        const nextValue = normalize(currentValue.map(item => getMilestoneKey(item) === milestoneKey
+          ? preserveMilestoneKey(item, { ...item, workItems: nextWorkItems })
+          : item));
+        valueRef.current = nextValue;
+        onChange(nextValue);
+      },
+      getItemKey: getWorkItemKey,
+      message: t('undoDelete.workItemDeleted', {
+        name: workItem.title?.trim() || t('undoDelete.untitledWorkItem'),
+      }),
+      undoLabel: t('undoDelete.action'),
+      normalize: nextItems => nextItems.map((item, orderIndex) => preserveWorkItemKey(item, {
+        ...item,
+        orderIndex,
+      })),
+    });
   };
 
   const toggleAdvanced = (index: number) => {
-    const next = advancedIndexes.includes(index)
-      ? advancedIndexes.filter(i => i !== index)
-      : [...advancedIndexes, index].sort((left, right) => left - right);
-    onAdvancedIndexesChange?.(next);
+    const currentIndexes = advancedIndexesRef.current;
+    const next = currentIndexes.includes(index)
+      ? currentIndexes.filter(i => i !== index)
+      : [...currentIndexes, index];
+    setAdvancedIndexes(next);
   };
 
   const isAllExpanded = value.length > 0 && openIndexes.length === value.length;
@@ -605,7 +771,7 @@ export function NestedMilestonePlanEditor({
 
             return (
               <article
-                key={milestone.id || index}
+                key={getMilestoneKey(milestone)}
                 onDragOver={readOnly ? undefined : handleDragOver}
                 onDrop={readOnly ? undefined : (e) => handleDrop(e, index)}
                 className={`@container relative min-w-0 max-w-full rounded-2xl border bg-card shadow-xs transition-all hover:shadow-md focus-within:z-20 ${draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
@@ -767,6 +933,7 @@ export function NestedMilestonePlanEditor({
                       <AutoGrowTextarea
                         data-milestone-field={`${index}.title`}
                         disabled={readOnly}
+                        aria-invalid={Boolean(errorFor('title'))}
                         maxLength={milestoneTitleMaxLength}
                         value={milestone.title || ''}
                         onChange={e => updateMilestone(index, { title: e.target.value })}
@@ -775,7 +942,6 @@ export function NestedMilestonePlanEditor({
                         className={`${fieldClass('title')} min-h-10 min-w-0 max-w-full resize-none overflow-hidden whitespace-pre-wrap break-words text-sm font-semibold leading-5 [overflow-wrap:anywhere]`}
                       />
                       {renderHint(`${index}-title`, fieldHints.milestoneTitle)}
-                      {errorFor('title') && <span className="mt-1 block text-xs text-red-500 font-medium">{errorFor('title')}</span>}
                     </div>
 
                     {/* Core Parameters Box: Amount, Duration, Deadline */}
@@ -789,14 +955,14 @@ export function NestedMilestonePlanEditor({
                         <div className="rounded-2xl border border-border/80 bg-muted/20 p-3.5 sm:p-4.5 space-y-3">
                           <div className={`grid gap-3 sm:gap-4 items-start ${
                             is2TierLayout
-                              ? 'grid-cols-1 sm:grid-cols-2 @3xl:grid-cols-3'
+                              ? 'grid-cols-1 sm:grid-cols-2'
                               : visibleParamCount === 2
                                 ? 'grid-cols-1 sm:grid-cols-2'
                                 : 'grid-cols-1'
                           }`}>
                             {/* 1. AMOUNT */}
                             <div className={`${
-                              is2TierLayout ? 'sm:col-span-2 @3xl:col-span-1' : 'col-span-1'
+                              is2TierLayout ? 'col-span-1 sm:col-span-2' : 'col-span-1'
                             } space-y-1.5 relative focus-within:z-20 min-w-0`}>
                               <div className="flex items-center justify-between gap-1.5 flex-wrap">
                                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -827,10 +993,11 @@ export function NestedMilestonePlanEditor({
                                   ) : null
                                 )}
                               </div>
-                              <div className="relative flex items-center h-11 rounded-xl border border-border/80 bg-background px-3 gap-2 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all">
+                              <div className="relative flex items-center h-11 rounded-xl border border-border/80 bg-background px-3 gap-2 overflow-hidden focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all">
                                 <input
                                   data-milestone-field={`${index}.amount`}
                                   disabled={readOnly}
+                                  aria-invalid={Boolean(errorFor('amount'))}
                                   type="number"
                                   min="0"
                                   step="1"
@@ -838,7 +1005,7 @@ export function NestedMilestonePlanEditor({
                                   onChange={e => handleAmountChange(index, Number(e.target.value) || 0)}
                                   placeholder={fieldPlaceholders.amount || '0'}
                                   aria-describedby={describedBy(`${index}-amount`, fieldHints.amount)}
-                                  className="w-full min-w-0 flex-1 border-none bg-transparent outline-none font-black text-sm text-foreground focus:outline-none focus:ring-0 p-0 pr-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className="min-w-0 flex-1 border-none bg-transparent outline-none font-black text-sm text-foreground focus:outline-none focus:ring-0 p-0 pr-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <span className="shrink-0 select-none inline-flex items-center gap-1 text-xs font-black text-[var(--brand)] bg-[var(--brand)]/10 px-2.5 py-1 rounded-lg">
                                   <GCoinIcon size={13} />
@@ -883,7 +1050,6 @@ export function NestedMilestonePlanEditor({
                                   )
                                 )}
                               </div>
-                              {errorFor('amount') && <span className="block text-xs text-red-500 font-medium">{errorFor('amount')}</span>}
                             </div>
 
                             {/* 2. DURATION */}
@@ -895,10 +1061,11 @@ export function NestedMilestonePlanEditor({
                                 </label>
                                 {structuredDuration && durationUnits ? (
                                   <>
-                                    <div className="flex items-center h-11 rounded-xl border border-border/80 bg-background p-1 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all gap-1.5">
+                                    <div className="flex items-center h-11 rounded-xl border border-border/80 bg-background p-1 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all gap-1.5 overflow-hidden">
                                       <input
                                         data-milestone-field={`${index}.estimatedDuration`}
                                         disabled={readOnly}
+                                        aria-invalid={Boolean(errorFor('estimatedDuration'))}
                                         type="number"
                                         min="1"
                                         step="1"
@@ -906,7 +1073,7 @@ export function NestedMilestonePlanEditor({
                                         onChange={e => updateMilestone(index, { estimatedDuration: serializeStructuredDuration(e.target.value, structuredDuration.unit) })}
                                         placeholder={fieldPlaceholders.duration || '2'}
                                         aria-label="Duration amount"
-                                        className="w-full min-w-0 flex-1 border-none bg-transparent px-2.5 text-sm font-bold text-foreground outline-none shadow-none focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        className="min-w-0 flex-1 border-none bg-transparent px-2.5 text-sm font-bold text-foreground outline-none shadow-none focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       />
                                       <div className="w-24 sm:w-28 shrink-0">
                                         <CustomSelect
@@ -929,6 +1096,7 @@ export function NestedMilestonePlanEditor({
                                   <input
                                     data-milestone-field={`${index}.estimatedDuration`}
                                     disabled={readOnly}
+                                    aria-invalid={Boolean(errorFor('estimatedDuration'))}
                                     maxLength={durationMaxLength}
                                     value={milestone.estimatedDuration || ''}
                                     onChange={e => updateMilestone(index, { estimatedDuration: e.target.value })}
@@ -961,7 +1129,6 @@ export function NestedMilestonePlanEditor({
                                     )}
                                   </div>
                                 )}
-                                {errorFor('estimatedDuration') && <span className="block text-xs text-red-500 font-medium">{errorFor('estimatedDuration')}</span>}
                               </div>
                             )}
 
@@ -975,6 +1142,7 @@ export function NestedMilestonePlanEditor({
                                 <input
                                   data-milestone-field={`${index}.dueDate`}
                                   disabled={readOnly || dueDateReadOnly}
+                                  aria-invalid={Boolean(errorFor('dueDate'))}
                                   type="date"
                                   value={milestone.dueDate || ''}
                                   onChange={dueDateReadOnly ? undefined : e => updateMilestone(index, { dueDate: e.target.value || null })}
@@ -984,7 +1152,6 @@ export function NestedMilestonePlanEditor({
                                 <div className="text-[11px] text-muted-foreground leading-snug pt-0.5">
                                   <span>{fieldHints.deadline || renderHint(`${index}-deadline`, fieldHints.deadline) || 'Ngày cuối cùng freelancer phải nộp sản phẩm.'}</span>
                                 </div>
-                                {errorFor('dueDate') && <span className="block text-xs text-red-500 font-medium">{errorFor('dueDate')}</span>}
                               </div>
                             )}
                           </div>
@@ -1015,6 +1182,7 @@ export function NestedMilestonePlanEditor({
                     <textarea
                       data-milestone-field={`${index}.deliverables`}
                       disabled={readOnly}
+                      aria-invalid={Boolean(errorFor('deliverables'))}
                       value={milestone.deliverables || ''}
                       onChange={e => updateMilestone(index, { deliverables: e.target.value })}
                       placeholder={fieldPlaceholders.deliverables || 'Các file, tài liệu hoặc sản phẩm cụ thể freelancer phải gửi...'}
@@ -1023,7 +1191,6 @@ export function NestedMilestonePlanEditor({
                       className={`${fieldClass('deliverables')} mt-1 font-normal`}
                     />
                     {renderHint(`${index}-deliverables`, fieldHints.deliverables)}
-                    {errorFor('deliverables') && <span className="mt-1 block text-xs text-red-500 font-medium">{errorFor('deliverables')}</span>}
                   </label>
                   {!simplifiedMilestoneFields && (
                     <label className="text-xs font-bold text-foreground">
@@ -1031,6 +1198,7 @@ export function NestedMilestonePlanEditor({
                       <textarea
                         data-milestone-field={`${index}.acceptanceCriteria`}
                         disabled={readOnly}
+                        aria-invalid={Boolean(errorFor('acceptanceCriteria'))}
                         value={milestone.acceptanceCriteria || ''}
                         onChange={e => updateMilestone(index, { acceptanceCriteria: e.target.value })}
                         placeholder={fieldPlaceholders.acceptanceCriteria || 'Điều kiện để mốc công việc này được chấp nhận và giải ngân...'}
@@ -1039,7 +1207,6 @@ export function NestedMilestonePlanEditor({
                         className={`${fieldClass('acceptanceCriteria')} mt-1 font-normal`}
                       />
                       {renderHint(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)}
-                      {errorFor('acceptanceCriteria') && <span className="mt-1 block text-xs text-red-500 font-medium">{errorFor('acceptanceCriteria')}</span>}
                     </label>
                   )}
                 </div>
@@ -1049,7 +1216,7 @@ export function NestedMilestonePlanEditor({
                   {uiCopy.advancedDetails || 'Advanced details'}
                 </button>}
 
-                {simplifiedMilestoneFields && isAdvancedOpen && <label className="block text-xs font-semibold">{uiCopy.acceptanceCriteria || 'Acceptance criteria'}<textarea data-milestone-field={`${index}.acceptanceCriteria`} disabled={readOnly} value={milestone.acceptanceCriteria || ''} onChange={e => updateMilestone(index, { acceptanceCriteria: e.target.value })} placeholder={fieldPlaceholders.acceptanceCriteria} aria-describedby={describedBy(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)} rows={3} className={`${fieldClass('acceptanceCriteria')} mt-1`} />{renderHint(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)}{errorFor('acceptanceCriteria') && <span className="mt-1 block text-xs text-red-500">{errorFor('acceptanceCriteria')}</span>}</label>}
+                {simplifiedMilestoneFields && isAdvancedOpen && <label className="block text-xs font-semibold">{uiCopy.acceptanceCriteria || 'Acceptance criteria'}<textarea data-milestone-field={`${index}.acceptanceCriteria`} disabled={readOnly} value={milestone.acceptanceCriteria || ''} onChange={e => updateMilestone(index, { acceptanceCriteria: e.target.value })} placeholder={fieldPlaceholders.acceptanceCriteria} aria-invalid={Boolean(errorFor('acceptanceCriteria'))} aria-describedby={describedBy(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)} rows={3} className={`${fieldClass('acceptanceCriteria')} mt-1`} />{renderHint(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)}</label>}
 
                 {showWorkItems && (!simplifiedMilestoneFields || isAdvancedOpen) ? <div className="space-y-3 rounded-lg border border-border bg-card p-3">
                   <div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-bold">{uiCopy.workBreakdown || 'Work Breakdown Structure'}</h3>{renderHint(`${index}-work-breakdown`, fieldHints.workBreakdown)}</div>{!readOnly && <button type="button" onClick={() => updateMilestone(index, { workItems: [...milestone.workItems, newWorkItem(milestone.workItems.length)] })} className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-2 py-1 text-xs font-semibold"><Plus size={13} /> {uiCopy.addWorkItem || 'Add work item'}</button>}</div>
@@ -1076,15 +1243,16 @@ export function NestedMilestonePlanEditor({
                     // day before it begins). Server-computed on save; shown here so the plan is legible
                     // while it is being written.
                     const workItemDueDate = workItemDueDates[workIndex] ?? null;
-                    return <div key={workItem.id || workIndex} className={`grid gap-2 rounded-lg border p-3 md:grid-cols-2 ${workItemErrorFor('title') || workItemErrorFor('description') ? 'border-red-500/60' : 'border-border'}`}>
-                      <div className="flex items-center justify-between md:col-span-2"><strong className="text-xs">{uiCopy.workItem || 'Work item'} {workIndex + 1}</strong>{!readOnly && <button type="button" title={uiCopy.deleteWorkItem || 'Delete work item'} onClick={() => updateMilestone(index, { workItems: milestone.workItems.filter((_, itemIndex) => itemIndex !== workIndex).map((item, orderIndex) => ({ ...item, orderIndex })) })} className="p-1 text-red-500"><Trash2 size={13} /></button>}</div>
-                      <label className="text-xs font-semibold">{uiCopy.workItemTitle || 'Work item title'}<input data-work-item-field={`${index}.${workIndex}.title`} disabled={readOnly} maxLength={workItemTitleMaxLength} value={workItem.title || ''} onChange={e => updateWorkItem(index, workIndex, { title: e.target.value })} placeholder={fieldPlaceholders.workItemTitle || 'Work item title'} aria-label={uiCopy.workItemTitle ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.workItemTitle}` : `Work item ${workIndex + 1} title`} aria-describedby={describedBy(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)} className={workItemFieldClass('title')} />{renderHint(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)}{workItemErrorFor('title') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('title')}</span>}</label>
+                    return <div key={getWorkItemKey(workItem)} className={`grid gap-2 rounded-lg border p-3 md:grid-cols-2 ${workItemErrorFor('title') || workItemErrorFor('description') ? 'border-red-500/60' : 'border-border'}`}>
+                      <div className="flex items-center justify-between md:col-span-2"><strong className="text-xs">{uiCopy.workItem || 'Work item'} {workIndex + 1}</strong>{!readOnly && <button type="button" title={uiCopy.deleteWorkItem || 'Delete work item'} onClick={() => deleteWorkItem(index, workIndex)} className="p-1 text-red-500"><Trash2 size={13} /></button>}</div>
+                      <label className="text-xs font-semibold">{uiCopy.workItemTitle || 'Work item title'}<input data-work-item-field={`${index}.${workIndex}.title`} disabled={readOnly} maxLength={workItemTitleMaxLength} value={workItem.title || ''} onChange={e => updateWorkItem(index, workIndex, { title: e.target.value })} placeholder={fieldPlaceholders.workItemTitle || 'Work item title'} aria-invalid={Boolean(workItemErrorFor('title'))} aria-label={uiCopy.workItemTitle ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.workItemTitle}` : `Work item ${workIndex + 1} title`} aria-describedby={describedBy(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)} className={workItemFieldClass('title')} />{renderHint(`${index}-${workIndex}-work-title`, fieldHints.workItemTitle)}</label>
                       <label className="text-xs font-semibold">{uiCopy.estimatedDuration || 'Estimated duration'}
                         {structuredWorkItemDuration && effectiveWorkItemDurationUnits ? (
                           <div data-work-item-field={`${index}.${workIndex}.estimatedDuration`} className={`mt-1 flex items-center gap-1 rounded-lg border bg-background p-1 ${workItemErrorFor('estimatedDuration') ? 'border-red-500' : 'border-border'}`}>
                             <input
                               disabled={readOnly}
                               type="number"
+                              aria-invalid={Boolean(workItemErrorFor('estimatedDuration'))}
                               min="1"
                               step="1"
                               value={structuredWorkItemDuration.amount}
@@ -1110,13 +1278,12 @@ export function NestedMilestonePlanEditor({
                             </div>
                           </div>
                         ) : (
-                          <input disabled={readOnly} maxLength={durationMaxLength} value={workItem.estimatedDuration || ''} onChange={e => updateWorkItem(index, workIndex, { estimatedDuration: e.target.value })} placeholder={fieldPlaceholders.workItemDuration || 'Estimated duration'} aria-describedby={describedBy(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)} className={`${inputClass} mt-1`} />
+                          <input disabled={readOnly} maxLength={durationMaxLength} value={workItem.estimatedDuration || ''} onChange={e => updateWorkItem(index, workIndex, { estimatedDuration: e.target.value })} placeholder={fieldPlaceholders.workItemDuration || 'Estimated duration'} aria-invalid={Boolean(workItemErrorFor('estimatedDuration'))} aria-describedby={describedBy(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)} className={workItemFieldClass('estimatedDuration')} />
                         )}
                         {renderHint(`${index}-${workIndex}-work-duration`, fieldHints.workItemDuration)}
-                        {workItemErrorFor('estimatedDuration') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('estimatedDuration')}</span>}
                         {workItemDueDate && <span className="mt-1 block text-[11px] font-normal text-muted-foreground">{uiCopy.workItemDueDate || 'Deadline'}: {workItemDueDate}</span>}
                       </label>
-                      <label className="text-xs font-semibold">{uiCopy.taskDescription || 'Task description'}<textarea data-work-item-field={`${index}.${workIndex}.description`} disabled={readOnly} value={workItem.description || ''} onChange={e => updateWorkItem(index, workIndex, { description: e.target.value })} placeholder={fieldPlaceholders.workItemDescription || 'Task description'} aria-label={uiCopy.taskDescription ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.taskDescription}` : `Work item ${workIndex + 1} description`} aria-describedby={describedBy(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)} rows={2} className={workItemFieldClass('description')} />{renderHint(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)}{workItemErrorFor('description') && <span className="mt-1 block text-xs text-red-500">{workItemErrorFor('description')}</span>}</label>
+                      <label className="text-xs font-semibold">{uiCopy.taskDescription || 'Task description'}<textarea data-work-item-field={`${index}.${workIndex}.description`} disabled={readOnly} value={workItem.description || ''} onChange={e => updateWorkItem(index, workIndex, { description: e.target.value })} placeholder={fieldPlaceholders.workItemDescription || 'Task description'} aria-invalid={Boolean(workItemErrorFor('description'))} aria-label={uiCopy.taskDescription ? `${uiCopy.workItem || 'Work item'} ${workIndex + 1}: ${uiCopy.taskDescription}` : `Work item ${workIndex + 1} description`} aria-describedby={describedBy(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)} rows={2} className={workItemFieldClass('description')} />{renderHint(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)}</label>
                       {/* A work item is authored with three fields: title, estimated duration and task
                           description. The deliverables textarea used to be a fourth, but it duplicated
                           the description in practice and no longer drives anything — the deliverable is
@@ -1133,7 +1300,7 @@ export function NestedMilestonePlanEditor({
                         {/* Work Items Hierarchy Breakdown */}
                         <ul className="space-y-1.5 font-mono text-xs">
                           {milestone.workItems.map((workItem, workIndex) => (
-                            <li key={workItem.id || workIndex} className="flex items-center gap-2">
+                            <li key={getWorkItemKey(workItem)} className="flex items-center gap-2">
                               <span className="text-text-muted select-none font-bold">
                                 {workIndex === milestone.workItems.length - 1 ? '└──' : '├──'}
                               </span>

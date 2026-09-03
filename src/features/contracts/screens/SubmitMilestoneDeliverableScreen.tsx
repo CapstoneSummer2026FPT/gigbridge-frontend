@@ -25,6 +25,7 @@ import {
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/submit-milestone-deliverable-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 interface SubmissionState {
   milestone: Milestone | null;
@@ -87,6 +88,7 @@ export default function SubmitMilestoneDeliverableScreen() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   // Load milestone and contract details
   useEffect(() => {
@@ -186,10 +188,10 @@ export default function SubmitMilestoneDeliverableScreen() {
     }
 
     if (validationErrors.length > 0) {
-      setState((prev) => ({
-        ...prev,
-        error: validationErrors.join('; '),
-      }));
+      showValidationToast(validationErrors, {
+        fallback: t('contracts.fileTypeError', { name: selectedFile.name, defaultValue: 'Invalid file' }),
+      });
+      fileInputRef.current?.focus();
       return;
     }
 
@@ -222,28 +224,26 @@ export default function SubmitMilestoneDeliverableScreen() {
     e.preventDefault();
     setState((prev) => ({ ...prev, error: null }));
 
-    // Validation
+    const validationMessages: string[] = [];
     if (!state.description.trim()) {
-      setState((prev) => ({
-        ...prev,
-        error: t('contracts.summaryRequired', { defaultValue: 'Summary must not be empty' }),
-      }));
-      return;
+      validationMessages.push(t('contracts.summaryRequired', { defaultValue: 'Summary must not be empty' }));
     }
 
     if (state.description.trim().length > 5000) {
-      setState((prev) => ({
-        ...prev,
-        error: t('contracts.descriptionMaxLength', { defaultValue: 'Description must be 5000 characters or less' }),
-      }));
-      return;
+      validationMessages.push(t('contracts.descriptionMaxLength', { defaultValue: 'Description must be 5000 characters or less' }));
     }
 
     if (state.files.length === 0) {
-      setState((prev) => ({
-        ...prev,
-        error: t('contracts.uploadAtLeastOne', { defaultValue: 'Please upload at least one file' }),
-      }));
+      validationMessages.push(t('contracts.uploadAtLeastOne', { defaultValue: 'Please upload at least one file' }));
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('contracts.signingFailed') });
+      if (!state.description.trim() || state.description.trim().length > 5000) {
+        descriptionRef.current?.focus();
+      } else {
+        fileInputRef.current?.focus();
+      }
       return;
     }
 
@@ -284,11 +284,16 @@ export default function SubmitMilestoneDeliverableScreen() {
           });
         }, 2000);
       } else {
-        setState((prev) => ({
-          ...prev,
-          error: response.message || t('contracts.signingFailed'),
-          submitting: false,
-        }));
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: t('contracts.signingFailed') });
+          setState((prev) => ({ ...prev, submitting: false }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            error: response.message || t('contracts.signingFailed'),
+            submitting: false,
+          }));
+        }
       }
     } catch (err) {
       setState((prev) => ({
@@ -443,7 +448,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="deliverable-form">
+                <form onSubmit={handleSubmit} className="deliverable-form" noValidate>
                   {/* Description Section */}
                   <div className="form-section">
                     <h3 className="form-section-title">{t('contracts.deliverableDetails')}</h3>
@@ -454,6 +459,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                         <span className="required">*</span>
                       </label>
                       <textarea
+                        ref={descriptionRef}
                         id="description"
                         value={state.description}
                         onChange={handleDescriptionChange}
@@ -462,6 +468,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                         maxLength={5000}
                         rows={6}
                         disabled={state.submitting}
+                        required
                       />
                       <div className="form-hint">
                         <span className="char-count">
@@ -592,11 +599,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                     <button
                       type="submit"
                       className="action-btn action-submit"
-                      disabled={
-                        state.submitting ||
-                        !state.description.trim() ||
-                        state.files.length === 0
-                      }
+                      disabled={state.submitting}
                     >
                       {state.submitting ? (
                         <>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   AlertCircle,
@@ -34,6 +34,7 @@ import {
 } from '../../../shared/utils/contractUtils';
 import { formatGigCoinNumber, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import '../styles/approve-milestone-screen.css';
 
 interface MilestoneWithAttachments extends Milestone {
@@ -57,6 +58,8 @@ export default function ApproveMilestoneScreen() {
   const [revisionWorkItemIds, setRevisionWorkItemIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEscrowInfo, setShowEscrowInfo] = useState(true);
+  const approvalNotesRef = useRef<HTMLTextAreaElement>(null);
+  const revisionItemsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -104,7 +107,13 @@ export default function ApproveMilestoneScreen() {
       setIsSubmitting(true);
       setError(null);
       const response = await contractPostAPI.approveMilestone(contractId, milestone.id);
-      if (!response.success) throw new Error(response.message || 'Failed to approve milestone.');
+      if (!response.success) {
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: response.message || 'Failed to approve milestone.' });
+          return;
+        }
+        throw new Error(response.message || 'Failed to approve milestone.');
+      }
       setMilestone({ ...milestone, status: MilestoneStatus.Approved });
       setApprovalAction('pending');
       setSuccessMessage('contracts.milestoneApproved');
@@ -118,11 +127,28 @@ export default function ApproveMilestoneScreen() {
 
   const handleReject = async () => {
     if (!milestone || !contractId) return;
+    const validationMessages: string[] = [];
+    if (approvalNotes.length > NOTES_LIMIT) validationMessages.push(`Revision notes cannot exceed ${NOTES_LIMIT} characters.`);
+    if (!approvalNotes.trim()) validationMessages.push('Enter revision notes.');
+    if (revisionWorkItemIds.length === 0) validationMessages.push('Select at least one work item for revision.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required revision details.' });
+      if (!approvalNotes.trim() || approvalNotes.length > NOTES_LIMIT) approvalNotesRef.current?.focus();
+      else revisionItemsRef.current?.focus();
+      return;
+    }
     try {
       setIsSubmitting(true);
       setError(null);
       const response = await contractPostAPI.requestMilestoneRevision(contractId, milestone.id, approvalNotes.trim(), revisionWorkItemIds);
-      if (!response.success) throw new Error(response.message || 'Failed to request revisions.');
+      if (!response.success) {
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: response.message || 'Failed to request revisions.' });
+          approvalNotesRef.current?.focus();
+          return;
+        }
+        throw new Error(response.message || 'Failed to request revisions.');
+      }
       setMilestone({ ...milestone, status: MilestoneStatus.InProgress });
       setApprovalAction('pending');
       setApprovalNotes('');
@@ -538,7 +564,9 @@ export default function ApproveMilestoneScreen() {
                           <span className="text-rose-500 font-bold">{t('contracts.requiredFieldLabel')}</span>
                         </label>
                         <textarea
+                          ref={approvalNotesRef}
                           id="revision-reason"
+                          aria-invalid={notesTooLong || !approvalNotes.trim()}
                           value={approvalNotes}
                           maxLength={NOTES_LIMIT + 1}
                           onChange={(event) => setApprovalNotes(event.target.value)}
@@ -552,7 +580,7 @@ export default function ApproveMilestoneScreen() {
                         </div>
 
                         {/* Revision Items Checkbox List */}
-                        <div className="space-y-2 pt-2 border-t border-border">
+                        <div ref={revisionItemsRef} tabIndex={-1} className="space-y-2 pt-2 border-t border-border">
                           <span className="text-[10px] font-black uppercase tracking-wider text-text-muted block">
                             {t('contracts.selectWorkItemsForRevision')}
                           </span>
@@ -583,7 +611,7 @@ export default function ApproveMilestoneScreen() {
                       <button
                         type="button"
                         onClick={approvalAction === 'approve' ? handleApprove : handleReject}
-                        disabled={isSubmitting || notesTooLong || (approvalAction === 'reject' && (!approvalNotes.trim() || revisionWorkItemIds.length === 0))}
+                        disabled={isSubmitting}
                         className={`flex-1 ${approvalAction === 'approve' ? 'ams-btn-approve-submit' : 'ams-btn-revision-submit'} disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
                         {isSubmitting ? (

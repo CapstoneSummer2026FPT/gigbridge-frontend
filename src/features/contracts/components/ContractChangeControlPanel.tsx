@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Check,
@@ -32,6 +32,9 @@ import {
 } from '../../../shared/components/NestedMilestonePlanEditor';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { useUndoableDeleteScope } from '../../../shared/hooks/useUndoableDeleteScope';
+import type { ApiResponse } from '../../../types/common';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 interface Props {
   contractId: string;
@@ -103,6 +106,7 @@ export function ContractChangeControlPanel({
   onApplied,
 }: Props) {
   const { t } = useTranslation();
+  const undoDeleteController = useUndoableDeleteScope();
   const [requests, setRequests] = useState<ContractChangeRequestDto[]>([]);
   const [amendments, setAmendments] = useState<ContractAmendmentDetailDto[]>([]);
   const [reason, setReason] = useState('');
@@ -112,6 +116,8 @@ export function ContractChangeControlPanel({
   const [plan, setPlan] = useState<EditableMilestonePlan[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const reasonRef = useRef<HTMLInputElement>(null);
+  const requestedChangesRef = useRef<HTMLTextAreaElement>(null);
 
   const load = async () => {
     const [requestResponse, amendmentResponse] = await Promise.all([
@@ -134,7 +140,7 @@ export function ContractChangeControlPanel({
   if (contractStatus !== ContractStatus.Active) return null;
 
   const run = async (
-    action: () => Promise<{ success: boolean; message?: string }>,
+    action: () => Promise<ApiResponse<unknown>>,
     refreshContract = false
   ) => {
     setBusy(true);
@@ -142,6 +148,12 @@ export function ContractChangeControlPanel({
     const response = await action();
     setBusy(false);
     if (!response.success) {
+      if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: response.message || 'Unable to save this change request.' });
+        if (!reason.trim()) reasonRef.current?.focus();
+        else requestedChangesRef.current?.focus();
+        return;
+      }
       return setError(response.message || 'Yêu cầu thay đổi không thể lưu.');
     }
     setReason('');
@@ -178,6 +190,51 @@ export function ContractChangeControlPanel({
             })),
           }))
         : toEditablePlan(milestones)
+    );
+  };
+
+  const submitAmendment = async (): Promise<void> => {
+    if (!editingChangeId) return;
+    if (plan.length === 0) {
+      showValidationToast('Add at least one milestone to the amendment.', {
+        fallback: 'Add at least one milestone to the amendment.',
+      });
+      return;
+    }
+    await undoDeleteController.finalizeAll();
+    await run(() => {
+      const payload = {
+        changeRequestId: editingChangeId,
+        reason,
+        milestones: toAmendmentPlan(plan),
+      };
+      return editingAmendmentId
+        ? contractAmendmentAPI.updateAmendment(contractId, editingAmendmentId, payload)
+        : contractAmendmentAPI.createAmendment(contractId, payload);
+    });
+  };
+
+  const submitChangeRequest = async (): Promise<void> => {
+    const validationMessages: string[] = [];
+    if (!reason.trim()) validationMessages.push('Enter a reason for the requested change.');
+    if (!requestedChanges.trim()) validationMessages.push('Describe the requested changes.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required fields.' });
+      if (!reason.trim()) reasonRef.current?.focus();
+      else requestedChangesRef.current?.focus();
+      return;
+    }
+    await run(() =>
+      contractAmendmentAPI.createChangeRequest(contractId, {
+        reason: reason.trim(),
+        requestedChanges: requestedChanges.trim(),
+        affectedMilestoneIds: milestones
+          .filter(item => Number(item.status) === MilestoneStatus.Pending)
+          .map(item => item.id),
+        affectedWorkItemIds: milestones
+          .filter(item => Number(item.status) === MilestoneStatus.Pending)
+          .flatMap(item => item.workItems.map(workItem => workItem.workItemId)),
+      }),
     );
   };
 
@@ -246,7 +303,9 @@ export function ContractChangeControlPanel({
                 Lý do thay đổi
               </label>
               <input
+                ref={reasonRef}
                 value={reason}
+                aria-invalid={!reason.trim()}
                 onChange={event => setReason(event.target.value)}
                 placeholder={t('contracts.changeReasonPlaceholder', {
                   defaultValue:
@@ -261,7 +320,9 @@ export function ContractChangeControlPanel({
                 Chi tiết thay đổi đề xuất
               </label>
               <textarea
+                ref={requestedChangesRef}
                 value={requestedChanges}
+                aria-invalid={!requestedChanges.trim()}
                 onChange={event => setRequestedChanges(event.target.value)}
                 placeholder={t('contracts.changeDescPlaceholder', {
                   defaultValue: 'Mô tả chi tiết các cột mốc hoặc công việc cần thay đổi...',
@@ -273,21 +334,8 @@ export function ContractChangeControlPanel({
 
             <button
               type="button"
-              disabled={busy || !reason.trim() || !requestedChanges.trim()}
-              onClick={() =>
-                void run(() =>
-                  contractAmendmentAPI.createChangeRequest(contractId, {
-                    reason: reason.trim(),
-                    requestedChanges: requestedChanges.trim(),
-                    affectedMilestoneIds: milestones
-                      .filter(item => Number(item.status) === MilestoneStatus.Pending)
-                      .map(item => item.id),
-                    affectedWorkItemIds: milestones
-                      .filter(item => Number(item.status) === MilestoneStatus.Pending)
-                      .flatMap(item => item.workItems.map(workItem => workItem.workItemId)),
-                  })
-                )
-              }
+              disabled={busy}
+              onClick={() => void submitChangeRequest()}
               className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl bg-brand text-white font-black text-xs hover:bg-brand-hover transition-all cursor-pointer shadow-md disabled:opacity-40"
             >
               <Send size={15} />
@@ -478,25 +526,15 @@ export function ContractChangeControlPanel({
           <NestedMilestonePlanEditor
             value={plan}
             onChange={setPlan}
+            undoDeleteController={undoDeleteController}
             showDueDate
             title="Bản Thảo Phụ Lục Hợp Đồng Mới"
             description="Chỉ các milestone chưa thực hiện và công việc của chúng sẽ được cập nhật khi phụ lục ký kết hoàn tất."
           />
           <button
             type="button"
-            disabled={busy || plan.length === 0}
-            onClick={() =>
-              void run(() => {
-                const payload = {
-                  changeRequestId: editingChangeId,
-                  reason,
-                  milestones: toAmendmentPlan(plan),
-                };
-                return editingAmendmentId
-                  ? contractAmendmentAPI.updateAmendment(contractId, editingAmendmentId, payload)
-                  : contractAmendmentAPI.createAmendment(contractId, payload);
-              })
-            }
+            disabled={busy}
+            onClick={() => void submitAmendment()}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-brand text-white font-black text-xs hover:bg-brand-hover transition-all cursor-pointer shadow-md disabled:opacity-40"
           >
             <Send size={15} /> Gửi Phụ Lục Cho Freelancer Xem Xét

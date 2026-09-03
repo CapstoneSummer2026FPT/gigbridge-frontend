@@ -6,7 +6,7 @@ import {
   Clock,
   Play,
   Save,
-  Send,
+  ArrowRight,
   AlertTriangle,
   FileEdit,
   ChevronRight,
@@ -20,7 +20,6 @@ import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import {
-  ProposalStatus,
   QuestionTimerLockedReason,
   type InterviewReviewSessionDto,
   type ProposalAnswerDto,
@@ -28,6 +27,8 @@ import {
 } from '../../../types/models/Proposal';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
 import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
+import { getProposalQuestionsPath, getProposalReviewPath } from '../utils/proposalRoutes';
+import { ProposalStepper } from '../components/ProposalStepper';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 
@@ -313,7 +314,7 @@ export default function ScreenProposalAnswerQuestion() {
           setLoading(false);
           return;
         }
-        navigate(`/proposals/create/${jobPostId}/questions?proposalId=${recovered.data.proposalId}`, {
+        navigate(getProposalQuestionsPath(jobPostId, recovered.data.proposalId), {
           replace: true,
           state: { proposalId: recovered.data.proposalId, jobPostId },
         });
@@ -526,9 +527,11 @@ export default function ScreenProposalAnswerQuestion() {
     } finally { setSaving(false); }
   };
 
-  const handleSubmit = async () => {
+  // Step 2 -> step 3. Any last edits made during the review window are saved, then the review
+  // session is closed so the answers become read-only for the review & submit step.
+  const handleContinueToReview = async () => {
     if (proposalReadinessError) { setError(proposalReadinessError); return; }
-    if (!allQuestionsLocked) { setError('Complete or time out all questions before submitting.'); return; }
+    if (!allQuestionsLocked) { setError('Complete or time out all questions before continuing.'); return; }
     if (!reviewSession) { setError('Interview review is still starting. Please wait a moment.'); return; }
     setSaving(true);
     setError('');
@@ -537,11 +540,9 @@ export default function ScreenProposalAnswerQuestion() {
       if (!reviewSaved) { setSaving(false); return; }
     }
     const reviewCompleted = await completeInterviewReview();
-    if (!reviewCompleted) { setSaving(false); return; }
-    const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, { status: ProposalStatus.Pending });
     setSaving(false);
-    if (!statusResponse.success) { setError(statusResponse.message || 'Proposal could not be submitted.'); return; }
-    navigate('/proposals', { state: { submittedProposalId: proposalId } });
+    if (!reviewCompleted) return;
+    navigate(getProposalReviewPath(proposalId), { replace: true });
   };
 
   // Derived
@@ -667,6 +668,8 @@ export default function ScreenProposalAnswerQuestion() {
         <main className="flex-1 px-4 py-6 sm:px-6">
           <div className="mx-auto max-w-3xl space-y-5">
 
+            <ProposalStepper currentStep={2} />
+
             {/* Error banner */}
             {error && (
               <div className="flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
@@ -692,7 +695,7 @@ export default function ScreenProposalAnswerQuestion() {
                         Kiểm tra lại câu trả lời
                       </p>
                       <p className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                        Xem lại và chỉnh sửa câu trả lời trước khi nộp
+                        Xem lại và chỉnh sửa câu trả lời trước khi sang bước xem lại đề xuất
                       </p>
                     </div>
                     <div
@@ -718,7 +721,7 @@ export default function ScreenProposalAnswerQuestion() {
                   <div className="rounded-2xl border p-10 text-center" style={{ borderColor: 'var(--border)' }}>
                     <CheckCircle2 size={44} className="mx-auto text-emerald-500" />
                     <p className="mt-3 text-lg font-black" style={{ color: 'var(--text-primary)' }}>Không có câu nào cần kiểm tra</p>
-                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Bạn đã sẵn sàng nộp đề xuất.</p>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Bạn có thể sang bước xem lại đề xuất.</p>
                   </div>
                 ) : (
                   reviewableQuestions.map((question, idx) => (
@@ -910,7 +913,7 @@ export default function ScreenProposalAnswerQuestion() {
               {allQuestionsLocked && (
                 <button
                   type="button"
-                  onClick={handleSubmit}
+                  onClick={handleContinueToReview}
                   disabled={saving || (isReviewMode && !reviewSession)}
                   className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-extrabold text-white transition-all hover:opacity-90 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
@@ -921,9 +924,9 @@ export default function ScreenProposalAnswerQuestion() {
                   {saving ? (
                     <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                   ) : (
-                    <Send size={15} />
+                    <ArrowRight size={15} />
                   )}
-                  <span>Nộp đề xuất</span>
+                  <span>{t('proposalStepper.goToReview')}</span>
                 </button>
               )}
             </div>

@@ -17,6 +17,7 @@ import {
 } from '../../../types/models/ReviewManagement';
 import { UserRole } from '../../../types/models/User';
 import '../styles/reviews-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 type Direction = 'received' | 'sent';
 
@@ -253,6 +254,7 @@ function ReviewCard({
 export default function MyReviewsScreen() {
   const { t } = useTranslation();
   const headerRef = useRef<HTMLDivElement>(null);
+  const reportReasonRef = useRef<HTMLTextAreaElement>(null);
 
   const [direction, setDirection] = useState<Direction>('received');
   const [reviews, setReviews] = useState<ManagedReview[]>([]);
@@ -298,7 +300,13 @@ export default function MyReviewsScreen() {
   };
 
   const submitReport = async () => {
-    if (!reporting || reason.trim().length < 10) return;
+    if (!reporting) return;
+    if (reason.trim().length < 10) {
+      const message = 'Vui lòng nhập tối thiểu 10 ký tự.';
+      showValidationToast(message, { fallback: message });
+      reportReasonRef.current?.focus();
+      return;
+    }
     setSubmittingReport(true);
     const response = await reportAPI.createReport({
       reportedEntityId: reporting.reviewId,
@@ -308,7 +316,11 @@ export default function MyReviewsScreen() {
     });
     setSubmittingReport(false);
     if (!response.success) {
-      setError(response.message || t('reviewManagement.reportError'));
+      if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: t('reviewManagement.reportError') });
+      } else {
+        setError(response.message || t('reviewManagement.reportError'));
+      }
       return;
     }
     setReportSuccess(true);
@@ -491,7 +503,7 @@ export default function MyReviewsScreen() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={e => { e.preventDefault(); void submitReport(); }} className="space-y-4">
+              <form onSubmit={e => { e.preventDefault(); void submitReport(); }} noValidate className="space-y-4">
                 {/* Context Review Snippet */}
                 <div className="p-3.5 rounded-xl bg-surface-muted border border-border text-xs space-y-1.5">
                   <div className="flex items-center justify-between font-semibold text-text-primary">
@@ -534,6 +546,7 @@ export default function MyReviewsScreen() {
                     </span>
                   </div>
                   <textarea
+                    ref={reportReasonRef}
                     maxLength={2000}
                     value={reason}
                     onChange={e => setReason(e.target.value)}
@@ -541,9 +554,6 @@ export default function MyReviewsScreen() {
                     className="w-full p-3.5 rounded-xl border border-border bg-background text-text-primary text-xs sm:text-sm resize-none outline-none focus:border-brand transition-colors font-sans leading-relaxed"
                     rows={4}
                   />
-                  {reason.length > 0 && reason.trim().length < 10 && (
-                    <p className="text-[11px] text-amber-500 font-medium">Vui lòng nhập tối thiểu 10 ký tự.</p>
-                  )}
                 </div>
 
                 {/* Footer Actions */}
@@ -557,7 +567,7 @@ export default function MyReviewsScreen() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submittingReport || reason.trim().length < 10}
+                    disabled={submittingReport}
                     className="px-5 py-2.5 rounded-xl bg-destructive hover:opacity-90 text-white text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     {submittingReport ? (
