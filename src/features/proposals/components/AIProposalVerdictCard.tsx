@@ -345,7 +345,8 @@ function PillarExplanationButton({
 }
 
 export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = (i18n.language || 'vi').startsWith('en');
   const tq = proposal.aiTechnicalQualityScore ?? proposal.aiScore ?? 0;
   const vs = proposal.aiValueScore ?? tq;
   const badge = proposal.aiVerdictBadge || 'top_value';
