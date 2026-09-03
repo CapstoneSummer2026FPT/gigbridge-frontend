@@ -4,8 +4,12 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import {
   Activity,
   AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
   Briefcase,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   ArrowUpDown,
   Download,
   Filter,
@@ -21,6 +25,7 @@ import {
   Search,
   Send,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   User,
   UserCheck,
@@ -28,6 +33,7 @@ import {
 } from 'lucide-react';
 
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import {
   STATUS_GROUPS,
@@ -43,6 +49,7 @@ import type { AdminAuditEvent } from '../../../types/models/AdminDispute';
 import { DisputeStatus, EvidenceRequestTarget } from '../../../types/models/Dispute';
 import { DisputeMessageRecipient } from '../../../api/messageAPI/GET';
 import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
+import { MessageType } from '../../../types/models/Message';
 import { UserRole } from '../../../types/models/User';
 import '../styles/admin-dispute-management-screen.css';
 
@@ -220,6 +227,68 @@ export default function AdminDisputeManagementScreen() {
   const [userTimelineSortOrder, setUserTimelineSortOrder] = useState<'newest' | 'oldest'>('oldest');
   const [userTimelinePageSize, setUserTimelinePageSize] = useState<number>(0);
 
+  // Responsive mobile states (< 1024px)
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  const [mobileChatTab, setMobileChatTab] = useState<'both' | 'freelancer' | 'client'>('both');
+
+  // Drag-to-scroll & wheel scroll for tabs bar
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const isDraggingTabs = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
+  const [hasDraggedTabs, setHasDraggedTabs] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabsScroll = () => {
+    if (tabsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+      setCanScrollLeft(scrollLeft > 4);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4);
+    }
+  };
+
+  const handleTabsMouseDown = (e: React.MouseEvent) => {
+    if (!tabsRef.current) return;
+    isDraggingTabs.current = true;
+    startX.current = e.pageX - tabsRef.current.offsetLeft;
+    scrollLeftStart.current = tabsRef.current.scrollLeft;
+    setHasDraggedTabs(false);
+  };
+
+  const handleTabsMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingTabs.current || !tabsRef.current) return;
+    const x = e.pageX - tabsRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.3;
+    if (Math.abs(walk) > 4) {
+      setHasDraggedTabs(true);
+    }
+    tabsRef.current.scrollLeft = scrollLeftStart.current - walk;
+    checkTabsScroll();
+  };
+
+  const handleTabsMouseUp = () => {
+    isDraggingTabs.current = false;
+    setTimeout(() => setHasDraggedTabs(false), 80);
+  };
+
+  const handleTabsWheel = (e: React.WheelEvent) => {
+    if (tabsRef.current && e.deltaY !== 0) {
+      tabsRef.current.scrollLeft += e.deltaY;
+      checkTabsScroll();
+    }
+  };
+
+  const scrollTabsBy = (direction: 'left' | 'right') => {
+    if (tabsRef.current) {
+      tabsRef.current.scrollBy({
+        left: direction === 'left' ? -220 : 220,
+        behavior: 'smooth',
+      });
+      setTimeout(checkTabsScroll, 250);
+    }
+  };
+
   const displayedUserTimeline = useMemo(() => {
     if (!selectedDispute?.userActionTimeline) return [];
     const list = [...selectedDispute.userActionTimeline];
@@ -246,65 +315,148 @@ export default function AdminDisputeManagementScreen() {
     ],
   });
 
-  const renderSingleChatMessage = (message: ConversationMessageResponse) => {
-    const isOfficial = message.messageType === 10;
-    const isBoth = message.disputeRecipient === DisputeMessageRecipient.Both;
+  const renderRoleBadge = (role?: number | null, isOfficialAdmin?: boolean) => {
+    if (isOfficialAdmin || role === UserRole.Admin) {
+      return <span className="dispute-role-badge role-admin"><ShieldCheck size={12} /> Admin</span>;
+    }
+    if (role === UserRole.Client) {
+      return <span className="dispute-role-badge role-client">Client</span>;
+    }
+    if (role === UserRole.Freelancer) {
+      return <span className="dispute-role-badge role-freelancer">Freelancer</span>;
+    }
+    return null;
+  };
+
+  const renderSingleChatMessage = (
+    message: ConversationMessageResponse,
+    index?: number,
+    messagesList?: ConversationMessageResponse[]
+  ) => {
+    const content = message.content?.trim() ?? '';
+    const isOpeningText =
+      content === 'A dispute has been opened.' ||
+      content === 'A dispute has been opened. Admin moderation is in progress.' ||
+      /dispute.*open/i.test(content) ||
+      /mở.*tranh chấp/i.test(content) ||
+      /tranh chấp.*được mở/i.test(content) ||
+      ((index === 0 || index === undefined) && /dispute/i.test(content));
+
+    const isSystem =
+      message.messageType === MessageType.System ||
+      message.messageType === MessageType.DisputeEvent ||
+      message.messageType === 3 ||
+      message.messageType === 8 ||
+      isOpeningText;
+
+    if (isSystem) {
+      const displayText = isOpeningText
+        ? t('disputes.disputeOpenedNotice', { defaultValue: 'A dispute has been opened. Admin moderation is in progress.' })
+        : message.content;
+
+      return (
+        <div className="dispute-chat-system my-4 flex justify-center" key={message.messageId}>
+          <span>
+            <AlertTriangle size={14} className="shrink-0" />
+            <span>{displayText}</span>
+            <span className="opacity-75 text-[10px] font-bold">
+              • {new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </span>
+        </div>
+      );
+    }
+
+    const isOfficial = message.messageType === MessageType.AdminOfficial || message.messageType === 10 || message.senderRole === UserRole.Admin;
+    const mine = message.senderRole === UserRole.Admin;
+
+    const prevMessage = index !== undefined && index > 0 && messagesList ? messagesList[index - 1] : null;
+    const nextMessage = index !== undefined && messagesList && index < messagesList.length - 1 ? messagesList[index + 1] : null;
+
+    const sameSenderAsPrev = Boolean(
+      prevMessage &&
+      prevMessage.senderUserId === message.senderUserId &&
+      prevMessage.messageType !== MessageType.System &&
+      prevMessage.messageType !== MessageType.DisputeEvent
+    );
+    const sameSenderAsNext = Boolean(
+      nextMessage &&
+      nextMessage.senderUserId === message.senderUserId &&
+      nextMessage.messageType !== MessageType.System &&
+      nextMessage.messageType !== MessageType.DisputeEvent
+    );
+
+    const showAvatar = !mine && (!sameSenderAsNext || !nextMessage);
+    const showMetaHeader = !mine && !sameSenderAsPrev;
+
     return (
       <div
+        className={`dispute-chat-message-row ${mine ? 'mine' : ''} ${isOfficial ? 'admin-official-row' : ''} ${sameSenderAsPrev ? 'grouped' : ''}`}
         key={message.messageId}
-        className={`admin-chat-bubble-card ${isOfficial ? 'official-directive' : ''} ${isBoth ? 'both-directive' : ''} ${
-          message.senderRole === UserRole.Admin ? 'admin-sender' : ''
-        }`}
       >
-        <div className="admin-chat-bubble-header">
-          <div className="admin-chat-sender-info">
-            {message.senderAvatar ? (
-              <img src={message.senderAvatar} alt={message.senderName || 'Sender'} className="admin-chat-avatar" />
-            ) : (
-              <div className="admin-chat-avatar-placeholder">
-                {message.senderName ? message.senderName[0].toUpperCase() : <User size={12} />}
+        {!mine && (
+          <div className="dispute-chat-avatar-wrapper">
+            {showAvatar && (
+              <UserAvatar
+                name={message.senderName || (isOfficial ? 'Administrator' : 'Participant')}
+                src={message.senderAvatar}
+                userId={message.senderUserId}
+                size="sm"
+                premium={isOfficial}
+              />
+            )}
+          </div>
+        )}
+
+        <div className="dispute-chat-bubble-container">
+          {showMetaHeader && (
+            <div className="dispute-chat-meta">
+              <span className="dispute-sender-name">
+                {message.senderName || (isOfficial ? t('admin.disputes.chat.administrator', 'Administrator') : t('admin.disputes.chat.participant', 'Participant'))}
+              </span>
+              {renderRoleBadge(message.senderRole, isOfficial)}
+            </div>
+          )}
+
+          <div className={`dispute-chat-bubble ${mine ? 'mine' : ''} ${isOfficial ? 'admin-official-bubble' : ''}`}>
+            {isOfficial && !mine && showMetaHeader && (
+              <div className="admin-bubble-header">
+                <ShieldCheck size={13} />
+                <strong>{t('admin.disputes.chat.officialDirective', 'Official Administrative Directive')}</strong>
               </div>
             )}
-            <strong className="admin-chat-sender-name">
-              {message.senderName || (isOfficial ? t('admin.disputes.chat.administrator', 'Administrator') : t('admin.disputes.chat.participant', 'Participant'))}
-            </strong>
-            <span className={`admin-role-badge role-${message.senderRole ?? 'unknown'}`}>
-              {message.senderRole === UserRole.Admin
-                ? 'Admin'
-                : message.senderRole === UserRole.Client
-                ? 'Client'
-                : message.senderRole === UserRole.Freelancer
-                ? 'Freelancer'
-                : 'Participant'}
-            </span>
+            <div className="dispute-chat-text">{message.content}</div>
+
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="dispute-chat-attachments">
+                {message.attachments.map((att) => (
+                  <a
+                    key={att.messageAttachmentId}
+                    href={att.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Paperclip size={13} /> {att.fileName}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
-          <time className="admin-chat-time">
+          <time className="dispute-chat-timestamp">
             {new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </time>
         </div>
-
-        <p className="admin-chat-content">{message.content}</p>
-
-        {message.attachments.length > 0 && (
-          <div className="admin-chat-attachment-list">
-            {message.attachments.map((att) => (
-              <a key={att.messageAttachmentId} href={att.fileUrl} target="_blank" rel="noreferrer" className="admin-chat-attachment-link">
-                <Paperclip size={12} /> {att.fileName}
-              </a>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
 
   return (
     <AppLayout fullWidth>
-      <div ref={containerRef} className="admin-disputes-wrapper text-text-primary px-4 py-6 lg:px-8 max-w-[1600px] mx-auto space-y-6">
+      <div ref={containerRef} className="admin-disputes-wrapper text-text-primary px-3 py-4 sm:px-4 sm:py-6 lg:px-8 max-w-[1600px] mx-auto space-y-4 sm:space-y-6">
         
         {/* Sticky Top Header Bar matching esign/reports redesign */}
-        <header className="esign-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8 mb-6 rounded-2xl border border-border shadow-sm">
+        <header className="esign-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-3 py-3.5 sm:px-4 sm:py-4 backdrop-blur-md lg:px-8 mb-4 sm:mb-6 rounded-2xl border border-border shadow-sm">
           <div className="mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-brand">
@@ -382,10 +534,39 @@ export default function AdminDisputeManagementScreen() {
           </button>
         </section>
 
+        {/* Mobile View Switcher (Visible only on screens < 1024px) */}
+        <div className="flex lg:hidden items-center p-1 rounded-2xl bg-surface-muted/60 border border-border gap-1.5 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setMobileView('list')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-black rounded-xl transition cursor-pointer min-h-[44px] ${
+              mobileView === 'list'
+                ? 'bg-brand text-white shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <Layers size={15} />
+            <span>{t('admin.disputes.mobile.casesList', 'Cases List')} ({filteredDisputes.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView('detail')}
+            disabled={!selectedDispute}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-black rounded-xl transition cursor-pointer min-h-[44px] disabled:opacity-40 disabled:cursor-not-allowed ${
+              mobileView === 'detail'
+                ? 'bg-brand text-white shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <Scale size={15} />
+            <span>{t('admin.disputes.mobile.workspace', 'Case Workspace')}</span>
+          </button>
+        </div>
+
         {/* Main Workspace Layout */}
         <section className="disputes-layout">
           {/* Left Panel: Dispute List */}
-          <div className="disputes-list-card">
+          <div className={`disputes-list-card ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
             <div className="disputes-filter-row">
               {STATUS_GROUPS.map((group: DisputeStatusGroup) => (
                 <button
@@ -412,7 +593,10 @@ export default function AdminDisputeManagementScreen() {
                 <button
                   key={dispute.id}
                   className={`dispute-list-item ${selectedDisputeId === dispute.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedDisputeId(dispute.id)}
+                  onClick={() => {
+                    setSelectedDisputeId(dispute.id);
+                    setMobileView('detail');
+                  }}
                 >
                   <div className="dispute-list-title">
                     <strong>{dispute.contractTitle}</strong>
@@ -429,7 +613,7 @@ export default function AdminDisputeManagementScreen() {
           </div>
 
           {/* Right Panel: Selected Case Workspace */}
-          <div className="dispute-detail-card">
+          <div className={`dispute-detail-card ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
             {loadingDetail ? (
               <div className="admin-dispute-empty p-12 text-center text-xs font-bold text-text-muted flex flex-col items-center justify-center gap-2">
                 <LoaderCircle className="animate-spin text-brand" size={28} />
@@ -444,6 +628,14 @@ export default function AdminDisputeManagementScreen() {
                 {/* Case Header & Quick Actions */}
                 <div className="detail-card-header">
                   <div className="header-case-title">
+                    <button
+                      type="button"
+                      onClick={() => setMobileView('list')}
+                      className="inline-flex lg:hidden items-center gap-1.5 text-xs font-black text-brand hover:underline cursor-pointer mb-2 min-h-[36px]"
+                    >
+                      <ArrowLeft size={15} />
+                      {t('admin.disputes.mobile.backToList', 'Back to Cases List')}
+                    </button>
                     <p className="text-[11px] font-mono font-bold text-brand uppercase tracking-wider">Case ID: {selectedDispute.id}</p>
                     <h2 className="text-xl font-black text-text-primary tracking-tight">{selectedDispute.contractTitle}</h2>
                   </div>
@@ -475,57 +667,105 @@ export default function AdminDisputeManagementScreen() {
                 </div>
 
                 {/* Tabs Bar for Workspace Panels */}
-                <nav className="admin-investigation-tabs" aria-label="Investigation tabs">
-                  <button
-                    type="button"
-                    className={`admin-investigation-tab-btn ${activeTab === 'dispute' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('dispute')}
+                <div className="relative flex items-center group/tabs">
+                  {canScrollLeft && (
+                    <button
+                      type="button"
+                      onClick={() => scrollTabsBy('left')}
+                      aria-label="Scroll left"
+                      className="absolute left-1 z-10 hidden sm:flex h-7 w-7 items-center justify-center rounded-full bg-surface/95 border border-border shadow-lg text-text-primary hover:bg-brand hover:text-white transition cursor-pointer backdrop-blur-md"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                  )}
+
+                  <nav
+                    ref={tabsRef}
+                    className="admin-investigation-tabs select-none cursor-grab active:cursor-grabbing w-full"
+                    aria-label="Investigation tabs"
+                    onMouseDown={handleTabsMouseDown}
+                    onMouseMove={handleTabsMouseMove}
+                    onMouseUp={handleTabsMouseUp}
+                    onMouseLeave={handleTabsMouseUp}
+                    onWheel={handleTabsWheel}
+                    onScroll={checkTabsScroll}
                   >
-                    <ShieldAlert size={15} /> {t('admin.disputes.tabs.overview', 'Overview')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-investigation-tab-btn ${activeTab === 'conversation' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('conversation')}
-                  >
-                    <MessageSquare size={15} /> {t('admin.disputes.tabs.chat', 'Arbitration Chat')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-investigation-tab-btn ${activeTab === 'contract' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('contract')}
-                  >
-                    <Briefcase size={15} /> {t('admin.disputes.tabs.contractInfo', 'Contract Info')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-investigation-tab-btn ${activeTab === 'milestones' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('milestones')}
-                  >
-                    <Landmark size={15} /> {t('admin.disputes.tabs.milestones', 'Milestones')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-investigation-tab-btn ${activeTab === 'evidence' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('evidence')}
-                  >
-                    <Paperclip size={15} /> {t('admin.disputes.tabs.evidence', 'Evidence')} ({selectedDispute.evidence.filter((e) => Boolean(e.fileName)).length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-investigation-tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('audit')}
-                  >
-                    <History size={15} /> {t('admin.disputes.tabs.auditLog', 'Audit Log')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-investigation-tab-btn ${activeTab === 'userTimeline' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('userTimeline')}
-                  >
-                    <Activity size={15} /> {t('admin.disputes.tabs.userTimeline', 'User Activity')}
-                  </button>
-                </nav>
+                    <button
+                      type="button"
+                      className={`admin-investigation-tab-btn ${activeTab === 'dispute' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!hasDraggedTabs) setActiveTab('dispute');
+                      }}
+                    >
+                      <ShieldAlert size={15} /> {t('admin.disputes.tabs.overview', 'Overview')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-investigation-tab-btn ${activeTab === 'conversation' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!hasDraggedTabs) setActiveTab('conversation');
+                      }}
+                    >
+                      <MessageSquare size={15} /> {t('admin.disputes.tabs.chat', 'Arbitration Chat')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-investigation-tab-btn ${activeTab === 'contract' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!hasDraggedTabs) setActiveTab('contract');
+                      }}
+                    >
+                      <Briefcase size={15} /> {t('admin.disputes.tabs.contractInfo', 'Contract Info')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-investigation-tab-btn ${activeTab === 'milestones' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!hasDraggedTabs) setActiveTab('milestones');
+                      }}
+                    >
+                      <Landmark size={15} /> {t('admin.disputes.tabs.milestones', 'Milestones')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-investigation-tab-btn ${activeTab === 'evidence' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!hasDraggedTabs) setActiveTab('evidence');
+                      }}
+                    >
+                      <Paperclip size={15} /> {t('admin.disputes.tabs.evidence', 'Evidence')} ({selectedDispute.evidence.filter((e) => Boolean(e.fileName)).length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-investigation-tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!hasDraggedTabs) setActiveTab('audit');
+                      }}
+                    >
+                      <History size={15} /> {t('admin.disputes.tabs.auditLog', 'Audit Log')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-investigation-tab-btn ${activeTab === 'userTimeline' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!hasDraggedTabs) setActiveTab('userTimeline');
+                      }}
+                    >
+                      <Activity size={15} /> {t('admin.disputes.tabs.userTimeline', 'User Activity')}
+                    </button>
+                  </nav>
+
+                  {canScrollRight && (
+                    <button
+                      type="button"
+                      onClick={() => scrollTabsBy('right')}
+                      aria-label="Scroll right"
+                      className="absolute right-1 z-10 hidden sm:flex h-7 w-7 items-center justify-center rounded-full bg-surface/95 border border-border shadow-lg text-text-primary hover:bg-brand hover:text-white transition cursor-pointer backdrop-blur-md"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  )}
+                </div>
 
                 {/* Tab 1: Dispute Overview */}
                 {activeTab === 'dispute' && (
@@ -566,9 +806,40 @@ export default function AdminDisputeManagementScreen() {
                 {/* Tab 2: 2-Column Arbitration Chat Workspace */}
                 {activeTab === 'conversation' && (
                   <div className="tab-pane arbitration-chat-pane">
+                    {/* Mobile Chat Column Filter Tabs (< 1024px) */}
+                    <div className="flex lg:hidden items-center p-1 rounded-xl bg-surface-muted/60 border border-border gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setMobileChatTab('both')}
+                        className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition min-h-[38px] cursor-pointer ${
+                          mobileChatTab === 'both' ? 'bg-brand text-white shadow-xs' : 'text-text-muted hover:text-text-primary'
+                        }`}
+                      >
+                        {t('admin.disputes.chat.tabsAll', 'All Messages')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMobileChatTab('freelancer')}
+                        className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition min-h-[38px] cursor-pointer ${
+                          mobileChatTab === 'freelancer' ? 'bg-emerald-600 text-white shadow-xs' : 'text-text-muted hover:text-text-primary'
+                        }`}
+                      >
+                        Freelancer ({freelancerMessages.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMobileChatTab('client')}
+                        className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition min-h-[38px] cursor-pointer ${
+                          mobileChatTab === 'client' ? 'bg-purple-600 text-white shadow-xs' : 'text-text-muted hover:text-text-primary'
+                        }`}
+                      >
+                        Client ({clientMessages.length})
+                      </button>
+                    </div>
+
                     <div className="arbitration-chat-columns">
                       {/* Left Column: Freelancer Direct Chat */}
-                      <div className="chat-column freelancer-column">
+                      <div className={`chat-column freelancer-column ${mobileChatTab === 'client' ? 'hidden lg:flex' : 'flex'}`}>
                         <div className="chat-column-header">
                           <User size={16} />
                           <span>{t('admin.disputes.chat.freelancerPrivate', 'Freelancer (Private Column)')}</span>
@@ -577,14 +848,14 @@ export default function AdminDisputeManagementScreen() {
                           {freelancerMessages.length === 0 ? (
                             <p className="no-messages-text">{t('admin.disputes.chat.noFreelancerMsgs', 'No messages in Freelancer column.')}</p>
                           ) : (
-                            freelancerMessages.map(renderSingleChatMessage)
+                            freelancerMessages.map((msg, index) => renderSingleChatMessage(msg, index, freelancerMessages))
                           )}
                           <div ref={freelancerChatEndRef} />
                         </div>
                       </div>
 
                       {/* Right Column: Client Direct Chat */}
-                      <div className="chat-column client-column">
+                      <div className={`chat-column client-column ${mobileChatTab === 'freelancer' ? 'hidden lg:flex' : 'flex'}`}>
                         <div className="chat-column-header">
                           <User size={16} />
                           <span>{t('admin.disputes.chat.clientPrivate', 'Client (Private Column)')}</span>
@@ -593,7 +864,7 @@ export default function AdminDisputeManagementScreen() {
                           {clientMessages.length === 0 ? (
                             <p className="no-messages-text">{t('admin.disputes.chat.noClientMsgs', 'No messages in Client column.')}</p>
                           ) : (
-                            clientMessages.map(renderSingleChatMessage)
+                            clientMessages.map((msg, index) => renderSingleChatMessage(msg, index, clientMessages))
                           )}
                           <div ref={clientChatEndRef} />
                         </div>
@@ -670,24 +941,26 @@ export default function AdminDisputeManagementScreen() {
                 {activeTab === 'milestones' && (
                   <div className="tab-pane">
                     <div className="milestones-table-card rounded-2xl border border-border overflow-hidden bg-background">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="border-b border-border bg-surface-muted/30">
-                          <tr>
-                            <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.title', 'Milestone Title')}</th>
-                            <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.lockedAmount', 'Locked Amount')}</th>
-                            <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.status', 'Status')}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/60">
-                          {selectedDispute.milestones.map((milestone) => (
-                            <tr key={milestone.milestoneId} className="hover:bg-surface-muted/30">
-                              <td className="p-3 text-xs font-extrabold text-text-primary">{milestone.title}</td>
-                              <td className="p-3 text-xs font-bold font-mono text-brand">{milestone.lockedAmount.toLocaleString()} GCoin</td>
-                              <td className="p-3 text-xs font-bold text-text-muted">{milestone.status}</td>
+                      <div className="w-full overflow-x-auto">
+                        <table className="w-full min-w-[500px] text-left border-collapse">
+                          <thead className="border-b border-border bg-surface-muted/30">
+                            <tr>
+                              <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.title', 'Milestone Title')}</th>
+                              <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.lockedAmount', 'Locked Amount')}</th>
+                              <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.status', 'Status')}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-border/60">
+                            {selectedDispute.milestones.map((milestone) => (
+                              <tr key={milestone.milestoneId} className="hover:bg-surface-muted/30">
+                                <td className="p-3 text-xs font-extrabold text-text-primary">{milestone.title}</td>
+                                <td className="p-3 text-xs font-bold font-mono text-brand">{milestone.lockedAmount.toLocaleString()} GCoin</td>
+                                <td className="p-3 text-xs font-bold text-text-muted">{milestone.status}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -707,11 +980,11 @@ export default function AdminDisputeManagementScreen() {
                               <Paperclip size={16} className="text-brand shrink-0" />
                               <strong className="truncate" title={evidence.fileName || t('admin.disputes.evidence.attachment', 'Attachment')}>{evidence.fileName || t('admin.disputes.evidence.attachment', 'Attachment')}</strong>
                             </div>
-                            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-text-muted">
-                              <span className="flex items-center gap-1.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs font-semibold text-text-muted">
+                              <span className="flex items-center gap-1.5 min-w-0">
                                 <User size={13} className="text-brand shrink-0" />
-                                <span>{t('admin.disputes.evidence.sender', 'Sender:')}</span>
-                                <strong className="text-text-primary">
+                                <span className="shrink-0">{t('admin.disputes.evidence.sender', 'Sender:')}</span>
+                                <strong className="text-text-primary truncate">
                                   {evidence.uploadedByName
                                     ? `${evidence.uploadedByName} (${evidence.uploadedById === selectedDispute.client?.userId ? t('admin.disputes.userTimeline.roles.client', 'Client') : evidence.uploadedById === selectedDispute.freelancer?.userId ? t('admin.disputes.userTimeline.roles.freelancer', 'Freelancer') : t('admin.disputes.evidence.roleParticipant', 'Participant')})`
                                     : evidence.uploadedById === selectedDispute.client?.userId
@@ -721,7 +994,7 @@ export default function AdminDisputeManagementScreen() {
                                     : t('admin.disputes.evidence.roleParticipant', 'Participant')}
                                 </strong>
                               </span>
-                              <span className="text-[11px] font-medium">{formatDate(evidence.createdAt)}</span>
+                              <span className="text-[11px] font-medium shrink-0">{formatDate(evidence.createdAt)}</span>
                             </div>
                             <p className="text-xs font-medium text-text-secondary leading-relaxed">{evidence.description || t('admin.disputes.evidence.noDescription', 'No description provided.')}</p>
                             <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
@@ -974,10 +1247,10 @@ export default function AdminDisputeManagementScreen() {
         {/* Request Evidence Modal Dialog */}
         {showEvidenceDialog && selectedDispute && (
           <div className="modal-backdrop">
-            <div className="modal-card space-y-4 max-w-lg p-6 bg-background border border-border rounded-2xl shadow-2xl">
+            <div className="modal-card space-y-4 max-w-lg p-4 sm:p-6 bg-background border border-border rounded-2xl shadow-2xl">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <h3 className="text-base font-black text-text-primary">{t('admin.disputes.dialog.evidenceTitle', 'Request Evidence From Participants')}</h3>
-                <button type="button" onClick={() => setShowEvidenceDialog(false)} className="text-text-muted hover:text-text-primary cursor-pointer">
+                <button type="button" onClick={() => setShowEvidenceDialog(false)} className="text-text-muted hover:text-text-primary cursor-pointer p-1">
                   <X size={20} />
                 </button>
               </div>
@@ -1018,15 +1291,15 @@ export default function AdminDisputeManagementScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
-                <button type="button" onClick={() => setShowEvidenceDialog(false)} className="rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 transition cursor-pointer" disabled={actionLoading}>
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 pt-3 border-t border-border">
+                <button type="button" onClick={() => setShowEvidenceDialog(false)} className="w-full sm:w-auto rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-extrabold text-text-primary hover:border-brand/40 transition cursor-pointer min-h-[44px]" disabled={actionLoading}>
                   {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={() => void requestEvidenceSubmit()}
                   disabled={actionLoading || !evidenceRequest.reason.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer shadow-sm disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer shadow-sm disabled:opacity-50 min-h-[44px]"
                 >
                   {t('admin.disputes.dialog.sendRequest', 'Send Evidence Request')}
                 </button>

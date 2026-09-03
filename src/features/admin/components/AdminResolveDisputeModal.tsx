@@ -114,7 +114,7 @@ export function AdminResolveDisputeModal({
 
   return (
     <div className="modal-backdrop z-50">
-      <div className="modal-card max-w-4xl space-y-5 max-h-[90vh] overflow-y-auto p-6 bg-background border border-border rounded-2xl shadow-2xl">
+      <div className="modal-card max-w-4xl space-y-5 max-h-[90dvh] overflow-y-auto p-4 sm:p-6 bg-background border border-border rounded-2xl shadow-2xl">
         
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-border pb-4">
@@ -218,11 +218,11 @@ export function AdminResolveDisputeModal({
           {/* Milestone Financial Allocations Table */}
           {relevantMilestones.length > 0 && (
             <div className="rounded-2xl border border-border bg-surface-muted/30 p-4 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h4 className="text-xs font-black uppercase tracking-wider text-text-primary">
                   {t('admin.disputes.dialog.milestoneAllocations', 'Milestone Financial Allocations')}
                 </h4>
-                <div className="text-[11px] font-bold text-text-muted space-x-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-text-muted">
                   <span>Release: <strong className="text-emerald-600 dark:text-emerald-400">{allocationTotals.release.toFixed(2)}</strong></span>
                   <span>Refund: <strong className="text-cyan-600 dark:text-cyan-400">{allocationTotals.refund.toFixed(2)}</strong></span>
                   <span>Penalty: <strong className="text-rose-600 dark:text-rose-400">{allocationTotals.penalty.toFixed(2)}</strong></span>
@@ -482,12 +482,12 @@ export function AdminResolveDisputeModal({
         </div>
 
         {/* Modal Action Buttons Footer */}
-        <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-4 border-t border-border">
           <button
             type="button"
             onClick={resetResolveDialog}
             disabled={actionLoading}
-            className="rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-extrabold text-text-primary hover:border-brand/40 transition cursor-pointer"
+            className="w-full sm:w-auto rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-extrabold text-text-primary hover:border-brand/40 transition cursor-pointer min-h-[44px]"
           >
             {t('common.cancel', 'Cancel')}
           </button>
@@ -495,7 +495,7 @@ export function AdminResolveDisputeModal({
             type="button"
             onClick={() => void resolveCase()}
             disabled={!canSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer shadow-md disabled:opacity-50"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer shadow-md disabled:opacity-50 min-h-[44px]"
           >
             <Scale size={16} />
             {t('admin.disputes.dialog.confirmResolution', 'Confirm & Execute Resolution')}
