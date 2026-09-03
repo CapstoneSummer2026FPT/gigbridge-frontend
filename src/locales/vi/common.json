@@ -33,7 +33,10 @@
     "title": "Cài đặt GigBridge",
     "description": "Thêm vào màn hình chính để dùng như một ứng dụng",
     "action": "Cài đặt",
-    "dismiss": "Để sau"
+    "dismiss": "Để sau",
+    "iosTitle": "Cài đặt GigBridge trên iPhone",
+    "iosStep1": "1. Bấm nút Chia sẻ",
+    "iosStep2": "2. Chọn \"Thêm vào MH chính\""
   },
   "fileUploadProgress": {
     "uploading": "Đang tải tệp lên...",
