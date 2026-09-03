@@ -85,7 +85,6 @@ export function useAdminSystemTracking() {
     maxDuration: '',
     method: '',
     status: '',
-    ip: '',
   });
   const [apiLogSortOrder, setApiLogSortOrder] = useState<'asc' | 'desc'>('desc');
   const [apiLogPage, setApiLogPage] = useState(1);
@@ -390,7 +389,6 @@ export function useAdminSystemTracking() {
         if (apiLogFilters.maxDuration && log.duration > parseInt(apiLogFilters.maxDuration)) return false;
         if (apiLogFilters.method && log.method !== apiLogFilters.method) return false;
         if (apiLogFilters.status && !log.status.toString().startsWith(apiLogFilters.status)) return false;
-        if (apiLogFilters.ip && !log.ip.includes(apiLogFilters.ip)) return false;
         return true;
       })
       .sort((a, b) => {
