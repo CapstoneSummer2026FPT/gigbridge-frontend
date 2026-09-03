@@ -33,7 +33,10 @@
     "title": "Install GigBridge",
     "description": "Add it to your home screen to use it like an app",
     "action": "Install",
-    "dismiss": "Not now"
+    "dismiss": "Not now",
+    "iosTitle": "Install GigBridge on iPhone",
+    "iosStep1": "1. Tap the Share button",
+    "iosStep2": "2. Choose \"Add to Home Screen\""
   },
   "fileUploadProgress": {
     "uploading": "Uploading files...",
