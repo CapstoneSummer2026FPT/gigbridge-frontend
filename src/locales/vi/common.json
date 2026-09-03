@@ -29,6 +29,12 @@
     "yes": "Có",
     "no": "Không"
   },
+  "installApp": {
+    "title": "Cài đặt GigBridge",
+    "description": "Thêm vào màn hình chính để dùng như một ứng dụng",
+    "action": "Cài đặt",
+    "dismiss": "Để sau"
+  },
   "fileUploadProgress": {
     "uploading": "Đang tải tệp lên...",
     "uploadingPercent": "Đang tải tệp lên... {{percent}}%",

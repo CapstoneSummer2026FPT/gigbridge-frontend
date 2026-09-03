@@ -29,6 +29,12 @@
     "yes": "Yes",
     "no": "No"
   },
+  "installApp": {
+    "title": "Install GigBridge",
+    "description": "Add it to your home screen to use it like an app",
+    "action": "Install",
+    "dismiss": "Not now"
+  },
   "fileUploadProgress": {
     "uploading": "Uploading files...",
     "uploadingPercent": "Uploading files... {{percent}}%",
