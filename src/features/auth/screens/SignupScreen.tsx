@@ -11,6 +11,7 @@ import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { getGoogleOAuth2, type GoogleCodeClient } from '../googleIdentity';
+import { PasswordRequirementsChecklist, checkPasswordRequirements } from '../components/PasswordRequirementsChecklist';
 
 
 type SignupStep = 'role' | 'form';
@@ -300,6 +301,19 @@ export default function SignupScreen() {
       if (!isOtpVerified || !verificationTicket) {
         if (isMounted.current) {
           setError('Please verify your email address first.');
+          setIsEmailLoading(false);
+        }
+        return;
+      }
+
+      if (!checkPasswordRequirements(formData.password).isValid) {
+        if (isMounted.current) {
+          setError(
+            t('auth.passwordInvalid', {
+              defaultValue:
+                'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.',
+            })
+          );
           setIsEmailLoading(false);
         }
         return;
@@ -642,6 +656,11 @@ export default function SignupScreen() {
                     disabled={isLoading}>
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
+                </div>
+
+                {/* Password Requirements Checklist */}
+                <div className="auth-form-animate">
+                  <PasswordRequirementsChecklist password={formData.password} />
                 </div>
 
                 <div className={`auth-policy-consent flex items-start gap-3 auth-form-animate${policyError ? ' auth-policy-consent--error' : ''}`}>
