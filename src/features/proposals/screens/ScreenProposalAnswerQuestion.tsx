@@ -799,15 +799,22 @@ export default function ScreenProposalAnswerQuestion() {
                         </span>
                       </div>
                       <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
-                        activeQuestion.isRequired ? 'bg-rose-500/10 text-rose-500' : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
+                        activeQuestion.isRequired ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-[var(--surface-muted)] text-[var(--text-muted)] border border-slate-500/20'
                       }`}>
-                        {t(activeQuestion.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
+                        {activeQuestion.isRequired ? t('proposalQuestions.required', 'Bắt buộc') : t('proposalQuestions.optional', 'Tùy chọn')}
                       </span>
                     </div>
 
                     <p className="text-base font-bold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
                       {activeQuestion.questionText}
                     </p>
+
+                    {activeQuestion.isRequired && !(answers[activeQuestion.jobPostQuestionsId] || '').trim() && (
+                      <div className="mt-3 flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs font-bold text-rose-600">
+                        <AlertTriangle size={14} className="shrink-0 text-rose-500" />
+                        <span>{t('aiInterview.errors.questionRequired', 'Câu hỏi này là bắt buộc. Vui lòng trả lời trước khi chuyển tiếp.')}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Answer textarea */}
@@ -830,7 +837,7 @@ export default function ScreenProposalAnswerQuestion() {
                       onChange={event => setAnswers(prev => ({ ...prev, [activeQuestion.jobPostQuestionsId]: event.target.value }))}
                       className="w-full resize-none border-none bg-transparent p-4 text-sm leading-relaxed outline-none disabled:cursor-not-allowed disabled:opacity-50"
                       style={{ color: 'var(--text-primary)' }}
-                      placeholder={timerLoading ? 'Đang chuẩn bị câu hỏi...' : 'Viết câu trả lời của bạn tại đây...'}
+                      placeholder={timerLoading ? t('aiInterview.interviewer.states.preparing', 'Đang chuẩn bị câu hỏi...') : t('proposalQuestions.placeholder', 'Viết câu trả lời của bạn tại đây...')}
                     />
                   </div>
 
@@ -842,8 +849,8 @@ export default function ScreenProposalAnswerQuestion() {
                       <Timer size={14} className={isCritical ? 'text-rose-500' : 'text-amber-500'} />
                       <p className={`text-xs font-bold ${isCritical ? 'text-rose-600' : 'text-amber-600'}`}>
                         {isCritical
-                          ? 'Hết giờ ngay bây giờ! Câu trả lời sẽ được lưu tự động.'
-                          : 'Còn ít thời gian. Hoàn thành câu trả lời của bạn.'}
+                          ? t('aiInterview.timer.critical', 'Hết giờ ngay bây giờ! Câu trả lời sẽ được lưu tự động.')
+                          : t('aiInterview.timer.warning', 'Còn ít thời gian. Hoàn thành câu trả lời của bạn.')}
                       </p>
                     </div>
                   )}

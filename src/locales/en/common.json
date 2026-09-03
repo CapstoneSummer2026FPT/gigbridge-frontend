@@ -417,11 +417,29 @@
       "startAction": "Start AI interview",
       "continueAction": "Continue AI interview"
     },
+    "placeholder": {
+      "skipped": "[Skipped]",
+      "timedOut": "[Timed out]",
+      "noAnswer": "[No answer provided]"
+    },
+    "timer": {
+      "critical": "Almost out of time (3 mins)! Your answer will automatically submit at 00:00.",
+      "warning": "Under 30 seconds remaining for this question! Please wrap up your answer.",
+      "expired": "3-minute time limit reached! Moving to the next question."
+    },
+    "tips": {
+      "quietRoomShort": "💡 Tip: Interview in a quiet room so GigBridge AI can transcribe your voice accurately."
+    },
+    "badge": {
+      "required": "Required",
+      "optional": "Optional"
+    },
     "actions": {
       "start": "Start AI Interview",
       "starting": "Starting interview…",
       "browseToChoose": "Browse jobs to choose an interview role",
       "answerQuestion": "Answer question",
+      "skipQuestion": "Skip Question",
       "retryAudio": "Retry question audio",
       "hearAgain": "Hear question again",
       "cancel": "Cancel",
@@ -433,6 +451,7 @@
       "goToProposals": "Go to proposals"
     },
     "errors": {
+      "questionRequired": "This question is required. Please provide an answer before proceeding.",
       "chooseJob": "Choose a job before starting an AI interview.",
       "startFailed": "The AI interview could not be started. Please try again.",
       "noQuestions": "Cannot start AI interview. Because this job post does not have interview questions.",
