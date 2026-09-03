@@ -380,43 +380,57 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     if (pillarScores.screening_qa < 50) {
       reasons.push({
         type: 'negative',
-        text: `Very weak Q&A performance (${pillarScores.screening_qa.toFixed(1)}/100)`,
+        text: isEn
+          ? `Very weak Q&A performance (${pillarScores.screening_qa.toFixed(1)}/100)`
+          : `Kết quả trả lời phỏng vấn sàng lọc rất yếu (${pillarScores.screening_qa.toFixed(1)}/100)`,
       });
     } else if (pillarScores.screening_qa >= 80) {
       reasons.push({
         type: 'positive',
-        text: `Strong screening Q&A answers & reasoning (${pillarScores.screening_qa.toFixed(1)}/100)`,
+        text: isEn
+          ? `Strong screening Q&A answers & reasoning (${pillarScores.screening_qa.toFixed(1)}/100)`
+          : `Câu trả lời phỏng vấn sàng lọc & lập luận kỹ thuật tốt (${pillarScores.screening_qa.toFixed(1)}/100)`,
       });
     }
 
     if (scopePct < 70) {
       reasons.push({
         type: 'negative',
-        text: `Low requirement coverage (${scopePct.toFixed(0)}% fulfilled)`,
+        text: isEn
+          ? `Low requirement coverage (${scopePct.toFixed(0)}% fulfilled)`
+          : `Độ bao phủ yêu cầu công việc thấp (${scopePct.toFixed(0)}% hoàn thành)`,
       });
     } else if (scopePct >= 90) {
       reasons.push({
         type: 'positive',
-        text: `Comprehensive requirement coverage (${scopePct.toFixed(0)}% fulfilled)`,
+        text: isEn
+          ? `Comprehensive requirement coverage (${scopePct.toFixed(0)}% fulfilled)`
+          : `Bao phủ đầy đủ các yêu cầu công việc (${scopePct.toFixed(0)}% hoàn thành)`,
       });
     }
 
     if (pillarScores.technical_solution < 60) {
       reasons.push({
         type: 'negative',
-        text: `Solution methodology & requirement alignment needs improvement (${pillarScores.technical_solution.toFixed(1)}/100)`,
+        text: isEn
+          ? `Solution methodology & requirement alignment needs improvement (${pillarScores.technical_solution.toFixed(1)}/100)`
+          : `Phương pháp giải pháp & độ bám sát yêu cầu cần cải thiện (${pillarScores.technical_solution.toFixed(1)}/100)`,
       });
     } else if (pillarScores.technical_solution >= 80) {
       reasons.push({
         type: 'positive',
-        text: `Solid solution methodology & requirement alignment proposed (${pillarScores.technical_solution.toFixed(1)}/100)`,
+        text: isEn
+          ? `Solid solution methodology & requirement alignment proposed (${pillarScores.technical_solution.toFixed(1)}/100)`
+          : `Đề xuất phương pháp giải pháp & độ bám sát yêu cầu vững chắc (${pillarScores.technical_solution.toFixed(1)}/100)`,
       });
     }
 
     if (pillarScores.financial_value < 50) {
       reasons.push({
         type: 'negative',
-        text: `Financial/timeline feasibility score is low (${pillarScores.financial_value.toFixed(1)}/100)`,
+        text: isEn
+          ? `Financial/timeline feasibility score is low (${pillarScores.financial_value.toFixed(1)}/100)`
+          : `Điểm tính khả thi về chi phí/thời gian thấp (${pillarScores.financial_value.toFixed(1)}/100)`,
       });
     }
 
@@ -440,6 +454,40 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     const rawComments = details?.llm_qualitative_evaluation?.pillar_comments;
     if (rawComments && rawComments[pillarKey]) {
       return rawComments[pillarKey];
+    }
+
+    if (!isEn) {
+      switch (pillarKey) {
+        case 'technical_solution':
+          if (score >= 80) {
+            return '• Mức độ phù hợp yêu cầu (25%): Phần giới thiệu đề xuất bám sát các yêu cầu trong mô tả công việc.\n• Phân tích vấn đề (25%): Đã phân tích đúng bản chất kỹ thuật và yêu cầu chuyên môn.\n• Kiến trúc giải pháp (25%): Quy trình làm việc và phương pháp triển khai rõ ràng.\n• Sản phẩm bàn giao (15%): Liệt kê chi tiết các đầu ra sản phẩm cụ thể.\n• Ranh giới phạm vi (10%): Xác định rõ các giả định và hạng mục ngoài phạm vi.';
+          }
+          if (score >= 60) {
+            return '• Mức độ phù hợp yêu cầu (25%): Đáp ứng mức cơ bản với các yêu cầu chính.\n• Phân tích vấn đề (25%): Phân tích hợp lý ở mức tổng quan.\n• Kiến trúc giải pháp (25%): Quy trình thực hiện tiêu chuẩn.\n• Sản phẩm bàn giao (15%): Mô tả sản phẩm bàn giao ở mức trung bình.\n• Ranh giới phạm vi (10%): Cần làm rõ thêm ranh giới phạm vi dự án.';
+          }
+          return '• Mức độ phù hợp yêu cầu (25%): Đề xuất chung chung, chưa bám sát yêu cầu công việc.\n• Phân tích vấn đề (25%): Thiếu phân tích chuyên sâu về vấn đề nghiệp vụ.\n• Kiến trúc giải pháp (25%): Phương pháp tiếp cận còn sơ sài.\n• Sản phẩm bàn giao (15%): Mô tả sản phẩm bàn giao chưa cụ thể.\n• Ranh giới phạm vi (10%): Chưa đề cập giả định và các hạng mục ngoài phạm vi.';
+
+        case 'screening_qa':
+          const qaList = details?.llm_qualitative_evaluation?.screening_qa || proposal.aiGradedQuestions || [];
+          if (qaList.length === 0 || score === 0) {
+            return '• Trạng thái Phỏng vấn: Ứng viên chưa thực hiện câu hỏi sàng lọc (0/100).';
+          }
+          if (score >= 80) {
+            return '• Độ chính xác (40%): Nắm vững kiến thức chuyên môn và khái niệm cốt lõi.\n• Lập luận kỹ thuật (25%): Lập luận logic tốt và giải thích rõ lựa chọn.\n• Độ bám sát câu hỏi (15%): Trả lời đúng trọng tâm câu hỏi.\n• Độ sâu chuyên môn (10%): Thể hiện chiều sâu chuyên môn cao.\n• Ví dụ thực tế (10%): Có ví dụ thực tiễn minh họa phù hợp.';
+          }
+          return '• Độ chính xác (40%): Độ chính xác ở mức trung bình.\n• Lập luận kỹ thuật (25%): Cần phỏng vấn thêm để xác minh kỹ năng.\n• Độ bám sát câu hỏi (15%): Trả lời bám sát câu hỏi ở mức cơ bản.\n• Độ sâu chuyên môn (10%): Nội dung ở mức tổng quan.\n• Ví dụ thực tế (10%): Chưa cung cấp ví dụ kịch bản thực tế cụ thể.';
+
+        case 'financial_value':
+          const boostVal = (savingsPct * 0.5).toFixed(0);
+          const savingsText = savingsPct > 0 
+            ? `Tạo ra mức tiết kiệm ${savingsPct.toFixed(1)}% so với ngân sách tối đa của khách hàng (+${boostVal}%).` 
+            : 'Mức giá đề xuất bằng ngân sách tối đa, không tạo thêm mức tiết kiệm (+0%).';
+          const realismText = score >= 50 ? 'Mức giá đề xuất hợp lý so với khối lượng công việc (+50%).' : 'Mức giá đề xuất có độ chênh lệch cao so với mặt bằng thị trường.';
+          return `• Tính thực tế về giá (50%): ${realismText}\n• Mức tiết kiệm ngân sách (50%): ${savingsText}`;
+
+        case 'milestone_scope':
+          return `• Phạm vi yêu cầu (40%): Đáp ứng ${scopePct.toFixed(0)}% / 100% tổng số yêu cầu công việc.\n• Cấu trúc Milestone (30%): Phân chia giai đoạn và sản phẩm bàn giao rõ ràng.\n• Tính khả thi thời gian (30%): Thời lượng triển khai phù hợp với tiến độ thực tế.`;
+      }
     }
 
     // Dynamic smart per-subcriteria fallback generation in English (matching UI headers & candidate English answers)
@@ -588,17 +636,37 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     const customSummary = details?.llm_qualitative_evaluation?.answer_quality_summary_comment;
     if (customSummary) return customSummary;
 
+    if (!isEn) {
+      if (pillarScores.authenticity_fluff >= 70) {
+        return 'Câu trả lời của ứng viên thể hiện chiều sâu chuyên môn tốt, phương pháp triển khai cụ thể và các ví dụ thực tiễn phù hợp với mô tả công việc.';
+      }
+      return 'Câu trả lời của ứng viên có mật độ chuyên môn chưa cao, còn sử dụng nhiều diễn đạt chung chung. Khuyên dùng phỏng vấn kỹ thuật để xác minh thêm kinh nghiệm thực tế.';
+    }
+
     if (pillarScores.authenticity_fluff >= 70) {
       return 'Candidate responses demonstrate high technical substance, concrete domain methodology, and clear practical examples tailored to this job post.';
     }
     return 'Candidate responses exhibit lower technical substance density and rely on generic, high-level phrasing. Further technical screening is recommended to verify hands-on execution experience and specific tools.';
-  }, [details, pillarScores.authenticity_fluff]);
+  }, [details, pillarScores.authenticity_fluff, isEn]);
 
   // Extract probing questions or generate smart per-problem fallback list
   const probingQuestionsList: string[] = React.useMemo(() => {
     const rawProbing = details?.llm_qualitative_evaluation?.probing_questions;
     if (Array.isArray(rawProbing) && rawProbing.length > 0) {
       return rawProbing;
+    }
+
+    if (!isEn) {
+      if (pillarScores.authenticity_fluff < 70) {
+        return [
+          'Đề xuất còn thiếu các thông số quy trình và công cụ triển khai cụ thể cho công việc này.',
+          'Câu trả lời sàng lọc đưa ra khái niệm lý thuyết chung chung, thiếu lập luận kỹ thuật và thực tiễn.',
+          'Chưa xác định rõ ranh giới phạm vi dự án và các hạng mục ngoài phạm vi.',
+        ];
+      }
+      return [
+        'Xác minh quy trình triển khai thực tế và phương pháp phối hợp làm việc trong buổi phỏng vấn.',
+      ];
     }
 
     if (pillarScores.authenticity_fluff < 70) {
@@ -611,7 +679,7 @@ export function AIProposalVerdictCard({ proposal }: AIProposalVerdictCardProps) 
     return [
       'Verify specific hands-on workflow steps and team handoff processes during the technical interview.',
     ];
-  }, [details, pillarScores.authenticity_fluff]);
+  }, [details, pillarScores.authenticity_fluff, isEn]);
 
   // Extract ground-truth AI sub-criteria scores (strict matching from AI server evaluation JSON)
   const techSub = details?.llm_qualitative_evaluation?.technical_solution;

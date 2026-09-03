@@ -1298,6 +1298,7 @@ export function useMessages() {
     hubConnection.on('ConversationInboxRevisionChanged', handleConversationRevisionChanged);
     hubConnection.on('ContractDraftUpdated', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
+    hubConnection.on('ContractDetailsConfirmed', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
     hubConnection.on('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
     hubConnection.on('ContractMilestonesAccepted', handleContractWorkflowUpdate);
@@ -1316,6 +1317,7 @@ export function useMessages() {
       hubConnection.off('ConversationInboxRevisionChanged', handleConversationRevisionChanged);
       hubConnection.off('ContractDraftUpdated', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
+      hubConnection.off('ContractDetailsConfirmed', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
       hubConnection.off('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
       hubConnection.off('ContractMilestonesAccepted', handleContractWorkflowUpdate);
