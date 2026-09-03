@@ -10,10 +10,12 @@ import {
   Trash2,
   Scale,
   FileText,
+  Sparkles,
 } from 'lucide-react';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import type { ProposalDetailDto, ProposalDto } from '../../../types/models/Proposal';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { getCriteriaColorTheme } from '../utils/criteriaColors';
 
 export interface AISideBySideMilestoneMatrixProps {
   detail: ProposalDetailDto | null;
@@ -401,7 +403,162 @@ export function AISideBySideMilestoneMatrix({
   const totalCostDiff = totalFreelancerCost - totalClientCost;
 
   return (
-    <div className="space-y-5 rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-xs">
+    <div className="space-y-6">
+      {/* ── CARD 1: Requirement Scope Fulfillment Section (Checklist) ───────────────── */}
+      {requirementFulfillment.length > 0 && (
+        <div className="space-y-4 rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-4">
+            <div>
+              <h4 className="text-sm sm:text-base font-black uppercase tracking-wider text-text-primary flex items-center gap-2">
+                <ShieldCheck size={18} className="text-brand shrink-0" />
+                <span>
+                  {t(
+                    'milestoneMatrix.checklistTitle',
+                    'Kiểm định phạm vi tính năng (Requirement Audit Checklist)'
+                  )}
+                </span>
+              </h4>
+              <p className="text-xs text-text-muted mt-1 font-normal">
+                {t(
+                  'milestoneMatrix.checklistSubtitle',
+                  'Bảng rà soát chi tiết từng yêu cầu kỹ thuật của dự án so với nội dung đề xuất và milestone'
+                )}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="p-2 px-3.5 rounded-xl bg-surface-muted border border-border flex items-center gap-3">
+                <div className="space-y-0.5 text-left">
+                  <span className="block text-[10px] font-bold text-text-muted uppercase">
+                    {t('milestoneMatrix.criteriaQualified', 'Tiêu chí đạt chuẩn')}
+                  </span>
+                  <strong className="text-text-primary font-black text-xs sm:text-sm block">
+                    {fulfilledCount} / {totalReqs || milestones.length}{' '}
+                    {t('milestoneMatrix.itemsLabel', 'Hạng mục')}
+                  </strong>
+                </div>
+                <div className="h-6 w-px bg-border/80" />
+                <div className="space-y-0.5 text-right">
+                  <span className="text-[10px] font-bold text-text-muted block">
+                    {t('milestoneMatrix.aiVerdictLabel', 'Đánh giá AI:')}
+                  </span>
+                  <span
+                    className={`text-xs font-black block ${
+                      scopeCoveragePct >= 80
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : scopeCoveragePct >= 60
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {scopeCoveragePct >= 80
+                      ? t('milestoneMatrix.aiVerdictFull', 'Bao phủ đầy đủ')
+                      : t('milestoneMatrix.aiVerdictReview', 'Cần rà soát bổ sung')}
+                  </span>
+                </div>
+              </div>
+
+              <span className="rounded-full bg-surface border border-brand px-3 py-1.5 text-xs font-black text-text-primary shadow-2xs shrink-0">
+                {t('milestoneMatrix.scopeCompleted', '{{pct}}% Hoàn thành', {
+                  pct: scopeCoveragePct.toFixed(0),
+                })}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 text-xs sm:text-sm pt-1">
+            {requirementFulfillment.map((req, idx) => {
+              const evidence = req.evidence_quote || req.note;
+              const matchedMs = req.matched_milestone;
+              const theme = getCriteriaColorTheme(idx);
+
+              return (
+                <div
+                  key={idx}
+                  className={`flex flex-col gap-2.5 p-4 rounded-2xl border ${
+                    req.is_fulfilled
+                      ? `${theme.cardBorder} ${theme.cardBg}`
+                      : 'border-border bg-surface-muted/30'
+                  } text-xs sm:text-sm font-bold transition-all shadow-2xs`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase text-white ${theme.pillBg} shrink-0 shadow-2xs`}
+                        title={t('milestoneMatrix.criteriaIndexTitle', 'Tiêu chí #{{num}} tương ứng màu đánh dấu trong Đề xuất', { num: idx + 1 })}
+                      >
+                        #{idx + 1}
+                      </span>
+                      {req.is_fulfilled ? (
+                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                      ) : (
+                        <XCircle size={18} className="text-rose-500 shrink-0" />
+                      )}
+                      <span className="font-black text-xs sm:text-sm text-text-primary">
+                        {req.requirement}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {matchedMs && (
+                        <span className="rounded-full bg-surface border border-border text-text-primary px-3 py-0.5 text-xs font-black shrink-0">
+                          {t('milestoneMatrix.matchedMilestone', 'Mốc liên kết: {{ms}}', {
+                            ms: matchedMs,
+                          })}
+                        </span>
+                      )}
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-black border ${
+                          req.is_fulfilled
+                            ? 'bg-surface border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-surface border-rose-500 text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {req.is_fulfilled
+                          ? t('milestoneMatrix.statusQualified', 'Đạt chuẩn')
+                          : t('milestoneMatrix.statusNotMet', 'Chưa đáp ứng')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Evidence Quote Box */}
+                  {evidence && (
+                    <div className={`mt-1 p-3 rounded-xl text-xs font-normal leading-relaxed border ${theme.cardBorder} bg-surface text-text-primary border-l-4 ${theme.borderMark}`}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-black uppercase text-[11px] tracking-wider text-text-muted flex items-center gap-1.5">
+                          <FileText size={12} className="text-brand shrink-0" />
+                          <span>
+                            {req.is_fulfilled
+                              ? t(
+                                  'milestoneMatrix.evidenceQuote',
+                                  'Bằng chứng trích dẫn từ đề xuất'
+                                )
+                              : t(
+                                  'milestoneMatrix.missingScopeGap',
+                                  'Lý do chưa đáp ứng yêu cầu'
+                                )}
+                          </span>
+                        </span>
+                        {req.is_fulfilled && (
+                          <span className={`text-[10px] font-bold ${theme.cardText} italic`}>
+                            {t('milestoneMatrix.highlightColorHint', 'Được đánh dấu màu #{{num}} trong tab Đề xuất', { num: idx + 1 })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="italic text-xs font-medium">
+                        "{evidence.replace(/^"|"$/g, '')}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── CARD 2: Side-by-Side Milestone Table Compare ────────────────────────── */}
+      <div className="space-y-5 rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-xs">
       {/* ── Table Section Header ────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-4">
         <div>
@@ -460,7 +617,7 @@ export function AISideBySideMilestoneMatrix({
       </div>
 
       {/* ── Side-by-Side Summary KPI Cards ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs sm:text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm">
         {/* Card 1: Budget Comparison */}
         <div className="rounded-2xl border border-border bg-surface-muted/50 p-4 space-y-3">
           <div className="flex items-center justify-between border-b border-border/60 pb-2">
@@ -554,43 +711,6 @@ export function AISideBySideMilestoneMatrix({
             </div>
           </div>
         </div>
-
-        {/* Card 3: Scope Fulfillment */}
-        <div className="rounded-2xl border border-border bg-surface-muted/50 p-4 space-y-3">
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-            <span className="font-black text-xs uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-              <ShieldCheck size={14} className="text-brand shrink-0" />
-              {t('milestoneMatrix.scopeFulfillment', 'Độ bao phủ tính năng')}
-            </span>
-            <span className="rounded-full bg-surface border border-brand px-2.5 py-0.5 text-xs font-black text-text-primary">
-              {t('milestoneMatrix.scopeCompleted', '{{pct}}% Hoàn thành', {
-                pct: scopeCoveragePct.toFixed(0),
-              })}
-            </span>
-          </div>
-
-          <div className="p-2.5 rounded-xl bg-surface border border-border flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="block text-[11px] font-bold text-text-muted uppercase">
-                {t('milestoneMatrix.criteriaQualified', 'Tiêu chí đạt chuẩn')}
-              </span>
-              <strong className="text-text-primary font-black text-sm sm:text-base">
-                {fulfilledCount} / {totalReqs || milestones.length}{' '}
-                {t('milestoneMatrix.itemsLabel', 'Hạng mục')}
-              </strong>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-text-muted block">
-                {t('milestoneMatrix.aiVerdictLabel', 'Đánh giá AI:')}
-              </span>
-              <span className="text-xs font-black text-text-primary">
-                {scopeCoveragePct >= 80
-                  ? t('milestoneMatrix.aiVerdictFull', 'Bao phủ đầy đủ')
-                  : t('milestoneMatrix.aiVerdictReview', 'Cần rà soát bổ sung')}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ── True Side-by-Side Milestone Table Compare ────────────────────────── */}
@@ -600,7 +720,7 @@ export function AISideBySideMilestoneMatrix({
           <thead>
             <tr className="border-b border-border bg-surface-muted text-xs font-black uppercase text-text-primary">
               <th className="p-3.5 w-12 text-center text-text-muted">#</th>
-              <th className="p-3.5 w-5/12 border-r border-border">
+              <th className="p-3.5 w-[38%] border-r border-border">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-text-primary">
                     <FileText size={14} className="text-brand shrink-0" />
@@ -611,7 +731,7 @@ export function AISideBySideMilestoneMatrix({
                   </span>
                 </div>
               </th>
-              <th className="p-3.5 w-5/12 border-r border-border">
+              <th className="p-3.5 w-[38%] border-r border-border">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-text-primary">
                     <Layers size={14} className="text-brand shrink-0" />
@@ -622,8 +742,11 @@ export function AISideBySideMilestoneMatrix({
                   </span>
                 </div>
               </th>
-              <th className="p-3.5 w-2/12 text-center">
-                <span>{t('milestoneMatrix.thAudit', 'ĐỐI SOÁT AI (VERDICT)')}</span>
+              <th className="p-3.5 w-[24%] text-center bg-surface-muted/90">
+                <div className="flex items-center justify-center gap-1.5 text-text-primary">
+                  <Sparkles size={14} className="text-brand shrink-0" />
+                  <span>{t('milestoneMatrix.thAudit', 'ĐỐI SOÁT AI (VERDICT)')}</span>
+                </div>
               </th>
             </tr>
           </thead>
@@ -765,33 +888,49 @@ export function AISideBySideMilestoneMatrix({
                   </td>
 
                   {/* ── AI Audit & Status Verdict ── */}
-                  <td className="p-3.5 text-center align-top space-y-2">
+                  <td className="p-3.5 text-center align-top space-y-2.5 bg-surface-muted/20">
                     {row.status === 'Preserved' ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted border border-border px-3 py-1 text-xs font-black text-text-primary">
-                        <CheckCircle2 size={13} className="text-emerald-500" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3.5 py-1 text-xs font-black text-emerald-700 dark:text-emerald-400 shadow-2xs">
+                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
                         <span>{t('milestoneMatrix.preserved', 'Giữ nguyên')}</span>
                       </span>
                     ) : row.status === 'Added' ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted border border-border px-3 py-1 text-xs font-black text-text-primary">
-                        <PlusCircle size={13} className="text-brand" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/50 bg-brand/10 px-3.5 py-1 text-xs font-black text-brand shadow-2xs">
+                        <PlusCircle size={14} className="text-brand stroke-[2.5]" />
                         <span>{t('milestoneMatrix.added', 'Bổ sung mới')}</span>
                       </span>
                     ) : row.status === 'Deleted' ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted border border-border px-3 py-1 text-xs font-black text-text-primary">
-                        <Trash2 size={13} className="text-rose-500" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/50 bg-rose-500/10 px-3.5 py-1 text-xs font-black text-rose-700 dark:text-rose-400 shadow-2xs">
+                        <Trash2 size={14} className="text-rose-600 dark:text-rose-400 stroke-[2.5]" />
                         <span>{t('milestoneMatrix.deleted', 'Đã lược bỏ')}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted border border-border px-3 py-1 text-xs font-black text-text-primary">
-                        <Edit3 size={13} className="text-amber-500" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/10 px-3.5 py-1 text-xs font-black text-amber-700 dark:text-amber-400 shadow-2xs">
+                        <Edit3 size={14} className="text-amber-600 dark:text-amber-400 stroke-[2.5]" />
                         <span>{t('milestoneMatrix.edited', 'Điều chỉnh')}</span>
                       </span>
                     )}
 
                     {row.changeSummary && (
-                      <p className="text-[11px] text-text-muted font-medium text-left leading-relaxed bg-surface-muted/60 p-2 rounded-lg border border-border/60">
-                        {row.changeSummary}
-                      </p>
+                      <div
+                        className={`text-[11px] text-left leading-relaxed p-2.5 rounded-xl border shadow-2xs space-y-1 ${
+                          row.status === 'Preserved'
+                            ? 'bg-emerald-500/5 border-emerald-500/25'
+                            : row.status === 'Added'
+                            ? 'bg-brand/5 border-brand/25'
+                            : row.status === 'Deleted'
+                            ? 'bg-rose-500/5 border-rose-500/25'
+                            : 'bg-amber-500/5 border-amber-500/25'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-text-muted">
+                          <Sparkles size={11} className="text-brand shrink-0" />
+                          <span>{t('milestoneMatrix.aiVerdictDetail', 'Nhận xét đối soát:')}</span>
+                        </div>
+                        <p className="font-semibold text-text-primary text-xs leading-normal">
+                          {row.changeSummary}
+                        </p>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -883,115 +1022,7 @@ export function AISideBySideMilestoneMatrix({
           )}
         </table>
       </div>
-
-      {/* ── Requirement Scope Fulfillment Section (Checklist) ───────────────── */}
-      {requirementFulfillment.length > 0 && (
-        <div className="pt-4 border-t border-border space-y-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-surface-muted/60 border border-border p-3.5 rounded-2xl">
-            <div>
-              <span className="block text-xs sm:text-sm font-black uppercase text-text-primary tracking-wider flex items-center gap-2">
-                <ShieldCheck size={16} className="text-brand shrink-0" />
-                <span>
-                  {t(
-                    'milestoneMatrix.checklistTitle',
-                    'Kiểm định phạm vi tính năng (Requirement Audit Checklist)'
-                  )}
-                </span>
-              </span>
-              <span className="text-xs font-medium text-text-muted mt-0.5 block">
-                {t(
-                  'milestoneMatrix.checklistSubtitle',
-                  'Bảng rà soát chi tiết từng yêu cầu kỹ thuật của dự án so với nội dung đề xuất và milestone'
-                )}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-surface border border-border px-3.5 py-1 text-xs font-black text-text-primary shadow-2xs">
-                {t(
-                  'milestoneMatrix.checklistFulfilled',
-                  '{{count}} / {{total}} Yêu cầu đạt chuẩn ({{pct}}%)',
-                  {
-                    count: fulfilledCount,
-                    total: totalReqs,
-                    pct: scopeCoveragePct.toFixed(0),
-                  }
-                )}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 text-xs sm:text-sm">
-            {requirementFulfillment.map((req, idx) => {
-              const evidence = req.evidence_quote || req.note;
-              const matchedMs = req.matched_milestone;
-
-              return (
-                <div
-                  key={idx}
-                  className="flex flex-col gap-2 p-3.5 rounded-2xl border border-border bg-surface text-xs sm:text-sm font-bold transition-all shadow-2xs"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {req.is_fulfilled ? (
-                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
-                      ) : (
-                        <XCircle size={18} className="text-rose-500 shrink-0" />
-                      )}
-                      <span className="font-black text-xs sm:text-sm text-text-primary">
-                        {req.requirement}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {matchedMs && (
-                        <span className="rounded-full bg-surface-muted border border-border text-text-primary px-3 py-0.5 text-xs font-black shrink-0">
-                          {t('milestoneMatrix.matchedMilestone', 'Mốc liên kết: {{ms}}', {
-                            ms: matchedMs,
-                          })}
-                        </span>
-                      )}
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-black border ${
-                          req.is_fulfilled
-                            ? 'bg-surface border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-surface border-rose-500 text-rose-600 dark:text-rose-400'
-                        }`}
-                      >
-                        {req.is_fulfilled
-                          ? t('milestoneMatrix.statusQualified', 'Đạt chuẩn')
-                          : t('milestoneMatrix.statusNotMet', 'Chưa đáp ứng')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Evidence Quote Box */}
-                  {evidence && (
-                    <div className="mt-1 p-3 rounded-xl text-xs font-normal leading-relaxed border border-border bg-surface-muted/50 text-text-primary">
-                      <span className="font-black uppercase text-[11px] tracking-wider block mb-1 text-text-muted flex items-center gap-1.5">
-                        <FileText size={12} className="text-brand shrink-0" />
-                        <span>
-                          {req.is_fulfilled
-                            ? t(
-                                'milestoneMatrix.evidenceQuote',
-                                'Bằng chứng trích dẫn từ đề xuất'
-                              )
-                            : t(
-                                'milestoneMatrix.missingScopeGap',
-                                'Lý do chưa đáp ứng yêu cầu'
-                              )}
-                        </span>
-                      </span>
-                      <p className="italic text-xs font-medium">
-                        "{evidence.replace(/^"|"$/g, '')}"
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
-  );
+  </div>
+);
 }

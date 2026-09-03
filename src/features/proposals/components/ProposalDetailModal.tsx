@@ -389,11 +389,17 @@ const renderAnnotatedDetailSection = (
     elements.push(
       <mark
         key={`mark-group-${idx}`}
-        className={`${theme.bgMark} ${theme.textMark} border-b-2 ${theme.borderMark} px-2 py-0.5 rounded-md font-bold transition-all hover:opacity-90 inline shadow-2xs my-0.5`}
+        className={`${theme.bgMark} text-text-primary border-b-2 ${theme.borderMark} px-1.5 py-0.5 rounded-md font-medium transition-all inline shadow-2xs my-0.5`}
       >
         {combinedText}
-        <span className={`inline-flex items-center gap-1 ml-1.5 px-2.5 py-0.5 rounded-full ${theme.pillBg} text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-2xs align-middle`}>
-          ✓ MATCHED: "{gb.requirement}"
+        <span
+          className={`inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-md ${theme.pillBg} text-white text-[10px] font-black uppercase tracking-wider shadow-2xs align-baseline select-none`}
+          title={`Khớp tiêu chí #${gb.criteriaIndex + 1}: ${gb.requirement}`}
+        >
+          <span>✓ #{gb.criteriaIndex + 1}</span>
+          <span className="hidden sm:inline font-bold opacity-90 max-w-[140px] truncate">
+            {gb.requirement}
+          </span>
         </span>
       </mark>
     );
@@ -1029,17 +1035,25 @@ export function ProposalDetailModal({
                   <>
                     {/* Top Criteria Match Banner (Renders strictly when AI evaluation exists and totalReqs > 0) */}
                     {aiAuditData && aiAuditData.totalReqs > 0 && (
-                      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-surface-card p-4 flex flex-wrap items-center justify-between gap-2.5 text-sm shadow-2xs">
+                      <div className="rounded-2xl border border-border bg-surface-muted/60 p-4 flex flex-wrap items-center justify-between gap-2.5 text-sm shadow-2xs">
                         <div className="flex items-center gap-2.5">
                           <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
-                          <span className="font-black text-emerald-800 dark:text-emerald-200 text-sm sm:text-base flex items-center gap-1.5">
-                            <ClipboardList size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-                            <span>{aiAuditData.fulfilledCount} / {aiAuditData.totalReqs} Criteria Matched ({aiAuditData.scopeCoveragePct.toFixed(0)}% Scope Coverage)</span>
+                          <span className="font-black text-text-primary text-sm sm:text-base flex items-center gap-1.5">
+                            <ClipboardList size={16} className="shrink-0 text-brand" />
+                            <span>
+                              {t('proposalModal.criteriaMatchedBanner', '{{count}} / {{total}} Tiêu chí khớp chuẩn ({{pct}}% Phạm vi)', {
+                                count: aiAuditData.fulfilledCount,
+                                total: aiAuditData.totalReqs,
+                                pct: aiAuditData.scopeCoveragePct.toFixed(0),
+                              })}
+                            </span>
                           </span>
                         </div>
-                        <span className="rounded-full bg-emerald-500/20 px-3.5 py-1 text-xs font-black text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs flex items-center gap-1">
-                          <Sparkles size={12} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-                          <span>AI Evidence Sentences Highlighted in Proposal Below</span>
+                        <span className="rounded-full bg-surface px-3.5 py-1 text-xs font-black text-text-primary border border-border shadow-2xs flex items-center gap-1.5">
+                          <Sparkles size={12} className="shrink-0 text-brand" />
+                          <span>
+                            {t('proposalModal.aiHighlightedNotice', 'Các câu bằng chứng AI được đánh dấu màu bên dưới')}
+                          </span>
                         </span>
                       </div>
                     )}
