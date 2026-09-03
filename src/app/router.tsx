@@ -85,6 +85,7 @@ const BuyGigcoinScreen = lazy(() => import('../features/wallet/screens/BuyGigcoi
 const EarlyPayoutScreen = lazy(() => import('../features/wallet/screens/EarlyPayoutScreen'));
 const GoogleMeetOAuthCallbackScreen = lazy(() => import('../features/integrations/screens/GoogleMeetOAuthCallbackScreen'));
 const ApproveMilestoneScreen = lazy(() => import('../features/contracts/screens/ApproveMilestoneScreen'));
+const DeliverySpaceScreen = lazy(() => import('../features/deliveryspace/screens/DeliverySpaceScreen'));
 const CreateEsignContractScreen = lazy(() => import('../features/contracts/screens/CreateEsignContractScreen'));
 const ESignContractsScreen = lazy(() => import('../features/contracts/screens/ESignContractsScreen'));
 const EsignDocumentSigningScreen = lazy(() => import('../features/contracts/screens/EsignDocumentSigningScreen'));
@@ -265,6 +266,10 @@ export const router = createBrowserRouter([
       { path: 'contracts/:contractId/documents/:documentId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones/:milestoneId/approve', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><ApproveMilestoneScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/deliverables/:milestoneId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={FREELANCER_ONLY_ROLES}><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
+
+      // Delivery space - one screen for both parties; the row controls differ by role, the data does not.
+      { path: 'deliveryspace/:contractId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><DeliverySpaceScreen /></ProtectedRoute> },
+      { path: 'deliveryspace/:contractId/milestones/:milestoneId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><DeliverySpaceScreen /></ProtectedRoute> },
 
       // Messages - requires authentication and setup
       { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><MessagesScreen /></ProtectedRoute> },

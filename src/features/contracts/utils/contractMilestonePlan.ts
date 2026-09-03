@@ -50,7 +50,9 @@ export const prepareContractMilestonesForEditing = (
         })),
     }));
 
-  return prepareMilestonePlanForEditing(ordered);
+  // Contract milestones are saved state the freelancer reviews and delivery runs against, so the
+  // editor shows the stored breakdown as-is rather than hiding auto-generated items.
+  return prepareMilestonePlanForEditing(ordered, { keepGeneratedWorkItems: true });
 };
 
 export const resolveContractMilestones = (

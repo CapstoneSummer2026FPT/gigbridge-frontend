@@ -1,4 +1,10 @@
+import type { JobPostMilestonePlanDto } from '../../../types/models/Job';
+
 export const JOB_DURATION_UNITS = ['weeks', 'months', 'years'] as const;
+
+// Work items get a finer duration grain (day(s)) than milestones, which stay
+// week(s)+ only via JOB_DURATION_UNITS above.
+export const WORK_ITEM_DURATION_UNITS = ['days', 'weeks', 'months', 'years'] as const;
 
 export type JobDurationUnit = typeof JOB_DURATION_UNITS[number];
 
@@ -134,4 +140,73 @@ export const computeChainedDueDates = (
     nextStart = addDaysToDateString(dueDate, 1);
     return dueDate;
   });
+};
+
+// Work items are allowed a finer duration grain (day(s)) than milestones, which stay
+// week(s)+ only via JOB_DURATION_UNITS/parseJobDuration above. This is a deliberately
+// separate parser, mirroring the backend's split between MilestoneDeadlineCalculator's
+// TryParseDurationDays (milestones) and TryParseWorkItemDurationDays (work items).
+type WorkItemDurationUnit = 'days' | JobDurationUnit;
+
+const WORK_ITEM_DURATION_PATTERN = /^\s*(\d+)\s*(day|days|ngày|ngay|week|weeks|month|months|year|years|tuần|tuan|tháng|thang|năm|nam)\s*$/iu;
+
+const WORK_ITEM_DAYS_PER_UNIT: Record<WorkItemDurationUnit, number> = {
+  days: 1,
+  weeks: 7,
+  months: 30,
+  years: 365,
+};
+
+const normalizeWorkItemDurationUnit = (unit: string): WorkItemDurationUnit | null => {
+  const normalized = unit.trim().toLowerCase();
+  if (['day', 'days', 'ngày', 'ngay'].includes(normalized)) return 'days';
+  if (['week', 'weeks', 'tuần', 'tuan'].includes(normalized)) return 'weeks';
+  if (['month', 'months', 'tháng', 'thang'].includes(normalized)) return 'months';
+  if (['year', 'years', 'năm', 'nam'].includes(normalized)) return 'years';
+  return null;
+};
+
+export const parseWorkItemDuration = (
+  duration: string | null | undefined
+): { value: string; unit: WorkItemDurationUnit } | null => {
+  if (!duration) return null;
+
+  const match = duration.match(WORK_ITEM_DURATION_PATTERN);
+  if (!match) return null;
+
+  const value = Number(match[1]);
+  const unit = normalizeWorkItemDurationUnit(match[2]);
+  if (!Number.isInteger(value) || value <= 0 || !unit) return null;
+
+  return { value: String(value), unit };
+};
+
+export const workItemDurationToDays = (duration: string | null | undefined): number => {
+  const parsed = parseWorkItemDuration(duration);
+  return parsed ? Number(parsed.value) * WORK_ITEM_DAYS_PER_UNIT[parsed.unit] : 0;
+};
+
+export interface WorkItemDurationSummary {
+  milestoneDays: number;
+  totalWorkItemDays: number;
+  remainingDays: number;
+  overageDays: number;
+}
+
+// Mirrors the backend's TryGetWorkItemDurationOverage: an unset/unparseable milestone
+// duration is a safe no-op (never reported as an overage), and work items contribute 0
+// days when their own duration is blank/unparseable.
+export const computeWorkItemDurationSummary = (
+  milestone: Pick<JobPostMilestonePlanDto, 'estimatedDuration' | 'workItems'>
+): WorkItemDurationSummary => {
+  const milestoneParts = parseJobDuration(milestone.estimatedDuration);
+  const milestoneDays = milestoneParts.value ? durationToDays(milestoneParts.value, milestoneParts.unit) : 0;
+  const totalWorkItemDays = (milestone.workItems || []).reduce(
+    (sum, item) => sum + workItemDurationToDays(item.estimatedDuration),
+    0
+  );
+  const overageDays = milestoneDays > 0 ? Math.max(0, totalWorkItemDays - milestoneDays) : 0;
+  const remainingDays = Math.max(0, milestoneDays - totalWorkItemDays);
+
+  return { milestoneDays, totalWorkItemDays, remainingDays, overageDays };
 };

@@ -15,7 +15,7 @@ import {
 import type { usePostJob } from '../hooks/usePostJob';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
-import { JOB_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
+import { JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
 import { QuestionRequiredToggle } from './QuestionRequiredToggle';
 
 type PostJobController = ReturnType<typeof usePostJob>;
@@ -234,13 +234,15 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
         optional
         showDueDate
         dueDateReadOnly
-        showWorkItems={false}
+        showWorkItems
+        showWorkItemsSummary
         title={t('postJob.baselineMilestoneTitle')}
         description={t('postJob.baselineMilestoneDescription')}
         expandedIndex={expandedMilestone}
         onExpandedChange={setExpandedMilestone}
         errors={milestoneErrors}
         durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
+        workItemDurationUnits={WORK_ITEM_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
         uiCopy={{
           optional: t('postJobWizard.plan.milestoneCopy.optional'),
           addMilestone: t('postJobWizard.plan.milestoneCopy.addMilestone'),
@@ -268,7 +270,6 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
           workItemTitle: t('postJobWizard.plan.milestoneCopy.workItemTitle'),
           estimatedDuration: t('postJobWizard.plan.milestoneCopy.estimatedDuration'),
           taskDescription: t('postJobWizard.plan.milestoneCopy.taskDescription'),
-          workItemDeliverables: t('postJobWizard.plan.milestoneCopy.workItemDeliverables'),
         }}
         fieldHints={{
           fixedProjectBudget: t('postJob.baselineBudgetHint'),

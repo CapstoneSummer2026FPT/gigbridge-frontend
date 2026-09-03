@@ -16,7 +16,7 @@ import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
+import { ContractStatus, MilestoneStatus, MilestoneDeliveryMode } from '../../../types/models/Contract';
 import {
   formatContractAmount,
   formatContractDate,
@@ -125,6 +125,15 @@ export default function SubmitMilestoneDeliverableScreen() {
         if (!milestoneResponse.success || !milestoneResponse.data) {
           throw new Error(milestoneResponse.message || t('contracts.loadingMilestone', { defaultValue: 'Failed to load milestone details' }));
         }
+
+        // A work item contract delivers and reviews per work item. Bookmarks, emails and
+        // notifications sent before that change still point here, so redirect rather than showing a
+        // milestone-level screen that the API will refuse.
+        if (Number(milestoneResponse.data.deliveryMode ?? 0) === MilestoneDeliveryMode.WorkItem) {
+          navigate(`/deliveryspace/${contractId}/milestones/${milestoneId}`, { replace: true });
+          return;
+        }
+
         const milestone = milestoneResponse.data;
 
         // Verify milestone belongs to this contract

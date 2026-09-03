@@ -31,6 +31,8 @@ export const durationScore = (value?: string | null) => {
 
 export function useClientProposals() {
   const { t } = useTranslation();
+  const tRef = useRef(t);
+  tRef.current = t;
   const navigate = useNavigate();
   const location = useLocation();
   const queryJobId = useMemo(() => new URLSearchParams(location.search).get('job'), [location.search]);
@@ -67,6 +69,7 @@ export function useClientProposals() {
   const [submittedTo, setSubmittedTo] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
   const [rawAnswers, setRawAnswers] = useState<ProposalAnswerDto[]>([]);
+  const [originalJobMilestones, setOriginalJobMilestones] = useState<any[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -117,11 +120,11 @@ export function useClientProposals() {
           }
           return sortProposalReviewJobs(items)[0]?.jobPostsId || null;
         });
-        if (!response.success) setLoadError(response.message || t('proposalReview.errors.jobs'));
+        if (!response.success) setLoadError(response.message || tRef.current('proposalReview.errors.jobs'));
       })
-      .catch(() => alive && setLoadError(t('proposalReview.errors.jobs')));
+      .catch(() => alive && setLoadError(tRef.current('proposalReview.errors.jobs')));
     return () => { alive = false; };
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     setActiveId(null);
@@ -150,12 +153,12 @@ export function useClientProposals() {
       .then(response => {
         if (!alive) return;
         setProposals(response.data || []);
-        if (!response.success) setLoadError(response.message || t('proposalReview.errors.proposals'));
+        if (!response.success) setLoadError(response.message || tRef.current('proposalReview.errors.proposals'));
       })
-      .catch(() => alive && setLoadError(t('proposalReview.errors.proposals')))
+      .catch(() => alive && setLoadError(tRef.current('proposalReview.errors.proposals')))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [proposalReloadKey, selectedJobId, t]);
+  }, [proposalReloadKey, selectedJobId]);
 
   useEffect(() => {
     if (selectedJobId && selectedJobId !== queryJobId) {
@@ -345,6 +348,16 @@ export function useClientProposals() {
       const detailRes = await proposalGetAPI.getProposalDetail(proposalId).catch(() => null);
       if (detailRes?.success && detailRes.data) {
         setDetail(detailRes.data);
+        const targetJobId = detailRes.data.jobPostId || selectedJobId;
+        if (targetJobId) {
+          jobAPI.getMyJobPostById(targetJobId)
+            .then(res => {
+              if (res?.success && res.data?.milestonePlans) {
+                setOriginalJobMilestones(res.data.milestonePlans);
+              }
+            })
+            .catch(() => {});
+        }
       } else {
         setDetailError(detailRes?.message || 'Failed to load proposal detail');
       }
@@ -423,6 +436,7 @@ export function useClientProposals() {
     rejectProposalId,
     setRejectProposalId,
     rawAnswers,
+    originalJobMilestones,
     selectJob,
     updateStatus,
     acceptForNegotiation,

@@ -54,7 +54,7 @@ export const proposalPostAPI = {
 
   judgeAllProposals: async (
     jobPostId: string,
-    batchSize: number = 10
+    batchSize: number = 1
   ): Promise<ApiResponse<BatchJudgeResultDto>> => {
     return apiService.post<BatchJudgeResultDto>(`${proposalsUrl}/job/${jobPostId}/ai-judge-all?batchSize=${batchSize}`);
   },

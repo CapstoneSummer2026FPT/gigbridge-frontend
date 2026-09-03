@@ -36,19 +36,20 @@
   background-color: var(--background);
   border: 1px solid var(--border);
   border-radius: 1.25rem;
-  padding: 1.5rem;
+  padding: 1.25rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .sw-header-card {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding: 2rem;
+    padding: 1.75rem 2rem;
+    gap: 2rem;
   }
 }
 
@@ -68,6 +69,7 @@
   flex-direction: column;
   gap: 0.5rem;
   min-width: 0;
+  flex: 1;
 }
 
 .sw-header-back-btn {
@@ -102,17 +104,29 @@
 }
 
 .sw-header-title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 900;
   letter-spacing: -0.025em;
   color: var(--text-primary);
   margin: 0;
-  line-height: 1.25;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 @media (min-width: 640px) {
   .sw-header-title {
-    font-size: 1.625rem;
+    font-size: 1.375rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sw-header-title {
+    font-size: 1.5rem;
   }
 }
 
@@ -123,6 +137,8 @@
   color: var(--text-muted);
   max-width: 42rem;
   margin: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 640px) {
@@ -147,6 +163,12 @@
   -webkit-overflow-scrolling: touch;
   position: relative;
   z-index: 1;
+}
+
+@media (min-width: 1024px) {
+  .sw-stepper-container {
+    align-self: center;
+  }
 }
 
 @media (min-width: 768px) {
@@ -674,7 +696,7 @@
 
 @media (min-width: 640px) {
   .sw-summary-pills-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -686,6 +708,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .sw-complete-actions {

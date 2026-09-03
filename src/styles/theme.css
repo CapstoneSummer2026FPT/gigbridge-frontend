@@ -25,10 +25,10 @@
   --text-muted: #5e5d62;
   --text-subtle: #95959f;
 
-  --success: #16a34a;
-  --warning: #d97706;
+  --success: #149644;
+  --warning: #d9b606;
   --destructive: #dc2626;
-  --info: #0284c7;
+  --info: #0075b0;
   --mint: #AFDBFF;
   --prompt-shadow-1: rgba(73, 75, 231, 0.45);
   --prompt-shadow-mid: rgba(124, 147, 243, 0.6);
@@ -254,6 +254,7 @@
   --color-brand-foreground: var(--brand-foreground);
 
   --color-surface: var(--surface);
+  --color-surface-card: var(--surface);
   --color-surface-hover: var(--surface-hover);
   --color-surface-muted: var(--surface-muted);
   --color-border-strong: var(--border-strong);

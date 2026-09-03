@@ -9,7 +9,6 @@ import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types
 
 import {
   JobPostVisibility,
-  JobPostStatus,
   type CreateDraftJobPostResponse,
   type GetMyJobPostDetailDto,
   type JobPostQuestionDto,
@@ -21,14 +20,17 @@ import {
 import {
   addDaysToDateString,
   computeChainedDueDates,
+  computeWorkItemDurationSummary,
   durationToWeeks,
   formatJobDuration,
   isValidJobDurationValue,
   parseJobDuration,
   type JobDurationUnit,
 } from '../utils/jobDuration';
-import { clampMilestonesToExpectedTargets, resolveCanonicalBudget } from '../utils/milestoneClamping';
+import { clampMilestonesToExpectedTargets, clampWorkItemsToMilestoneDuration, resolveCanonicalBudget } from '../utils/milestoneClamping';
 import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
+import { publishJobPost } from '../utils/publishJobPost';
+import { hasAnsweredInterviewQuestions, resolveAiInterviewEnabled } from '../utils/interviewQuestions';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -172,13 +174,6 @@ const createDraftJobPostOnce = async (): Promise<string> => {
 
 const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: true });
 
-const withoutWorkBreakdownItems = (
-  milestones: readonly JobPostMilestonePlanDto[],
-): JobPostMilestonePlanDto[] => milestones.map(milestone => ({
-  ...milestone,
-  workItems: [],
-}));
-
 const normalizeSkillName = (value: string): string => value.trim().toLowerCase()
   .replaceAll('#', 'sharp').replaceAll('+', 'plus').replaceAll('&', 'and')
   .replace(/[^\p{L}\p{N}]/gu, '');
@@ -304,7 +299,7 @@ export function usePostJob() {
   });
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [pendingGeneratedDetails, setPendingGeneratedDetails] = useState<GenerateJobDescriptionDetailsResponse | null>(null);
-  const [aiGenerationSource, setAiGenerationSource] = useState<'prompt' | 'document'>('prompt');
+  const [aiGenerationSource, setAiGenerationSource] = useState<'prompt' | 'document' | 'hybrid'>('prompt');
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isHiringPlanGenerated, setIsHiringPlanGenerated] = useState(() => {
     return (location.state as any)?.hiringPlanGenerated ?? false;
@@ -343,7 +338,7 @@ export function usePostJob() {
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
   const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
-    withoutWorkBreakdownItems(initialJobData?.milestonePlans || []));
+    initialJobData?.milestonePlans || []);
   const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
   const [hasAiInterview, setHasAiInterview] = useState<boolean>(() =>
     Boolean(initialJobData?.hasAiInterview)
@@ -381,6 +376,15 @@ export function usePostJob() {
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
     [questions]
   );
+  const hasInterviewQuestions = useMemo(
+    () => hasAnsweredInterviewQuestions(questions),
+    [questions]
+  );
+  const isAiInterviewEnabled = resolveAiInterviewEnabled(hasAiInterview, questions);
+
+  useEffect(() => {
+    if (!hasInterviewQuestions) setHasAiInterview(false);
+  }, [hasInterviewQuestions]);
 
   const hasSavableDraftContent = useMemo(() => {
     const visibility = Number(form.visibility);
@@ -517,7 +521,7 @@ export function usePostJob() {
         });
         const activeBudget = Number(hasBudgetFromWizardNavigation ? form.budget : loadedForm.budget) || null;
         const activeWeeks = loadedForm.estimatedDurationValue ? durationToWeeks(loadedForm.estimatedDurationValue, loadedForm.estimatedDurationUnit) : 0;
-        const hydratedPlans = withoutWorkBreakdownItems(job.milestonePlans || []);
+        const hydratedPlans = job.milestonePlans || [];
         setMilestonePlans(clampMilestonesToExpectedTargets(hydratedPlans, activeBudget, activeWeeks));
         setAttachments(job.attachments || []);
         setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
@@ -689,6 +693,7 @@ export function usePostJob() {
     setSkillNameById({});
     setForm(initialFormFromState(null));
     setQuestions([emptyQuestion()]);
+    setHasAiInterview(false);
     setMilestonePlans([]);
     setAttachments([]);
     setAttachmentError(null);
@@ -829,7 +834,7 @@ export function usePostJob() {
     setDraggedIndex(null);
   };
 
-  const handleGenerateInstantJob = async (prompt?: string, sourceType: 'prompt' | 'document' = 'prompt') => {
+  const handleGenerateInstantJob = async (prompt?: string, sourceType: 'prompt' | 'document' | 'hybrid' = 'prompt') => {
     setAiGenerationSource(sourceType);
     let promptText = typeof prompt === 'string' ? prompt.trim() : '';
 
@@ -929,6 +934,13 @@ export function usePostJob() {
     const canonicalBudgetStr = resolveCanonicalBudget(generatedData.budgetMin, generatedData.budgetMax);
     const canonicalBudgetNum = canonicalBudgetStr ? Number(canonicalBudgetStr) : null;
 
+    const selectedSkills = [
+      ...form.skillIds.map(id => skillNameById[id] || id).filter(Boolean),
+      ...form.customSkillNames,
+    ];
+    const categoryName = categories.find(c => c.categoryId === form.categoryId)?.name || taxonomyDisplayNames.categoryName || undefined;
+    const majorName = majors.find(m => m.majorId === form.majorId)?.name || taxonomyDisplayNames.majorName || undefined;
+
     const promise = jobAPI.generateAIHiringPlan({
       clientPrompt: promptText,
       title: jobTitle || '',
@@ -937,6 +949,9 @@ export function usePostJob() {
       budgetMax: canonicalBudgetNum,
       estimatedDuration: generatedData.estimatedDuration,
       proposalClosingDate: computedDeadline,
+      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+      categoryName,
+      majorName,
     }, abortController.signal).then(response => {
       // Guard: if user has re-prompted since this Flow 2 started, discard the result silently.
       // This handles Scenarios 2 & 3 where the LLM result still arrives despite the abort.
@@ -956,10 +971,13 @@ export function usePostJob() {
       let nextQuestions: QuestionInput[] = [];
 
       if (rawMilestones && rawMilestones.length > 0) {
-        const strippedMilestones = withoutWorkBreakdownItems(rawMilestones);
         const targetBudgetValue = generatedData.budgetMin ?? generatedData.budgetMax ?? (form.budget ? Number(form.budget) : null);
         const targetWeeksValue = duration.value ? durationToWeeks(duration.value, duration.unit) : expectedDurationWeeks;
-        nextMilestones = clampMilestonesToExpectedTargets(strippedMilestones, targetBudgetValue, targetWeeksValue);
+        const clampedMilestones = clampMilestonesToExpectedTargets(rawMilestones, targetBudgetValue, targetWeeksValue);
+        nextMilestones = clampedMilestones.map(milestone => ({
+          ...milestone,
+          workItems: clampWorkItemsToMilestoneDuration(milestone.workItems || [], milestone.estimatedDuration),
+        }));
       }
       if (rawQuestions && rawQuestions.length > 0) {
         nextQuestions = rawQuestions.map((qText: string) => ({
@@ -1123,6 +1141,11 @@ export function usePostJob() {
       }
       if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = t('postJobWizard.validation.milestoneDeliverablesRequired');
       if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = t('postJobWizard.validation.milestoneAcceptanceRequired');
+
+      const { overageDays } = computeWorkItemDurationSummary(milestone);
+      if (overageDays > 0) {
+        errors[`${index}.workItems`] = t('postJobWizard.validation.milestoneWorkItemsExceedDuration', { days: overageDays });
+      }
     }
 
     const firstErrorKey = Object.keys(errors)[0];
@@ -1136,7 +1159,7 @@ export function usePostJob() {
         target?.focus();
       });
       return {
-        message: t('postJobWizard.validation.milestoneIncomplete'),
+        message: errors[firstErrorKey] || t('postJobWizard.validation.milestoneIncomplete'),
         section: 'hiringPlan',
         fieldSelector: `[data-milestone-field="${index}.${field}"]`,
       };
@@ -1198,9 +1221,15 @@ export function usePostJob() {
         ...milestone,
         amount: Number(milestone.amount) || 0,
         orderIndex,
-        workItems: [],
+        workItems: (milestone.workItems || []).map((workItem, workItemIndex) => ({
+          ...workItem,
+          orderIndex: workItemIndex,
+        })),
       })),
-      hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
+      hasAiInterview: resolveAiInterviewEnabled(
+        overrides?.hasAiInterview ?? hasAiInterview,
+        finalQuestions,
+      ),
     };
   };
 
@@ -1214,7 +1243,6 @@ export function usePostJob() {
     skillNameById,
     interviewQuestions: (overrides?.questions || questions).map((question, index) => ({ ...question, orderIndex: index })),
     attachments,
-    hasAiInterview: overrides?.hasAiInterview ?? hasAiInterview,
   });
 
   const buildNavigationState = (
@@ -1362,7 +1390,7 @@ export function usePostJob() {
         autosaveTimerRef.current = null;
       }
     };
-  }, [form, questions, milestonePlans, isDraftInitializing, hasSavableDraftContent]);
+  }, [form, questions, milestonePlans, isAiInterviewEnabled, isDraftInitializing, hasSavableDraftContent]);
 
   const retryAutosave = async (): Promise<void> => {
     try {
@@ -1492,6 +1520,13 @@ export function usePostJob() {
                 setForm(prev => ({ ...prev, deadline: computedDeadline }));
               }
 
+              const currentSelectedSkills = [
+                ...form.skillIds.map(id => skillNameById[id] || id).filter(Boolean),
+                ...form.customSkillNames,
+              ];
+              const currentCategoryName = categories.find(c => c.categoryId === form.categoryId)?.name || taxonomyDisplayNames.categoryName || undefined;
+              const currentMajorName = majors.find(m => m.majorId === form.majorId)?.name || taxonomyDisplayNames.majorName || undefined;
+
               const planResponse = await jobAPI.generateAIHiringPlan({
                 clientPrompt: aiClientPrompt,
                 title: form.title,
@@ -1500,6 +1535,9 @@ export function usePostJob() {
                 budgetMax: form.budget ? Number(form.budget) : undefined,
                 estimatedDuration: form.estimatedDurationValue ? formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit) || undefined : undefined,
                 proposalClosingDate: computedDeadline,
+                skills: currentSelectedSkills.length > 0 ? currentSelectedSkills : undefined,
+                categoryName: currentCategoryName,
+                majorName: currentMajorName,
               });
 
               if (!planResponse.success || !planResponse.data) {
@@ -1511,7 +1549,10 @@ export function usePostJob() {
               const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
 
               if (rawMilestones && rawMilestones.length > 0) {
-                const mappedMilestones = withoutWorkBreakdownItems(rawMilestones);
+                const mappedMilestones = (rawMilestones as JobPostMilestonePlanDto[]).map(milestone => ({
+                  ...milestone,
+                  workItems: clampWorkItemsToMilestoneDuration(milestone.workItems || [], milestone.estimatedDuration),
+                }));
                 setMilestonePlans(mappedMilestones);
                 finalMilestones = mappedMilestones;
               }
@@ -1568,9 +1609,14 @@ export function usePostJob() {
       }
 
       if (mode === 'publish') {
-        const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
-        if (!publishResponse.success) throw new Error(publishResponse.message || 'Project request could not be published.');
-        toast.success(t('postJobWizard.messages.published'));
+        const publishResult = await publishJobPost(jobAPI, currentJobPostId, isAiInterviewEnabled);
+        if (publishResult.aiInterviewError) {
+          toast.warning(t('postJobWizard.messages.publishedWithoutAiInterview'), {
+            description: publishResult.aiInterviewError,
+          });
+        } else {
+          toast.success(t('postJobWizard.messages.published'));
+        }
         allowNextNavigation();
         navigate('/jobs/my-jobs');
         return { status: 'success' };
@@ -1773,7 +1819,7 @@ export function usePostJob() {
     backgroundHiringPlanError,
     handleApproveDetails,
     handleCancelDetails,
-    hasAiInterview,
+    hasAiInterview: isAiInterviewEnabled,
     setHasAiInterview,
   };
 }

@@ -209,86 +209,25 @@ export function useFreelancerProfile(targetId: string, canSave = false) {
     let cancelled = false;
     setCompletedLoading(true);
 
-    const sampleCompletedProjects: FreelancerCompletedProjectDto[] = [
-      {
-        contractId: 'sample-contract-1',
-        jobPostsId: 'sample-job-1',
-        totalBudget: 1500,
-        clientName: 'TechVision Studio',
-        completedAt: new Date().toISOString(),
-        status: 3,
-        canReview: false,
-        hasReviewedByCurrentUser: true,
-        jobPost: {
-          jobPostsId: 'sample-job-1',
-          title: 'Thiết kế giao diện UI/UX Mobile App Web3 Wallet',
-          categoryName: 'Design & Creative',
-          skills: [{ skillsId: '1', skillName: 'Figma' }, { skillsId: '2', skillName: 'UI/UX' }, { skillsId: '3', skillName: 'React Native' }],
-        },
-      },
-      {
-        contractId: 'sample-contract-2',
-        jobPostsId: 'sample-job-2',
-        totalBudget: 2800,
-        clientName: 'Nexus Global Ltd.',
-        completedAt: new Date().toISOString(),
-        status: 3,
-        canReview: false,
-        hasReviewedByCurrentUser: true,
-        jobPost: {
-          jobPostsId: 'sample-job-2',
-          title: 'Phát triển Hệ thống E-commerce Fullstack React & ASP.NET',
-          categoryName: 'Web Development',
-          skills: [{ skillsId: '4', skillName: 'React' }, { skillsId: '5', skillName: 'ASP.NET' }, { skillsId: '6', skillName: 'PostgreSQL' }],
-        },
-      },
-      {
-        contractId: 'sample-contract-3',
-        jobPostsId: 'sample-job-3',
-        totalBudget: 1200,
-        clientName: 'GreenLeaf Marketing',
-        completedAt: new Date().toISOString(),
-        status: 3,
-        canReview: false,
-        hasReviewedByCurrentUser: true,
-        jobPost: {
-          jobPostsId: 'sample-job-3',
-          title: 'Xây dựng Landing Page & Animation GSAP cho Sản phẩm Mới',
-          categoryName: 'Frontend & Animation',
-          skills: [{ skillsId: '7', skillName: 'GSAP' }, { skillsId: '8', skillName: 'TailwindCSS' }, { skillsId: '9', skillName: 'TypeScript' }],
-        },
-      },
-      {
-        contractId: 'sample-contract-4',
-        jobPostsId: 'sample-job-4',
-        totalBudget: 3500,
-        clientName: 'Alpha Tech Corp',
-        completedAt: new Date().toISOString(),
-        status: 3,
-        canReview: false,
-        hasReviewedByCurrentUser: true,
-        jobPost: {
-          jobPostsId: 'sample-job-4',
-          title: 'Tối ưu hóa Hiệu năng & Refactor Codebase Next.js App Router',
-          categoryName: 'Software Engineering',
-          skills: [{ skillsId: '10', skillName: 'Next.js' }, { skillsId: '11', skillName: 'Performance' }, { skillsId: '12', skillName: 'Node.js' }],
-        },
-      },
-    ];
+    if (!targetId) {
+      setCompletedProjects([]);
+      setCompletedLoading(false);
+      return;
+    }
 
     contractGetAPI
       .getMyCompletedProjects()
       .then(res => {
         if (!cancelled) {
-          if (res.success && res.data && res.data.length > 0) {
+          if (res.success && Array.isArray(res.data)) {
             setCompletedProjects(res.data);
           } else {
-            setCompletedProjects(sampleCompletedProjects);
+            setCompletedProjects([]);
           }
         }
       })
       .catch(() => {
-        if (!cancelled) setCompletedProjects(sampleCompletedProjects);
+        if (!cancelled) setCompletedProjects([]);
       })
       .finally(() => {
         if (!cancelled) setCompletedLoading(false);

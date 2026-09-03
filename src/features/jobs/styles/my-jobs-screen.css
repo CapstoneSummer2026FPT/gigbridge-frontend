@@ -23,7 +23,8 @@
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               border-color 0.3s ease;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 .black .mj-card {
   background: #181820;
@@ -475,17 +476,22 @@
 .mj-premium-menu{display:inline-block;min-width:0}.mj-premium-menu[open]{flex-basis:100%}.mj-premium-action-label{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid rgba(124,58,237,.2);border-radius:999px;background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(14,165,233,.12));color:#6d28d9;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;list-style:none;user-select:none}.mj-premium-action-label::-webkit-details-marker{display:none}.mj-premium-action-label:hover{border-color:rgba(124,58,237,.42);background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(14,165,233,.17))}.mj-premium-chevron{transition:transform .2s ease}.mj-premium-menu[open] .mj-premium-chevron{transform:rotate(180deg)}.mj-premium-active-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.14)}.mj-premium-menu-panel{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:9px;padding:10px;border:1px solid rgba(124,58,237,.16);border-radius:13px;background:linear-gradient(135deg,rgba(124,58,237,.055),rgba(14,165,233,.045))}.black .mj-premium-action-label{color:#c4b5fd;border-color:rgba(167,139,250,.25)}.black .mj-premium-menu-panel{border-color:rgba(167,139,250,.18);background:rgba(124,58,237,.08)}
 
 /* ─── AI Features Dropdown Panel Theme Colors ─── */
+details[open] {
+  z-index: 60;
+  position: relative;
+}
+
 .mj-ai-dropdown-panel {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  width: min(280px, calc(100vw - 32px));
+  width: min(290px, calc(100vw - 32px));
   border-radius: 1.25rem;
   padding: 0.625rem;
-  background: var(--card, #ffffff);
+  background: var(--surface, #ffffff);
   color: var(--text-primary, #0f0f1a);
-  border: 1px solid var(--border, #e5e7eb);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border, #cbd5e1);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.35);
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -494,9 +500,9 @@
 
 @media (min-width: 640px) {
   .mj-ai-dropdown-panel {
-    left: auto;
-    right: 0;
-    width: 17.5rem;
+    left: 0;
+    right: auto;
+    width: 18rem;
   }
 }
 
@@ -505,7 +511,7 @@
   background: var(--card, #1e1e2d);
   color: var(--text-primary, #f0f0ff);
   border-color: var(--border, rgba(255, 255, 255, 0.15));
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
 }
 
 .mj-ai-menu-bottom {

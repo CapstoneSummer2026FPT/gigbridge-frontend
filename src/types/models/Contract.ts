@@ -33,8 +33,41 @@ export enum MilestoneStatus {
 export enum ContractWorkItemStatus {
   Todo = 0,
   InProgress = 1,
+  /** Legacy: ticked done under milestone-level delivery. Never written by the work item flow. */
   Completed = 2,
   RevisionRequired = 3,
+  /** Freelancer uploaded deliverables for this work item and is waiting on the client. */
+  Submitted = 4,
+  /** Client accepted this work item. Terminal. */
+  Approved = 5,
+}
+
+/**
+ * Mirrors the backend semantics so routing, progress and action visibility never depend on numeric
+ * enum ordering. The two delivery flows disagree about which state means "done", and that
+ * disagreement belongs in one place.
+ */
+export const isWorkItemDelivered = (status: ContractWorkItemStatus | number): boolean =>
+  Number(status) === ContractWorkItemStatus.Completed || Number(status) === ContractWorkItemStatus.Approved;
+
+export const isWorkItemAwaitingReview = (status: ContractWorkItemStatus | number): boolean =>
+  Number(status) === ContractWorkItemStatus.Submitted;
+
+export const canSubmitWorkItem = (status: ContractWorkItemStatus | number): boolean =>
+  Number(status) === ContractWorkItemStatus.Todo ||
+  Number(status) === ContractWorkItemStatus.InProgress ||
+  Number(status) === ContractWorkItemStatus.RevisionRequired;
+
+/** Persisted on the contract; never inferred from how many work items a milestone happens to have. */
+export enum MilestoneDeliveryMode {
+  Legacy = 0,
+  WorkItem = 1,
+}
+
+export enum WorkItemSubmissionReviewStatus {
+  Submitted = 0,
+  Approved = 1,
+  RevisionRequired = 2,
 }
 
 export interface ContractEscrowDto {
@@ -54,18 +87,37 @@ export interface ContractEscrowDto {
   fundedAt?: string | null;
 }
 
+/** One delivery attempt plus the client's verdict. Earlier attempts survive a resubmission. */
+export interface ContractWorkItemSubmission {
+  submissionId: string;
+  workItemId: string;
+  revisionNumber: number;
+  note?: string | null;
+  submittedAt: string;
+  submittedByUserId: string;
+  reviewStatus: WorkItemSubmissionReviewStatus | number;
+  reviewedAt?: string | null;
+  reviewedByUserId?: string | null;
+  reviewReason?: string | null;
+  attachments: MilestoneAttachment[];
+}
+
 export interface ContractWorkItem {
   workItemId: string;
   milestoneId: string;
   title: string;
   description?: string | null;
+  /** Legacy free text, no longer authored anywhere in the UI. */
   deliverables?: string | null;
   estimatedDuration?: string | null;
+  /** Server-computed from the milestone's start and the ordered work item durations. */
+  dueDate?: string | null;
   orderIndex: number;
   status: ContractWorkItemStatus | number;
   progressNote?: string | null;
   completedAt?: string | null;
   updatedAt?: string | null;
+  submissions: ContractWorkItemSubmission[];
 }
 
 export enum ContractProductHandoffSourceType {
@@ -202,6 +254,8 @@ export interface Milestone {
   acceptanceCriteria?: string | null;
   submissionDescription?: string | null;
   workItems: ContractWorkItem[];
+  /** Which delivery flow this milestone's contract is on. Drives which screen the user gets. */
+  deliveryMode: MilestoneDeliveryMode | number;
 }
 
 export interface MilestoneEarlyStartRequest {
@@ -375,4 +429,28 @@ export interface ContractQueryParams {
   PageSize?: number;
   status?: ContractStatus;
   searchTerm?: string;
+}
+
+/** Mirrors Domain.Enums.Contracts.ContractPlanChangeOrigin — never renumber, append only. */
+export enum ContractPlanChangeOrigin {
+  /** Freelancer reviewed the submitted plan before signing. */
+  ContractDetails = 0,
+  /** Freelancer sent the milestones back after signing, before escrow funding. */
+  MilestoneReview = 1,
+}
+
+/**
+ * The open "rework the plan" request the freelancer sent back, or null when there is none.
+ * Drives the badge the client sees on step 1 of the contract workspace.
+ */
+export interface ContractPlanChangeRequest {
+  contractPlanChangeRequestId: string;
+  contractId: string;
+  requestedByUserId: string;
+  requestedByName: string;
+  reason: string;
+  affectedMilestoneIds: string[];
+  affectedWorkItemIds: string[];
+  origin: ContractPlanChangeOrigin;
+  createdAt: string;
 }

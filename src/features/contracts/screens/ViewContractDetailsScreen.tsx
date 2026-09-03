@@ -13,6 +13,11 @@ import { ClientContractDetails } from '../components/ClientContractDetails';
 import { FreelancerContractDetails } from '../components/FreelancerContractDetails';
 import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
+import { useContractDetailsConfirmedEvent } from '../hooks/useContractDetailsConfirmedEvent';
+import { useContractCancelledEvent } from '../hooks/useContractCancelledEvent';
+import { useContractEscrowFundedEvent } from '../hooks/useContractEscrowFundedEvent';
+import { useContractDetailsChangeRequestedEvent } from '../hooks/useContractDetailsChangeRequestedEvent';
+import { useContractDetailsSubmittedEvent } from '../hooks/useContractDetailsSubmittedEvent';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 
@@ -174,9 +179,45 @@ export default function ViewContractDetailsScreen() {
     void loadContractDetails();
   }, [loadContractDetails]);
 
+  useContractDetailsConfirmedEvent(
+    contractId,
+    userRole === 'client' && contract?.status === ContractStatus.PendingContractConfirmation,
+    loadContractDetails
+  );
+
   useContractReadyForEscrowEvent(
     contractId,
     userRole === 'client' && contract?.status === ContractStatus.PendingSignature,
+    loadContractDetails
+  );
+
+  useContractCancelledEvent(
+    contractId,
+    userRole === 'client' || userRole === 'freelancer',
+    loadContractDetails
+  );
+
+  useContractDetailsChangeRequestedEvent(
+    contractId,
+    userRole === 'client',
+    loadContractDetails,
+  );
+
+  // The mirror of the change-request event: the client reworked the plan and sent it back, so the
+  // freelancer's "waiting for updates" card becomes the review card without a reload.
+  useContractDetailsSubmittedEvent(
+    contractId,
+    userRole === 'freelancer' && contract?.status === ContractStatus.PendingContractDetails,
+    loadContractDetails,
+  );
+
+  // Swaps the freelancer's "waiting for escrow funding" card straight into the Active
+  // contract view the moment the client funds, without a reload.
+  useContractEscrowFundedEvent(
+    contractId,
+    (userRole === 'client' || userRole === 'freelancer') &&
+      contract?.status !== undefined &&
+      contract.status < ContractStatus.Active,
     loadContractDetails
   );
 

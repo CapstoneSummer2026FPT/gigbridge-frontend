@@ -15,8 +15,9 @@ import {
   Play,
 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { ContractStatus, ContractWorkItemStatus, MilestoneDeliveryMode, isWorkItemDelivered, isWorkItemAwaitingReview, type ContractWorkItem } from '../../../types/models/Contract';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { WorkItemStatusPill } from '../../../shared/components/WorkItemStatusPill';
 import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
 import { ProjectReceiptCard } from '../../receipts/components/ProjectReceiptCard';
 import '../styles/manage-milestone.css';
@@ -27,11 +28,14 @@ export interface MilestoneItem {
   amount: number;
   releasedAmount: number;
   status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'completed' | 'disputed';
-  workItems?: Array<{
-    id: string;
-    title: string;
-    status: ContractWorkItemStatus;
-  }>;
+  /**
+   * The real DTO, not a narrowed shape. useProjectWorkspace already passes ContractWorkItem[]
+   * straight through, and the previous `{ id, title, status }` declaration is what forced the
+   * `(item as any).workItemId` fallbacks at the call site.
+   */
+  workItems?: ContractWorkItem[];
+  /** 0 = Legacy (milestone-level), 1 = WorkItem (per work item, via the delivery space). */
+  deliveryMode?: number;
 }
 
 export interface ManageMilestoneProps {
@@ -66,6 +70,7 @@ export interface ManageMilestoneProps {
   setMilestoneActionPendingId: (val: string | null) => void;
   isWorkspaceLocked: boolean;
   navigate: (path: string) => void;
+  onOpenDeliverySpaceModal?: (milestoneId: string) => void;
 }
 
 export function ManageMilestone({
@@ -96,6 +101,7 @@ export function ManageMilestone({
   setMilestoneActionPendingId,
   isWorkspaceLocked,
   navigate,
+  onOpenDeliverySpaceModal,
 }: ManageMilestoneProps) {
   const { t } = useTranslation();
 
@@ -379,11 +385,49 @@ export function ManageMilestone({
                 withdrawalEligibility.isAtCap &&
                 !isReleasedInFull;
               const workItems = milestone.workItems || [];
-              const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
-              const canFreelancerSubmit = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && allWorkItemsCompleted;
-              const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+              // Read through the shared predicate: the legacy flow marks work done as Completed and
+              // the work item flow as Approved, and that difference must not be re-guessed per screen.
+              const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => isWorkItemDelivered(item.status));
+              // Persisted on the contract, never inferred from how many work items exist — historical
+              // contracts carry work items and must stay on the milestone-level flow.
+              const usesWorkItemDelivery =
+                Number(milestone.deliveryMode ?? MilestoneDeliveryMode.Legacy) === MilestoneDeliveryMode.WorkItem;
+              const deliverySpacePath = `/deliveryspace/${activeProjectId}/milestones/${milestone.id}`;
+              // In work item delivery the freelancer submits per item, so the entry point opens as soon
+              // as the milestone is workable rather than waiting for every item to be ticked off.
+              const canFreelancerSubmit = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone &&
+                (usesWorkItemDelivery || allWorkItemsCompleted);
+              const canClientReview = !isWorkspaceLocked && isClient &&
+                (usesWorkItemDelivery ? workItems.some(item => isWorkItemAwaitingReview(item.status)) || isSubmitted : isSubmitted);
               const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending && isPreviousMilestoneStarted;
               const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
+              const deliveredCount = workItems.filter(item => isWorkItemDelivered(item.status)).length;
+              const awaitingReviewCount = workItems.filter(item => isWorkItemAwaitingReview(item.status)).length;
+              const outstandingCount = workItems.length - deliveredCount - awaitingReviewCount;
+              // In work item delivery the card is a read-only overview; every real action lives in the
+              // delivery space, so the whole card becomes the way in.
+              const openDeliverySpace = () => {
+                if (onOpenDeliverySpaceModal) {
+                  onOpenDeliverySpaceModal(milestone.id);
+                } else {
+                  navigate(deliverySpacePath);
+                }
+              };
+              const cardNavigationProps = usesWorkItemDelivery
+                ? {
+                    role: 'button' as const,
+                    tabIndex: 0,
+                    onClick: openDeliverySpace,
+                    onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openDeliverySpace();
+                      }
+                    },
+                  }
+                : {};
+              // Controls nested inside a clickable card must not also trigger the card.
+              const stopCardNavigation = (event: React.MouseEvent) => event.stopPropagation();
               const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
 
               return (
@@ -418,7 +462,15 @@ export function ManageMilestone({
                   </div>
 
                   {/* Right Content Card */}
-                  <div className="flex-1 min-w-0 bg-surface-card/60 hover:bg-surface-card border border-border rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-2xs hover:shadow-sm">
+                  <div
+                    {...cardNavigationProps}
+                    aria-label={usesWorkItemDelivery
+                      ? t('workspace.openDeliverySpaceFor', { title: milestone.title, defaultValue: `Nộp sản phẩm cho ${milestone.title}` })
+                      : undefined}
+                    className={`flex-1 min-w-0 bg-surface-card/60 hover:bg-surface-card border border-border rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-2xs hover:shadow-sm ${
+                      usesWorkItemDelivery ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand' : ''
+                    }`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2.5 sm:gap-3 mb-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -468,17 +520,23 @@ export function ManageMilestone({
                     {workItems.length > 0 && (
                       <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
                         <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">
-                          {t('workspace.deliverableTasks', { defaultValue: 'Work Items' })} ({workItems.filter(i => Number(i.status) === ContractWorkItemStatus.Completed).length}/{workItems.length})
+                          {t('workspace.deliverableTasks', { defaultValue: 'Work Items' })} ({deliveredCount}/{workItems.length})
                         </span>
                         <div className="space-y-1.5 mt-1.5">
                           {workItems.map(item => {
-                            const targetWorkItemId = (item as any).workItemId || item.id || (item as any).WorkItemId || '';
+                            const targetWorkItemId = item.workItemId;
                             const itemStatus = Number(item.status);
                             const isTodo = itemStatus === ContractWorkItemStatus.Todo;
                             const isItemInProgress = itemStatus === ContractWorkItemStatus.InProgress;
-                            const isDone = itemStatus === ContractWorkItemStatus.Completed;
+                            // Delivered means Completed on a legacy contract and Approved on a work
+                            // item one; comparing to Completed alone left approved rows looking untouched.
+                            const isDone = isWorkItemDelivered(itemStatus);
                             const isRevisionRequired = itemStatus === ContractWorkItemStatus.RevisionRequired;
-                            const canToggleWorkItem = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && !isCompleted && !isSubmitted;
+                            // The manual Start / Mark completed / Undo controls drive the legacy
+                            // PATCH endpoint, which the backend now refuses on a work item contract —
+                            // rendering them there produced a button that could only ever error.
+                            const canToggleWorkItem = !usesWorkItemDelivery && !isWorkspaceLocked && !isClient &&
+                              canUnlockOrStartMilestone && !isCompleted && !isSubmitted;
 
                             return (
                               <div
@@ -495,12 +553,20 @@ export function ManageMilestone({
                                   <span className={`font-semibold ${isDone ? 'line-through text-text-muted' : ''}`}>
                                     {item.title}
                                   </span>
-                                  {isItemInProgress && (
+                                  {!usesWorkItemDelivery && isItemInProgress && (
                                     <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0 uppercase tracking-wider">
                                       {t('workspace.workItemInProgress', { defaultValue: 'Đang làm' })}
                                     </span>
                                   )}
                                 </div>
+
+                                {/* Work item delivery has no per-item controls here: the status is the
+                                    whole story, and every action lives in the delivery space. */}
+                                {usesWorkItemDelivery && (
+                                  <div className="shrink-0 self-end sm:self-auto">
+                                    <WorkItemStatusPill status={itemStatus} />
+                                  </div>
+                                )}
 
                                 {canToggleWorkItem && (
                                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
@@ -569,16 +635,31 @@ export function ManageMilestone({
                         <div className="flex items-center gap-2 min-w-0">
                           <CheckCircle size={16} className="text-brand shrink-0" />
                           <span className="text-xs font-bold text-text-primary">
-                            {t('workspace.allWorkItemsCompletedNotice', { defaultValue: 'Tất cả công việc đã hoàn thành! Sẵn sàng nộp sản phẩm.' })}
+                            {usesWorkItemDelivery
+                              ? outstandingCount > 0
+                                ? t('workspace.workItemsAwaitingDelivery', { count: outstandingCount, defaultValue: `${outstandingCount} work item(s) still need deliverables.` })
+                                : t('workspace.workItemsAllDelivered', { defaultValue: 'Everything is submitted and waiting on the client.' })
+                              : t('workspace.allWorkItemsCompletedNotice', { defaultValue: 'Tất cả công việc đã hoàn thành! Sẵn sàng nộp sản phẩm.' })}
                           </span>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setSubmitModal({ milestoneId: milestone.id, title: milestone.title })}
+                          onClick={event => {
+                            stopCardNavigation(event);
+                            if (usesWorkItemDelivery) {
+                              openDeliverySpace();
+                              return;
+                            }
+                            setSubmitModal({ milestoneId: milestone.id, title: milestone.title });
+                          }}
                           className="w-full sm:w-auto bg-brand hover:bg-brand-hover text-brand-foreground font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
                           <Upload size={14} />
-                          <span>{t('workspace.submitDeliverables', { defaultValue: 'Nộp sản phẩm' })}</span>
+                          <span>
+                            {usesWorkItemDelivery
+                              ? t('workspace.openDeliverySpace', { defaultValue: 'Nộp sản phẩm' })
+                              : t('workspace.submitDeliverables', { defaultValue: 'Nộp sản phẩm' })}
+                          </span>
                         </button>
                       </div>
                     )}
@@ -589,16 +670,29 @@ export function ManageMilestone({
                         <div className="flex items-center gap-2 min-w-0">
                           <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span className="text-xs font-bold text-text-primary">
-                            {t('workspace.deliverablesSubmittedNotice', { defaultValue: 'Freelancer đã nộp sản phẩm. Vui lòng kiểm tra và duyệt giải ngân.' })}
+                            {usesWorkItemDelivery
+                              ? t('workspace.workItemsAwaitingReview', { count: awaitingReviewCount, defaultValue: `${awaitingReviewCount} work item(s) are waiting for your review.` })
+                              : t('workspace.deliverablesSubmittedNotice', { defaultValue: 'Freelancer đã nộp sản phẩm. Vui lòng kiểm tra và duyệt giải ngân.' })}
                           </span>
                         </div>
                         <button
                           type="button"
-                          onClick={() => navigate(`/contracts/${activeProjectId}/milestones/${milestone.id}/approve`)}
+                          onClick={event => {
+                            stopCardNavigation(event);
+                            if (usesWorkItemDelivery) {
+                              openDeliverySpace();
+                            } else {
+                              navigate(`/contracts/${activeProjectId}/milestones/${milestone.id}/approve`);
+                            }
+                          }}
                           className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-4 rounded-xl shadow-xs transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
                         >
                           <CheckCircle size={14} />
-                          <span>{t('workspace.approveMilestone', { defaultValue: 'Duyệt & Giải ngân' })}</span>
+                          <span>
+                            {usesWorkItemDelivery
+                              ? t('workspace.reviewWorkItems', { defaultValue: 'Review work items' })
+                              : t('workspace.approveMilestone', { defaultValue: 'Duyệt & Giải ngân' })}
+                          </span>
                         </button>
                       </div>
                     )}
@@ -610,7 +704,10 @@ export function ManageMilestone({
                           {canFreelancerRequestUnlock && !earlyStartRequest && (
                             <button
                               type="button"
-                              onClick={() => handleRequestPendingMilestoneUnlock(milestone.id)}
+                              onClick={event => {
+                                stopCardNavigation(event);
+                                handleRequestPendingMilestoneUnlock(milestone.id);
+                              }}
                               className="bg-brand/10 hover:bg-brand/20 border border-brand/30 text-brand font-bold text-xs py-1.5 px-3 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
                             >
                               <Unlock size={13} />
@@ -621,7 +718,10 @@ export function ManageMilestone({
                           {showFreelancerWithdraw && (
                             <button
                               type="button"
-                              onClick={() => openWithdrawDialog(milestone.id, milestone.title, milestone.releasedAmount || milestone.amount)}
+                              onClick={event => {
+                                stopCardNavigation(event);
+                                openWithdrawDialog(milestone.id, milestone.title, milestone.releasedAmount || milestone.amount);
+                              }}
                               className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs py-1.5 px-3 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
                             >
                               <Wallet size={13} />
@@ -644,7 +744,9 @@ export function ManageMilestone({
                       </div>
                     )}
 
-                    {!isClient && isInProgress && !allWorkItemsCompleted && (
+                    {/* Legacy only. In work item delivery there is nothing to "complete first" — each
+                        item is submitted on its own, so this contradicted the banner above it. */}
+                    {!usesWorkItemDelivery && !isClient && isInProgress && !allWorkItemsCompleted && (
                       <p className="mt-3 text-[11px] font-bold text-text-muted">
                         {t('workspace.completeWorkItemsNotice', { defaultValue: 'Hoàn thành tất cả các việc cần làm trước khi nộp sản phẩm.' })}
                       </p>
@@ -658,7 +760,8 @@ export function ManageMilestone({
                           <button
                             type="button"
                             disabled={isMilestoneActionPending}
-                            onClick={async () => {
+                            onClick={async event => {
+                              stopCardNavigation(event);
                               setMilestoneActionPendingId(milestone.id);
                               await handleRespondEarlyStart(earlyStartRequest.requestId, true);
                               setMilestoneActionPendingId(null);
@@ -670,7 +773,8 @@ export function ManageMilestone({
                           <button
                             type="button"
                             disabled={isMilestoneActionPending}
-                            onClick={() => {
+                            onClick={event => {
+                              stopCardNavigation(event);
                               openPromptModal({
                                 title: t('workspace.rejectEarlyStartTitle', { defaultValue: 'Reject Early Start Request' }),
                                 description: t('workspace.rejectEarlyStartDesc', { defaultValue: 'Provide an optional rejection note for the freelancer.' }),

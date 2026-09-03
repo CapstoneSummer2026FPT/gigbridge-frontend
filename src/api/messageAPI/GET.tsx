@@ -120,7 +120,7 @@ interface ConversationSummaryPageResponse {
   nextCursor?: string | null;
 }
 
-export interface ConversationMessageResponse extends MessageResponse {}
+export interface ConversationMessageResponse extends MessageResponse { }
 
 export const messageGetAPI = {
   /**

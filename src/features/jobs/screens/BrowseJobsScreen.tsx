@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Flame, Crown } from 'lucide-react';
+import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Sparkles, Flame } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -14,23 +14,23 @@ import '../styles/browse-jobs-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
-import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
 import type { MajorCategoryDto } from '../../../types/models/Category';
 import { premiumAPI } from '../../premium/api';
 import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
-import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import {
   BROWSE_JOBS_VIEW,
   resolveBrowseJobsView,
   type BrowseJobsView,
 } from '../utils/browseJobsView';
 import { BrowseJobCategoryTags } from '../components/BrowseJobCategoryTags';
+import { TopFreelancersLeaderboard } from '../components/TopFreelancersLeaderboard';
 import { ConicBorderButton } from '../../../shared/components/ConicBorderButton';
 import { AuthInviteModal } from '../../../shared/components/AuthInviteModal';
+import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 
 const PAGE_SIZE = 20;
-const WORK_TYPES = ['All', 'fixed'];
 const DATE_POSTED = ['Any time', 'Last 24 hours', 'Last 7 days', 'Last 30 days'];
 
 type BrowseJob = Job & {
@@ -86,7 +86,6 @@ export default function BrowseJobsScreen() {
   const [categoryTaxonomy, setCategoryTaxonomy] = useState<MajorCategoryDto[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [topFreelancers, setTopFreelancers] = useState<FreelancerSummaryDto[]>([]);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [isPromotionActive, setIsPromotionActive] = useState(false);
   const [page, setPage] = useState(() => Math.max(1, Number(params.get('page')) || 1));
@@ -105,6 +104,7 @@ export default function BrowseJobsScreen() {
   const [profileFallbackMessage, setProfileFallbackMessage] = useState<string | null>(null);
   const [recommendedJobs, setRecommendedJobs] = useState<BrowseJob[]>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
+  const [initialPageLoaded, setInitialPageLoaded] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const browseViewRef = useRef<BrowseJobsView>(browseView);
@@ -114,6 +114,30 @@ export default function BrowseJobsScreen() {
   const categoryOptions = useMemo(() => ['All', ...Array.from(new Set(
     categoryTaxonomy.map(item => item.categoryName).filter(Boolean),
   )).sort((left, right) => left.localeCompare(right))], [categoryTaxonomy]);
+
+  const categorySelectOptions = useMemo<SelectOption[]>(() => {
+    return categoryOptions.map(cat => ({
+      value: cat,
+      label: cat === 'All' ? t('jobs.all') : cat,
+    }));
+  }, [categoryOptions, t]);
+
+  const workTypeSelectOptions = useMemo<SelectOption[]>(() => [
+    { value: 'All', label: t('common.search') === 'Search' ? 'All' : 'Tất cả' },
+    { value: 'fixed', label: t('jobs.fixedPrice') },
+  ], [t]);
+
+  const datePostedSelectOptions = useMemo<SelectOption[]>(() => {
+    const isEnglish = t('common.search') === 'Search';
+    return DATE_POSTED.map(item => {
+      let label = item;
+      if (item === 'Any time') label = isEnglish ? 'Any time' : 'Mọi lúc';
+      else if (item === 'Last 24 hours') label = isEnglish ? 'Last 24 hours' : '24 giờ qua';
+      else if (item === 'Last 7 days') label = isEnglish ? 'Last 7 days' : '7 ngày qua';
+      else if (item === 'Last 30 days') label = isEnglish ? 'Last 30 days' : '30 ngày qua';
+      return { value: item, label };
+    });
+  }, [t]);
 
   useEffect(() => {
     const routeParams = new URLSearchParams(location.search);
@@ -156,7 +180,7 @@ export default function BrowseJobsScreen() {
   // Reusable GSAP Entrance Hook
   usePageGSAP({
     containerRef,
-    loading,
+    loading: false,
     groups: [
       { selector: '.browse-jobs-header-card', y: 20, duration: 0.4, clearProps: 'all' },
       { selector: '.browse-category-pill', scale: 0.9, stagger: 0.02, duration: 0.3, clearProps: 'all' },
@@ -256,7 +280,10 @@ export default function BrowseJobsScreen() {
         setRecommendedJobs([]);
       })
       .finally(() => {
-        if (isMounted) setRecommendedLoading(false);
+        if (isMounted) {
+          setRecommendedLoading(false);
+          setInitialPageLoaded(true);
+        }
       });
 
     return () => {
@@ -396,22 +423,16 @@ export default function BrowseJobsScreen() {
         setAllJobs([]);
         setTotalResults(0);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setInitialPageLoaded(true);
+        }
       }
     };
     void fetchJobs();
     return () => controller.abort();
   }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, isProfileView, isRecommendedView, page, profileLoading, sortBy, t, workType]);
 
-  useEffect(() => {
-    let isMounted = true;
-    profileGetAPI.getFreelancers({ page: 1, pageSize: 5, sort: 'elo' }).then(response => {
-      if (isMounted && response.success && response.data) setTopFreelancers(response.data.items);
-    }).catch(() => {
-      if (isMounted) setTopFreelancers([]);
-    });
-    return () => { isMounted = false; };
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -513,10 +534,6 @@ export default function BrowseJobsScreen() {
     }, { replace: true });
   };
 
-  const handleCategorySelectChange = (event: ChangeEvent<HTMLSelectElement>): void => {
-    selectCategory(event.target.value);
-  };
-
   const selectAllJobs = (): void => {
     selectCategory('All');
   };
@@ -593,14 +610,20 @@ export default function BrowseJobsScreen() {
     }
   };
 
-  const isEn = t('common.search') === 'Search';
-  const translateDatePosted = (item: string) => {
-    if (item === 'Any time') return isEn ? 'Any time' : 'Mọi lúc';
-    if (item === 'Last 24 hours') return isEn ? 'Last 24 hours' : '24 giờ qua';
-    if (item === 'Last 7 days') return isEn ? 'Last 7 days' : '7 ngày qua';
-    if (item === 'Last 30 days') return isEn ? 'Last 30 days' : '30 ngày qua';
-    return item;
-  };
+  const isPageLoading = !initialPageLoaded;
+
+  if (isPageLoading) {
+    return (
+      <AppLayout>
+        <div className="flex min-h-[60vh] items-center justify-center px-4 py-16">
+          <LemniscateBloomLoader
+            label={t('jobs.loading', { defaultValue: 'Đang tải danh sách công việc...' })}
+            tag="Browse Jobs"
+          />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -674,9 +697,14 @@ export default function BrowseJobsScreen() {
                           })}
                         </div>
                       ) : (
-                        <select value={category} onChange={handleCategorySelectChange}>
-                          {categoryOptions.map(item => <option key={item} value={item}>{item === 'All' ? t('jobs.all') : item}</option>)}
-                        </select>
+                        <CustomSelect
+                          value={category}
+                          options={categorySelectOptions}
+                          onChange={selectCategory}
+                          placeholder={t('jobs.category')}
+                          searchable={categorySelectOptions.length > 8}
+                          searchPlaceholder={t('common.search', { defaultValue: 'Tìm kiếm...' })}
+                        />
                       )}
                     </label>
                     <label>
@@ -693,15 +721,29 @@ export default function BrowseJobsScreen() {
                     </label>
                     <label>
                       {t('jobs.workType')}
-                      <select value={workType} onChange={event => { if (isRecommendedView) exitRecommendedMode(); setWorkType(event.target.value); resetBrowsePage(); }}>
-                        {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : t('jobs.fixedPrice')}</option>)}
-                      </select>
+                      <CustomSelect
+                        value={workType}
+                        options={workTypeSelectOptions}
+                        onChange={val => {
+                          if (isRecommendedView) exitRecommendedMode();
+                          setWorkType(val);
+                          resetBrowsePage();
+                        }}
+                        searchable={false}
+                      />
                     </label>
                     <label>
                       {t('jobs.datePosted')}
-                      <select value={datePosted} onChange={event => { if (isRecommendedView) exitRecommendedMode(); setDatePosted(event.target.value); resetBrowsePage(); }}>
-                        {DATE_POSTED.map(item => <option key={item} value={item}>{translateDatePosted(item)}</option>)}
-                      </select>
+                      <CustomSelect
+                        value={datePosted}
+                        options={datePostedSelectOptions}
+                        onChange={val => {
+                          if (isRecommendedView) exitRecommendedMode();
+                          setDatePosted(val);
+                          resetBrowsePage();
+                        }}
+                        searchable={false}
+                      />
                     </label>
                   </div>
                   {budgetInvalid && <p className="browse-jobs-error">{t('jobs.budgetRangeInvalid')}</p>}
@@ -770,142 +812,151 @@ export default function BrowseJobsScreen() {
 
               {/* Job Cards List */}
               <div className="space-y-3.5">
-                {!recommendedLoading && pagedJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="browse-jobs-job-card"
-                    onClick={() => openJob(job)}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        {/* Title & Badges */}
-                        <div className="flex items-start gap-2 flex-wrap mb-2">
-                          <h2 className="text-base font-bold text-[var(--text-primary)] hover:text-[var(--brand,#494be7)] transition-colors line-clamp-1">
-                            {job.title}
-                          </h2>
-                          {job.isFeatured && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-500/10 text-purple-600 border border-purple-500/20 shrink-0">
-                              {t('jobs.featured')}
-                            </span>
-                          )}
-                          {job.hasAiInterview && isFreelancer && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[var(--brand-soft,#494be715)] text-[var(--brand,#494be7)] border border-[var(--brand,#494be730)] shrink-0 inline-flex items-center gap-1">
-                              <Bot size={11} /> {t('jobs.aiInterviewTag')}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Meta Pills */}
-                        <div className="flex flex-wrap items-center gap-3 mb-2.5">
-                          <div className="flex items-center gap-1 text-xs font-semibold text-[var(--brand,#494be7)] bg-[var(--brand-soft,#494be710)] px-2.5 py-1 rounded-lg">
-                            <GigCoinBudget min={job.budgetMin} max={job.budgetMax} />
-                            <span className="text-[var(--text-secondary)] font-normal ml-1">• {t('jobs.fixedPrice')}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                            <Globe size={13} className="text-[var(--text-muted)]" />
-                            <span>{t('jobs.remote')}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                            <Users size={13} className="text-[var(--text-muted)]" />
-                            <span>{job.proposalCount} {t('jobs.proposals').toLowerCase()}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                            <Clock size={13} className="text-[var(--text-muted)]" />
-                            <span>{job.postedAt}</span>
-                          </div>
-                        </div>
-
-                        {/* Description */}
-                        <p className="text-xs leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">
-                          {job.description}
-                        </p>
-
-                        {/* Skill Tags */}
-                        <div className="flex flex-wrap gap-1.5">
-                          {job.skills.map(skill => (
-                            <span key={skill} className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)]">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Right Action Container */}
-                      <div className="flex items-center justify-between gap-3 shrink-0 pt-3 mt-1 border-t border-[var(--border)] md:border-t-0 md:pt-0 md:mt-0 md:flex-col md:items-end w-full md:w-auto">
-                        {(() => {
-                          const isSaved = savedJobIds.has(job.id);
-                          const isSaving = savingJobIds.has(job.id);
-                          const canSaveJob = Boolean(user && isFreelancer);
-
-                          return (
-                            <div className="flex items-center gap-2">
-                              {job.aiMatchScore && user && (
-                                <div
-                                  className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1"
-                                  title={job.matchReasons?.length ? `${t('jobs.matchReasonsTitle')}: ${job.matchReasons.join(' · ')}` : undefined}
-                                >
-                                  <Bot size={11} />
-                                  <span>{job.aiMatchScore}% {t('jobs.match')}</span>
-                                </div>
-                              )}
-                              <button
-                                type="button"
-                                onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
-                                disabled={!canSaveJob || isSaving}
-                                title={canSaveJob ? undefined : t('jobs.onlyFreelancersCanSave')}
-                                className={`p-2.5 rounded-xl border border-[var(--border)] transition-all min-h-[40px] min-w-[40px] flex items-center justify-center ${isSaved ? 'browse-jobs-save-icon-active bg-amber-500/10 border-amber-500/30' : 'browse-jobs-save-icon hover:bg-[var(--surface-hover)]'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-                              >
-                                <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
-                              </button>
-                            </div>
-                          );
-                        })()}
-
-                        <button
-                          type="button"
-                          onClick={event => { event.stopPropagation(); openJob(job); }}
-                          className="px-4 py-2 rounded-xl bg-[var(--brand,#494be7)] text-white text-xs font-bold shadow-sm hover:bg-[var(--brand-hover,#3f41d0)] transition-all cursor-pointer min-h-[40px] inline-flex items-center justify-center"
-                        >
-                          {t('jobs.viewJob')}
-                        </button>
-                      </div>
-                    </div>
+                {isRecommendedView && recommendedLoading ? (
+                  <div className="flex min-h-[260px] items-center justify-center py-12 browse-jobs-glass-card">
+                    <LemniscateBloomLoader
+                      size={64}
+                      label={t('jobs.findingMatchingJobs')}
+                      tag="AI Matching"
+                    />
                   </div>
-                ))}
+                ) : isProfileView && profileLoading ? (
+                  <div className="flex min-h-[260px] items-center justify-center py-12 browse-jobs-glass-card">
+                    <LemniscateBloomLoader
+                      size={64}
+                      label={t('jobs.profileLoading')}
+                      tag="Profile Matching"
+                    />
+                  </div>
+                ) : loading ? (
+                  <div className="flex min-h-[260px] items-center justify-center py-12 browse-jobs-glass-card">
+                    <LemniscateBloomLoader
+                      size={64}
+                      label={t('jobs.loading', { defaultValue: 'Đang tải danh sách công việc...' })}
+                      tag="Jobs"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {pagedJobs.map((job) => (
+                      <div
+                        key={job.id}
+                        className="browse-jobs-job-card"
+                        onClick={() => openJob(job)}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            {/* Title & Badges */}
+                            <div className="flex items-start gap-2 flex-wrap mb-2">
+                              <h2 className="text-base font-bold text-[var(--text-primary)] hover:text-[var(--brand,#494be7)] transition-colors line-clamp-1">
+                                {job.title}
+                              </h2>
+                              {job.isFeatured && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-500/10 text-purple-600 border border-purple-500/20 shrink-0">
+                                  {t('jobs.featured')}
+                                </span>
+                              )}
+                              {job.hasAiInterview && isFreelancer && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[var(--brand-soft,#494be715)] text-[var(--brand,#494be7)] border border-[var(--brand,#494be730)] shrink-0 inline-flex items-center gap-1">
+                                  <Bot size={11} /> {t('jobs.aiInterviewTag')}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Meta Pills */}
+                            <div className="flex flex-wrap items-center gap-3 mb-2.5">
+                              <div className="flex items-center gap-1 text-xs font-semibold text-[var(--brand,#494be7)] bg-[var(--brand-soft,#494be710)] px-2.5 py-1 rounded-lg">
+                                <GigCoinBudget min={job.budgetMin} max={job.budgetMax} />
+                                <span className="text-[var(--text-secondary)] font-normal ml-1">• {t('jobs.fixedPrice')}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
+                                <Globe size={13} className="text-[var(--text-muted)]" />
+                                <span>{t('jobs.remote')}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
+                                <Users size={13} className="text-[var(--text-muted)]" />
+                                <span>{job.proposalCount} {t('jobs.proposals').toLowerCase()}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
+                                <Clock size={13} className="text-[var(--text-muted)]" />
+                                <span>{job.postedAt}</span>
+                              </div>
+                            </div>
+
+                            {/* Description */}
+                            <p className="text-xs leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">
+                              {job.description}
+                            </p>
+
+                            {/* Skill Tags */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {job.skills.map(skill => (
+                                <span key={skill} className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)]">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Right Action Container */}
+                          <div className="flex items-center justify-between gap-3 shrink-0 pt-3 mt-1 border-t border-[var(--border)] md:border-t-0 md:pt-0 md:mt-0 md:flex-col md:items-end w-full md:w-auto">
+                            {(() => {
+                              const isSaved = savedJobIds.has(job.id);
+                              const isSaving = savingJobIds.has(job.id);
+                              const canSaveJob = Boolean(user && isFreelancer);
+
+                              return (
+                                <div className="flex items-center gap-2">
+                                  {job.aiMatchScore && user && (
+                                    <div
+                                      className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1"
+                                      title={job.matchReasons?.length ? `${t('jobs.matchReasonsTitle')}: ${job.matchReasons.join(' · ')}` : undefined}
+                                    >
+                                      <Bot size={11} />
+                                      <span>{job.aiMatchScore}% {t('jobs.match')}</span>
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
+                                    disabled={!canSaveJob || isSaving}
+                                    title={canSaveJob ? undefined : t('jobs.onlyFreelancersCanSave')}
+                                    className={`p-2.5 rounded-xl border border-[var(--border)] transition-all min-h-[40px] min-w-[40px] flex items-center justify-center ${isSaved ? 'browse-jobs-save-icon-active bg-amber-500/10 border-amber-500/30' : 'browse-jobs-save-icon hover:bg-[var(--surface-hover)]'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                  >
+                                    <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                                  </button>
+                                </div>
+                              );
+                            })()}
+
+                            <button
+                              type="button"
+                              onClick={event => { event.stopPropagation(); openJob(job); }}
+                              className="px-4 py-2 rounded-xl bg-[var(--brand,#494be7)] text-white text-xs font-bold shadow-sm hover:bg-[var(--brand-hover,#3f41d0)] transition-all cursor-pointer min-h-[40px] inline-flex items-center justify-center"
+                            >
+                              {t('jobs.viewJob')}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Empty State */}
+                    {pagedJobs.length === 0 && (
+                      <div className="text-center py-16 browse-jobs-glass-card">
+                        <Bot size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)]" />
+                        <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
+                          {isRecommendedView
+                            ? t('jobs.noRecommendedJobs')
+                            : isProfileView
+                              ? (loadError || t('jobs.profileNoMatches'))
+                              : (loadError || t('jobs.noJobsFound'))}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-
-              {/* Recommended Loading State */}
-              {isRecommendedView && recommendedLoading && (
-                <div className="text-center py-16 browse-jobs-glass-card">
-                  <Sparkles size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)] animate-pulse" />
-                  <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
-                    {t('jobs.findingMatchingJobs')}
-                  </p>
-                </div>
-              )}
-
-              {isProfileView && profileLoading && (
-                <div className="text-center py-16 browse-jobs-glass-card">
-                  <Sparkles size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)] animate-pulse" />
-                  <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
-                    {t('jobs.profileLoading')}
-                  </p>
-                </div>
-              )}
-
-              {/* Empty State */}
-              {!recommendedLoading && !profileLoading && !loading && pagedJobs.length === 0 && (
-                <div className="text-center py-16 browse-jobs-glass-card">
-                  <Bot size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)]" />
-                  <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
-                    {isRecommendedView
-                      ? t('jobs.noRecommendedJobs')
-                      : isProfileView
-                        ? (loadError || t('jobs.profileNoMatches'))
-                        : (loadError || t('jobs.noJobsFound'))}
-                  </p>
-                </div>
-              )}
 
               {/* Pagination */}
               {!isRecommendedView && totalResults > PAGE_SIZE && (
@@ -989,67 +1040,7 @@ export default function BrowseJobsScreen() {
             )}
 
             {/* Top Freelancers Leaderboard */}
-            <div className="freelancer-ranking-card">
-              <div className="freelancer-ranking-header">
-                <div className="freelancer-ranking-title">
-                  <div className="w-8 h-8 rounded-xl bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] flex items-center justify-center flex-shrink-0">
-                    <Trophy size={18} />
-                  </div>
-                  <span className="font-extrabold text-[15px]">{t('jobs.topFreelancers')}</span>
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] border border-[rgba(99,102,241,0.2)] flex items-center gap-1">
-                  <TrendingUp size={12} />
-                  {t('jobs.eloRatings')}
-                </span>
-              </div>
-
-              <div className="ranking-list">
-                {topFreelancers.length === 0 ? (
-                  <p className="p-4 text-xs text-[var(--text-muted)] text-center font-medium">No freelancer ranking data available.</p>
-                ) : (
-                  topFreelancers.map((freelancer, index) => {
-                    const rank = index + 1;
-                    const isTop1 = rank === 1;
-
-                    return (
-                      <div
-                        key={freelancer.freelancerProfilesId}
-                        onClick={() => {
-                          const path = getProfilePath(freelancer.userId || freelancer.freelancerProfilesId, 'freelancer');
-                          if (path) navigate(path);
-                        }}
-                        className={`ranking-item ${isTop1 ? 'ranking-item-top1' : ''}`}
-                      >
-                        <div className="ranking-user-info">
-                          <div className={`ranking-position ${isTop1 ? 'ranking-position-top1' : ''}`}>
-                            {isTop1 ? <Crown size={14} /> : `#${rank}`}
-                          </div>
-                          <div className="relative shrink-0">
-                            <img
-                              src={freelancer.userAvatar || '/img/avatar-fallback.png'}
-                              alt={freelancer.userFullName || 'Freelancer'}
-                              className={`ranking-avatar ${isTop1 ? 'ranking-avatar-top1' : ''}`}
-                            />
-                          </div>
-                          <div className="ranking-text-details">
-                            <span className="ranking-name" title={freelancer.userFullName || 'Freelancer'}>
-                              {freelancer.userFullName || 'Freelancer'}
-                            </span>
-                            <span className="ranking-role" title={freelancer.title || 'Independent professional'}>
-                              {freelancer.title || 'Independent professional'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end shrink-0 pl-2">
-                          <span className="ranking-elo-value">{freelancer.eloPoints}</span>
-                          <span className="ranking-elo-label">{t('jobs.elo')}</span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+            <TopFreelancersLeaderboard />
           </aside>
         </div>
       </div>

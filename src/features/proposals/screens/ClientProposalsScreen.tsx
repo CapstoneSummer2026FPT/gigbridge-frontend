@@ -125,6 +125,7 @@ export default function ClientProposalsScreen() {
     rejectProposalId,
     setRejectProposalId,
     rawAnswers,
+    originalJobMilestones,
     selectJob,
     updateStatus,
     acceptForNegotiation,
@@ -504,6 +505,7 @@ export default function ClientProposalsScreen() {
           evalLoading={evalLoading}
           evalError={evalError}
           rawAnswers={rawAnswers}
+          originalMilestones={originalJobMilestones}
           rejectProposalId={rejectProposalId}
           setRejectProposalId={setRejectProposalId}
           selectedJobCanNegotiate={selectedJobCanNegotiate}

@@ -1,11 +1,29 @@
-import { Layers, CheckCircle2, XCircle, DollarSign, Clock, ShieldCheck, Percent, Info } from 'lucide-react';
+import {
+  Layers,
+  CheckCircle2,
+  XCircle,
+  DollarSign,
+  Clock,
+  ShieldCheck,
+  Edit3,
+  PlusCircle,
+  Trash2,
+  Scale,
+  FileText,
+  Sparkles,
+} from 'lucide-react';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import type { ProposalDetailDto, ProposalDto } from '../../../types/models/Proposal';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { getCriteriaColorTheme } from '../utils/criteriaColors';
 
 export interface AISideBySideMilestoneMatrixProps {
   detail: ProposalDetailDto | null;
   proposal?: ProposalDto | null;
   fullEvaluationJson?: string | null;
+  originalMilestones?: any[] | null;
+  jobPostBudgetMax?: number | null;
+  jobPostDuration?: string | null;
 }
 
 function parseDurationToWeeks(durationStr?: string | null): number {
@@ -20,7 +38,21 @@ function parseDurationToWeeks(durationStr?: string | null): number {
   return val;
 }
 
-function sumMilestoneDurations(milestones: any[]): string | null {
+function isTitleMatch(titleA?: string | null, titleB?: string | null): boolean {
+  if (!titleA || !titleB) return false;
+  const a = titleA.trim().toLowerCase();
+  const b = titleB.trim().toLowerCase();
+  if (a === b) return true;
+  if (a.length >= 4 && b.length >= 4) {
+    if (a.includes(b) || b.includes(a)) return true;
+  }
+  return false;
+}
+
+function sumMilestoneDurations(
+  milestones: any[],
+  t: any
+): string | null {
   if (!milestones || milestones.length === 0) return null;
   let totalWeeks = 0;
   let hasValid = false;
@@ -36,15 +68,23 @@ function sumMilestoneDurations(milestones: any[]): string | null {
   }
   if (!hasValid) return null;
   const rounded = Math.round(totalWeeks * 10) / 10;
-  return rounded === 1 ? '1 week' : `${rounded} weeks`;
+  return rounded === 1
+    ? t('milestoneMatrix.oneWeek', '1 tuần')
+    : t('milestoneMatrix.weeksCount', '{{count}} tuần', { count: rounded });
 }
 
 export function AISideBySideMilestoneMatrix({
   detail,
   proposal,
   fullEvaluationJson,
+  originalMilestones,
+  jobPostBudgetMax,
+  jobPostDuration,
 }: AISideBySideMilestoneMatrixProps) {
+  const { t } = useTranslation();
+
   let requirementFulfillment: any[] = [];
+  let milestoneAudit: any[] = [];
   let jobBaseline: any = null;
   let proposalOffer: any = null;
   let deterministic: any = null;
@@ -54,29 +94,68 @@ export function AISideBySideMilestoneMatrix({
     try {
       const parsed = JSON.parse(rawJson);
       requirementFulfillment = parsed?.llm_qualitative_evaluation?.requirement_fulfillment || [];
+      milestoneAudit = parsed?.llm_qualitative_evaluation?.milestone_audit || [];
       jobBaseline = parsed?.job_post_baseline || null;
       proposalOffer = parsed?.proposal_offer || null;
       deterministic = parsed?.deterministic_calculations || null;
     } catch {
       requirementFulfillment = [];
+      milestoneAudit = [];
     }
   }
 
   const milestones = detail?.milestonePlans || [];
-  const milestoneSumDuration = sumMilestoneDurations(milestones);
+  const milestoneSumDuration = sumMilestoneDurations(milestones, t);
 
-  // Metrics for Financial & Timeline Comparison
-  const baselineBudgetMax = jobBaseline?.budget_max || 0;
+  const origMilestoneList: any[] = originalMilestones || jobBaseline?.original_milestones || [];
+  const origMilestoneSumCost = origMilestoneList.reduce(
+    (sum, m) => sum + (Number(m.amount) || 0),
+    0
+  );
+  const origMilestoneSumDuration = sumMilestoneDurations(origMilestoneList, t);
+
+  // Metrics for Financial & Timeline Comparison - Canonical Client Baseline
+  const baselineBudgetMax =
+    (jobPostBudgetMax && jobPostBudgetMax > 0 ? jobPostBudgetMax : 0) ||
+    (jobBaseline?.budget_max && jobBaseline.budget_max > 0 ? jobBaseline.budget_max : 0) ||
+    (jobBaseline?.budget_min && jobBaseline.budget_min > 0 ? jobBaseline.budget_min : 0) ||
+    origMilestoneSumCost;
+
   const proposedBudget =
     proposal?.proposedBudget || proposalOffer?.proposed_budget || detail?.proposedBudget || 0;
   const savingsRatioPercent =
     proposal?.aiSavingsRatioPercent ?? deterministic?.savings_ratio_percent ?? 0;
 
-  const rawBaselineDuration = jobBaseline?.estimated_duration;
-  const baselineDuration =
-    rawBaselineDuration && rawBaselineDuration !== '—' && rawBaselineDuration !== 'null'
-      ? rawBaselineDuration
-      : milestoneSumDuration || 'Flexible / Unspecified';
+  // Determine Client Original Budget string
+  let clientBudgetDisplay = t('milestoneMatrix.budgetFlexible', 'Linh hoạt / Chưa chỉ định');
+
+  if (baselineBudgetMax > 0) {
+    clientBudgetDisplay = formatGigCoin(baselineBudgetMax);
+  } else if (savingsRatioPercent > 0 && proposedBudget > 0) {
+    const calculatedMax = Math.round(proposedBudget / (1 - savingsRatioPercent / 100));
+    clientBudgetDisplay = formatGigCoin(calculatedMax);
+  }
+
+  const rawBaselineDuration =
+    (jobPostDuration && jobPostDuration !== '—' && jobPostDuration !== 'null'
+      ? jobPostDuration
+      : null) ||
+    (jobBaseline?.estimated_duration &&
+    jobBaseline.estimated_duration !== '—' &&
+    jobBaseline.estimated_duration !== 'null'
+      ? jobBaseline.estimated_duration
+      : null) ||
+    origMilestoneSumDuration;
+
+  const isBaselineDurationSpecified =
+    rawBaselineDuration &&
+    rawBaselineDuration !== '—' &&
+    rawBaselineDuration !== 'null' &&
+    rawBaselineDuration.toLowerCase() !== 'flexible / unspecified';
+
+  const baselineDuration = isBaselineDurationSpecified
+    ? rawBaselineDuration
+    : t('milestoneMatrix.durationFlexible', 'Linh hoạt / Chưa chỉ định');
 
   const rawProposedDuration =
     proposal?.proposedDuration || proposalOffer?.proposed_duration || detail?.proposedDuration;
@@ -85,28 +164,8 @@ export function AISideBySideMilestoneMatrix({
       ? rawProposedDuration
       : milestoneSumDuration || '—';
 
-  const baselineWeeks = parseDurationToWeeks(baselineDuration);
+  const baselineWeeks = isBaselineDurationSpecified ? parseDurationToWeeks(baselineDuration) : 0;
   const proposedWeeks = parseDurationToWeeks(proposedDuration);
-
-  let timelineBadgeLabel = '⏱️ Timeline Audit';
-  let timelineBadgeStyle = 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border border-blue-500/60 text-xs font-black shadow-xs px-3 py-1';
-
-  if (baselineWeeks > 0 && proposedWeeks > 0) {
-    const diffPct = ((baselineWeeks - proposedWeeks) / baselineWeeks) * 100;
-    const roundedPct = Math.abs(Math.round(diffPct * 10) / 10);
-    const weekDiff = Math.abs(Math.round((baselineWeeks - proposedWeeks) * 10) / 10);
-
-    if (diffPct > 0) {
-      timelineBadgeLabel = `⚡ ${roundedPct}% Faster (Saved ${weekDiff} wks)`;
-      timelineBadgeStyle = 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-500/60 text-xs font-black shadow-xs px-3 py-1';
-    } else if (diffPct < 0) {
-      timelineBadgeLabel = `⏳ Exceeds Target (+${weekDiff} wks)`;
-      timelineBadgeStyle = 'bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-500/60 text-xs font-black shadow-xs px-3 py-1';
-    } else {
-      timelineBadgeLabel = `⏱️ On Target (Exact ${baselineWeeks} wks)`;
-      timelineBadgeStyle = 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border border-blue-500/60 text-xs font-black shadow-xs px-3 py-1';
-    }
-  }
 
   // Metrics for Requirement Scope Fulfillment
   const totalReqs = requirementFulfillment.length;
@@ -115,215 +174,847 @@ export function AISideBySideMilestoneMatrix({
     proposal?.aiScopeCompletenessPercent ??
     (totalReqs > 0 ? Math.round((fulfilledCount / totalReqs) * 100) : 100);
 
-  // Calculate Milestone Table Footer Sums
-  const totalMilestoneCost = milestones.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  let totalMilestoneWeeks = 0;
-  for (const m of milestones) {
-    totalMilestoneWeeks += parseDurationToWeeks(m.estimatedDuration || (m as any).estimated_duration);
+  // ── Construct Side-by-Side Milestone Compare Pairs ─────────────────────────
+  interface ComparisonRow {
+    id: string;
+    index: number;
+    status: 'Preserved' | 'Edited' | 'Added' | 'Deleted';
+    changeSummary: string;
+    client: {
+      title: string;
+      description?: string;
+      amount: number | null;
+      duration: string | null;
+    } | null;
+    freelancer: {
+      title: string;
+      description?: string;
+      amount: number | null;
+      duration: string | null;
+    } | null;
+    costDelta: number | null;
+    costDeltaPct: number | null;
+    durationDeltaText: string | null;
+    durationFaster: boolean | null;
   }
-  const roundedWeeks = Math.round(totalMilestoneWeeks * 10) / 10;
-  const totalMilestoneDurationStr = roundedWeeks > 0 ? (roundedWeeks === 1 ? '1 week' : `${roundedWeeks} weeks`) : proposedDuration;
+
+  const comparisonRows: ComparisonRow[] = [];
+  const usedFreelancerIndices = new Set<number>();
+
+  // 1. Process Client Baseline Milestones
+  origMilestoneList.forEach((orig, oIdx) => {
+    const origTitle = (orig.title || orig.milestone_title || '').trim();
+    const origAmount = orig.amount != null ? Number(orig.amount) : null;
+    const origDur = orig.estimatedDuration || orig.estimated_duration || null;
+    const origDesc = orig.description || orig.deliverables || '';
+
+    let matchIdx = -1;
+    for (let fIdx = 0; fIdx < milestones.length; fIdx++) {
+      if (usedFreelancerIndices.has(fIdx)) continue;
+      const f = milestones[fIdx];
+      if ((orig.id && f.id && orig.id === f.id) || isTitleMatch(origTitle, f.title)) {
+        matchIdx = fIdx;
+        break;
+      }
+    }
+
+    if (matchIdx !== -1) {
+      usedFreelancerIndices.add(matchIdx);
+      const f = milestones[matchIdx];
+      const fAmount = f.amount != null ? Number(f.amount) : null;
+      const fDur = f.estimatedDuration || (f as any).estimated_duration || null;
+      const fDesc = f.description || (f as any).deliverables || '';
+
+      const isPriceDiff = origAmount != null && fAmount != null && origAmount !== fAmount;
+      const isDurDiff = Boolean(origDur && fDur && origDur.trim() !== fDur.trim());
+      const isTitleDiff = origTitle.toLowerCase() !== (f.title || '').trim().toLowerCase();
+      const isDescDiff = Boolean(origDesc || fDesc) && origDesc.trim() !== fDesc.trim();
+
+      const changedFields: string[] = [];
+      if (isTitleDiff) {
+        changedFields.push(
+          t('milestoneMatrix.diffTitle', `Tiêu đề ('{{from}}' → '{{to}}')`, {
+            from: origTitle,
+            to: f.title,
+          })
+        );
+      }
+      if (isPriceDiff && origAmount != null && fAmount != null) {
+        changedFields.push(
+          t('milestoneMatrix.diffPrice', `Chi phí ({{from}} → {{to}})`, {
+            from: formatGigCoin(origAmount),
+            to: formatGigCoin(fAmount),
+          })
+        );
+      }
+      if (isDurDiff) {
+        changedFields.push(
+          t('milestoneMatrix.diffDuration', `Thời gian ('{{from}}' → '{{to}}')`, {
+            from: origDur,
+            to: fDur,
+          })
+        );
+      }
+      if (isDescDiff) {
+        changedFields.push(t('milestoneMatrix.diffDesc', 'Nội dung bàn giao'));
+      }
+
+      const auditItem = milestoneAudit.find(
+        (a: any) =>
+          isTitleMatch(a.milestone_title || a.title, f.title) ||
+          isTitleMatch(a.milestone_title || a.title, origTitle)
+      );
+
+      const status: 'Preserved' | 'Edited' =
+        changedFields.length > 0 ? 'Edited' : auditItem?.status || 'Preserved';
+      const changeSummary =
+        auditItem?.change_summary ||
+        (changedFields.length > 0
+          ? `${t('milestoneMatrix.editedLabel', 'Điều chỉnh')}: ${changedFields.join(', ')}`
+          : t('milestoneMatrix.preservedSummary', 'Baseline milestone được giữ nguyên chuẩn xác'));
+
+      let costDelta: number | null = null;
+      let costDeltaPct: number | null = null;
+      if (origAmount != null && fAmount != null) {
+        costDelta = fAmount - origAmount;
+        if (origAmount > 0) {
+          costDeltaPct = ((fAmount - origAmount) / origAmount) * 100;
+        }
+      }
+
+      let durationDeltaText: string | null = null;
+      let durationFaster: boolean | null = null;
+      const origW = parseDurationToWeeks(origDur);
+      const fW = parseDurationToWeeks(fDur);
+      if (origW > 0 && fW > 0) {
+        const diff = fW - origW;
+        if (diff < 0) {
+          durationFaster = true;
+          durationDeltaText = t('milestoneMatrix.fasterBy', 'Nhanh hơn {{weeks}} tuần', {
+            weeks: Math.abs(Math.round(diff * 10) / 10),
+          });
+        } else if (diff > 0) {
+          durationFaster = false;
+          durationDeltaText = t('milestoneMatrix.slowerBy', 'Thêm {{weeks}} tuần', {
+            weeks: Math.round(diff * 10) / 10,
+          });
+        } else {
+          durationDeltaText = t('milestoneMatrix.onTime', 'Bằng chuẩn');
+        }
+      }
+
+      comparisonRows.push({
+        id: f.id || `paired-${oIdx}`,
+        index: comparisonRows.length + 1,
+        status,
+        changeSummary,
+        client: {
+          title: origTitle || `${t('milestoneMatrix.milestonePrefix', 'Mốc')} ${oIdx + 1}`,
+          description: origDesc,
+          amount: origAmount,
+          duration: origDur,
+        },
+        freelancer: {
+          title: f.title || `${t('milestoneMatrix.milestonePrefix', 'Mốc')} ${matchIdx + 1}`,
+          description: fDesc,
+          amount: fAmount,
+          duration: fDur,
+        },
+        costDelta,
+        costDeltaPct,
+        durationDeltaText,
+        durationFaster,
+      });
+    } else {
+      // Client milestone was omitted / deleted
+      const auditItem = milestoneAudit.find(
+        (a: any) => a.status === 'Deleted' && isTitleMatch(a.milestone_title || a.title, origTitle)
+      );
+
+      comparisonRows.push({
+        id: `deleted-${oIdx}`,
+        index: comparisonRows.length + 1,
+        status: 'Deleted',
+        changeSummary:
+          auditItem?.change_summary ||
+          t(
+            'milestoneMatrix.omittedSummary',
+            `Mốc '{{title}}' bị lược bỏ khỏi đề xuất của Freelancer`,
+            { title: origTitle }
+          ),
+        client: {
+          title: origTitle || `${t('milestoneMatrix.milestonePrefix', 'Mốc')} ${oIdx + 1}`,
+          description: origDesc,
+          amount: origAmount,
+          duration: origDur,
+        },
+        freelancer: null,
+        costDelta: origAmount != null ? -origAmount : null,
+        costDeltaPct: -100,
+        durationDeltaText: null,
+        durationFaster: null,
+      });
+    }
+  });
+
+  // 2. Remaining freelancer milestones that were not matched (Added by freelancer)
+  milestones.forEach((f, fIdx) => {
+    if (usedFreelancerIndices.has(fIdx)) return;
+    const fAmount = f.amount != null ? Number(f.amount) : null;
+    const fDur = f.estimatedDuration || (f as any).estimated_duration || null;
+    const fDesc = f.description || (f as any).deliverables || '';
+
+    const auditItem = milestoneAudit.find(
+      (a: any) => a.status === 'Added' && isTitleMatch(a.milestone_title || a.title, f.title)
+    );
+
+    comparisonRows.push({
+      id: f.id || `added-${fIdx}`,
+      index: comparisonRows.length + 1,
+      status: 'Added',
+      changeSummary:
+        auditItem?.change_summary ||
+        t(
+          'milestoneMatrix.addedSummary',
+          'Mốc công việc mới do freelancer bổ sung nhằm tối ưu giải pháp'
+        ),
+      client: null,
+      freelancer: {
+        title: f.title || `${t('milestoneMatrix.milestonePrefix', 'Mốc')} ${fIdx + 1}`,
+        description: fDesc,
+        amount: fAmount,
+        duration: fDur,
+      },
+      costDelta: fAmount,
+      costDeltaPct: null,
+      durationDeltaText: null,
+      durationFaster: null,
+    });
+  });
+
+  // Count milestone mutation metrics
+  const preservedCount = comparisonRows.filter((r) => r.status === 'Preserved').length;
+  const editedCount = comparisonRows.filter((r) => r.status === 'Edited').length;
+  const addedCount = comparisonRows.filter((r) => r.status === 'Added').length;
+  const deletedCount = comparisonRows.filter((r) => r.status === 'Deleted').length;
+
+  const totalClientCost = origMilestoneSumCost || baselineBudgetMax;
+  const totalFreelancerCost = milestones.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const totalCostDiff = totalFreelancerCost - totalClientCost;
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border/80 bg-surface-card/60 p-3.5 sm:p-5 shadow-2xs">
-      {/* Table Section Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
-        <h4 className="text-xs font-black uppercase tracking-wider text-text-primary flex items-center gap-2">
-          <Layers size={16} className="text-brand" />
-          <span>So sánh Milestone: Client Baseline vs. Freelancer Proposal</span>
-        </h4>
-        <span className="rounded-full bg-brand/10 border border-brand/20 px-3 py-0.5 text-[11px] font-black text-brand">
-          Side-by-Side Audit
-        </span>
-      </div>
+    <div className="space-y-6">
+      {/* ── CARD 1: Requirement Scope Fulfillment Section (Checklist) ───────────────── */}
+      {requirementFulfillment.length > 0 && (
+        <div className="space-y-4 rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-4">
+            <div>
+              <h4 className="text-sm sm:text-base font-black uppercase tracking-wider text-text-primary flex items-center gap-2">
+                <ShieldCheck size={18} className="text-brand shrink-0" />
+                <span>
+                  {t(
+                    'milestoneMatrix.checklistTitle',
+                    'Kiểm định phạm vi tính năng (Requirement Audit Checklist)'
+                  )}
+                </span>
+              </h4>
+              <p className="text-xs text-text-muted mt-1 font-normal">
+                {t(
+                  'milestoneMatrix.checklistSubtitle',
+                  'Bảng rà soát chi tiết từng yêu cầu kỹ thuật của dự án so với nội dung đề xuất và milestone'
+                )}
+              </p>
+            </div>
 
-      {/* Metric Ownership & Evidence Banner: Financial Value & Timeline Feasibility */}
-      <div className="rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-surface-card p-3 sm:p-3.5 space-y-2 text-xs">
-        <div className="flex flex-wrap items-center justify-between gap-1.5">
-          <span className="font-black text-[10.5px] sm:text-[11px] text-emerald-700 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-            <DollarSign size={14} className="text-emerald-500" />
-            💰 Financial Value (20%) & ⏱️ Timeline Feasibility (20%) Audit
-          </span>
-          <span className="text-[9.5px] sm:text-[10px] font-extrabold text-text-muted bg-surface-card px-2.5 py-0.5 rounded-full border border-border/40">
-            Supports Top Metric Evidence
-          </span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="p-2 px-3.5 rounded-xl bg-surface-muted border border-border flex items-center gap-3">
+                <div className="space-y-0.5 text-left">
+                  <span className="block text-[10px] font-bold text-text-muted uppercase">
+                    {t('milestoneMatrix.criteriaQualified', 'Tiêu chí đạt chuẩn')}
+                  </span>
+                  <strong className="text-text-primary font-black text-xs sm:text-sm block">
+                    {fulfilledCount} / {totalReqs || milestones.length}{' '}
+                    {t('milestoneMatrix.itemsLabel', 'Hạng mục')}
+                  </strong>
+                </div>
+                <div className="h-6 w-px bg-border/80" />
+                <div className="space-y-0.5 text-right">
+                  <span className="text-[10px] font-bold text-text-muted block">
+                    {t('milestoneMatrix.aiVerdictLabel', 'Đánh giá AI:')}
+                  </span>
+                  <span
+                    className={`text-xs font-black block ${
+                      scopeCoveragePct >= 80
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : scopeCoveragePct >= 60
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {scopeCoveragePct >= 80
+                      ? t('milestoneMatrix.aiVerdictFull', 'Bao phủ đầy đủ')
+                      : t('milestoneMatrix.aiVerdictReview', 'Cần rà soát bổ sung')}
+                  </span>
+                </div>
+              </div>
+
+              <span className="rounded-full bg-surface border border-brand px-3 py-1.5 text-xs font-black text-text-primary shadow-2xs shrink-0">
+                {t('milestoneMatrix.scopeCompleted', '{{pct}}% Hoàn thành', {
+                  pct: scopeCoveragePct.toFixed(0),
+                })}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 text-xs sm:text-sm pt-1">
+            {requirementFulfillment.map((req, idx) => {
+              const evidence = req.evidence_quote || req.note;
+              const matchedMs = req.matched_milestone;
+              const theme = getCriteriaColorTheme(idx);
+
+              return (
+                <div
+                  key={idx}
+                  className={`flex flex-col gap-2.5 p-4 rounded-2xl border ${
+                    req.is_fulfilled
+                      ? `${theme.cardBorder} ${theme.cardBg}`
+                      : 'border-border bg-surface-muted/30'
+                  } text-xs sm:text-sm font-bold transition-all shadow-2xs`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase text-white ${theme.pillBg} shrink-0 shadow-2xs`}
+                        title={t('milestoneMatrix.criteriaIndexTitle', 'Tiêu chí #{{num}} tương ứng màu đánh dấu trong Đề xuất', { num: idx + 1 })}
+                      >
+                        #{idx + 1}
+                      </span>
+                      {req.is_fulfilled ? (
+                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                      ) : (
+                        <XCircle size={18} className="text-rose-500 shrink-0" />
+                      )}
+                      <span className="font-black text-xs sm:text-sm text-text-primary">
+                        {req.requirement}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {matchedMs && (
+                        <span className="rounded-full bg-surface border border-border text-text-primary px-3 py-0.5 text-xs font-black shrink-0">
+                          {t('milestoneMatrix.matchedMilestone', 'Mốc liên kết: {{ms}}', {
+                            ms: matchedMs,
+                          })}
+                        </span>
+                      )}
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-black border ${
+                          req.is_fulfilled
+                            ? 'bg-surface border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-surface border-rose-500 text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {req.is_fulfilled
+                          ? t('milestoneMatrix.statusQualified', 'Đạt chuẩn')
+                          : t('milestoneMatrix.statusNotMet', 'Chưa đáp ứng')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Evidence Quote Box */}
+                  {evidence && (
+                    <div className={`mt-1 p-3 rounded-xl text-xs font-normal leading-relaxed border ${theme.cardBorder} bg-surface text-text-primary border-l-4 ${theme.borderMark}`}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-black uppercase text-[11px] tracking-wider text-text-muted flex items-center gap-1.5">
+                          <FileText size={12} className="text-brand shrink-0" />
+                          <span>
+                            {req.is_fulfilled
+                              ? t(
+                                  'milestoneMatrix.evidenceQuote',
+                                  'Bằng chứng trích dẫn từ đề xuất'
+                                )
+                              : t(
+                                  'milestoneMatrix.missingScopeGap',
+                                  'Lý do chưa đáp ứng yêu cầu'
+                                )}
+                          </span>
+                        </span>
+                        {req.is_fulfilled && (
+                          <span className={`text-[10px] font-bold ${theme.cardText} italic`}>
+                            {t('milestoneMatrix.highlightColorHint', 'Được đánh dấu màu #{{num}} trong tab Đề xuất', { num: idx + 1 })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="italic text-xs font-medium">
+                        "{evidence.replace(/^"|"$/g, '')}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── CARD 2: Side-by-Side Milestone Table Compare ────────────────────────── */}
+      <div className="space-y-5 rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-xs">
+      {/* ── Table Section Header ────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-4">
+        <div>
+          <h4 className="text-sm sm:text-base font-black uppercase tracking-wider text-text-primary flex items-center gap-2">
+            <Scale size={18} className="text-brand shrink-0" />
+            <span>
+              {t(
+                'milestoneMatrix.title',
+                'So sánh Milestone: Client Baseline vs. Freelancer Proposal'
+              )}
+            </span>
+          </h4>
+          <p className="text-xs text-text-muted mt-1 font-normal">
+            {t(
+              'milestoneMatrix.subtitle',
+              'Bảng đối soát Side-by-Side so sánh từng mốc công việc giữa yêu cầu gốc và kế hoạch thực thi đề xuất'
+            )}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-xs pt-1">
-          {/* Budget Comparison Card (Original vs Freelancer Propose) */}
-          <div className="rounded-xl bg-surface-card border border-border/60 p-3 space-y-2 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-border/40 pb-2">
-              <span className="text-[10px] font-black uppercase text-text-muted flex items-center gap-1">
-                <Percent size={13} className="text-emerald-500" /> Budget Savings Comparison
+        {/* Mutation Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-black">
+          <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted border border-border px-2.5 py-1 text-text-primary">
+            <CheckCircle2 size={12} className="text-emerald-500" />
+            <span>
+              {t('milestoneMatrix.preservedCount', '{{count}} Giữ nguyên', {
+                count: preservedCount,
+              })}
+            </span>
+          </span>
+          {editedCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted border border-border px-2.5 py-1 text-text-primary">
+              <Edit3 size={12} className="text-amber-500" />
+              <span>
+                {t('milestoneMatrix.editedCount', '{{count}} Điều chỉnh', { count: editedCount })}
               </span>
+            </span>
+          )}
+          {addedCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted border border-border px-2.5 py-1 text-text-primary">
+              <PlusCircle size={12} className="text-brand" />
+              <span>
+                {t('milestoneMatrix.addedCount', '{{count}} Bổ sung', { count: addedCount })}
+              </span>
+            </span>
+          )}
+          {deletedCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted border border-border px-2.5 py-1 text-text-primary">
+              <Trash2 size={12} className="text-rose-500" />
+              <span>
+                {t('milestoneMatrix.deletedCount', '{{count}} Lược bỏ', { count: deletedCount })}
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Side-by-Side Summary KPI Cards ──────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm">
+        {/* Card 1: Budget Comparison */}
+        <div className="rounded-2xl border border-border bg-surface-muted/50 p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-border/60 pb-2">
+            <span className="font-black text-xs uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <DollarSign size={14} className="text-brand shrink-0" />
+              {t('milestoneMatrix.budgetCompare', 'So sánh Ngân sách (GC)')}
+            </span>
+            {baselineBudgetMax > 0 && (
               <span
-                className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-black shadow-xs border ${
+                className={`rounded-full px-2.5 py-0.5 text-xs font-black border ${
                   savingsRatioPercent > 0
-                    ? 'bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border-emerald-500/60'
-                    : 'bg-blue-500/25 text-blue-900 dark:text-blue-200 border-blue-500/60'
+                    ? 'bg-surface border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-surface border-border text-text-primary'
                 }`}
               >
                 {savingsRatioPercent > 0
-                  ? `🟢 ${savingsRatioPercent.toFixed(1)}% Savings`
-                  : '🎯 0% Savings (On Budget)'}
+                  ? t('milestoneMatrix.budgetSavings', 'Tiết kiệm {{pct}}%', {
+                      pct: savingsRatioPercent.toFixed(1),
+                    })
+                  : t('milestoneMatrix.budgetOnTarget', 'Theo ngân sách chuẩn')}
               </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-surface-muted/50 p-2 sm:p-2.5 rounded-xl border border-border/40 text-center space-y-0.5">
-                <span className="block text-[9px] font-bold text-text-muted uppercase">Original Client Budget</span>
-                <strong className="text-text-primary font-black text-xs sm:text-base block">
-                  {baselineBudgetMax > 0
-                    ? formatGigCoin(baselineBudgetMax)
-                    : savingsRatioPercent > 0 && proposedBudget > 0
-                    ? formatGigCoin(Math.round(proposedBudget / (1 - savingsRatioPercent / 100)))
-                    : formatGigCoin(proposedBudget)}
-                </strong>
-              </div>
-
-              <div className="bg-emerald-500/10 p-2 sm:p-2.5 rounded-xl border border-emerald-500/30 text-center space-y-0.5">
-                <span className="block text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">Freelancer Proposed</span>
-                <strong className="text-emerald-600 dark:text-emerald-400 font-black text-xs sm:text-base block">
-                  {formatGigCoin(proposedBudget)}
-                </strong>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Duration & Time Savings Comparison Card */}
-          <div className="rounded-xl bg-surface-card border border-border/60 p-3 space-y-2 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-border/40 pb-2">
-              <span className="text-[10px] font-black uppercase text-text-muted flex items-center gap-1">
-                <Clock size={13} className="text-blue-500" /> Duration & Time Savings
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="p-2.5 rounded-xl bg-surface border border-border space-y-1">
+              <span className="block text-[11px] font-bold text-text-muted uppercase">
+                {t('milestoneMatrix.clientBaseline', 'Client Baseline')}
               </span>
-              <span className={`rounded-full text-[11px] sm:text-xs ${timelineBadgeStyle}`}>
-                {timelineBadgeLabel}
-              </span>
+              <strong className="text-text-primary font-black text-sm sm:text-base block truncate">
+                {clientBudgetDisplay}
+              </strong>
             </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-border space-y-1">
+              <span className="block text-[11px] font-bold text-text-muted uppercase">
+                {t('milestoneMatrix.freelancerOffer', 'Freelancer Offer')}
+              </span>
+              <strong className="text-text-primary font-black text-sm sm:text-base block truncate">
+                {formatGigCoin(proposedBudget)}
+              </strong>
+            </div>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-surface-muted/50 p-2 sm:p-2.5 rounded-xl border border-border/40 text-center space-y-0.5">
-                <span className="block text-[9px] font-bold text-text-muted uppercase">Original Client Target</span>
-                <strong className="text-text-primary font-black text-xs sm:text-base block">
-                  {baselineDuration}
-                </strong>
-              </div>
+        {/* Card 2: Timeline Comparison */}
+        <div className="rounded-2xl border border-border bg-surface-muted/50 p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-border/60 pb-2">
+            <span className="font-black text-xs uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <Clock size={14} className="text-brand shrink-0" />
+              {t('milestoneMatrix.timelineCompare', 'So sánh Thời hạn (Timeline)')}
+            </span>
+            {baselineWeeks > 0 && proposedWeeks > 0 && (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-black border ${
+                  baselineWeeks > proposedWeeks
+                    ? 'bg-surface border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                    : baselineWeeks < proposedWeeks
+                    ? 'bg-surface border-amber-500 text-amber-600 dark:text-amber-400'
+                    : 'bg-surface border-border text-text-primary'
+                }`}
+              >
+                {baselineWeeks > proposedWeeks
+                  ? t('milestoneMatrix.timelineFaster', 'Nhanh hơn {{weeks}} tuần', {
+                      weeks: (baselineWeeks - proposedWeeks).toFixed(1),
+                    })
+                  : baselineWeeks < proposedWeeks
+                  ? t('milestoneMatrix.timelineSlower', 'Thêm {{weeks}} tuần', {
+                      weeks: (proposedWeeks - baselineWeeks).toFixed(1),
+                    })
+                  : t('milestoneMatrix.timelineOnTarget', 'Đúng tiến độ')}
+              </span>
+            )}
+          </div>
 
-              <div className="bg-blue-500/10 p-2 sm:p-2.5 rounded-xl border border-blue-500/30 text-center space-y-0.5">
-                <span className="block text-[9px] font-bold text-blue-700 dark:text-blue-300 uppercase">Freelancer Proposed</span>
-                <strong className="text-blue-600 dark:text-blue-400 font-black text-xs sm:text-base block">
-                  {proposedDuration}
-                </strong>
-              </div>
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="p-2.5 rounded-xl bg-surface border border-border space-y-1">
+              <span className="block text-[11px] font-bold text-text-muted uppercase">
+                {t('milestoneMatrix.clientTarget', 'Client Target')}
+              </span>
+              <strong className="text-text-primary font-black text-sm sm:text-base block truncate">
+                {baselineDuration}
+              </strong>
+            </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-border space-y-1">
+              <span className="block text-[11px] font-bold text-text-muted uppercase">
+                {t('milestoneMatrix.freelancerTarget', 'Freelancer Target')}
+              </span>
+              <strong className="text-text-primary font-black text-sm sm:text-base block truncate">
+                {proposedDuration}
+              </strong>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Side-by-Side Milestone Comparison Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[620px] text-left text-xs border-collapse">
+      {/* ── True Side-by-Side Milestone Table Compare ────────────────────────── */}
+      <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
+        <table className="w-full min-w-[860px] text-left text-xs sm:text-sm border-collapse">
+          {/* Column Group Header */}
           <thead>
-            <tr className="border-b border-border/60 bg-surface-muted/60 text-[10px] font-black uppercase text-text-muted tracking-wider">
-              <th className="p-3">#</th>
-              <th className="p-3">Kế hoạch Freelancer đề xuất (Edited Plan)</th>
-              <th className="p-3 text-right">
-                <span className="flex items-center justify-end gap-1">
-                  💰 Chi phí GC
-                </span>
+            <tr className="border-b border-border bg-surface-muted text-xs font-black uppercase text-text-primary">
+              <th className="p-3.5 w-12 text-center text-text-muted">#</th>
+              <th className="p-3.5 w-[38%] border-r border-border">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-text-primary">
+                    <FileText size={14} className="text-brand shrink-0" />
+                    {t('milestoneMatrix.thClient', 'MỐC BAN ĐẦU (CLIENT BASELINE)')}
+                  </span>
+                  <span className="text-[10px] font-extrabold text-text-muted bg-surface px-2 py-0.5 rounded border border-border">
+                    {t('milestoneMatrix.thOriginalReq', 'Yêu cầu gốc')}
+                  </span>
+                </div>
               </th>
-              <th className="p-3 text-center">
-                <span className="flex items-center justify-center gap-1">
-                  ⏱️ Thời gian
-                </span>
+              <th className="p-3.5 w-[38%] border-r border-border">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-text-primary">
+                    <Layers size={14} className="text-brand shrink-0" />
+                    {t('milestoneMatrix.thFreelancer', 'ĐỀ XUẤT FREELANCER (PROPOSAL)')}
+                  </span>
+                  <span className="text-[10px] font-extrabold text-text-muted bg-surface px-2 py-0.5 rounded border border-border">
+                    {t('milestoneMatrix.thPlan', 'Kế hoạch thực thi')}
+                  </span>
+                </div>
               </th>
-              <th className="p-3">
-                <span className="flex items-center gap-1">
-                  📋 AI Scope Audit & Fulfillment
-                </span>
+              <th className="p-3.5 w-[24%] text-center bg-surface-muted/90">
+                <div className="flex items-center justify-center gap-1.5 text-text-primary">
+                  <Sparkles size={14} className="text-brand shrink-0" />
+                  <span>{t('milestoneMatrix.thAudit', 'ĐỐI SOÁT AI (VERDICT)')}</span>
+                </div>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/40">
-            {milestones.length > 0 ? (
-              milestones.map((item, index) => {
-                // Find matching requirement audit item
-                const reqAudit =
-                  requirementFulfillment.find(
-                    (r) =>
-                      r.matched_milestone?.toLowerCase() === item.title?.toLowerCase() || index === 0
-                  ) || requirementFulfillment[index];
 
-                const isFulfilled = reqAudit ? reqAudit.is_fulfilled : true;
+          <tbody className="divide-y divide-border">
+            {comparisonRows.length > 0 ? (
+              comparisonRows.map((row) => (
+                <tr key={row.id} className="hover:bg-surface-muted/30 transition-colors">
+                  {/* # Index */}
+                  <td className="p-3.5 text-center font-bold text-text-muted align-top">
+                    {row.index}
+                  </td>
 
-                return (
-                  <tr key={item.id || index} className="hover:bg-surface-muted/30 transition-colors">
-                    <td className="p-3 font-bold text-text-muted">{index + 1}</td>
-                    <td className="p-3 space-y-1">
-                      <strong className="block text-xs font-bold text-text-primary">
-                        {item.title || 'Milestone chưa đặt tên'}
-                      </strong>
-                      {item.description && (
-                        <p className="text-[11px] text-text-muted leading-relaxed line-clamp-2">
-                          {item.description}
+                  {/* ── Client Baseline Side ── */}
+                  <td className="p-3.5 border-r border-border align-top space-y-2">
+                    {row.client ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <strong className="text-text-primary font-black text-sm block leading-snug">
+                            {row.client.title}
+                          </strong>
+                          {row.client.amount != null && (
+                            <span className="shrink-0 font-mono font-black text-xs text-text-primary bg-surface-muted border border-border px-2 py-0.5 rounded">
+                              {formatGigCoin(row.client.amount)}
+                            </span>
+                          )}
+                        </div>
+
+                        {row.client.description && (
+                          <p className="text-xs text-text-muted leading-relaxed line-clamp-2">
+                            {row.client.description}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-text-muted pt-0.5">
+                          <span className="flex items-center gap-1">
+                            <Clock size={11} />
+                            <span>
+                              {row.client.duration ||
+                                t('milestoneMatrix.noDuration', 'Chưa định thời hạn')}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl border border-dashed border-border bg-surface-muted/40 text-center space-y-1">
+                        <span className="text-xs italic text-text-muted flex items-center justify-center gap-1">
+                          <PlusCircle size={13} className="text-brand" />
+                          <span>
+                            {t('milestoneMatrix.newMilestoneAdded', 'Mốc mới do Freelancer bổ sung')}
+                          </span>
+                        </span>
+                        <p className="text-[11px] text-text-muted">
+                          {t(
+                            'milestoneMatrix.noBaselineMatch',
+                            '(Không có mốc tương ứng trong yêu cầu gốc của khách hàng)'
+                          )}
                         </p>
-                      )}
-                    </td>
-                    <td className="p-3 text-right font-black text-emerald-600 dark:text-emerald-400">
-                      {formatGigCoin(item.amount)}
-                    </td>
-                    <td className="p-3 text-center font-semibold text-text-muted">
-                      {item.estimatedDuration || '—'}
-                    </td>
-                    <td className="p-3">
-                      {isFulfilled ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-black text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 size={12} /> Covered & Preserved
+                      </div>
+                    )}
+                  </td>
+
+                  {/* ── Freelancer Proposal Side ── */}
+                  <td className="p-3.5 border-r border-border align-top space-y-2">
+                    {row.freelancer ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <strong className="text-text-primary font-black text-sm block leading-snug">
+                            {row.freelancer.title}
+                          </strong>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {row.freelancer.amount != null && (
+                              <span className="font-mono font-black text-xs text-text-primary bg-surface-muted border border-border px-2 py-0.5 rounded">
+                                {formatGigCoin(row.freelancer.amount)}
+                              </span>
+                            )}
+                            {/* Cost Delta Tag */}
+                            {row.costDelta !== null && row.costDelta !== 0 && (
+                              <span
+                                className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded border ${
+                                  row.costDelta < 0
+                                    ? 'bg-surface border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                                    : 'bg-surface border-rose-500 text-rose-600 dark:text-rose-400'
+                                }`}
+                              >
+                                {row.costDelta < 0
+                                  ? `-${formatGigCoin(Math.abs(row.costDelta))}`
+                                  : `+${formatGigCoin(row.costDelta)}`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {row.freelancer.description && (
+                          <p className="text-xs text-text-muted leading-relaxed line-clamp-2">
+                            {row.freelancer.description}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-text-muted pt-0.5">
+                          <span className="flex items-center gap-1">
+                            <Clock size={11} />
+                            <span>
+                              {row.freelancer.duration ||
+                                t('milestoneMatrix.noDuration', 'Chưa định thời hạn')}
+                            </span>
+                          </span>
+                          {row.durationDeltaText && (
+                            <span
+                              className={`rounded px-1.5 py-0.2 border ${
+                                row.durationFaster === true
+                                  ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                                  : row.durationFaster === false
+                                  ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                                  : 'border-border text-text-muted'
+                              }`}
+                            >
+                              {row.durationDeltaText}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl border border-dashed border-rose-500/30 bg-rose-500/5 text-center space-y-1">
+                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center justify-center gap-1">
+                          <Trash2 size={13} />
+                          <span>
+                            {t('milestoneMatrix.milestoneOmitted', 'Mốc bị lược bỏ trong đề xuất')}
+                          </span>
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
-                          <XCircle size={12} /> Missing / Altered Scope
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+                        <p className="text-[11px] text-text-muted">
+                          {t(
+                            'milestoneMatrix.noPlanInProposal',
+                            '(Ứng viên không lên kế hoạch thực thi cho mốc ban đầu này)'
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* ── AI Audit & Status Verdict ── */}
+                  <td className="p-3.5 text-center align-top space-y-2.5 bg-surface-muted/20">
+                    {row.status === 'Preserved' ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3.5 py-1 text-xs font-black text-emerald-700 dark:text-emerald-400 shadow-2xs">
+                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+                        <span>{t('milestoneMatrix.preserved', 'Giữ nguyên')}</span>
+                      </span>
+                    ) : row.status === 'Added' ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/50 bg-brand/10 px-3.5 py-1 text-xs font-black text-brand shadow-2xs">
+                        <PlusCircle size={14} className="text-brand stroke-[2.5]" />
+                        <span>{t('milestoneMatrix.added', 'Bổ sung mới')}</span>
+                      </span>
+                    ) : row.status === 'Deleted' ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/50 bg-rose-500/10 px-3.5 py-1 text-xs font-black text-rose-700 dark:text-rose-400 shadow-2xs">
+                        <Trash2 size={14} className="text-rose-600 dark:text-rose-400 stroke-[2.5]" />
+                        <span>{t('milestoneMatrix.deleted', 'Đã lược bỏ')}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/10 px-3.5 py-1 text-xs font-black text-amber-700 dark:text-amber-400 shadow-2xs">
+                        <Edit3 size={14} className="text-amber-600 dark:text-amber-400 stroke-[2.5]" />
+                        <span>{t('milestoneMatrix.edited', 'Điều chỉnh')}</span>
+                      </span>
+                    )}
+
+                    {row.changeSummary && (
+                      <div
+                        className={`text-[11px] text-left leading-relaxed p-2.5 rounded-xl border shadow-2xs space-y-1 ${
+                          row.status === 'Preserved'
+                            ? 'bg-emerald-500/5 border-emerald-500/25'
+                            : row.status === 'Added'
+                            ? 'bg-brand/5 border-brand/25'
+                            : row.status === 'Deleted'
+                            ? 'bg-rose-500/5 border-rose-500/25'
+                            : 'bg-amber-500/5 border-amber-500/25'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-text-muted">
+                          <Sparkles size={11} className="text-brand shrink-0" />
+                          <span>{t('milestoneMatrix.aiVerdictDetail', 'Nhận xét đối soát:')}</span>
+                        </div>
+                        <p className="font-semibold text-text-primary text-xs leading-normal">
+                          {row.changeSummary}
+                        </p>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-xs text-text-muted italic">
-                  Chưa có thông tin milestone chi tiết.
+                <td colSpan={4} className="p-8 text-center text-sm text-text-muted italic">
+                  {t(
+                    'milestoneMatrix.noMilestones',
+                    'Chưa có thông tin milestone chi tiết từ đề xuất của ứng viên.'
+                  )}
                 </td>
               </tr>
             )}
           </tbody>
-          {/* Recruiter Summary Footer: Sum of Milestone Cost and Duration */}
-          {milestones.length > 0 && (
-            <tfoot className="border-t-2 border-border/80 bg-surface-muted/80 font-black text-xs">
+
+          {/* ── Comparison Table Footer Summary ── */}
+          {comparisonRows.length > 0 && (
+            <tfoot className="border-t-2 border-border bg-surface-muted/70 font-black text-xs sm:text-sm">
               <tr>
-                <td className="p-3 text-text-muted">∑</td>
-                <td className="p-3 text-text-primary uppercase tracking-wider font-black">
-                  <span>TỔNG CỘNG MILESTONES (TOTAL PROPOSAL)</span>
+                <td className="p-3.5 text-center text-text-muted">∑</td>
+                {/* Client Total */}
+                <td className="p-3.5 border-r border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="uppercase text-text-muted font-black text-xs">
+                      {t('milestoneMatrix.totalBaseline', 'Tổng Baseline:')}
+                    </span>
+                    <div className="text-right">
+                      <span className="font-mono font-black text-text-primary text-sm block">
+                        {totalClientCost > 0 ? formatGigCoin(totalClientCost) : clientBudgetDisplay}
+                      </span>
+                      <span className="text-[10px] text-text-muted font-bold block">
+                        {baselineDuration}
+                      </span>
+                    </div>
+                  </div>
                 </td>
-                <td className="p-3 text-right">
-                  <span className="inline-block rounded-lg bg-emerald-500/15 px-2.5 py-1 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-black">
-                    {formatGigCoin(totalMilestoneCost || proposedBudget)}
-                  </span>
-                  <span className="block text-[9px] font-extrabold text-text-muted mt-0.5">
-                    = Proposed Budget
-                  </span>
+
+                {/* Freelancer Total */}
+                <td className="p-3.5 border-r border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="uppercase text-text-muted font-black text-xs">
+                      {t('milestoneMatrix.totalProposal', 'Tổng Đề xuất:')}
+                    </span>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <span className="font-mono font-black text-text-primary text-sm">
+                          {formatGigCoin(totalFreelancerCost || proposedBudget)}
+                        </span>
+                        {totalCostDiff !== 0 && totalClientCost > 0 && (
+                          <span
+                            className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded border ${
+                              totalCostDiff < 0
+                                ? 'bg-surface border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-surface border-rose-500 text-rose-600 dark:text-rose-400'
+                            }`}
+                          >
+                            {totalCostDiff < 0
+                              ? t('milestoneMatrix.totalSavings', 'Tiết kiệm {{amount}}', {
+                                  amount: formatGigCoin(Math.abs(totalCostDiff)),
+                                })
+                              : t('milestoneMatrix.totalOver', 'Vượt {{amount}}', {
+                                  amount: formatGigCoin(totalCostDiff),
+                                })}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-text-muted font-bold block">
+                        {proposedDuration}
+                      </span>
+                    </div>
+                  </div>
                 </td>
-                <td className="p-3 text-center">
-                  <span className="inline-block rounded-lg bg-blue-500/15 px-2.5 py-1 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-black">
-                    {totalMilestoneDurationStr}
-                  </span>
-                  <span className="block text-[9px] font-extrabold text-text-muted mt-0.5">
-                    = Proposed Duration
-                  </span>
-                </td>
-                <td className="p-3">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 border border-brand/20 px-2.5 py-0.5 text-[10px] font-extrabold text-brand">
-                    <CheckCircle2 size={11} /> {fulfilledCount}/{totalReqs || milestones.length} Scope Covered
+
+                {/* AI Scope Coverage Summary */}
+                <td className="p-3.5 text-center">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-surface border border-brand px-2.5 py-0.5 text-xs font-black text-text-primary">
+                    <CheckCircle2 size={12} className="text-brand" />
+                    <span>
+                      {t('milestoneMatrix.scopeCovered', '{{covered}}/{{total}} Scope', {
+                        covered: fulfilledCount,
+                        total: totalReqs || milestones.length,
+                      })}
+                    </span>
                   </span>
                 </td>
               </tr>
@@ -331,60 +1022,7 @@ export function AISideBySideMilestoneMatrix({
           )}
         </table>
       </div>
-
-      {/* Recruiter Total Milestone Guidance Box */}
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-[11px] font-medium text-text-primary flex items-start gap-2">
-        <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
-        <span>
-          <strong>Recruiter Guidance:</strong> Individual milestone items sum up directly to{' '}
-          <strong className="text-emerald-600 dark:text-emerald-400 font-black">{formatGigCoin(totalMilestoneCost || proposedBudget)}</strong>{' '}
-          and <strong className="text-blue-600 dark:text-blue-400 font-black">{totalMilestoneDurationStr}</strong> total duration, matching the overall proposal totals evaluated in the Financial & Timeline Audit above.
-        </span>
-      </div>
-
-
-
-      {/* Requirement Scope Fulfillment Section: Belongs to Scope (15%) & Requirement Coverage (30%) */}
-      {requirementFulfillment.length > 0 && (
-        <div className="pt-4 border-t border-border/60 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-brand/5 border border-brand/20 p-3 rounded-xl">
-            <div>
-              <span className="block text-[11px] font-black uppercase text-brand tracking-wider flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-brand" />
-                📋 Requirement Coverage (30%) & Milestone Scope (15%) Metric
-              </span>
-              <span className="text-[10px] font-semibold text-text-primary mt-0.5 block">
-                Yêu cầu tính năng được đối soát bởi AI (Requirement Audit Checklist)
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-brand/15 border border-brand/30 px-3 py-1 text-xs font-black text-brand shadow-2xs">
-                Fulfillment: {fulfilledCount} / {totalReqs} Covered ({scopeCoveragePct.toFixed(0)}% Scope Coverage)
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 text-xs">
-            {requirementFulfillment.map((req, idx) => (
-              <div
-                key={idx}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
-                  req.is_fulfilled
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
-                }`}
-              >
-                {req.is_fulfilled ? (
-                  <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle size={14} className="text-rose-500 shrink-0" />
-                )}
-                <span>{req.requirement}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
-  );
+  </div>
+);
 }

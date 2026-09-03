@@ -54,7 +54,8 @@
   display: grid;
   gap: 1rem;
   position: sticky;
-  top: 1rem;
+  top: calc(5.5rem + env(safe-area-inset-top, 0px));
+  align-self: start;
 }
 
 .job-post-wizard__sidebar-card,

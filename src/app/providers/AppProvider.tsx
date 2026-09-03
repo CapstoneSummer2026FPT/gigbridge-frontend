@@ -6,6 +6,11 @@ import type { ApiResponse } from '../../types/common';
 import type { LoginResponse, RegisterRequest, UserDTO } from '../../types/models/Auth';
 import { authAPI } from '../../api/authAPI';
 import { secureStorage } from '../../shared/utils/secureStorage';
+import { ensureFreshAccessToken, revokeServerSession } from '../../service/apiService';
+import {
+  authSessionManager,
+  getAccessTokenUserId,
+} from '../../features/auth/services/authSessionManager';
 
 export type AppTheme = 'black' | 'white';
 
@@ -98,6 +103,12 @@ const getLoginData = (response: ApiResponse<LoginResponse>) => {
   };
 };
 
+const clearStoredAuthentication = (): void => {
+  secureStorage.removeItem('gigbridge_session');
+  secureStorage.removeItem('gigbridge_user');
+  localStorage.removeItem('access_token');
+};
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRoleState] = useState<UserRole | null>(null);
@@ -130,19 +141,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (savedUser) {
           const normalizedRole = normalizeRole(savedRole ?? savedUser.role);
-          setUser({ ...savedUser, role: normalizedRole });
-          setRoleState(normalizedRole);
+          const accessToken = localStorage.getItem('access_token');
+          const tokenUserId = accessToken ? getAccessTokenUserId(accessToken) : null;
+          const savedUserId = String(savedUser.id ?? '');
+
+          if (
+            !accessToken ||
+            !tokenUserId ||
+            !savedUserId ||
+            tokenUserId.toLowerCase() !== savedUserId.toLowerCase()
+          ) {
+            clearStoredAuthentication();
+            authSessionManager.clearSession('invalid-cached-session', false);
+            return;
+          }
+
+          authSessionManager.restoreSession(normalizedRole);
+          if (authSessionManager.isIdleExpired()) {
+            clearStoredAuthentication();
+            authSessionManager.clearSession('idle-expired', false);
+            return;
+          }
+
+          try {
+            await ensureFreshAccessToken();
+          } catch {
+            // A temporary refresh failure must not erase an otherwise recoverable
+            // cached session. Permanent rejection clears storage in apiService.
+          }
+
+          if (localStorage.getItem('access_token')) {
+            setUser({ ...savedUser, role: normalizedRole });
+            setRoleState(normalizedRole);
+          }
+        } else if (localStorage.getItem('access_token')) {
+          clearStoredAuthentication();
+          authSessionManager.clearSession('missing-cached-user', false);
         }
       } catch (_e) {
-        secureStorage.removeItem('gigbridge_session');
-        secureStorage.removeItem('gigbridge_user');
-        localStorage.removeItem('access_token');
+        clearStoredAuthentication();
+        authSessionManager.clearSession('invalid-cached-session', false);
       } finally {
         setIsLoading(false);
       }
     };
     initApp();
   }, []);
+
+  useEffect(() => authSessionManager.subscribe(event => {
+    if (event.type !== 'logout') return;
+
+    clearStoredAuthentication();
+    setUser(null);
+    setRoleState(null);
+    setClientProfile(null);
+    setFreelancerProfile(null);
+
+    if (window.location.pathname !== '/auth/login') {
+      window.location.assign('/auth/login');
+    }
+  }), []);
+
+  useEffect(() => {
+    if (!user || role === null) {
+      authSessionManager.stopActivityTracking();
+      return;
+    }
+
+    authSessionManager.startActivityTracking(role);
+    return () => authSessionManager.stopActivityTracking();
+  }, [role, user]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -208,6 +276,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       secureStorage.setItem('gigbridge_session', { user, role: user.role });
       localStorage.setItem('access_token', token);
       secureStorage.setItem('gigbridge_user', user);
+      authSessionManager.beginSession(user.role);
 
       return user.role;
     } catch (error) {
@@ -274,6 +343,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       secureStorage.setItem('gigbridge_session', { user, role: user.role });
       localStorage.setItem('access_token', token);
       secureStorage.setItem('gigbridge_user', user);
+      authSessionManager.beginSession(user.role);
 
       return user.role;
     } catch (error) {
@@ -283,6 +353,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback((redirectPath?: string) => {
+    revokeServerSession();
     setUser(null);
     setRoleState(null);
     setClientProfile(null);
@@ -290,6 +361,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     secureStorage.removeItem('gigbridge_session');
     secureStorage.removeItem('gigbridge_user');
     localStorage.removeItem('access_token');
+    authSessionManager.clearSession('user-logout');
 
     // Clear saved scroll positions so returning to landing page starts at the top (0, 0)
     try {

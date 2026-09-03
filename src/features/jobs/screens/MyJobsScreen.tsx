@@ -128,7 +128,8 @@ export default function MyJobsScreen() {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
-  const [premiumActionBusy, setPremiumActionBusy] = useState(false);
+  // AI Interview enable/disable actions are hidden from My Jobs.
+  // const [premiumActionBusy, setPremiumActionBusy] = useState(false);
   const [activeMenuJobId, setActiveMenuJobId] = useState<string | null>(null);
   const [activeAiMenuJobId, setActiveAiMenuJobId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
@@ -236,6 +237,7 @@ export default function MyJobsScreen() {
     action();
   };
 
+  /* AI Interview can now only be enabled while creating a job post.
   const createAiInterview = async (job: GetMyJobPostDto) => {
     setPremiumActionBusy(true);
     const response = await jobAPI.createAiInterview(job.jobPostsId, {
@@ -250,7 +252,9 @@ export default function MyJobsScreen() {
     updateLocalJob(job.jobPostsId, { hasAiInterview: true });
     toast.success(t('myJobs.aiInterviewEnabled', { defaultValue: 'Đã bật phỏng vấn AI.' }));
   };
+  */
 
+  /* AI Interview cannot be disabled from My Jobs.
   const disableAiInterview = async (job: GetMyJobPostDto) => {
     setPremiumActionBusy(true);
     const response = await jobAPI.disableAiInterview(job.jobPostsId);
@@ -261,6 +265,7 @@ export default function MyJobsScreen() {
     updateLocalJob(job.jobPostsId, { hasAiInterview: false });
     toast.success(t('myJobs.aiInterviewDisabled', { defaultValue: 'Đã tắt phỏng vấn AI.' }));
   };
+  */
 
   const counts = useMemo(() => {
     const base = {
@@ -508,9 +513,8 @@ export default function MyJobsScreen() {
                 <button
                   type="button"
                   onClick={() => setIsCompact(false)}
-                  className={`p-1.5 rounded-lg transition cursor-pointer ${
-                    !isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${!isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
+                    }`}
                   title="Grid View"
                 >
                   <LayoutGrid size={15} />
@@ -518,9 +522,8 @@ export default function MyJobsScreen() {
                 <button
                   type="button"
                   onClick={() => setIsCompact(true)}
-                  className={`p-1.5 rounded-lg transition cursor-pointer ${
-                    isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${isCompact ? 'bg-brand text-white shadow-2xs' : 'text-text-muted hover:text-text-primary'
+                    }`}
                   title="Compact View"
                 >
                   <AlignJustify size={15} />
@@ -566,18 +569,16 @@ export default function MyJobsScreen() {
                     if (hasMovedRef.current) return;
                     setStatusFilter(tab.key);
                   }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer shrink-0 border select-none ${
-                    isActive
-                      ? 'bg-brand text-white border-brand shadow-sm shadow-brand/25 ring-2 ring-brand/20'
-                      : 'bg-surface-card text-text-muted hover:text-text-primary border-border/70 hover:border-brand/40'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer shrink-0 border select-none ${isActive
+                    ? 'bg-brand text-white border-brand shadow-sm shadow-brand/25 ring-2 ring-brand/20'
+                    : 'bg-surface-card text-text-muted hover:text-text-primary border-border/70 hover:border-brand/40'
+                    }`}
                 >
                   <Icon size={13} className={isActive ? 'text-white' : 'text-text-muted'} />
                   <span>{tab.label}</span>
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'
-                    }`}
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${isActive ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'
+                      }`}
                   >
                     {tab.count}
                   </span>
@@ -663,7 +664,7 @@ export default function MyJobsScreen() {
               return (
                 <article
                   key={job.jobPostsId}
-                  className="rounded-2xl sm:rounded-3xl border border-border/80 bg-surface-card p-3.5 sm:p-6 shadow-xs hover:border-brand/40 hover:shadow-md transition-all space-y-3 sm:space-y-4 w-full min-w-0 max-w-full overflow-hidden"
+                  className="rounded-2xl sm:rounded-3xl border border-border/80 bg-surface-card p-3.5 sm:p-6 shadow-xs hover:border-brand/40 hover:shadow-md transition-all space-y-3 sm:space-y-4 w-full min-w-0 max-w-full relative overflow-visible focus-within:z-30 hover:z-20"
                 >
                   {/* 1. DESKTOP & MOBILE TOP ROW / HEADER */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
@@ -822,7 +823,7 @@ export default function MyJobsScreen() {
                           </button>
 
                           {/* Desktop AI Tools Details Dropdown */}
-                          <details className="relative inline-block">
+                          <details className="relative inline-block focus-within:z-50">
                             <summary className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 hover:border-amber-500/70 hover:shadow-lg transition-all text-xs font-black cursor-pointer list-none select-none active:scale-95">
                               <Sparkles size={13} className="text-amber-500 animate-pulse shrink-0" />
                               <span>{t('myJobs.actions.aiFeatures', { defaultValue: 'Tính Năng AI' })}</span>
@@ -880,7 +881,8 @@ export default function MyJobsScreen() {
                                 </div>
                               </button>
 
-                              {job.hasAiInterview ? (
+                              {/* AI Interview cannot be disabled from My Jobs.
+                              {job.hasAiInterview && (
                                 <button
                                   type="button"
                                   onClick={event => {
@@ -898,7 +900,9 @@ export default function MyJobsScreen() {
                                     <div className="text-[10px] font-medium text-rose-400/80 truncate">{t('myJobs.actions.turnOffAiInterviewDesc', { defaultValue: 'Tạm dừng sàng lọc tự động' })}</div>
                                   </div>
                                 </button>
-                              ) : (
+                              )}
+                              */}
+                              {/* AI Interview must be enabled in the job-post wizard.
                                 <button
                                   type="button"
                                   onClick={event => {
@@ -919,7 +923,7 @@ export default function MyJobsScreen() {
                                     <div className="text-[10px] font-medium text-text-muted truncate">{t('myJobs.actions.turnOnAiInterviewDesc', { defaultValue: 'Phỏng vấn & chấm điểm AI' })}</div>
                                   </div>
                                 </button>
-                              )}
+                              */}
                             </div>
                           </details>
                         </>
@@ -970,7 +974,7 @@ export default function MyJobsScreen() {
                       )}
 
                       {canChangeVisibility(job) && (
-                        <div className="w-36 shrink-0">
+                        <div className="w-40 sm:w-40 shrink-0 min-w-[160px]">
                           <CustomSelect
                             value={String(job.visibility ?? JobPostVisibility.Public)}
                             onChange={val => void patchVisibility(job, Number(val) as JobPostVisibility)}
@@ -978,6 +982,7 @@ export default function MyJobsScreen() {
                             disabled={isPending || job.visibility === 3}
                             searchable={false}
                             ariaLabel={t('myJobs.visibility.ariaLabel', { defaultValue: 'Quyền riêng tư' })}
+                            popoverMinWidth={180}
                           />
                         </div>
                       )}
@@ -1022,11 +1027,10 @@ export default function MyJobsScreen() {
                           setActiveMenuJobId(null);
                         }}
                         title="Tính năng AI"
-                        className={`inline-flex items-center justify-center gap-1 h-9 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
-                          isAiMenuOpen || job.hasAiInterview
-                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                        }`}
+                        className={`inline-flex items-center justify-center gap-1 h-9 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${isAiMenuOpen || job.hasAiInterview
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                          }`}
                       >
                         <Sparkles size={13} className="animate-pulse" />
                         <span>AI</span>
@@ -1073,7 +1077,8 @@ export default function MyJobsScreen() {
                             </div>
                           </button>
 
-                          {job.hasAiInterview ? (
+                          {/* AI Interview cannot be disabled from My Jobs.
+                          {job.hasAiInterview && (
                             <button
                               type="button"
                               onClick={() => {
@@ -1089,7 +1094,9 @@ export default function MyJobsScreen() {
                                 <div className="text-[10px] text-rose-400 font-medium truncate">Tạm dừng sàng lọc tự động</div>
                               </div>
                             </button>
-                          ) : (
+                          )}
+                          */}
+                          {/* AI Interview must be enabled in the job-post wizard.
                             <button
                               type="button"
                               onClick={() => {
@@ -1105,7 +1112,7 @@ export default function MyJobsScreen() {
                                 <div className="text-[10px] text-text-muted font-medium truncate">Phỏng vấn & chấm điểm AI</div>
                               </div>
                             </button>
-                          )}
+                          */}
                         </div>
                       )}
                     </div>
@@ -1120,11 +1127,10 @@ export default function MyJobsScreen() {
                           setActiveAiMenuJobId(null);
                         }}
                         title="Tùy chọn khác"
-                        className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${
-                          isMenuOpen
-                            ? 'bg-surface-muted text-text-primary border-brand'
-                            : 'bg-surface-muted/60 text-text-muted border-border/70 hover:text-text-primary'
-                        }`}
+                        className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${isMenuOpen
+                          ? 'bg-surface-muted text-text-primary border-brand'
+                          : 'bg-surface-muted/60 text-text-muted border-border/70 hover:text-text-primary'
+                          }`}
                       >
                         <MoreVertical size={14} />
                       </button>
@@ -1155,11 +1161,10 @@ export default function MyJobsScreen() {
                                 setActiveMenuJobId(null);
                                 void patchVisibility(job, Number(opt.value) as JobPostVisibility);
                               }}
-                              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-left cursor-pointer ${
-                                String(job.visibility) === opt.value
-                                  ? 'bg-brand/10 text-brand'
-                                  : 'hover:bg-muted text-text-muted'
-                              }`}
+                              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-left cursor-pointer ${String(job.visibility) === opt.value
+                                ? 'bg-brand/10 text-brand'
+                                : 'hover:bg-muted text-text-muted'
+                                }`}
                             >
                               {opt.icon}
                               <span>{opt.label}</span>
@@ -1236,13 +1241,13 @@ export default function MyJobsScreen() {
         description={
           confirmAction.actionType === 'cancel'
             ? t('myJobs.confirmCancelDesc', {
-                defaultValue: 'Bạn có chắc chắn muốn hủy tin tuyển dụng "{{title}}"? Hành động hủy tin tuyển dụng không thể hoàn tác.',
-                title: confirmAction.job?.title || '',
-              })
+              defaultValue: 'Bạn có chắc chắn muốn hủy tin tuyển dụng "{{title}}"? Hành động hủy tin tuyển dụng không thể hoàn tác.',
+              title: confirmAction.job?.title || '',
+            })
             : t('myJobs.confirmCloseDesc', {
-                defaultValue: 'Bạn có chắc chắn muốn đóng tin tuyển dụng "{{title}}"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.',
-                title: confirmAction.job?.title || '',
-              })
+              defaultValue: 'Bạn có chắc chắn muốn đóng tin tuyển dụng "{{title}}"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.',
+              title: confirmAction.job?.title || '',
+            })
         }
         confirmText={
           confirmAction.actionType === 'cancel'

@@ -7,15 +7,26 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': resolve(projectRoot, 'src'),
+    },
+  },
   build: {
     emptyOutDir: false,
     outDir: 'dist',
+    cssCodeSplit: false,
     rollupOptions: {
-      input: resolve(projectRoot, 'src/seo/client.tsx'),
+      input: {
+        'seo-client': resolve(projectRoot, 'src/seo/client.tsx'),
+        'landing-client': resolve(projectRoot, 'src/features/landing/client.tsx'),
+      },
       output: {
-        entryFileNames: 'assets/seo-client.js',
+        entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/seo-[name]-[hash].js',
-        assetFileNames: 'assets/seo-[name]-[hash][extname]',
+        assetFileNames: assetInfo => assetInfo.name === 'style.css'
+          ? 'assets/landing.css'
+          : 'assets/seo-[name]-[hash][extname]',
       },
     },
   },

@@ -396,6 +396,7 @@ export default function MessagesScreen() {
     setShowDealPrice,
     dealMilestones,
     updateDealMilestones,
+    dealFreelancerBaseline,
     dealAdvancedIndexes,
     setDealAdvancedIndexes,
     dealMilestoneErrors,
@@ -404,6 +405,8 @@ export default function MessagesScreen() {
     dealMilestoneTotal,
     dealOverallDuration,
     handleSaveDealMilestones,
+    handleUseJobPostMilestones,
+    handleUseFreelancerMilestones,
     messageInput,
     setMessageInput,
     chatAttachments,
@@ -1455,6 +1458,7 @@ export default function MessagesScreen() {
                 {showDealPrice && canProposeDeal && (
                   <FinalOfferEditor
                     milestones={dealMilestones}
+                    freelancerBaseline={dealFreelancerBaseline}
                     milestoneTotal={dealMilestoneTotal}
                     overallDuration={dealOverallDuration}
                     advancedIndexes={dealAdvancedIndexes}
@@ -1466,6 +1470,8 @@ export default function MessagesScreen() {
                     onSaveDraft={() => void handleSaveDealMilestones()}
                     onSubmit={() => void handleProposeDeal()}
                     onClose={() => setShowDealPrice(false)}
+                    onUseJobPostMilestones={() => void handleUseJobPostMilestones()}
+                    onUseFreelancerMilestones={handleUseFreelancerMilestones}
                   />
                 )}
 
