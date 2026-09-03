@@ -669,6 +669,7 @@ export default function CreateProposalScreen() {
                         showDueDate
                         dueDateReadOnly
                         simplifiedMilestoneFields
+                        compactLayout={isCustomPlan}
                         durationUnits={JOB_DURATION_UNITS.map(unit => ({
                           value: unit,
                           label: t(`proposalMilestoneEditor.durationUnits.${unit}`),
@@ -752,6 +753,7 @@ export default function CreateProposalScreen() {
                             showDueDate
                             dueDateReadOnly
                             simplifiedMilestoneFields
+                            compactLayout={isCustomPlan}
                             durationUnits={JOB_DURATION_UNITS.map(unit => ({
                               value: unit,
                               label: t(`proposalMilestoneEditor.durationUnits.${unit}`),

@@ -151,6 +151,7 @@ interface Props {
   targetBudget?: number | null;
   enableAutoBalance?: boolean;
   baselineMilestones?: EditableMilestonePlan[];
+  compactLayout?: boolean;
 }
 
 const durationToDays = (val?: string | null): number => {
@@ -261,6 +262,7 @@ export function NestedMilestonePlanEditor({
   targetBudget = null,
   enableAutoBalance = true,
   baselineMilestones,
+  compactLayout = false,
 }: Props) {
   const editorId = useId();
   const [lockedIndices, setLockedIndices] = useState<Set<number>>(new Set());
@@ -467,11 +469,11 @@ export function NestedMilestonePlanEditor({
                 <Coins size={20} />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-foreground block truncate">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-foreground block line-clamp-2 leading-tight">
                   {uiCopy.fixedProjectBudget || 'Tổng ngân sách kế hoạch (Sum of Milestones)'}
                 </span>
                 {renderHint('fixed-project-budget', fieldHints.fixedProjectBudget)}
-                <span className="text-[11px] text-muted-foreground font-medium block truncate">
+                <span className="text-[11px] text-muted-foreground font-medium block line-clamp-2 leading-tight">
                   {uiCopy.milestoneSummaryDesc || 'Tự động cộng từ tất cả các mốc công việc bên dưới'}
                 </span>
               </div>
@@ -606,7 +608,7 @@ export function NestedMilestonePlanEditor({
                 key={milestone.id || index}
                 onDragOver={readOnly ? undefined : handleDragOver}
                 onDrop={readOnly ? undefined : (e) => handleDrop(e, index)}
-                className={`relative min-w-0 max-w-full rounded-2xl border bg-card shadow-xs transition-all hover:shadow-md focus-within:z-20 ${draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
+                className={`@container relative min-w-0 max-w-full rounded-2xl border bg-card shadow-xs transition-all hover:shadow-md focus-within:z-20 ${draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
                   } ${Object.keys(errors).some(key => key.startsWith(`${index}.`)) ? 'border-red-500/80 ring-2 ring-red-500/10' : 'border-border/80'}`}
               >
                 {/* 2-TIER ERGONOMIC HEADER */}
@@ -777,204 +779,218 @@ export function NestedMilestonePlanEditor({
                     </div>
 
                     {/* Core Parameters Box: Amount, Duration, Deadline */}
-                    <div className="rounded-2xl border border-border/80 bg-muted/20 p-3.5 sm:p-4.5 space-y-3">
-                      <div className={`grid gap-3 sm:gap-4 items-start ${simplifiedMilestoneFields && showDueDate && !dueDateReadOnly
-                          ? 'grid-cols-1 sm:grid-cols-2'
-                          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                        }`}>
-                        {/* 1. AMOUNT */}
-                        <div className="space-y-1.5 relative focus-within:z-20">
-                          <div className="flex items-center justify-between gap-1">
-                            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                              <Coins size={14} className="text-[var(--brand)] flex-shrink-0" />
-                              <span>{uiCopy.amount || 'Ngân sách mốc'} *</span>
-                            </label>
-                            {!readOnly && activeTargetBudget !== null && (
-                              lockedIndices.has(index) ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleLock(index)}
-                                  title={uiCopy.userLockedTitle || 'Mốc đang cố định (User-locked). Nhấp để mở khóa tự động cân bằng.'}
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-95 px-2 py-0.5 rounded-md transition-colors cursor-pointer shadow-xs"
-                                >
-                                  <Lock size={10} />
-                                  <span>{uiCopy.userLocked || 'Cố định (Khóa)'}</span>
-                                </button>
-                              ) : isAutoBalanceActive ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleLock(index)}
-                                  title={uiCopy.autoBalancedTitle || 'Mốc đang tự động cân bằng. Nhấp để khóa cố định.'}
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 px-2 py-0.5 rounded-md transition-colors cursor-pointer shadow-xs"
-                                >
-                                  <Zap size={10} />
-                                  <span>{uiCopy.autoBalanced || 'Tự động (Mở)'}</span>
-                                </button>
-                              ) : null
-                            )}
-                          </div>
-                          <div className="relative flex items-center h-11 rounded-xl border border-border/80 bg-background px-3 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all">
-                            <input
-                              data-milestone-field={`${index}.amount`}
-                              disabled={readOnly}
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={milestone.amount || ''}
-                              onChange={e => handleAmountChange(index, Number(e.target.value) || 0)}
-                              placeholder={fieldPlaceholders.amount || '0'}
-                              aria-describedby={describedBy(`${index}-amount`, fieldHints.amount)}
-                              className="w-full border-none bg-transparent outline-none font-black text-sm text-foreground focus:outline-none focus:ring-0 p-0"
-                            />
-                            <span className="shrink-0 inline-flex items-center gap-1 text-xs font-black text-[var(--brand)] bg-[var(--brand)]/10 px-2.5 py-1 rounded-lg">
-                              <GCoinIcon size={13} />
-                              <span>G-coin</span>
-                            </span>
-                          </div>
-                          
-                          {/* Sub row below Amount input */}
-                          <div className="flex flex-wrap items-center justify-between text-[11px] text-muted-foreground pt-0.5 gap-1">
-                            <div className="flex items-center gap-1.5">
-                              {Number(milestone.amount) > 0 && (
-                                <span className="font-bold text-[var(--brand)]">
-                                  ≈ {formatGigCoinToVnd(Number(milestone.amount))}
-                                </span>
-                              )}
-                              {milestonePct > 0 && (
-                                <span className="font-semibold text-muted-foreground">
-                                  • {uiCopy.percentOfBudget
-                                    ? uiCopy.percentOfBudget.replace('{{percent}}', String(milestonePct))
-                                    : `${milestonePct}% tổng ngân sách`}
-                                </span>
-                              )}
-                            </div>
+                    {(() => {
+                      const hasDuration = !simplifiedMilestoneFields || dueDateReadOnly;
+                      const hasDueDate = Boolean(showDueDate);
+                      const visibleParamCount = (hasDuration ? 1 : 0) + (hasDueDate ? 1 : 0) + 1;
+                      const is2TierLayout = compactLayout || visibleParamCount === 3;
 
-                            {/* Amount Comparison Delta Badge (Below Field) */}
-                            {amountDelta !== null && baselineMilestone && (
-                              amountDelta > 0 ? (
-                                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                                  <TrendingUp size={11} className="stroke-[2.5]" />
-                                  <span>{uiCopy.diffHigherAmount?.replace('{{amount}}', formatGigCoinNumber(amountDelta)) || `+${formatGigCoinNumber(amountDelta)} G so với gốc`}</span>
-                                </span>
-                              ) : amountDelta < 0 ? (
-                                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                                  <TrendingDown size={11} className="stroke-[2.5]" />
-                                  <span>{uiCopy.diffLowerAmount?.replace('{{amount}}', formatGigCoinNumber(amountDelta)) || `${formatGigCoinNumber(amountDelta)} G so với gốc`}</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-zinc-600 dark:bg-zinc-500 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                                  <Check size={11} className="stroke-[2.5]" />
-                                  <span>{uiCopy.diffEqualAmount || 'Khớp mốc gốc'}</span>
-                                </span>
-                              )
-                            )}
-                          </div>
-                          {errorFor('amount') && <span className="block text-xs text-red-500 font-medium">{errorFor('amount')}</span>}
-                        </div>
-
-                    {/* 2. DURATION */}
-                    {(!simplifiedMilestoneFields || dueDateReadOnly) && (
-                      <div className="space-y-1.5 relative focus-within:z-20">
-                        <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                          <Clock3 size={14} className="text-[var(--brand)] flex-shrink-0" />
-                          <span>{uiCopy.duration || 'Thời gian mốc'}</span>
-                        </label>
-                        {structuredDuration && durationUnits ? (
-                          <>
-                            <div className="flex items-center h-11 rounded-xl border border-border/80 bg-background p-1 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all gap-1">
-                              <input
-                                data-milestone-field={`${index}.estimatedDuration`}
-                                disabled={readOnly}
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={structuredDuration.amount}
-                                onChange={e => updateMilestone(index, { estimatedDuration: serializeStructuredDuration(e.target.value, structuredDuration.unit) })}
-                                placeholder={fieldPlaceholders.duration || '2'}
-                                aria-label="Duration amount"
-                                className="w-full border-none bg-transparent px-2.5 text-sm font-bold text-foreground outline-none shadow-none focus:outline-none focus:ring-0 p-0"
-                              />
-                              <div className="w-20 shrink-0">
-                                <CustomSelect
-                                  disabled={readOnly}
-                                  value={structuredDuration.unit}
-                                  options={durationUnits.map(unit => ({ value: unit.value, label: unit.label }))}
-                                  onChange={newUnit => updateMilestone(index, { estimatedDuration: serializeStructuredDuration(structuredDuration.amount, newUnit) })}
-                                  ariaLabel={uiCopy.durationUnit || 'Duration unit'}
-                                  searchable={false}
-                                  placeholder={uiCopy.durationUnit || 'Đơn vị'}
-                                  variant="compact"
-                                  className="cs-compact"
-                                  popoverAlign="right"
-                                  popoverMinWidth={84}
-                                />
+                      return (
+                        <div className="rounded-2xl border border-border/80 bg-muted/20 p-3.5 sm:p-4.5 space-y-3">
+                          <div className={`grid gap-3 sm:gap-4 items-start ${
+                            is2TierLayout
+                              ? 'grid-cols-1 sm:grid-cols-2 @3xl:grid-cols-3'
+                              : visibleParamCount === 2
+                                ? 'grid-cols-1 sm:grid-cols-2'
+                                : 'grid-cols-1'
+                          }`}>
+                            {/* 1. AMOUNT */}
+                            <div className={`${
+                              is2TierLayout ? 'sm:col-span-2 @3xl:col-span-1' : 'col-span-1'
+                            } space-y-1.5 relative focus-within:z-20 min-w-0`}>
+                              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                  <Coins size={14} className="text-[var(--brand)] flex-shrink-0" />
+                                  <span>{uiCopy.amount || 'Ngân sách mốc'} *</span>
+                                </label>
+                                {!readOnly && activeTargetBudget !== null && (
+                                  lockedIndices.has(index) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleLock(index)}
+                                      title={uiCopy.userLockedTitle || 'Mốc đang cố định (User-locked). Nhấp để mở khóa tự động cân bằng.'}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-95 px-2 py-0.5 rounded-md transition-colors cursor-pointer shadow-xs shrink-0"
+                                    >
+                                      <Lock size={10} />
+                                      <span>{uiCopy.userLocked || 'Cố định (Khóa)'}</span>
+                                    </button>
+                                  ) : isAutoBalanceActive ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleLock(index)}
+                                      title={uiCopy.autoBalancedTitle || 'Mốc đang tự động cân bằng. Nhấp để khóa cố định.'}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 px-2 py-0.5 rounded-md transition-colors cursor-pointer shadow-xs shrink-0"
+                                    >
+                                      <Zap size={10} />
+                                      <span>{uiCopy.autoBalanced || 'Tự động (Mở)'}</span>
+                                    </button>
+                                  ) : null
+                                )}
                               </div>
-                            </div>
-                          </>
-                        ) : (
-                          <input
-                            data-milestone-field={`${index}.estimatedDuration`}
-                            disabled={readOnly}
-                            maxLength={durationMaxLength}
-                            value={milestone.estimatedDuration || ''}
-                            onChange={e => updateMilestone(index, { estimatedDuration: e.target.value })}
-                            placeholder={fieldPlaceholders.duration || 'Ví dụ: 2 tuần'}
-                            className={`${fieldClass('estimatedDuration')} h-11 text-sm font-semibold`}
-                          />
-                        )}
-                        <div className="text-[11px] text-muted-foreground leading-snug pt-0.5">
-                          <span>{fieldHints.duration || renderHint(`${index}-duration`, fieldHints.duration) || 'Thời gian dự kiến hoàn thành mốc.'}</span>
-                        </div>
+                              <div className="relative flex items-center h-11 rounded-xl border border-border/80 bg-background px-3 gap-2 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all">
+                                <input
+                                  data-milestone-field={`${index}.amount`}
+                                  disabled={readOnly}
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={milestone.amount || ''}
+                                  onChange={e => handleAmountChange(index, Number(e.target.value) || 0)}
+                                  placeholder={fieldPlaceholders.amount || '0'}
+                                  aria-describedby={describedBy(`${index}-amount`, fieldHints.amount)}
+                                  className="w-full min-w-0 flex-1 border-none bg-transparent outline-none font-black text-sm text-foreground focus:outline-none focus:ring-0 p-0 pr-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="shrink-0 select-none inline-flex items-center gap-1 text-xs font-black text-[var(--brand)] bg-[var(--brand)]/10 px-2.5 py-1 rounded-lg">
+                                  <GCoinIcon size={13} />
+                                  <span>G-coin</span>
+                                </span>
+                              </div>
+                              
+                              {/* Sub row below Amount input */}
+                              <div className="flex flex-wrap items-center justify-between text-[11px] text-muted-foreground pt-0.5 gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {Number(milestone.amount) > 0 && (
+                                    <span className="font-bold text-[var(--brand)]">
+                                      ≈ {formatGigCoinToVnd(Number(milestone.amount))}
+                                    </span>
+                                  )}
+                                  {milestonePct > 0 && (
+                                    <span className="font-semibold text-muted-foreground">
+                                      • {uiCopy.percentOfBudget
+                                        ? uiCopy.percentOfBudget.replace('{{percent}}', String(milestonePct))
+                                        : `${milestonePct}% tổng ngân sách`}
+                                    </span>
+                                  )}
+                                </div>
 
-                        {/* Duration Comparison Delta Badge (Below Hint Description) */}
-                        {daysDelta !== null && baselineMilestone && (
-                          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
-                            {daysDelta > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                                <TrendingUp size={11} className="stroke-[2.5]" />
-                                <span>{uiCopy.diffLongerDuration?.replace('{{duration}}', formatDurationDelta(daysDelta, uiCopy)) || `Dài hơn (+${formatDurationDelta(daysDelta, uiCopy)} so với gốc)`}</span>
-                              </span>
-                            ) : daysDelta < 0 ? (
-                              <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                                <TrendingDown size={11} className="stroke-[2.5]" />
-                                <span>{uiCopy.diffShorterDuration?.replace('{{duration}}', formatDurationDelta(daysDelta, uiCopy)) || `Ngắn hơn (${formatDurationDelta(daysDelta, uiCopy)} so với gốc)`}</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-zinc-600 dark:bg-zinc-500 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                                <Check size={11} className="stroke-[2.5]" />
-                                <span>{uiCopy.diffEqualDuration || 'Khớp thời gian gốc'}</span>
-                              </span>
+                                {/* Amount Comparison Delta Badge (Below Field) */}
+                                {amountDelta !== null && baselineMilestone && (
+                                  amountDelta > 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                                      <TrendingUp size={11} className="stroke-[2.5]" />
+                                      <span>{uiCopy.diffHigherAmount?.replace('{{amount}}', formatGigCoinNumber(amountDelta)) || `+${formatGigCoinNumber(amountDelta)} G so với gốc`}</span>
+                                    </span>
+                                  ) : amountDelta < 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                                      <TrendingDown size={11} className="stroke-[2.5]" />
+                                      <span>{uiCopy.diffLowerAmount?.replace('{{amount}}', formatGigCoinNumber(amountDelta)) || `${formatGigCoinNumber(amountDelta)} G so với gốc`}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-zinc-600 dark:bg-zinc-500 text-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                                      <Check size={11} className="stroke-[2.5]" />
+                                      <span>{uiCopy.diffEqualAmount || 'Khớp mốc gốc'}</span>
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                              {errorFor('amount') && <span className="block text-xs text-red-500 font-medium">{errorFor('amount')}</span>}
+                            </div>
+
+                            {/* 2. DURATION */}
+                            {hasDuration && (
+                              <div className="col-span-1 space-y-1.5 relative focus-within:z-20 min-w-0">
+                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                  <Clock3 size={14} className="text-[var(--brand)] flex-shrink-0" />
+                                  <span>{uiCopy.duration || 'Thời gian mốc'}</span>
+                                </label>
+                                {structuredDuration && durationUnits ? (
+                                  <>
+                                    <div className="flex items-center h-11 rounded-xl border border-border/80 bg-background p-1 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand)]/15 transition-all gap-1.5">
+                                      <input
+                                        data-milestone-field={`${index}.estimatedDuration`}
+                                        disabled={readOnly}
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={structuredDuration.amount}
+                                        onChange={e => updateMilestone(index, { estimatedDuration: serializeStructuredDuration(e.target.value, structuredDuration.unit) })}
+                                        placeholder={fieldPlaceholders.duration || '2'}
+                                        aria-label="Duration amount"
+                                        className="w-full min-w-0 flex-1 border-none bg-transparent px-2.5 text-sm font-bold text-foreground outline-none shadow-none focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      />
+                                      <div className="w-24 sm:w-28 shrink-0">
+                                        <CustomSelect
+                                          disabled={readOnly}
+                                          value={structuredDuration.unit}
+                                          options={durationUnits.map(unit => ({ value: unit.value, label: unit.label }))}
+                                          onChange={newUnit => updateMilestone(index, { estimatedDuration: serializeStructuredDuration(structuredDuration.amount, newUnit) })}
+                                          ariaLabel={uiCopy.durationUnit || 'Duration unit'}
+                                          searchable={false}
+                                          placeholder={uiCopy.durationUnit || 'Đơn vị'}
+                                          variant="compact"
+                                          className="cs-compact"
+                                          popoverAlign="right"
+                                          popoverMinWidth={84}
+                                        />
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <input
+                                    data-milestone-field={`${index}.estimatedDuration`}
+                                    disabled={readOnly}
+                                    maxLength={durationMaxLength}
+                                    value={milestone.estimatedDuration || ''}
+                                    onChange={e => updateMilestone(index, { estimatedDuration: e.target.value })}
+                                    placeholder={fieldPlaceholders.duration || 'Ví dụ: 2 tuần'}
+                                    className={`${fieldClass('estimatedDuration')} h-11 text-sm font-semibold`}
+                                  />
+                                )}
+                                <div className="text-[11px] text-muted-foreground leading-snug pt-0.5">
+                                  <span>{fieldHints.duration || renderHint(`${index}-duration`, fieldHints.duration) || 'Thời gian dự kiến hoàn thành mốc.'}</span>
+                                </div>
+
+                                {/* Duration Comparison Delta Badge (Below Hint Description) */}
+                                {daysDelta !== null && baselineMilestone && (
+                                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+                                    {daysDelta > 0 ? (
+                                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                                        <TrendingUp size={11} className="stroke-[2.5]" />
+                                        <span>{uiCopy.diffLongerDuration?.replace('{{duration}}', formatDurationDelta(daysDelta, uiCopy)) || `Dài hơn (+${formatDurationDelta(daysDelta, uiCopy)} so với gốc)`}</span>
+                                      </span>
+                                    ) : daysDelta < 0 ? (
+                                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                                        <TrendingDown size={11} className="stroke-[2.5]" />
+                                        <span>{uiCopy.diffShorterDuration?.replace('{{duration}}', formatDurationDelta(daysDelta, uiCopy)) || `Ngắn hơn (${formatDurationDelta(daysDelta, uiCopy)} so với gốc)`}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold bg-zinc-600 dark:bg-zinc-500 text-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                                        <Check size={11} className="stroke-[2.5]" />
+                                        <span>{uiCopy.diffEqualDuration || 'Khớp thời gian gốc'}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {errorFor('estimatedDuration') && <span className="block text-xs text-red-500 font-medium">{errorFor('estimatedDuration')}</span>}
+                              </div>
+                            )}
+
+                            {/* 3. DEADLINE / DUE DATE */}
+                            {hasDueDate && (
+                              <div className="col-span-1 space-y-1.5 relative focus-within:z-20 min-w-0">
+                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                  <Calendar size={14} className="text-[var(--brand)] flex-shrink-0" />
+                                  <span>{uiCopy.deadline || 'Hạn chót mốc'}</span>
+                                </label>
+                                <input
+                                  data-milestone-field={`${index}.dueDate`}
+                                  disabled={readOnly || dueDateReadOnly}
+                                  type="date"
+                                  value={milestone.dueDate || ''}
+                                  onChange={dueDateReadOnly ? undefined : e => updateMilestone(index, { dueDate: e.target.value || null })}
+                                  aria-describedby={describedBy(`${index}-deadline`, fieldHints.deadline)}
+                                  className={`${fieldClass('dueDate')} h-11 text-sm font-semibold`}
+                                />
+                                <div className="text-[11px] text-muted-foreground leading-snug pt-0.5">
+                                  <span>{fieldHints.deadline || renderHint(`${index}-deadline`, fieldHints.deadline) || 'Ngày cuối cùng freelancer phải nộp sản phẩm.'}</span>
+                                </div>
+                                {errorFor('dueDate') && <span className="block text-xs text-red-500 font-medium">{errorFor('dueDate')}</span>}
+                              </div>
                             )}
                           </div>
-                        )}
-                        {errorFor('estimatedDuration') && <span className="block text-xs text-red-500 font-medium">{errorFor('estimatedDuration')}</span>}
-                      </div>
-                    )}
-
-                    {/* 3. DEADLINE / DUE DATE */}
-                    {showDueDate && (
-                      <div className="space-y-1.5 relative focus-within:z-20">
-                        <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                          <Calendar size={14} className="text-[var(--brand)] flex-shrink-0" />
-                          <span>{uiCopy.deadline || 'Hạn chót mốc'}</span>
-                        </label>
-                        <input
-                          data-milestone-field={`${index}.dueDate`}
-                          disabled={readOnly || dueDateReadOnly}
-                          type="date"
-                          value={milestone.dueDate || ''}
-                          onChange={dueDateReadOnly ? undefined : e => updateMilestone(index, { dueDate: e.target.value || null })}
-                          aria-describedby={describedBy(`${index}-deadline`, fieldHints.deadline)}
-                          className={`${fieldClass('dueDate')} h-11 text-sm font-semibold`}
-                        />
-                        <div className="text-[11px] text-muted-foreground leading-snug pt-0.5">
-                          <span>{fieldHints.deadline || renderHint(`${index}-deadline`, fieldHints.deadline) || 'Ngày cuối cùng freelancer phải nộp sản phẩm.'}</span>
                         </div>
-                        {errorFor('dueDate') && <span className="block text-xs text-red-500 font-medium">{errorFor('dueDate')}</span>}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                      );
+                    })()}
 
                 {/* Description, Deliverables & Acceptance Criteria */}
                 <div className={`grid gap-3 pt-1 ${simplifiedMilestoneFields ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
