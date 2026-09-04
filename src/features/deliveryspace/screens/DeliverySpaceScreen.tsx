@@ -5,9 +5,11 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { UserRole } from '../../../types/models/User';
 import { MilestoneStatus } from '../../../types/models/Contract';
+import { DeliveryLiveStatus } from '../components/DeliveryLiveStatus';
 import { MilestoneCompletedModal } from '../components/MilestoneCompletedModal';
 import { WorkItemDeliveryRow } from '../components/WorkItemDeliveryRow';
 import { WorkItemReviewRow } from '../components/WorkItemReviewRow';
+import { useDeliveryChangeToast } from '../hooks/useDeliveryChangeToast';
 import { useDeliverySpace } from '../hooks/useDeliverySpace';
 import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
@@ -31,6 +33,8 @@ const DeliverySpaceScreen = () => {
 
   const space = useDeliverySpace(contractId, milestoneId);
   const isClient = role === UserRole.Client;
+
+  useDeliveryChangeToast(space.remoteChange);
 
   const labels: Record<string, string> = {
     todo: t('contracts.workItemStatus.todo', 'To do'),
@@ -128,14 +132,22 @@ const DeliverySpaceScreen = () => {
         {t('contracts.deliverySpace.backToWorkspace', 'Back to workspace')}
       </button>
 
-      <header className="mb-5">
-        <h1 className="text-lg font-semibold text-slate-900">{milestone.title}</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {t('contracts.deliverySpace.progress', 'Approved')}: {space.deliveredCount}/{space.workItems.length}
-          {space.pendingReviewCount > 0
-            ? ` · ${space.pendingReviewCount} ${t('contracts.deliverySpace.awaitingReview', 'awaiting review')}`
-            : ''}
-        </p>
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-slate-900">{milestone.title}</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('contracts.deliverySpace.progress', 'Approved')}: {space.deliveredCount}/{space.workItems.length}
+            {space.pendingReviewCount > 0
+              ? ` · ${space.pendingReviewCount} ${t('contracts.deliverySpace.awaitingReview', 'awaiting review')}`
+              : ''}
+          </p>
+        </div>
+        <DeliveryLiveStatus
+          status={space.liveStatus}
+          lastSyncedAt={space.lastSyncedAt}
+          isSyncing={space.isSyncing}
+          onRefresh={space.refreshNow}
+        />
       </header>
 
       {/* A disputed contract rejects every submit and review server-side. Say so, rather than

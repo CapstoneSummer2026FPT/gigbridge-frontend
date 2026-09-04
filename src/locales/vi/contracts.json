@@ -732,7 +732,16 @@
       "awaitingFreelancerSubmissionHint": "Freelancer đang thực hiện công việc và sẽ nộp sản phẩm tại đây.",
       "allReviewedBadge": "Đã nghiệm thu toàn bộ",
       "noPendingReviewHint": "Không có mục chờ duyệt",
-      "congratsTitle": "Chúc mừng!"
+      "congratsTitle": "Chúc mừng!",
+      "liveConnected": "Đang cập nhật trực tiếp",
+      "liveConnecting": "Đang kết nối...",
+      "liveOffline": "Mất kết nối trực tiếp",
+      "liveSyncedAt": "Cập nhật lúc {{time}}",
+      "liveRefresh": "Làm mới",
+      "liveSubmitted": "Freelancer vừa nộp {{count}} hạng mục để bạn duyệt.",
+      "liveApproved": "Khách hàng đã duyệt {{count}} hạng mục.",
+      "liveRevisionRequired": "Khách hàng yêu cầu chỉnh sửa {{count}} hạng mục.",
+      "liveUpdated": "Khu vực giao nhận vừa được cập nhật."
     },
     "planChangeRequest": {
       "badge": "Cần chỉnh sửa",

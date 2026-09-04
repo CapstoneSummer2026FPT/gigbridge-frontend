@@ -28,8 +28,10 @@ import {
 } from '../../../types/models/Contract';
 import { MILESTONE_FILE_ACCEPT } from '../utils/workItemSubmission';
 import { WorkItemStatusPill } from '../../../shared/components/WorkItemStatusPill';
+import { DeliveryLiveStatus } from './DeliveryLiveStatus';
 import { MilestoneCompletedModal } from './MilestoneCompletedModal';
 import { WorkItemSubmissionHistory } from './WorkItemSubmissionHistory';
+import { useDeliveryChangeToast } from '../hooks/useDeliveryChangeToast';
 import { useDeliverySpace } from '../hooks/useDeliverySpace';
 import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
@@ -60,6 +62,8 @@ export function DeliverySpaceModal({
 
   const space = useDeliverySpace(contractId, milestoneId);
   const isClient = role === UserRole.Client;
+
+  useDeliveryChangeToast(space.remoteChange);
 
   // Set default active work item when items load
   useEffect(() => {
@@ -193,6 +197,12 @@ export function DeliverySpaceModal({
                   <span className="text-[10px] font-black uppercase tracking-wider text-text-muted px-2.5 py-0.5 rounded-md bg-surface-muted border border-border">
                     {t('contracts.deliverySpace.wbsLedger', { defaultValue: 'WBS Ledger' })}
                   </span>
+                  <DeliveryLiveStatus
+                    status={space.liveStatus}
+                    lastSyncedAt={space.lastSyncedAt}
+                    isSyncing={space.isSyncing}
+                    onRefresh={space.refreshNow}
+                  />
                 </div>
 
                 <h2

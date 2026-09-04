@@ -731,7 +731,16 @@
       "awaitingFreelancerSubmissionHint": "The freelancer is working and will submit deliverables here.",
       "allReviewedBadge": "All approved",
       "noPendingReviewHint": "No items awaiting review",
-      "congratsTitle": "Congratulations!"
+      "congratsTitle": "Congratulations!",
+      "liveConnected": "Live",
+      "liveConnecting": "Connecting...",
+      "liveOffline": "Live updates unavailable",
+      "liveSyncedAt": "Updated at {{time}}",
+      "liveRefresh": "Refresh",
+      "liveSubmitted": "The freelancer just submitted {{count}} work item(s) for your review.",
+      "liveApproved": "The client approved {{count}} work item(s).",
+      "liveRevisionRequired": "The client requested changes on {{count}} work item(s).",
+      "liveUpdated": "The delivery space was just updated."
     },
     "planChangeRequest": {
       "badge": "Changes requested",
