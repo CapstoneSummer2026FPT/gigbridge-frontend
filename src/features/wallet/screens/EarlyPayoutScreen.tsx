@@ -477,12 +477,12 @@ export default function EarlyPayoutScreen() {
             </div>
 
             {/* SECTION 1: BANK ACCOUNT MANAGER (Full Width Hub) */}
-            <section className="space-y-3">
+            <section className="space-y-3 relative z-20">
               <BankAccountManager onBankAccountsChange={setBankAccounts} />
             </section>
 
             {/* SECTION 2: CREATE WITHDRAWAL & SUMMARY WORKSPACE GRID */}
-            <div className="eps-workspace-grid">
+            <div className="eps-workspace-grid relative z-10">
               {/* Form Column (Left) */}
               <div className="space-y-6">
                 <div className="eps-section-card">

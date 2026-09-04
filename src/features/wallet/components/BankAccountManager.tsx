@@ -421,7 +421,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
     <div ref={containerRef} className="bam-wrapper">
       {/* Form Card: Add or Edit Bank Account (Chỉ hiển thị cho Freelancer, Ẩn đối với Client) */}
       {!isClient && (
-        <div className="bam-card bam-form-card">
+        <div className={`bam-card bam-form-card ${bankDropdownOpen ? 'is-dropdown-open' : ''}`}>
           <div className="bam-header">
             <div className="bam-header-left">
               <div className="bam-header-icon">
@@ -529,13 +529,13 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
             {/* Input Fields Column */}
             <div className="bam-form-fields">
               {/* Field 1: Custom Searchable Bank Selector */}
-              <div className="bam-field-group" ref={dropdownRef}>
+              <div className={`bam-field-group ${bankDropdownOpen ? 'is-dropdown-open' : ''}`} ref={dropdownRef}>
                 <label className="bam-field-label">
                   <Building2 size={14} className="text-[var(--brand,#494be7)]" />
                   <span>{t('wallet.bankAccount.bankLabel', { defaultValue: 'Ngân hàng thụ hưởng' })}</span>
                 </label>
 
-                <div className="bam-custom-select-container">
+                <div className={`bam-custom-select-container ${bankDropdownOpen ? 'is-open' : ''}`}>
                   {!selectedBank && <Landmark size={16} className="bam-input-icon" />}
 
                   <button

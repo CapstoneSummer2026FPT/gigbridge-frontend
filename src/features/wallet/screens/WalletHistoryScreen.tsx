@@ -670,7 +670,15 @@ export default function WalletHistoryScreen() {
 
           {/* Metric Stats Cards - the set shown depends on the account's role */}
           {statCards.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
+            <div
+              className={`grid ${
+                statCards.length === 2
+                  ? 'grid-cols-2'
+                  : statCards.length <= 4
+                  ? 'grid-cols-2 lg:grid-cols-4'
+                  : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6'
+              } gap-2.5 sm:gap-4 mb-6 sm:mb-8`}
+            >
               {statCards.map(stat => (
                 <div key={stat.key} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${stat.bg} border ${stat.border} shadow-sm transition-all hover:scale-[1.02] min-w-0`}>
                   <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-1">
