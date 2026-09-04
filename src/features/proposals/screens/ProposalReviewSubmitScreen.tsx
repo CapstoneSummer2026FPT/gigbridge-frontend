@@ -88,8 +88,8 @@ export default function ProposalReviewSubmitScreen() {
     if (saved) setIsEditing(false);
   };
 
-  const handleCancelEditing = () => {
-    resetEdits();
+  const handleCancelEditing = async (): Promise<void> => {
+    await resetEdits();
     setIsEditing(false);
   };
 
@@ -219,7 +219,7 @@ export default function ProposalReviewSubmitScreen() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={handleCancelEditing}
+                      onClick={() => void handleCancelEditing()}
                       disabled={savingEdits}
                       className="cps-btn-secondary"
                     >

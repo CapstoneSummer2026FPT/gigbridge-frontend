@@ -434,7 +434,8 @@ export function useCreateProposal() {
   };
 
   /** Review step: drop unsaved edits and restore the last persisted draft. */
-  const resetEdits = () => {
+  const resetEdits = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
     setError('');
     setMilestoneErrors({});
     setNarrativeErrors({});

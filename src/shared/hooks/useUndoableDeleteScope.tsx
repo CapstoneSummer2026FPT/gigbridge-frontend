@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { UndoDeleteToast } from '../components/UndoDeleteToast';
 
 export const UNDO_DELETE_WINDOW_MS = 5_000;
 
@@ -99,15 +100,29 @@ export function useUndoableDeleteScope(): UndoableDeleteController {
     }, UNDO_DELETE_WINDOW_MS);
 
     pendingRef.current.set(actionId, { request, timerId, toastId });
-    toast(request.message, {
-      id: toastId,
-      duration: UNDO_DELETE_WINDOW_MS,
-      dismissible: false,
-      action: {
-        label: request.undoLabel,
-        onClick: () => rollback(actionId),
-      },
-    });
+    toast(
+      <UndoDeleteToast
+        message={request.message}
+        undoLabel={request.undoLabel}
+        onUndo={() => rollback(actionId)}
+        durationMs={UNDO_DELETE_WINDOW_MS}
+      />,
+      {
+        id: toastId,
+        duration: UNDO_DELETE_WINDOW_MS,
+        dismissible: false,
+        unstyled: true,
+        className: '!p-0 !bg-transparent !border-none !shadow-none w-full max-w-none',
+        action: {
+          label: request.undoLabel,
+          onClick: () => rollback(actionId),
+        },
+        actionButtonStyle: { display: 'none' },
+        classNames: {
+          actionButton: 'hidden',
+        },
+      }
+    );
     syncPendingCount();
     return actionId;
   }, [commit, rollback, syncPendingCount]);

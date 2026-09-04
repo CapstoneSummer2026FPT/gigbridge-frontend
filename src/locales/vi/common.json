@@ -892,6 +892,16 @@
     "confirmCancelTitle": "Xác nhận hủy tin tuyển dụng",
     "confirmCancelDesc": "Bạn có chắc chắn muốn hủy tin tuyển dụng \"{{title}}\"? Hành động hủy tin tuyển dụng không thể hoàn tác."
   },
+  "undoDelete": {
+    "action": "Hoàn tác",
+    "milestoneDeleted": "Đã xóa milestone “{{name}}”.",
+    "workItemDeleted": "Đã xóa hạng mục WBS “{{name}}”.",
+    "questionDeleted": "Đã xóa câu hỏi phỏng vấn “{{name}}”.",
+    "untitledMilestone": "Milestone chưa đặt tên",
+    "untitledWorkItem": "Hạng mục chưa đặt tên",
+    "untitledQuestion": "Câu hỏi chưa có nội dung",
+    "autoDeleteIn": "Tự động xóa sau {{seconds}}s"
+  },
   "aiJobGeneratedModal": {
     "title": "Tạo Bài Đăng Tuyển Dụng AI Thành Công",
     "description": "Mô tả công việc, ngân sách, thời gian triển khai và danh sách kỹ năng đã được AI khởi tạo thành công.",

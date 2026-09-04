@@ -25,7 +25,12 @@ export function RootLayout() {
           <Suspense fallback={<RouteLoadingFallback />}>
             <Outlet />
           </Suspense>
-          <Toaster position="top-right" richColors expand />
+          <Toaster
+            position="top-right"
+            richColors
+            expand
+            style={{ '--width': '420px' } as React.CSSProperties}
+          />
         </NotificationsProvider>
       </PremiumStatusProvider>
     </AppProvider>

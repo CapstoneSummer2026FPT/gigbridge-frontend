@@ -877,6 +877,7 @@ export function usePostJob() {
   };
 
   const handleGenerateInstantJob = async (prompt?: string, sourceType: 'prompt' | 'document' | 'hybrid' = 'prompt') => {
+    await undoDeleteController.finalizeAll();
     setAiGenerationSource(sourceType);
     let promptText = typeof prompt === 'string' ? prompt.trim() : '';
 

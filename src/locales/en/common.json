@@ -904,7 +904,8 @@
     "questionDeleted": "Interview question “{{name}}” deleted.",
     "untitledMilestone": "Untitled milestone",
     "untitledWorkItem": "Untitled work item",
-    "untitledQuestion": "Untitled question"
+    "untitledQuestion": "Untitled question",
+    "autoDeleteIn": "Auto-deleting in {{seconds}}s"
   },
   "aiJobGeneratedModal": {
     "title": "AI Job Post Generated",

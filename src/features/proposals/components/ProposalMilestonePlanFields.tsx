@@ -132,7 +132,8 @@ export function ProposalMilestonePlanFields({
     [t]
   );
 
-  const handleStartCustomPlan = () => {
+  const handleStartCustomPlan = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
     setIsCustomPlan(true);
     const blankMilestone: EditableMilestonePlan = {
       orderIndex: 0,
@@ -149,7 +150,8 @@ export function ProposalMilestonePlanFields({
     setAdvancedMilestoneIndexes([]);
   };
 
-  const handleCopyClientPlan = () => {
+  const handleCopyClientPlan = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
     if (clientMilestones.length === 0) return;
     const cloned: EditableMilestonePlan[] = JSON.parse(JSON.stringify(clientMilestones));
     updateNestedPlan(cloned);
@@ -158,7 +160,8 @@ export function ProposalMilestonePlanFields({
     setIsCustomPlan(true);
   };
 
-  const handleRevertToClientPlan = () => {
+  const handleRevertToClientPlan = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
     setIsCustomPlan(false);
     if (clientMilestones.length === 0) return;
     updateNestedPlan(clientMilestones);
@@ -196,7 +199,7 @@ export function ProposalMilestonePlanFields({
             <>
               <button
                 type="button"
-                onClick={handleCopyClientPlan}
+                onClick={() => void handleCopyClientPlan()}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brand hover:text-brand/90 bg-brand/10 hover:bg-brand/15 border border-brand/25 transition-all cursor-pointer shadow-2xs active:scale-95"
                 title={t('createProposal.copyClientPlanTooltip', 'Sao chép toàn bộ mốc và đầu việc của Client vào kế hoạch đề xuất để chỉnh sửa')}
               >
@@ -206,7 +209,7 @@ export function ProposalMilestonePlanFields({
 
               <button
                 type="button"
-                onClick={handleRevertToClientPlan}
+                onClick={() => void handleRevertToClientPlan()}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground bg-muted/80 hover:bg-muted border border-border/80 transition-all cursor-pointer shadow-2xs active:scale-95"
               >
                 <RotateCcw size={13} />
@@ -299,7 +302,7 @@ export function ProposalMilestonePlanFields({
                 <div className="flex items-center gap-2.5 flex-wrap justify-center">
                   <button
                     type="button"
-                    onClick={handleCopyClientPlan}
+                    onClick={() => void handleCopyClientPlan()}
                     className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-surface border-2 border-brand/30 text-brand hover:bg-brand/10 text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95"
                     title={t('createProposal.copyClientPlanTooltip', 'Sao chép toàn bộ mốc và đầu việc của Client vào kế hoạch đề xuất để chỉnh sửa')}
                   >
@@ -309,7 +312,7 @@ export function ProposalMilestonePlanFields({
 
                   <button
                     type="button"
-                    onClick={handleStartCustomPlan}
+                    onClick={() => void handleStartCustomPlan()}
                     className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand text-white text-xs font-bold shadow-md hover:bg-brand/90 transition-all cursor-pointer hover:shadow-lg active:scale-95"
                   >
                     <Plus size={15} />
