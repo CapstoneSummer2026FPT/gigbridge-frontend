@@ -31,6 +31,16 @@ import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { toast } from 'sonner';
 
+interface StatCard {
+  key: string;
+  label: string;
+  value: React.ReactNode;
+  sub?: string;
+  icon: React.ReactNode;
+  border: string;
+  bg: string;
+}
+
 export default function WalletHistoryScreen() {
   const { t } = useTranslation();
   const [transactions, setTransactions] = useState<WalletTransactionResponse[]>([]);
@@ -124,14 +134,13 @@ export default function WalletHistoryScreen() {
     try {
       setLoading(true);
       setErrorText(null);
-      // Fetch up to 200 items for rich client-side filtering + lifetime summary
+      // 100 is the server's hard cap; the lifetime stat figures come from the summary call.
       const [res, summaryRes] = await Promise.all([
-        walletGetAPI.getTransactions(200),
+        walletGetAPI.getTransactions(100),
         walletGetAPI.getTransactionsSummary(),
       ]);
-      if (summaryRes.success && summaryRes.data) {
-        setSummary(summaryRes.data);
-      }
+      // Clear on failure: stale figures outliving a failed refresh is worse than none.
+      setSummary(summaryRes.success && summaryRes.data ? summaryRes.data : null);
       if (res.success && res.data) {
         setTransactions(res.data);
 
@@ -152,15 +161,15 @@ export default function WalletHistoryScreen() {
           ).then(async () => {
             try {
               const [silentRes, silentSummaryRes] = await Promise.all([
-                walletGetAPI.getTransactions(200),
+                walletGetAPI.getTransactions(100),
                 walletGetAPI.getTransactionsSummary(),
               ]);
               if (silentRes.success && silentRes.data) {
                 setTransactions(silentRes.data);
               }
-              if (silentSummaryRes.success && silentSummaryRes.data) {
-                setSummary(silentSummaryRes.data);
-              }
+              setSummary(
+                silentSummaryRes.success && silentSummaryRes.data ? silentSummaryRes.data : null
+              );
             } catch (e) {
               console.error('Failed to silently refresh transactions:', e);
             }
@@ -237,35 +246,115 @@ export default function WalletHistoryScreen() {
     }
   };
 
-  // Lifetime cumulative stats
-  const stats = useMemo(() => {
-    if (summary) {
-      return {
-        totalDeposits: summary.totalDeposits,
-        totalHold: summary.totalEscrow,
-        totalRefund: summary.totalRefunds,
-        totalWithdrawn: summary.totalWithdrawn,
-        pending: summary.pendingCount,
-        totalTransactions: summary.totalTransactions,
-      };
+  // The stat cards come only from the summary endpoint. There is deliberately no client-side
+  // fallback: totals computed over the 100-row window are not lifetime totals, and the old
+  // fallback also disagreed with the server on what counts as a withdrawal.
+  const statCards = useMemo((): StatCard[] => {
+    if (!summary) return [];
+
+    const topUps: StatCard = {
+      key: 'topUps',
+      label: t('walletHistory.statTopUps'),
+      value: <GigCoinAmount amount={summary.totalTopUps} />,
+      icon: <ArrowUpRight size={16} className="sm:w-[18px] sm:h-[18px]" />,
+      border: 'border-emerald-500/25',
+      bg: 'from-emerald-500/15 via-surface to-surface',
+    };
+
+    const transactionsCard: StatCard = {
+      key: 'transactions',
+      label: t('walletHistory.statTransactions'),
+      value: summary.totalTransactions.toString(),
+      sub: summary.pendingTransactionCount > 0
+        ? t('walletHistory.statPendingSub', { count: summary.pendingTransactionCount })
+        : undefined,
+      icon: <Wallet size={16} className="sm:w-[18px] sm:h-[18px]" />,
+      border: 'border-brand/25',
+      bg: 'from-brand/15 via-surface to-surface',
+    };
+
+    if (summary.role === 'Client') {
+      const { client } = summary;
+      return [
+        topUps,
+        {
+          key: 'escrowFunded',
+          label: t('walletHistory.statEscrowFunded'),
+          value: <GigCoinAmount amount={client.totalEscrowFunded} />,
+          icon: <ShieldCheck size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-rose-500/25',
+          bg: 'from-rose-500/15 via-surface to-surface',
+        },
+        {
+          key: 'currentEscrow',
+          label: t('walletHistory.statCurrentEscrow'),
+          value: <GigCoinAmount amount={client.currentEscrowHeld} />,
+          icon: <Loader2 size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-amber-500/25',
+          bg: 'from-amber-500/15 via-surface to-surface',
+        },
+        {
+          key: 'paidToFreelancers',
+          label: t('walletHistory.statPaidToFreelancers'),
+          value: <GigCoinAmount amount={client.totalReleasedToFreelancers} />,
+          icon: <ArrowDownRight size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-rose-500/25',
+          bg: 'from-rose-500/15 via-surface to-surface',
+        },
+        {
+          key: 'escrowRefunds',
+          label: t('walletHistory.statEscrowRefunds'),
+          value: <GigCoinAmount amount={client.totalEscrowRefunds} />,
+          icon: <RefreshCw size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-cyan-500/25',
+          bg: 'from-cyan-500/15 via-surface to-surface',
+        },
+        transactionsCard,
+      ];
     }
 
-    const succeeded = transactions.filter(t => t.status === 1);
-    const totalDeposits = succeeded.filter(t => t.type === 1).reduce((sum, t) => sum + t.tokenAmount, 0);
-    const totalHold = succeeded.filter(t => t.type === 2).reduce((sum, t) => sum + t.tokenAmount, 0);
-    const totalRefund = succeeded.filter(t => t.type === 4 || t.type === 8).reduce((sum, t) => sum + t.tokenAmount, 0);
-    const totalWithdrawn = succeeded.filter(t => t.type === 7).reduce((sum, t) => sum + t.tokenAmount, 0);
-    const pending = transactions.filter(t => t.status === 0).length;
+    if (summary.role === 'Freelancer') {
+      const { freelancer } = summary;
+      return [
+        topUps,
+        {
+          key: 'totalEarned',
+          label: t('walletHistory.statTotalEarned'),
+          value: <GigCoinAmount amount={freelancer.totalEarnedFromEscrow} />,
+          icon: <ArrowUpRight size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-emerald-500/25',
+          bg: 'from-emerald-500/15 via-surface to-surface',
+        },
+        {
+          key: 'awaitingPayout',
+          label: t('walletHistory.statAwaitingPayout'),
+          value: <GigCoinAmount amount={freelancer.currentPendingWithdrawal} />,
+          icon: <Loader2 size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-amber-500/25',
+          bg: 'from-amber-500/15 via-surface to-surface',
+        },
+        {
+          key: 'withdrawnToBank',
+          label: t('walletHistory.statWithdrawnToBank'),
+          value: <GigCoinAmount amount={freelancer.totalWithdrawnToBank} />,
+          icon: <ArrowDownRight size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-rose-500/25',
+          bg: 'from-rose-500/15 via-surface to-surface',
+        },
+        {
+          key: 'serviceFees',
+          label: t('walletHistory.statServiceFeesPaid'),
+          value: <GigCoinAmount amount={freelancer.totalServiceFeesPaid} />,
+          icon: <ShieldCheck size={16} className="sm:w-[18px] sm:h-[18px]" />,
+          border: 'border-cyan-500/25',
+          bg: 'from-cyan-500/15 via-surface to-surface',
+        },
+        transactionsCard,
+      ];
+    }
 
-    return {
-      totalDeposits,
-      totalHold,
-      totalRefund,
-      totalWithdrawn,
-      pending,
-      totalTransactions: transactions.length,
-    };
-  }, [transactions, summary]);
+    return [topUps, transactionsCard];
+  }, [summary, t]);
 
   // Filtering + Sorting
   const filteredTransactions = useMemo(() => {
@@ -579,27 +668,37 @@ export default function WalletHistoryScreen() {
             </div>
           </div>
 
-          {/* Metric Stats Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
-            {[
-              { label: t('walletHistory.statTotalDeposits'), value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'emerald', border: 'border-emerald-500/25', bg: 'from-emerald-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalHold'), value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'rose', border: 'border-rose-500/25', bg: 'from-rose-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalRefund'), value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'cyan', border: 'border-cyan-500/25', bg: 'from-cyan-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalWithdrawn'), value: <GigCoinAmount amount={stats.totalWithdrawn} />, icon: <ArrowDownRight size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'amber', border: 'border-amber-500/25', bg: 'from-amber-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statPending'), value: stats.pending.toString(), icon: <Loader2 size={16} className={`sm:w-[18px] sm:h-[18px] ${stats.pending > 0 ? 'animate-spin' : ''}`} />, color: 'amber', border: 'border-amber-500/25', bg: 'from-amber-500/15 via-surface to-surface' },
-              { label: t('walletHistory.statTotalTransactions'), value: stats.totalTransactions.toString(), icon: <Wallet size={16} className="sm:w-[18px] sm:h-[18px]" />, color: 'indigo', border: 'border-brand/25', bg: 'from-brand/15 via-surface to-surface' },
-            ].map(stat => (
-              <div key={stat.label} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${stat.bg} border ${stat.border} shadow-sm transition-all hover:scale-[1.02] min-w-0`}>
-                <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-1">
-                  <p className="text-[11px] sm:text-xs font-bold text-text-secondary truncate">{stat.label}</p>
-                  <span className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-surface/80 shadow-xs text-text-primary shrink-0">
-                    {stat.icon}
-                  </span>
+          {/* Metric Stats Cards - the set shown depends on the account's role */}
+          {statCards.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
+              {statCards.map(stat => (
+                <div key={stat.key} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br ${stat.bg} border ${stat.border} shadow-sm transition-all hover:scale-[1.02] min-w-0`}>
+                  <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-1">
+                    <p className="text-[11px] sm:text-xs font-bold text-text-secondary truncate">{stat.label}</p>
+                    <span className="p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-surface/80 shadow-xs text-text-primary shrink-0">
+                      {stat.icon}
+                    </span>
+                  </div>
+                  <p className="text-sm sm:text-base lg:text-lg font-black text-text-primary truncate">{stat.value}</p>
+                  {stat.sub && (
+                    <p className="text-[10px] sm:text-[11px] font-semibold text-text-muted truncate mt-0.5">{stat.sub}</p>
+                  )}
                 </div>
-                <p className="text-sm sm:text-base lg:text-lg font-black text-text-primary truncate">{stat.value}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : !loading && (
+            <div className="flex items-center justify-between gap-3 rounded-xl sm:rounded-2xl border border-border bg-surface/80 p-3 sm:p-4 mb-6 sm:mb-8">
+              <p className="text-xs sm:text-sm font-semibold text-text-secondary">
+                {t('walletHistory.statsUnavailable')}
+              </p>
+              <button
+                onClick={() => void fetchTransactions()}
+                className="shrink-0 px-3 py-1.5 rounded-full border border-border text-xs font-bold text-text-primary hover:bg-surface"
+              >
+                {t('walletHistory.refresh')}
+              </button>
+            </div>
+          )}
 
           {/* Advanced Multi-filter Toolbar with CustomSelect */}
           <div className="relative z-30 rounded-2xl border border-border bg-surface/90 backdrop-blur-xl p-3.5 sm:p-5 shadow-xl space-y-3.5 sm:space-y-4 mb-6">

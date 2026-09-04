@@ -74,9 +74,10 @@ export const aiInterviewAPI = {
   },
 
   confirmAnswer(sessionId: string, correctedText?: string) {
+    const textToSend = correctedText && correctedText.trim() ? correctedText.trim() : '[No answer provided]';
     return apiService.post<AiInterviewQuestionResponse>('ai-interviews/confirm-answer', {
       sessionId,
-      correctedText: correctedText || null,
+      correctedText: textToSend,
     });
   },
 

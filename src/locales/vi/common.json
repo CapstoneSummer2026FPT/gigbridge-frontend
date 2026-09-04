@@ -414,11 +414,29 @@
       "startAction": "Bắt đầu phỏng vấn AI",
       "continueAction": "Tiếp tục phỏng vấn AI"
     },
+    "placeholder": {
+      "skipped": "[Đã bỏ qua]",
+      "timedOut": "[Hết thời gian trả lời]",
+      "noAnswer": "[Không có câu trả lời]"
+    },
+    "timer": {
+      "critical": "Sắp hết 3 phút! Hệ thống sẽ tự động hoàn tất và chuyển câu hỏi khi về 00:00.",
+      "warning": "Còn dưới 30 giây cho câu hỏi này! Vui lòng chuẩn bị nộp câu trả lời.",
+      "expired": "Đã hết thời gian 3 phút cho câu hỏi này! Đang chuyển sang câu hỏi tiếp theo."
+    },
+    "tips": {
+      "quietRoomShort": "💡 Mẹo: Hãy phỏng vấn ở phòng kín để GigBridge AI nhận diện âm thanh chuẩn xác nhất."
+    },
+    "badge": {
+      "required": "Bắt buộc",
+      "optional": "Tùy chọn"
+    },
     "actions": {
       "start": "Bắt đầu phỏng vấn AI",
       "starting": "Đang bắt đầu phỏng vấn…",
       "browseToChoose": "Duyệt việc làm để chọn vị trí phỏng vấn",
       "answerQuestion": "Trả lời câu hỏi",
+      "skipQuestion": "Bỏ qua câu hỏi này",
       "retryAudio": "Thử phát lại câu hỏi",
       "hearAgain": "Nghe lại câu hỏi",
       "cancel": "Hủy",
@@ -430,6 +448,7 @@
       "goToProposals": "Đến trang đề xuất"
     },
     "errors": {
+      "questionRequired": "Câu hỏi này là bắt buộc. Vui lòng trả lời trước khi chuyển tiếp.",
       "chooseJob": "Hãy chọn một công việc trước khi bắt đầu phỏng vấn AI.",
       "startFailed": "Không thể bắt đầu cuộc phỏng vấn AI. Vui lòng thử lại.",
       "noQuestions": "Không thể bắt đầu cuộc phỏng vấn AI. Vì jobpost này không có câu hỏi phỏng vấn",

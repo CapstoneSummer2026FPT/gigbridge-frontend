@@ -26,6 +26,8 @@ export const walletGetAPI = {
   /**
    * GET /api/wallet/transactions
    * Fetch recent wallet transaction history for the current user.
+   * `limit` is clamped server-side to 1..100 — asking for more silently returns 100,
+   * so this window is never a source of lifetime totals.
    */
   getTransactions: async (limit = 50): Promise<ApiResponse<WalletTransactionResponse[]>> => {
     return apiService.get<WalletTransactionResponse[]>(`${walletUrl}/transactions`, { limit });
@@ -33,8 +35,10 @@ export const walletGetAPI = {
 
   /**
    * GET /api/wallet/transactions/summary
-   * Lifetime aggregates (all history, not capped at the 100-item list limit).
-   * Drives the /wallet/history stat cards.
+   * Drives the /wallet/history stat cards. The response is role-shaped: `role`
+   * ("Client" | "Freelancer" | "Generic") selects which branch is populated, because
+   * only clients fund escrow and only freelancers withdraw. Lifetime aggregates cover
+   * all history; the `current*` fields are live wallet pools.
    */
   getTransactionsSummary: async (): Promise<ApiResponse<WalletTransactionsSummaryResponse>> => {
     return apiService.get<WalletTransactionsSummaryResponse>(`${walletUrl}/transactions/summary`);

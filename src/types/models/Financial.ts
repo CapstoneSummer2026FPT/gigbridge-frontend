@@ -137,17 +137,51 @@ export interface CreateWalletTopUpRequest {
 }
 
 /**
- * Lifetime wallet aggregates (covers the account's entire history, unlike the
- * 100-item transaction list). Drives the /wallet/history stat cards.
+ * Figures shared by every role. Lifetime aggregates cover the account's entire
+ * history, unlike the 100-item transaction list.
  */
-export interface WalletTransactionsSummaryResponse {
-  totalDeposits: number;
-  totalEscrow: number;
-  totalRefunds: number;
-  totalWithdrawn: number;
-  pendingCount: number;
+interface WalletSummaryBase {
+  totalTopUps: number;
+  /** A count of transactions still pending, not an amount. */
+  pendingTransactionCount: number;
+  /** Every ledger row, failed and cancelled included, matching the list below the cards. */
   totalTransactions: number;
 }
+
+/** Only a client ever funds escrow, and a client can never withdraw. */
+export interface ClientWalletSummary {
+  /** Lifetime gross funded into escrow; only ever grows. */
+  totalEscrowFunded: number;
+  /** Live wallet pool: what is in escrow right now, falling on release and refund. */
+  currentEscrowHeld: number;
+  totalReleasedToFreelancers: number;
+  totalEscrowRefunds: number;
+}
+
+/**
+ * `totalEarnedFromEscrow` and `totalWithdrawnToBank` describe the SAME coins at two
+ * stages of their life — earned into the wallet, then cashed out of it. Never sum them:
+ * that reported a freelancer who earned and withdrew 1,000,000 as having moved 2,000,000.
+ */
+export interface FreelancerWalletSummary {
+  totalEarnedFromEscrow: number;
+  /** Succeeded bank payouts only. */
+  totalWithdrawnToBank: number;
+  /** Live wallet pool: an amount locked in an in-flight payout. */
+  currentPendingWithdrawal: number;
+  /** Net of service-fee refunds issued when a contract is cancelled. */
+  totalServiceFeesPaid: number;
+}
+
+/**
+ * Role-shaped wallet stat-card figures driving /wallet/history. A client and a freelancer
+ * sit on opposite sides of every escrow movement, so `role` selects which branch exists —
+ * reading the wrong one is a compile error rather than a card that is always zero.
+ */
+export type WalletTransactionsSummaryResponse =
+  | (WalletSummaryBase & { role: 'Client'; client: ClientWalletSummary; freelancer?: null })
+  | (WalletSummaryBase & { role: 'Freelancer'; freelancer: FreelancerWalletSummary; client?: null })
+  | (WalletSummaryBase & { role: 'Generic'; client?: null; freelancer?: null });
 
 export interface CreateWalletTopUpResponse {
   walletTransactionId: string;
