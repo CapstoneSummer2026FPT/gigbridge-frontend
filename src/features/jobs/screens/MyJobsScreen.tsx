@@ -29,6 +29,7 @@ import {
   UserRoundCheck,
   Users,
   X,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';

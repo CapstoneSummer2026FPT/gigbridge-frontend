@@ -31,11 +31,6 @@ const DeliverySpaceScreen = () => {
 
   const space = useDeliverySpace(contractId, milestoneId);
   const isClient = role === UserRole.Client;
-  const milestone = space.activeMilestone;
-  const isMilestoneComplete =
-    Number(milestone?.status) === MilestoneStatus.Completed ||
-    Number(milestone?.status) === MilestoneStatus.Approved ||
-    (space.workItems.length > 0 && space.deliveredCount === space.workItems.length);
 
   const labels: Record<string, string> = {
     todo: t('contracts.workItemStatus.todo', 'To do'),
@@ -80,6 +75,10 @@ const DeliverySpaceScreen = () => {
   }
 
   const milestone = space.activeMilestone;
+  const isMilestoneComplete =
+    Number(milestone?.status) === MilestoneStatus.Completed ||
+    Number(milestone?.status) === MilestoneStatus.Approved ||
+    (space.workItems.length > 0 && space.deliveredCount === space.workItems.length);
 
   const runSubmit = async () => {
     if (space.readyToSubmitIds.length === 0) {
