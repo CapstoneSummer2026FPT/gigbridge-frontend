@@ -81,6 +81,10 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   submitSchedule,
 }) => {
   const { t } = useTranslation();
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const midnightConfirmationRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -99,10 +103,6 @@ export const CreateScheduleModal: React.FC<CreateScheduleModalProps> = ({
   const remainingRequests = editingSchedule?.remainingRescheduleRequests ?? Math.max(0, 3 - (editingSchedule?.rescheduleRequestCount ?? 0));
 
   const isSubmitDisabled = scheduleSaving || !!scheduleConflict || googleMeetConnecting;
-  const reasonRef = useRef<HTMLTextAreaElement>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
-  const dateRef = useRef<HTMLInputElement>(null);
-  const midnightConfirmationRef = useRef<HTMLInputElement>(null);
 
   const datePart = scheduleTime ? scheduleTime.slice(0, 10) : '';
   const timePart = scheduleTime ? scheduleTime.slice(11, 16) : '';
