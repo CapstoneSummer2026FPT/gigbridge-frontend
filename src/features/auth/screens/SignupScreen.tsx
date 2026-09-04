@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 import '../styles/auth-screen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { getGoogleOAuth2, type GoogleCodeClient } from '../googleIdentity';
@@ -34,13 +35,16 @@ export default function SignupScreen() {
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const isLoading = isEmailLoading || isGoogleLoading;
-  const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [googleClient, setGoogleClient] = useState<GoogleCodeClient | null>(null);
   const [googleError, setGoogleError] = useState('');
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
   const [policyError, setPolicyError] = useState('');
   const policyAcceptanceRequiredMessage = t('auth.policyAcceptanceRequired');
+  const fullNameInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const otpInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const selectedRoleRef = useRef<UserRole | null>(null);
   useEffect(() => {
@@ -96,7 +100,6 @@ export default function SignupScreen() {
 
   const handleGoogleSignup = async (authCode: string) => {
     setIsGoogleLoading(true);
-    setError('');
     setGoogleError('');
     try {
       const currentRole = selectedRoleRef.current;
@@ -145,6 +148,7 @@ export default function SignupScreen() {
     setGoogleError('');
     if (!acceptedPolicy) {
       setPolicyError(policyAcceptanceRequiredMessage);
+      showValidationToast(policyAcceptanceRequiredMessage, { fallback: t('validation.invalidFormat') });
       focusPolicyAcceptance();
       return;
     }
@@ -176,11 +180,11 @@ export default function SignupScreen() {
 
   const handleSendOtp = async () => {
     if (!formData.email || !isValidEmail(formData.email)) {
-      setError('Please enter a valid email address.');
+      showValidationToast('Please enter a valid email address.', { fallback: t('validation.emailInvalid') });
+      emailInputRef.current?.focus();
       return;
     }
     
-    setError('');
     setSuccessMessage('');
     setVerificationTicket('');
     setIsOtpVerified(false);
@@ -197,12 +201,12 @@ export default function SignupScreen() {
         }
       } else {
         if (isMounted.current) {
-          setError(getErrorMessage(response));
+          showValidationToast(response, { fallback: getErrorMessage(response) });
         }
       }
     } catch (err: unknown) {
       if (isMounted.current) {
-        setError(getErrorMessage(err));
+        showValidationToast(err, { fallback: getErrorMessage(err) });
       }
     } finally {
       if (isMounted.current) {
@@ -213,11 +217,11 @@ export default function SignupScreen() {
 
   const handleVerifyOtp = async () => {
     if (!formData.otpCode) {
-      setError('Please enter the OTP verification code.');
+      showValidationToast('Please enter the OTP verification code.', { fallback: t('validation.required') });
+      otpInputRef.current?.focus();
       return;
     }
 
-    setError('');
     setSuccessMessage('');
     setIsVerifyingOtp(true);
     try {
@@ -236,12 +240,12 @@ export default function SignupScreen() {
         }
       } else {
         if (isMounted.current) {
-          setError(getErrorMessage(response));
+          showValidationToast(response, { fallback: getErrorMessage(response) });
         }
       }
     } catch (err: unknown) {
       if (isMounted.current) {
-        setError(getErrorMessage(err));
+        showValidationToast(err, { fallback: getErrorMessage(err) });
       }
     } finally {
       if (isMounted.current) {
@@ -278,46 +282,37 @@ export default function SignupScreen() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    const validationMessages: string[] = [];
+    const passwordIsInvalid = !checkPasswordRequirements(formData.password).isValid;
 
-    if (!acceptedPolicy) {
-      setPolicyError(policyAcceptanceRequiredMessage);
-      focusPolicyAcceptance();
+    if (selectedRole === null) validationMessages.push('Please select a role');
+    if (!formData.fullName.trim()) validationMessages.push(`${t('auth.fullName')}: ${t('validation.required')}`);
+    if (!formData.email.trim()) validationMessages.push(`${t('auth.email')}: ${t('validation.required')}`);
+    else if (!isValidEmail(formData.email)) validationMessages.push(t('validation.emailInvalid'));
+    else if (!isOtpVerified || !verificationTicket) validationMessages.push('Please verify your email address first.');
+    if (passwordIsInvalid) {
+      validationMessages.push(t('auth.passwordInvalid', {
+        defaultValue:
+          'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.',
+      }));
+    }
+    if (!acceptedPolicy) validationMessages.push(policyAcceptanceRequiredMessage);
+
+    setPolicyError(acceptedPolicy ? '' : policyAcceptanceRequiredMessage);
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
+      if (!formData.fullName.trim()) fullNameInputRef.current?.focus();
+      else if (!formData.email.trim() || !isValidEmail(formData.email) || !isOtpVerified) emailInputRef.current?.focus();
+      else if (passwordIsInvalid) passwordInputRef.current?.focus();
+      else if (!acceptedPolicy) focusPolicyAcceptance();
       return;
     }
 
-    setPolicyError('');
+    if (selectedRole === null) return;
+
     setIsEmailLoading(true);
 
     try {
-      if (selectedRole === null) {
-        if (isMounted.current) {
-          setError('Please select a role');
-          setIsEmailLoading(false);
-        }
-        return;
-      }
-
-      if (!isOtpVerified || !verificationTicket) {
-        if (isMounted.current) {
-          setError('Please verify your email address first.');
-          setIsEmailLoading(false);
-        }
-        return;
-      }
-
-      if (!checkPasswordRequirements(formData.password).isValid) {
-        if (isMounted.current) {
-          setError(
-            t('auth.passwordInvalid', {
-              defaultValue:
-                'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.',
-            })
-          );
-          setIsEmailLoading(false);
-        }
-        return;
-      }
 
       await signup(
         formData.email,
@@ -341,7 +336,7 @@ export default function SignupScreen() {
       navigate('/onboarding/profile-setup');
     } catch (err: unknown) {
       if (isMounted.current) {
-        setError(getErrorMessage(err));
+        showValidationToast(err, { fallback: getErrorMessage(err) });
       }
     } finally {
       if (isMounted.current) {
@@ -551,12 +546,7 @@ export default function SignupScreen() {
                 <div className="flex-1 auth-divider" />
               </div>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                  <div role="alert" className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
-                    {error}
-                  </div>
-                )}
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 {successMessage && (
                   <div className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#22C55E' }}>
                     {successMessage}
@@ -565,7 +555,7 @@ export default function SignupScreen() {
                 
                 <div className="relative auth-form-animate">
                   <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                  <input type="text" placeholder={t('auth.fullName')} value={formData.fullName}
+                  <input ref={fullNameInputRef} type="text" placeholder={t('auth.fullName')} value={formData.fullName}
                     onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                     className="input-gb w-full py-3 auth-input-with-icon"
                     disabled={isLoading} required />
@@ -573,7 +563,7 @@ export default function SignupScreen() {
 
                 <div className="relative auth-form-animate">
                   <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                  <input type="email" placeholder={t('auth.email')} value={formData.email}
+                  <input ref={emailInputRef} type="email" placeholder={t('auth.email')} value={formData.email}
                     onChange={e => {
                       setFormData({ ...formData, email: e.target.value });
                       if (isOtpVerified) {
@@ -589,7 +579,7 @@ export default function SignupScreen() {
                 <div className="flex gap-2 auth-form-animate">
                   <div className="relative flex-1">
                     <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                    <input type="text" placeholder={t('auth.otpCode')} value={formData.otpCode}
+                    <input ref={otpInputRef} type="text" placeholder={t('auth.otpCode')} value={formData.otpCode}
                       onChange={e => {
                         setFormData({ ...formData, otpCode: e.target.value });
                         if (isOtpVerified) {
@@ -604,7 +594,7 @@ export default function SignupScreen() {
                   <button
                     type="button"
                     onClick={countdown === 0 && !isOtpVerified ? handleSendOtp : handleVerifyOtp}
-                    disabled={(countdown === 0 && !isValidEmail(formData.email)) || isOtpVerified || isSendingOtp || isVerifyingOtp || (countdown > 0 && !formData.otpCode)}
+                    disabled={isOtpVerified || isSendingOtp || isVerifyingOtp}
                     className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold whitespace-nowrap"
                     style={{ minWidth: '110px' }}
                   >
@@ -647,7 +637,7 @@ export default function SignupScreen() {
                  
                 <div className="relative auth-form-animate">
                   <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                  <input type={showPassword ? 'text' : 'password'} placeholder={t('auth.password')} value={formData.password}
+                  <input ref={passwordInputRef} type={showPassword ? 'text' : 'password'} placeholder={t('auth.password')} value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
                     className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both"
                     disabled={isLoading} required />
@@ -672,7 +662,6 @@ export default function SignupScreen() {
                     onChange={handlePolicyAcceptanceChange}
                     disabled={isLoading}
                     aria-invalid={policyError ? 'true' : undefined}
-                    aria-describedby={policyError ? 'policy-acceptance-error' : undefined}
                     className="auth-policy-checkbox mt-1 h-4 w-4 shrink-0 accent-cyan-500"
                   />
                   <div className="text-sm leading-5 text-secondary">
@@ -688,16 +677,10 @@ export default function SignupScreen() {
                         {t('footer.privacyPolicy')}
                       </a>
                     </div>
-                    {policyError ? (
-                      <div id="policy-acceptance-error" role="alert" className="auth-policy-error">
-                        <AlertCircle size={15} aria-hidden="true" />
-                        <span>{policyError}</span>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
 
-                <button type="submit" disabled={isLoading || !isOtpVerified || !formData.fullName || !formData.password}
+                <button type="submit" disabled={isLoading}
                   className="btn-cyan w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed auth-form-animate hover:scale-[1.01] transition-transform">
                   {isLoading ? (
                     <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />

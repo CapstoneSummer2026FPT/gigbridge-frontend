@@ -19,6 +19,7 @@ import { AvatarCropModal } from './AvatarCropModal';
 import { PortfolioImageCropModal } from './PortfolioImageCropModal';
 import { VietnamLocationSelect } from '../../../shared/components/VietnamLocationSelect';
 import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 type SubTab = 'basic' | 'details' | 'portfolio' | 'experience';
 
@@ -230,12 +231,15 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
 
   const handleSavePortfolioItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationMessages: string[] = [];
     if (!portfolioForm.title.trim()) {
-      toast.error('Project title is required.');
-      return;
+      validationMessages.push('Project title is required.');
     }
     if (portfolioForm.projectDate && portfolioForm.projectDate > todayStr) {
-      toast.error('Completion date cannot be in the future.');
+      validationMessages.push('Completion date cannot be in the future.');
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
       return;
     }
     try {
@@ -248,7 +252,11 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
           void loadPortfolio();
         } else {
-          toast.error(res.message || 'Failed to update portfolio item.');
+          if (isValidationResponse(res)) {
+            showValidationToast(res, { fallback: res.message || 'Failed to update portfolio item.' });
+          } else {
+            toast.error(res.message || 'Failed to update portfolio item.');
+          }
         }
       } else {
         const res = await portfolioAPI.createPortfolioItem(portfolioForm);
@@ -257,7 +265,11 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
           void loadPortfolio();
         } else {
-          toast.error(res.message || 'Failed to create portfolio item.');
+          if (isValidationResponse(res)) {
+            showValidationToast(res, { fallback: res.message || 'Failed to create portfolio item.' });
+          } else {
+            toast.error(res.message || 'Failed to create portfolio item.');
+          }
         }
       }
     } catch (err: unknown) {
@@ -295,23 +307,24 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
 
   const handleSaveWorkExperience = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationMessages: string[] = [];
     if (!experienceForm.companyName.trim() || !experienceForm.jobTitle.trim() || !experienceForm.startDate) {
-      toast.error('Company Name, Job Title, and Start Date are required.');
-      return;
+      validationMessages.push('Company Name, Job Title, and Start Date are required.');
     }
     if (experienceForm.startDate > todayStr) {
-      toast.error('Start date cannot be in the future.');
-      return;
+      validationMessages.push('Start date cannot be in the future.');
     }
     if (experienceForm.endDate) {
       if (experienceForm.endDate > todayStr) {
-        toast.error('End date cannot be in the future.');
-        return;
+        validationMessages.push('End date cannot be in the future.');
       }
       if (experienceForm.startDate > experienceForm.endDate) {
-        toast.error('Start date must be before or equal to end date.');
-        return;
+        validationMessages.push('Start date must be before or equal to end date.');
       }
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
+      return;
     }
     try {
       setSavingExperience(true);
@@ -323,7 +336,11 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
           void loadWorkExperiences();
         } else {
-          toast.error(res.message || 'Failed to update work experience.');
+          if (isValidationResponse(res)) {
+            showValidationToast(res, { fallback: res.message || 'Failed to update work experience.' });
+          } else {
+            toast.error(res.message || 'Failed to update work experience.');
+          }
         }
       } else {
         const res = await workExperienceAPI.createWorkExperience(experienceForm);
@@ -332,7 +349,11 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
           void loadWorkExperiences();
         } else {
-          toast.error(res.message || 'Failed to create work experience.');
+          if (isValidationResponse(res)) {
+            showValidationToast(res, { fallback: res.message || 'Failed to create work experience.' });
+          } else {
+            toast.error(res.message || 'Failed to create work experience.');
+          }
         }
       }
     } catch (err: unknown) {
@@ -595,8 +616,23 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
     setErrorMessage(null);
     const normalizedIdentityCode = formData.identityOrTaxCode.replace(/\s+/g, '');
     const identityChanged = normalizedIdentityCode !== savedIdentityCode;
-    if (identityChanged && !identityVerificationTicket) {
-      setErrorMessage(t('settings:identityVerificationRequired'));
+    const validationMessages: string[] = [];
+    const bioWordCount = formData.bio.trim().split(/\s+/).filter(word => word.length > 0).length;
+    const descriptionWordCount = formData.companyDescription.trim().split(/\s+/).filter(word => word.length > 0).length;
+
+    if (identityChanged && !identityVerificationTicket) validationMessages.push(t('settings:identityVerificationRequired'));
+    if (role === UserRole.Freelancer && !formData.majorId && subTab === 'details') {
+      validationMessages.push(t('settings.errorMajorRequired'));
+    }
+    if (role === UserRole.Freelancer && formData.bio.trim() && bioWordCount < 50) {
+      validationMessages.push(t('settings.bioMinWords') || `Professional bio must be at least 50 words. Currently: ${bioWordCount} words.`);
+    }
+    if (role === UserRole.Client && formData.companyDescription.trim() && descriptionWordCount < 50) {
+      validationMessages.push(t('settings.companyDescMinWords') || `Company description must be at least 50 words. Currently: ${descriptionWordCount} words.`);
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
+      if (identityChanged && !identityVerificationTicket) document.getElementById('settings-identity-code')?.focus();
       return;
     }
     setSaving(true);
@@ -614,7 +650,9 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       });
 
       if (!userUpdateRes.success) {
-        setErrorMessage(userUpdateRes.message || t('settings.errorSaveFailed'));
+        const message = userUpdateRes.message || t('settings.errorSaveFailed');
+        if (isValidationResponse(userUpdateRes)) showValidationToast(userUpdateRes, { fallback: message });
+        else setErrorMessage(message);
         setSaving(false);
         return;
       }
@@ -624,26 +662,6 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
 
       // 2. Update Detailed Role Profile (Freelancer or Client)
       if (role === UserRole.Freelancer) {
-        if (!formData.majorId && subTab === 'details') {
-          setErrorMessage(t('settings.errorMajorRequired'));
-          setSaving(false);
-          return;
-        }
-
-        // Validate bio has at least 50 words
-        const bioWordCount = formData.bio
-          .trim()
-          .split(/\s+/)
-          .filter(w => w.length > 0).length;
-        if (formData.bio.trim() && bioWordCount < 50) {
-          setErrorMessage(
-            t('settings.bioMinWords') ||
-            `Professional bio must be at least 50 words. Currently: ${bioWordCount} words.`
-          );
-          setSaving(false);
-          return;
-        }
-
         const response = await profilePutAPI.updateFreelancerProfile({
           title: formData.title,
           bio: formData.bio,
@@ -656,24 +674,12 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         });
 
         if (!response.success) {
-          setErrorMessage(response.message || t('settings.errorSaveFailed'));
+          const message = response.message || t('settings.errorSaveFailed');
+          if (isValidationResponse(response)) showValidationToast(response, { fallback: message });
+          else setErrorMessage(message);
           return;
         }
       } else if (role === UserRole.Client) {
-        // Validate companyDescription has at least 50 words
-        const descWordCount = formData.companyDescription
-          .trim()
-          .split(/\s+/)
-          .filter(w => w.length > 0).length;
-        if (formData.companyDescription.trim() && descWordCount < 50) {
-          setErrorMessage(
-            t('settings.companyDescMinWords') ||
-            `Company description must be at least 50 words. Currently: ${descWordCount} words.`
-          );
-          setSaving(false);
-          return;
-        }
-
         const response = await profilePutAPI.updateClientProfile({
           companyName: formData.companyName,
           companyWebsite: formData.companyWebsite,
@@ -684,7 +690,9 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         });
 
         if (!response.success) {
-          setErrorMessage(response.message || t('settings.errorSaveFailed'));
+          const message = response.message || t('settings.errorSaveFailed');
+          if (isValidationResponse(response)) showValidationToast(response, { fallback: message });
+          else setErrorMessage(message);
           return;
         }
       }
@@ -1386,7 +1394,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
               )}
             </div>
 
-            <form onSubmit={handleSavePortfolioItem} className="space-y-6">
+            <form onSubmit={handleSavePortfolioItem} className="space-y-6" noValidate>
               <div className="settings-form-grid">
                 {/* Project Title */}
                 <div className="settings-form-group full-width">
@@ -1676,7 +1684,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
               )}
             </div>
 
-            <form onSubmit={handleSaveWorkExperience} className="space-y-6">
+            <form onSubmit={handleSaveWorkExperience} className="space-y-6" noValidate>
               <div className="settings-form-grid">
                 {/* Job Title */}
                 <div className="settings-form-group">

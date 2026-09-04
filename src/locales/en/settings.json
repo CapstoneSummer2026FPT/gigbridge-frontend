@@ -42,6 +42,7 @@
   "phoneNumber": "Phone Number",
   "identityCode": "Identity number (ID card/Citizen ID)",
   "identityCodePlaceholder": "Enter 9 or 12 digits",
+  "identityCodeInvalid": "Identity number must contain 9 or 12 digits.",
   "identityCodeHelp": "This private value will be reused automatically when you e-sign and included in project receipts.",
   "identityVerificationRequired": "To save this identity number, verify ownership through your authenticated account email.",
   "identityVerificationSend": "Send email code",

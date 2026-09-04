@@ -16,6 +16,7 @@ import { ReportType } from '../../../types/models/Report';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 export interface ReportUserModalProps {
   userId: string;
@@ -48,6 +49,7 @@ export function ReportUserModal({
   const [submitting, setSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const reasonInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Hide TopNav and lock body scroll when modal is open
   useEffect(() => {
@@ -105,7 +107,10 @@ export function ReportUserModal({
   const handleFilesAdded = (newFiles: FileList | File[]) => {
     const validFiles = Array.from(newFiles).filter(f => f.size <= 100 * 1024 * 1024);
     if (validFiles.length < newFiles.length) {
-      toast.error(t('profile.reportModal.fileSizeError', { defaultValue: 'Some files exceeded the 100MB limit and were skipped.' }));
+      showValidationToast(
+        t('profile.reportModal.fileSizeError', { defaultValue: 'Some files exceeded the 100MB limit and were skipped.' }),
+        { fallback: t('validation.invalidFormat') },
+      );
     }
     setFiles(prev => {
       const combined = [...prev, ...validFiles];
@@ -146,7 +151,11 @@ export function ReportUserModal({
     event.preventDefault();
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      setError(t('profile.reportModal.reasonRequired', { defaultValue: 'Please explain why you are reporting this user.' }));
+      showValidationToast(
+        t('profile.reportModal.reasonRequired', { defaultValue: 'Please explain why you are reporting this user.' }),
+        { fallback: t('validation.required') },
+      );
+      reasonInputRef.current?.focus();
       return;
     }
 
@@ -166,7 +175,9 @@ export function ReportUserModal({
 
       const reportId = createdReportId ?? response?.data;
       if (!reportId) {
-        setError(response?.message || 'Unable to submit your report.');
+        const fallback = response?.message || 'Unable to submit your report.';
+        if (response && isValidationResponse(response)) showValidationToast(response, { fallback });
+        else setError(fallback);
         setSubmitting(false);
         return;
       }
@@ -175,9 +186,9 @@ export function ReportUserModal({
       if (files.length) {
         const upload = await reportAPI.uploadEvidence(reportId, files, description);
         if (!upload.success) {
-          setError(
-            `${upload.message || t('profile.reportModal.evidenceRetry', { defaultValue: 'Evidence upload failed. Your report was saved; submit again to retry the evidence upload.' })}`
-          );
+          const fallback = upload.message || t('profile.reportModal.evidenceRetry', { defaultValue: 'Evidence upload failed. Your report was saved; submit again to retry the evidence upload.' });
+          if (isValidationResponse(upload)) showValidationToast(upload, { fallback });
+          else setError(fallback);
           setSubmitting(false);
           return;
         }
@@ -318,7 +329,7 @@ export function ReportUserModal({
           </div>
 
           {/* Form Body (Fixed Height Container with Scrollable Body) */}
-          <form onSubmit={submit} className="flex flex-col h-full overflow-hidden">
+          <form onSubmit={submit} className="flex flex-col h-full overflow-hidden" noValidate>
             <div className="flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5 space-y-4">
               {/* Field 1: Reason Type */}
               <div>
@@ -348,6 +359,7 @@ export function ReportUserModal({
                   </span>
                 </div>
                 <textarea
+                  ref={reasonInputRef}
                   className="w-full min-h-[100px] sm:min-h-[110px] p-3 text-xs sm:text-sm rounded-xl border border-border bg-surface-hover/60 text-text-primary placeholder:text-text-muted focus:bg-surface focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15 focus:outline-none transition-all resize-y"
                   value={reason}
                   maxLength={2000}
@@ -492,7 +504,7 @@ export function ReportUserModal({
               </button>
               <button
                 type="submit"
-                disabled={submitting || !reason.trim()}
+                disabled={submitting}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all cursor-pointer"
               >
                 <Flag size={14} />

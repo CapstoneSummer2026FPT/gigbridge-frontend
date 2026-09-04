@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Crown, Sparkles, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 interface Props {
   isOpen: boolean;
@@ -20,11 +21,17 @@ const PRESETS = [
 export function PostJobAiDrawer({ isOpen, isPremium, isLoading, onClose, onGenerate, onUpgrade }: Props) {
   const { t } = useTranslation('common');
   const [prompt, setPrompt] = useState('');
+  const promptRef = useRef<HTMLTextAreaElement>(null);
   if (!isOpen) return null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!isPremium || !prompt.trim() || isLoading) return;
+    if (!isPremium || isLoading) return;
+    if (!prompt.trim()) {
+      showValidationToast(t('postJobWizard.ai.placeholder'), { fallback: 'Describe the job you want to create.' });
+      promptRef.current?.focus();
+      return;
+    }
     await onGenerate(prompt.trim());
     onClose();
   };
@@ -50,10 +57,12 @@ export function PostJobAiDrawer({ isOpen, isPremium, isLoading, onClose, onGener
             <button type="button" onClick={onUpgrade}>{t('postJobWizard.ai.upgrade')}</button>
           </div>
         ) : (
-          <form onSubmit={submit} className="job-post-ai__form">
+          <form onSubmit={submit} noValidate className="job-post-ai__form">
             <p>{t('postJobWizard.ai.description')}</p>
             <textarea
+              ref={promptRef}
               value={prompt}
+              aria-invalid={!prompt.trim()}
               onChange={event => setPrompt(event.target.value)}
               placeholder={t('postJobWizard.ai.placeholder')}
               rows={8}
@@ -68,7 +77,7 @@ export function PostJobAiDrawer({ isOpen, isPremium, isLoading, onClose, onGener
                 </button>
               ))}
             </div>
-            <button type="submit" className="job-post-ai__generate" disabled={!prompt.trim() || isLoading}>
+            <button type="submit" className="job-post-ai__generate" disabled={isLoading}>
               <Sparkles size={15} />
               {isLoading ? t('postJobWizard.ai.generating') : t('postJobWizard.ai.generate')}
             </button>

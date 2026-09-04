@@ -3,6 +3,8 @@ import { useBlocker, useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { showValidationToast } from '../../../shared/utils/validationToast';
+import { useUndoableDeleteScope, useUndoableListDelete } from '../../../shared/hooks/useUndoableDeleteScope';
 import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
@@ -37,6 +39,7 @@ const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
 const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
 
 export interface QuestionInput {
+  clientId: string;
   questionText: string;
   isRequired: boolean;
 }
@@ -63,6 +66,7 @@ export interface PostJobFormState {
 }
 
 export interface PostJobRouteQuestion {
+  clientId?: string;
   questionText?: string | null;
   question?: string | null;
   isRequired?: boolean | null;
@@ -172,7 +176,15 @@ const createDraftJobPostOnce = async (): Promise<string> => {
   return draftJobPostRequest;
 };
 
-const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: true });
+let nextQuestionClientId = 0;
+
+const createQuestionInput = (questionText = '', isRequired = true): QuestionInput => ({
+  clientId: `job-question-${Date.now()}-${++nextQuestionClientId}`,
+  questionText,
+  isRequired,
+});
+
+const emptyQuestion = (): QuestionInput => createQuestionInput();
 
 const normalizeSkillName = (value: string): string => value.trim().toLowerCase()
   .replaceAll('#', 'sharp').replaceAll('+', 'plus').replaceAll('&', 'and')
@@ -189,6 +201,7 @@ const toStringValue = (value: string | number | null | undefined): string => (
 
 const initialQuestionsFromState = (initialJobData?: PostJobRouteJobData | null): QuestionInput[] => {
   const initialQuestions = initialJobData?.interviewQuestions?.map(question => ({
+    clientId: question.clientId || createQuestionInput().clientId,
     questionText: question.questionText || question.question || '',
     isRequired: question.isRequired ?? true,
   })) || [];
@@ -200,6 +213,7 @@ const questionsFromDtos = (questions: JobPostQuestionDto[]): QuestionInput[] => 
   const mapped = [...questions]
     .sort((left, right) => left.orderIndex - right.orderIndex)
     .map(question => ({
+      clientId: createQuestionInput().clientId,
       questionText: question.questionText || '',
       isRequired: question.isRequired ?? true,
     }));
@@ -254,6 +268,8 @@ export function usePostJob() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation('common');
+  const undoDeleteController = useUndoableDeleteScope();
+  const undoableListDelete = useUndoableListDelete(undoDeleteController);
   const routeState = location.state as PostJobRouteState | null;
   const initialJobData = routeState?.jobData ?? null;
   const initialJobPostId = routeState?.jobPostId ? String(routeState.jobPostId) : null;
@@ -337,6 +353,8 @@ export function usePostJob() {
 
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
+  const questionsRef = useRef(questions);
+  questionsRef.current = questions;
   const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
     initialJobData?.milestonePlans || []);
   const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
@@ -741,7 +759,7 @@ export function usePostJob() {
 
   const addOfficialSkill = (skill: SkillOptionDto): void => {
     if (form.skillIds.length + form.customSkillNames.length >= 10) {
-      toast.error(t('postJobWizard.validation.skillLimit'));
+      showValidationToast(t('postJobWizard.validation.skillLimit'), { fallback: t('validation.invalidFormat') });
       return;
     }
 
@@ -763,12 +781,12 @@ export function usePostJob() {
     }
 
     if (!form.categoryId) {
-      toast.error(t('postJobWizard.validation.selectCategoryFirst'));
+      showValidationToast(t('postJobWizard.validation.selectCategoryFirst'), { fallback: t('validation.invalidFormat') });
       return;
     }
 
     if (form.skillIds.length + form.customSkillNames.length >= 10) {
-      toast.error(t('postJobWizard.validation.skillLimit'));
+      showValidationToast(t('postJobWizard.validation.skillLimit'), { fallback: t('validation.invalidFormat') });
       return;
     }
 
@@ -813,6 +831,30 @@ export function usePostJob() {
     setQuestions(prev => prev.map((question, idx) => idx === index ? { ...question, ...patch } : question));
   };
 
+  const addQuestion = (questionText = ''): void => {
+    setQuestions(current => [...current, createQuestionInput(questionText)]);
+  };
+
+  const deleteQuestion = (index: number): void => {
+    const question = questionsRef.current[index];
+    if (!question) return;
+
+    undoableListDelete.scheduleDelete({
+      collectionKey: 'post-job-interview-questions',
+      index,
+      getItems: () => questionsRef.current,
+      setItems: nextQuestions => {
+        questionsRef.current = nextQuestions;
+        setQuestions(nextQuestions);
+      },
+      getItemKey: item => item.clientId,
+      message: t('undoDelete.questionDeleted', {
+        name: question.questionText.trim() || t('undoDelete.untitledQuestion'),
+      }),
+      undoLabel: t('undoDelete.action'),
+    });
+  };
+
   const handleDragStart = (event: DragEvent, index: number): void => {
     setDraggedIndex(index);
     event.dataTransfer.effectAllowed = 'move';
@@ -835,6 +877,7 @@ export function usePostJob() {
   };
 
   const handleGenerateInstantJob = async (prompt?: string, sourceType: 'prompt' | 'document' | 'hybrid' = 'prompt') => {
+    await undoDeleteController.finalizeAll();
     setAiGenerationSource(sourceType);
     let promptText = typeof prompt === 'string' ? prompt.trim() : '';
 
@@ -846,7 +889,7 @@ export function usePostJob() {
     }
 
     if (!promptText) {
-      toast.error(t('postJobWizard.validation.aiPromptRequired'));
+      showValidationToast(t('postJobWizard.validation.aiPromptRequired'), { fallback: t('validation.required') });
       return;
     }
 
@@ -980,10 +1023,7 @@ export function usePostJob() {
         }));
       }
       if (rawQuestions && rawQuestions.length > 0) {
-        nextQuestions = rawQuestions.map((qText: string) => ({
-          questionText: qText,
-          isRequired: true,
-        }));
+        nextQuestions = rawQuestions.map((qText: string) => createQuestionInput(qText));
       }
 
       setMilestonePlans(nextMilestones);
@@ -1169,14 +1209,15 @@ export function usePostJob() {
   };
 
   const showValidationError = (message: string): void => {
-    setErrorMessage(message);
-    toast.error(message);
+    showValidationToast(message, { fallback: t('validation.invalidFormat') });
   };
 
   const focusValidationIssue = (issue: PostJobValidationIssue): void => {
     if (!issue.fieldSelector) return;
     requestAnimationFrame(() => {
-      const target = document.querySelector<HTMLElement>(issue.fieldSelector!);
+      const target = issue.fieldSelector
+        ? document.querySelector<HTMLElement>(issue.fieldSelector)
+        : null;
       target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       target?.focus();
     });
@@ -1269,19 +1310,19 @@ export function usePostJob() {
     if (!allowedTypes.has(file.type)) {
       const message = t('postJobWizard.validation.attachmentType');
       setAttachmentError(message);
-      toast.error(message);
+      showValidationToast(message, { fallback: t('validation.invalidFormat') });
       return;
     }
     if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
       const message = t('postJobWizard.validation.attachmentSize');
       setAttachmentError(message);
-      toast.error(message);
+      showValidationToast(message, { fallback: t('validation.invalidFormat') });
       return;
     }
     if (attachments.length >= 5) {
       const message = t('postJobWizard.validation.attachmentLimit');
       setAttachmentError(message);
-      toast.error(message);
+      showValidationToast(message, { fallback: t('validation.invalidFormat') });
       return;
     }
 
@@ -1403,6 +1444,7 @@ export function usePostJob() {
   const navigateWizard = async (path: '/jobs/post' | '/jobs/post/plan' | '/jobs/post/review'): Promise<void> => {
     setErrorMessage(null);
     try {
+      await undoDeleteController.finalizeAll();
       if (path === '/jobs/post/plan' && milestonePlans.length > 0) {
         const expectedBudgetVal = form.budget ? Number(form.budget) : null;
         const clamped = clampMilestonesToExpectedTargets(milestonePlans, expectedBudgetVal, expectedDurationWeeks);
@@ -1422,6 +1464,7 @@ export function usePostJob() {
     mode: PostJobSubmitMode,
     visibilityOverride?: JobPostVisibility,
   ): Promise<PostJobSubmitResult> => {
+    await undoDeleteController.finalizeAll();
     const requestedPublishVisibility: JobPostVisibility | undefined = mode === 'publish'
       ? visibilityOverride
         ?? pendingPublishVisibility
@@ -1557,10 +1600,7 @@ export function usePostJob() {
                 finalMilestones = mappedMilestones;
               }
               if (rawQuestions && rawQuestions.length > 0) {
-                const mappedQuestions = rawQuestions.map((qText: string) => ({
-                  questionText: qText,
-                  isRequired: true,
-                }));
+                const mappedQuestions = rawQuestions.map((qText: string) => createQuestionInput(qText));
                 setQuestions(mappedQuestions);
                 finalQuestions = mappedQuestions;
               }
@@ -1685,6 +1725,7 @@ export function usePostJob() {
   const handleLeaveSaveDraft = async (): Promise<void> => {
     setLeaveAction('save');
     try {
+      await undoDeleteController.finalizeAll();
       await saveDraftPartial();
       toast.success(t('postJobWizard.messages.draftSaved'));
       continueBlockedNavigation();
@@ -1699,6 +1740,7 @@ export function usePostJob() {
   const handleLeaveDiscardDraft = async (): Promise<void> => {
     setLeaveAction('discard');
     try {
+      await undoDeleteController.finalizeAll();
       if (!jobPostId) {
         continueBlockedNavigation();
         return;
@@ -1751,6 +1793,9 @@ export function usePostJob() {
     draggedIndex,
     questions,
     setQuestions,
+    addQuestion,
+    deleteQuestion,
+    undoDeleteController,
     milestonePlans,
     milestonePlansWithDeadlines,
     attachments,

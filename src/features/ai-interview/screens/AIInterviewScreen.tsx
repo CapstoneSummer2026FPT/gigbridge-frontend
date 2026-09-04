@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   BellRing,
   Brain,
@@ -117,7 +118,11 @@ export default function AIInterviewScreen() {
   ];
 
   return (
-    <AppLayout>
+    <AppLayout
+      hideTopNav={stage !== 'results'}
+      hideAIWidget={stage !== 'results'}
+      showSidebar={false}
+    >
       <main className="ai-bento-shell">
 
         {/* ══════════════════════════════════════
@@ -184,7 +189,22 @@ export default function AIInterviewScreen() {
                     )}
                   </button>
 
-                  {!jobPostId && (
+                  {jobPostId ? (
+                    <button
+                      type="button"
+                      className="ai-bento-btn ghost"
+                      onClick={() => {
+                        if (proposalId) {
+                          navigate(`/proposals/${proposalId}/edit`);
+                        } else {
+                          navigate(-1);
+                        }
+                      }}
+                    >
+                      <ArrowLeft size={16} />
+                      {t('common.back', 'Quay lại')}
+                    </button>
+                  ) : (
                     <button
                       className="ai-bento-btn ghost"
                       onClick={() => navigate('/jobs/browse')}

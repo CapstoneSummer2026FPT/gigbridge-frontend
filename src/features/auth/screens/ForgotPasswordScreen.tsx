@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import '../styles/auth-screen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 
@@ -13,6 +14,8 @@ import { useTranslation } from '../../../hooks/useTranslation';
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
   const isMounted = useRef(true);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const otpInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -48,7 +51,8 @@ export default function ForgotPasswordScreen() {
     setSuccess('');
     
     if (!email || !isValidEmail(email)) {
-      setError('Please enter a valid email address.');
+      showValidationToast('Please enter a valid email address.', { fallback: t('validation.emailInvalid') });
+      emailInputRef.current?.focus();
       return;
     }
 
@@ -63,7 +67,11 @@ export default function ForgotPasswordScreen() {
         toast.success('Verification code sent successfully!');
       } else {
         if (isMounted.current) {
-          setError(getErrorMessage(response));
+          if (isValidationResponse(response)) {
+            showValidationToast(response, { fallback: getErrorMessage(response) });
+          } else {
+            setError(getErrorMessage(response));
+          }
         }
       }
     } catch (err: unknown) {
@@ -82,8 +90,12 @@ export default function ForgotPasswordScreen() {
     setError('');
     setSuccess('');
 
-    if (!otpCode) {
-      setError('Please enter the OTP verification code.');
+    const validationMessages: string[] = [];
+    if (!email || !isValidEmail(email)) validationMessages.push('Please enter a valid email address.');
+    if (!otpCode) validationMessages.push('Please enter the OTP verification code.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.required') });
+      (email && isValidEmail(email) ? otpInputRef.current : emailInputRef.current)?.focus();
       return;
     }
 
@@ -102,7 +114,11 @@ export default function ForgotPasswordScreen() {
         toast.success('OTP verified successfully!');
       } else {
         if (isMounted.current) {
-          setError(getErrorMessage(response));
+          if (isValidationResponse(response)) {
+            showValidationToast(response, { fallback: getErrorMessage(response) });
+          } else {
+            setError(getErrorMessage(response));
+          }
         }
       }
     } catch (err: unknown) {
@@ -234,6 +250,7 @@ export default function ForgotPasswordScreen() {
               <div className="relative flex-1">
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
+                  ref={emailInputRef}
                   type="email"
                   placeholder={t('auth.email')}
                   value={email}
@@ -252,7 +269,7 @@ export default function ForgotPasswordScreen() {
               <button
                 type="button"
                 onClick={handleSendOtp}
-                disabled={isSendingOtp || isOtpVerified || !isValidEmail(email) || countdown > 0}
+                disabled={isSendingOtp || isOtpVerified || countdown > 0}
                 className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold"
                 style={{ minWidth: '105px' }}
               >
@@ -271,6 +288,7 @@ export default function ForgotPasswordScreen() {
               <div className="relative flex-1">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
+                  ref={otpInputRef}
                   type="text"
                   placeholder={t('auth.otpCode')}
                   value={otpCode}
@@ -289,7 +307,7 @@ export default function ForgotPasswordScreen() {
               <button
                 type="button"
                 onClick={handleVerifyOtp}
-                disabled={isVerifyingOtp || isOtpVerified || !otpCode || !email}
+                disabled={isVerifyingOtp || isOtpVerified}
                 className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold"
                 style={{ minWidth: '105px' }}
               >

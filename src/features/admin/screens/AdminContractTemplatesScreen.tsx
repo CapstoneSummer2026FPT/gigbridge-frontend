@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import {
   Plus,
   Edit,
@@ -20,6 +20,7 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import '../styles/admin-contract-templates-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 interface ContractTemplate {
   id: string;
@@ -111,6 +112,9 @@ export default function AdminContractTemplatesScreen() {
     content: '',
     category: 'standard' as ContractTemplate['category'],
   });
+  const nameRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchTemplates = async () => {
     setError(null);
@@ -153,35 +157,36 @@ export default function AdminContractTemplatesScreen() {
     setFormData({ name: '', description: '', content: '', category: 'standard' });
   };
 
+  const validateTemplate = (requireDescription: boolean): boolean => {
+    const validationMessages: string[] = [];
+    let firstField: 'name' | 'description' | 'content' | null = null;
+    const addError = (field: 'name' | 'description' | 'content', message: string): void => {
+      if (!firstField) firstField = field;
+      validationMessages.push(message);
+    };
+
+    if (!formData.name.trim()) addError('name', 'Template name is required');
+    else if (formData.name.length > 100) addError('name', 'Template name must be 100 characters or less');
+    if (requireDescription && !formData.description.trim()) addError('description', 'Template description is required');
+    if (!formData.content.trim()) addError('content', 'Template content is required');
+    else {
+      const missingClauses = findMissingRequiredClauses(formData.content);
+      if (missingClauses.length > 0) addError('content', `Template must include required clauses: ${missingClauses.join(', ')}`);
+    }
+
+    if (validationMessages.length === 0) return true;
+    showValidationToast(validationMessages, { fallback: 'Please review the contract template' });
+    if (firstField === 'name') nameRef.current?.focus();
+    else if (firstField === 'description') descriptionRef.current?.focus();
+    else contentRef.current?.focus();
+    return false;
+  };
+
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!formData.name.trim()) {
-      setError('Template name is required');
-      return;
-    }
-
-    if (formData.name.length > 100) {
-      setError('Template name must be 100 characters or less');
-      return;
-    }
-
-    if (!formData.description.trim()) {
-      setError('Template description is required');
-      return;
-    }
-
-    if (!formData.content.trim()) {
-      setError('Template content is required');
-      return;
-    }
-
-    const missingClauses = findMissingRequiredClauses(formData.content);
-    if (missingClauses.length > 0) {
-      setError(`Template must include required clauses: ${missingClauses.join(', ')}`);
-      return;
-    }
+    if (!validateTemplate(true)) return;
 
     try {
       const response = await adminAPI.createTemplate({
@@ -199,7 +204,8 @@ export default function AdminContractTemplatesScreen() {
         resetForm();
         await fetchTemplates();
       } else {
-        setError(response.message || 'Failed to create template');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Failed to create template' });
+        else setError(response.message || 'Failed to create template');
       }
     } catch (err) {
       setError('An error occurred while creating template.');
@@ -213,21 +219,7 @@ export default function AdminContractTemplatesScreen() {
 
     if (!editingTemplateId) return;
 
-    if (!formData.name.trim()) {
-      setError('Template name is required');
-      return;
-    }
-
-    if (!formData.content.trim()) {
-      setError('Template content is required');
-      return;
-    }
-
-    const missingClauses = findMissingRequiredClauses(formData.content);
-    if (missingClauses.length > 0) {
-      setError(`Template must include required clauses: ${missingClauses.join(', ')}`);
-      return;
-    }
+    if (!validateTemplate(false)) return;
 
     try {
       const response = await adminAPI.updateTemplate(editingTemplateId, {
@@ -245,7 +237,8 @@ export default function AdminContractTemplatesScreen() {
         resetForm();
         await fetchTemplates();
       } else {
-        setError(response.message || 'Failed to update template');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Failed to update template' });
+        else setError(response.message || 'Failed to update template');
       }
     } catch (err) {
       setError('An error occurred while updating template.');
@@ -383,11 +376,12 @@ export default function AdminContractTemplatesScreen() {
               </button>
             </div>
 
-            <form onSubmit={editingTemplateId ? handleUpdateTemplate : handleCreateTemplate} className="template-form-grid">
+            <form onSubmit={editingTemplateId ? handleUpdateTemplate : handleCreateTemplate} noValidate className="template-form-grid">
               <div className="editor-fields">
                 <div className="form-group">
                   <label className="form-label">Template Name</label>
                   <input
+                    ref={nameRef}
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -400,6 +394,7 @@ export default function AdminContractTemplatesScreen() {
                 <div className="form-group">
                   <label className="form-label">Description</label>
                   <input
+                    ref={descriptionRef}
                     type="text"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -443,6 +438,7 @@ export default function AdminContractTemplatesScreen() {
                   <span>{formData.content.length} characters</span>
                 </div>
                 <textarea
+                  ref={contentRef}
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   placeholder={'Scope\nDefine deliverables and acceptance criteria.\n\nBudget\nDefine escrow, payment, and change-request rules.\n\nTimeline\nDefine milestones and review windows.\n\nIP\nDefine ownership and transfer conditions.'}

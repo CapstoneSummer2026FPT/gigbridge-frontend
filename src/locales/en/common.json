@@ -916,6 +916,16 @@
     "confirmCancelTitle": "Confirm cancelling job post",
     "confirmCancelDesc": "Are you sure you want to cancel job post \"{{title}}\"? Cancelling a job post cannot be undone."
   },
+  "undoDelete": {
+    "action": "Undo",
+    "milestoneDeleted": "Milestone “{{name}}” deleted.",
+    "workItemDeleted": "Work item “{{name}}” deleted.",
+    "questionDeleted": "Interview question “{{name}}” deleted.",
+    "untitledMilestone": "Untitled milestone",
+    "untitledWorkItem": "Untitled work item",
+    "untitledQuestion": "Untitled question",
+    "autoDeleteIn": "Auto-deleting in {{seconds}}s"
+  },
   "aiJobGeneratedModal": {
     "title": "AI Job Post Generated",
     "description": "Your AI job description, budget, timeline, and skill requirements have been created successfully.",

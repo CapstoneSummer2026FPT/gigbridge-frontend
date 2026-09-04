@@ -10,6 +10,7 @@ import { JobPostStatus, type AdminJobPostListResponse, type AdminJobPostStatsDto
 import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
 import { AdminPageCache, adminPageCacheKey } from '../utils/AdminPageCache';
 import '../styles/admin-users-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 type JobFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled';
 type JobSort = 'posted' | 'title' | 'budget';
@@ -137,6 +138,19 @@ export default function AdminJobsScreen() {
   const [milestoneForm, setMilestoneForm] = useState({ title: '', amount: 0, dueDate: '', status: 0, sortOrder: 0 });
   const [milestoneActionLoading, setMilestoneActionLoading] = useState(false);
   const [milestoneError, setMilestoneError] = useState<string | null>(null);
+  const milestoneTitleRef = useRef<HTMLInputElement>(null);
+  const milestoneAmountRef = useRef<HTMLInputElement>(null);
+
+  const validateMilestoneForm = (): boolean => {
+    const validationMessages: string[] = [];
+    if (!milestoneForm.title.trim()) validationMessages.push('Title is required');
+    if (milestoneForm.amount <= 0) validationMessages.push('Amount must be greater than 0');
+    if (validationMessages.length === 0) return true;
+    showValidationToast(validationMessages, { fallback: 'Please review the milestone' });
+    if (!milestoneForm.title.trim()) milestoneTitleRef.current?.focus();
+    else milestoneAmountRef.current?.focus();
+    return false;
+  };
 
   const currentMilestone = useMemo(() => {
     if (jobMilestones.length === 0) return null;
@@ -302,14 +316,7 @@ export default function AdminJobsScreen() {
 
   const handleCreateMilestone = async () => {
     if (!jobContract) return;
-    if (!milestoneForm.title.trim()) {
-      setMilestoneError('Title is required');
-      return;
-    }
-    if (milestoneForm.amount <= 0) {
-      setMilestoneError('Amount must be greater than 0');
-      return;
-    }
+    if (!validateMilestoneForm()) return;
     setMilestoneActionLoading(true);
     setMilestoneError(null);
     try {
@@ -326,7 +333,8 @@ export default function AdminJobsScreen() {
         setShowCreateMilestoneForm(false);
         setMilestoneForm({ title: '', amount: 0, dueDate: '', status: 0, sortOrder: 0 });
       } else {
-        setMilestoneError(res.message || 'Failed to create milestone');
+        if (isValidationResponse(res)) showValidationToast(res, { fallback: 'Failed to create milestone' });
+        else setMilestoneError(res.message || 'Failed to create milestone');
       }
     } catch (err) {
       setMilestoneError('An error occurred while creating the milestone');
@@ -337,14 +345,7 @@ export default function AdminJobsScreen() {
 
   const handleUpdateMilestone = async () => {
     if (!editingMilestone || !jobContract) return;
-    if (!milestoneForm.title.trim()) {
-      setMilestoneError('Title is required');
-      return;
-    }
-    if (milestoneForm.amount <= 0) {
-      setMilestoneError('Amount must be greater than 0');
-      return;
-    }
+    if (!validateMilestoneForm()) return;
     setMilestoneActionLoading(true);
     setMilestoneError(null);
     try {
@@ -361,7 +362,8 @@ export default function AdminJobsScreen() {
         if (milestonesRes.success) setJobMilestones(milestonesRes.data || []);
         setEditingMilestone(null);
       } else {
-        setMilestoneError(res.message || 'Failed to update milestone');
+        if (isValidationResponse(res)) showValidationToast(res, { fallback: 'Failed to update milestone' });
+        else setMilestoneError(res.message || 'Failed to update milestone');
       }
     } catch (err) {
       setMilestoneError('An error occurred while updating the milestone');
@@ -482,7 +484,8 @@ export default function AdminJobsScreen() {
         setConfirmAction(null);
         toast.success(response.message || 'Job lock status updated successfully');
       } else {
-        toast.error(response.message || 'Failed to update job lock status');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Failed to update job lock status' });
+        else toast.error(response.message || 'Failed to update job lock status');
       }
     } catch {
       toast.error('An error occurred while locking/unlocking the job post');
@@ -524,7 +527,8 @@ export default function AdminJobsScreen() {
         setConfirmAction(null);
         toast.success(response.message || 'Job deleted successfully');
       } else {
-        toast.error(response.message || 'Failed to delete job post');
+        if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Failed to delete job post' });
+        else toast.error(response.message || 'Failed to delete job post');
       }
     } catch {
       toast.error('An error occurred while deleting the job post');
@@ -1497,6 +1501,7 @@ export default function AdminJobsScreen() {
                         <div className="sm:col-span-2">
                           <label className="block text-[11px] font-semibold text-muted uppercase mb-1">Milestone Title</label>
                           <input
+                            ref={milestoneTitleRef}
                             type="text"
                             value={milestoneForm.title}
                             onChange={e => setMilestoneForm({ ...milestoneForm, title: e.target.value })}
@@ -1509,6 +1514,7 @@ export default function AdminJobsScreen() {
                         <div>
                           <label className="block text-[11px] font-semibold text-muted uppercase mb-1">Budget Amount (VND / G-coin)</label>
                           <input
+                            ref={milestoneAmountRef}
                             type="number"
                             value={milestoneForm.amount}
                             onChange={e => setMilestoneForm({ ...milestoneForm, amount: parseFloat(e.target.value) || 0 })}

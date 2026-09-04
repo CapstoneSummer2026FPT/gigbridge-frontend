@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -22,6 +22,7 @@ import { Link, useParams } from 'react-router';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { adminPutAPI } from '../../../api/adminAPI/PUT';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import {
   AccountReportResolutionAction,
   AccountStatus,
@@ -102,6 +103,8 @@ export default function AdminAccountReportDetailScreen() {
   const { reportId = '' } = useParams();
   const [data, setData] = useState<AccountReportDetail>();
   const [loading, setLoading] = useState(true);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const suspensionEndRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
   const [intent, setIntent] = useState<ResolutionIntent>(null);
   const [reason, setReason] = useState('');
@@ -155,8 +158,18 @@ export default function AdminAccountReportDetailScreen() {
   };
 
   const submitDecision = async () => {
-    if (intent === null || !reason.trim()) return;
-    if (intent === AccountReportResolutionAction.Suspension && !suspensionEnd) return;
+    if (intent === null) return;
+    const validationMessages: string[] = [];
+    if (!reason.trim()) validationMessages.push('Enter the decision reason.');
+    if (intent === AccountReportResolutionAction.Suspension && !suspensionEnd) {
+      validationMessages.push('Select a suspension end date.');
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required decision details.' });
+      if (!reason.trim()) reasonRef.current?.focus();
+      else suspensionEndRef.current?.focus();
+      return;
+    }
 
     setBusy(true);
     setError('');
@@ -182,6 +195,11 @@ export default function AdminAccountReportDetailScreen() {
         setDescription('');
         setSuspensionEnd('');
       } else {
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: response.message || 'Unable to apply this decision.' });
+          reasonRef.current?.focus();
+          return;
+        }
         setError(response.message || 'Unable to apply this decision.');
       }
     } catch {
@@ -423,7 +441,7 @@ export default function AdminAccountReportDetailScreen() {
             {error && <div className="account-report__modal-error"><AlertTriangle size={16} /> {error}</div>}
             <label>
               <span>Decision reason <b>*</b></span>
-              <textarea value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} placeholder="Explain the evidence and policy basis for this decision…" autoFocus />
+              <textarea ref={reasonRef} value={reason} aria-invalid={!reason.trim()} maxLength={1000} onChange={(event) => setReason(event.target.value)} placeholder="Explain the evidence and policy basis for this decision…" autoFocus />
               <small>{reason.length}/1000</small>
             </label>
             {intent !== 'dismiss' && (
@@ -435,7 +453,7 @@ export default function AdminAccountReportDetailScreen() {
             {intent === AccountReportResolutionAction.Suspension && (
               <label>
                 <span>Suspension ends <b>*</b></span>
-                <input type="datetime-local" min={new Date().toISOString().slice(0, 16)} value={suspensionEnd} onChange={(event) => setSuspensionEnd(event.target.value)} />
+                <input ref={suspensionEndRef} type="datetime-local" aria-invalid={!suspensionEnd} min={new Date().toISOString().slice(0, 16)} value={suspensionEnd} onChange={(event) => setSuspensionEnd(event.target.value)} />
               </label>
             )}
             <footer>
@@ -443,7 +461,7 @@ export default function AdminAccountReportDetailScreen() {
               <button
                 type="button"
                 className={intent === AccountReportResolutionAction.PermanentBan ? 'danger' : 'primary'}
-                disabled={busy || !reason.trim() || (intent === AccountReportResolutionAction.Suspension && !suspensionEnd)}
+                disabled={busy}
                 onClick={() => void submitDecision()}
               >
                 {busy ? 'Applying…' : 'Confirm decision'}

@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -8,6 +8,7 @@ import { MilestoneCompletedModal } from '../components/MilestoneCompletedModal';
 import { WorkItemDeliveryRow } from '../components/WorkItemDeliveryRow';
 import { WorkItemReviewRow } from '../components/WorkItemReviewRow';
 import { useDeliverySpace } from '../hooks/useDeliverySpace';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 /**
  * The milestone's delivery ledger, shared by both parties.
@@ -25,6 +26,7 @@ const DeliverySpaceScreen = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [revisionReason, setRevisionReason] = useState('');
   const [isRevising, setIsRevising] = useState(false);
+  const revisionReasonRef = useRef<HTMLTextAreaElement>(null);
 
   const space = useDeliverySpace(contractId, milestoneId);
   const isClient = role === UserRole.Client;
@@ -74,17 +76,40 @@ const DeliverySpaceScreen = () => {
   const milestone = space.activeMilestone;
 
   const runSubmit = async () => {
+    if (space.readyToSubmitIds.length === 0) {
+      showValidationToast('Attach a file to at least one work item before submitting.', {
+        fallback: 'Prepare at least one work item before submitting.',
+      });
+      return;
+    }
     const failure = await space.submitSelected();
-    setFeedback(failure ?? t('contracts.deliverySpace.submitSuccess', 'Deliverables submitted.'));
+    if (failure?.response && isValidationResponse(failure.response)) {
+      showValidationToast(failure.response, { fallback: failure.message });
+      return;
+    }
+    setFeedback(failure?.message ?? t('contracts.deliverySpace.submitSuccess', 'Deliverables submitted.'));
   };
 
   const runReview = async (approve: boolean) => {
+    const validationMessages: string[] = [];
+    if (space.selectedIds.length === 0) validationMessages.push('Select at least one work item.');
+    if (!approve && !revisionReason.trim()) validationMessages.push('Enter the requested revision details.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required review details.' });
+      if (!approve && !revisionReason.trim()) revisionReasonRef.current?.focus();
+      return;
+    }
     const failure = await space.reviewSelected(approve, revisionReason);
     if (!failure) {
       setRevisionReason('');
       setIsRevising(false);
     }
-    setFeedback(failure ?? t('contracts.deliverySpace.reviewSuccess', 'Review saved.'));
+    if (failure?.response && isValidationResponse(failure.response)) {
+      showValidationToast(failure.response, { fallback: failure.message });
+      if (!approve) revisionReasonRef.current?.focus();
+      return;
+    }
+    setFeedback(failure?.message ?? t('contracts.deliverySpace.reviewSuccess', 'Review saved.'));
   };
 
   return (
@@ -149,7 +174,7 @@ const DeliverySpaceScreen = () => {
               labels={labels}
               onAttach={file => {
                 const failure = space.attachFile(workItem.workItemId, file);
-                if (failure) setFeedback(t(`workspace.${failure}FileError`, 'That file was rejected.'));
+                if (failure) showValidationToast(t(`workspace.${failure}FileError`, 'That file was rejected.'), { fallback: 'That file was rejected.' });
               }}
               onDetach={fileName => space.detachFile(workItem.workItemId, fileName)}
               onNoteChange={note => space.updateNote(workItem.workItemId, note)}
@@ -163,7 +188,9 @@ const DeliverySpaceScreen = () => {
             <div className="space-y-3">
               {isRevising ? (
                 <textarea
+                  ref={revisionReasonRef}
                   value={revisionReason}
+                  aria-invalid={!revisionReason.trim()}
                   onChange={event => setRevisionReason(event.target.value)}
                   rows={2}
                   placeholder={t('contracts.deliverySpace.revisionReasonPlaceholder',
@@ -179,8 +206,7 @@ const DeliverySpaceScreen = () => {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={space.isBusy || space.selectedIds.length === 0 ||
-                      (isRevising && !revisionReason.trim())}
+                    disabled={space.isBusy}
                     onClick={() => (isRevising ? void runReview(false) : setIsRevising(true))}
                     className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
                   >
@@ -188,7 +214,7 @@ const DeliverySpaceScreen = () => {
                   </button>
                   <button
                     type="button"
-                    disabled={space.isBusy || space.selectedIds.length === 0}
+                    disabled={space.isBusy}
                     onClick={() => void runReview(true)}
                     className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
@@ -205,7 +231,7 @@ const DeliverySpaceScreen = () => {
               </span>
               <button
                 type="button"
-                disabled={space.isBusy || space.readyToSubmitIds.length === 0}
+                disabled={space.isBusy}
                 onClick={() => void runSubmit()}
                 className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
               >

@@ -8,6 +8,7 @@ import { UserRole } from '../../../types/models/User';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../../types/models/Profile';
 import type { CategoryOptionDto, MajorDto } from '../../../types/models/Category';
 import { secureStorage } from '../../../shared/utils/secureStorage';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 const INDUSTRIES_FALLBACK = [
   'Technology', 'Finance', 'Healthcare', 'E-commerce', 'Education',
@@ -141,25 +142,30 @@ export function useProfileSetup() {
     }));
   };
 
-  const canProceed = () => {
+  const validateCurrentStep = (): boolean => {
+    const validationMessages: string[] = [];
+
     if (isClient) {
-      if (step === 1) return Boolean(clientData.companyName.trim() && clientData.industry);
-      return Boolean(clientData.location.trim());
-    } else {
-      if (step === 1) {
-        return Boolean(
-          freelancerData.title.trim() &&
-          freelancerData.majorId &&
-          freelancerData.categoryIds.length > 0 &&
-          !isTaxonomyLoading &&
-          !taxonomyError
-        );
+      if (step === 1 && (!clientData.companyName.trim() || !clientData.industry)) {
+        validationMessages.push(t('errors.clientStep1Required'));
       }
-      return Boolean(freelancerData.location.trim() && freelancerData.bio.trim());
+      if (step === 2 && !clientData.location.trim()) validationMessages.push(t('errors.locationRequired'));
+    } else {
+      if (step === 1 && (!freelancerData.title.trim() || !freelancerData.majorId || freelancerData.categoryIds.length === 0)) {
+        validationMessages.push(t('errors.freelancerStep1Required'));
+      }
+      if (step === 2 && !freelancerData.location.trim()) validationMessages.push(t('errors.locationRequired'));
+      if (step === 2 && !freelancerData.bio.trim()) validationMessages.push(t('errors.bioRequired'));
     }
+
+    if (validationMessages.length === 0) return true;
+    showValidationToast(validationMessages, { fallback: t('errors.setupFailed') });
+    document.querySelector<HTMLElement>('.profile-setup-card input:not([disabled]), .profile-setup-card textarea:not([disabled]), .profile-setup-card button:not([disabled])')?.focus();
+    return false;
   };
 
   const handleSubmit = async () => {
+    if (!validateCurrentStep()) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -167,10 +173,20 @@ export function useProfileSetup() {
 
       if (isClient) {
         const response = await profilePutAPI.updateClientProfile(profileData as UpdateClientProfileDto);
-        if (!response.success) throw new Error(response.message || t('errors.setupFailed'));
+        if (!response.success) {
+          const fallback = response.message || t('errors.setupFailed');
+          if (isValidationResponse(response)) showValidationToast(response, { fallback });
+          else setError(fallback);
+          return;
+        }
       } else {
         const response = await profilePutAPI.updateFreelancerProfile(profileData as UpdateFreelancerProfileDto);
-        if (!response.success) throw new Error(response.message || t('errors.setupFailed'));
+        if (!response.success) {
+          const fallback = response.message || t('errors.setupFailed');
+          if (isValidationResponse(response)) showValidationToast(response, { fallback });
+          else setError(fallback);
+          return;
+        }
       }
 
       // Update secureStorage session
@@ -217,7 +233,7 @@ export function useProfileSetup() {
     handleMajorChange,
     toggleCategory,
     // Handlers
-    canProceed,
+    validateCurrentStep,
     handleSubmit,
   };
 }

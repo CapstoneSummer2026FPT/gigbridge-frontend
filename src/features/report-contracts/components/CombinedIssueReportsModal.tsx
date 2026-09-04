@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import type {
@@ -31,6 +31,14 @@ import { DisputeEscalationModal } from './DisputeEscalationModal';
 import { DisputeCreationModal } from './DisputeCreationModal';
 import { reportContractGetAPI } from '../../../api/reportContractAPI/GET';
 import '../styles/report-contract.css';
+import { showValidationToast } from '../../../shared/utils/validationToast';
+
+interface ReportActionResult {
+  success: boolean;
+  message?: string;
+  statusCode?: number;
+  errors?: Record<string, string[]>;
+}
 
 const ISSUE_TYPE_KEYS: Record<number, string> = {
   [ContractReportIssueType.PaymentIssue]: 'workspace.reportIssueTypePaymentIssue',
@@ -77,12 +85,14 @@ interface CombinedIssueReportsModalProps {
     proposedResolution?: string | null;
     rejectReason?: string | null;
     attachments?: File[];
-  }) => Promise<{ success: boolean; message?: string }>;
-  onConfirm: (isAccepted: boolean) => Promise<{ success: boolean; message?: string }>;
+  }) => Promise<ReportActionResult>;
+  onConfirm: (isAccepted: boolean) => Promise<ReportActionResult>;
   onEscalate: (input: EscalateReportToDisputeInput) => Promise<{
     success: boolean;
     message?: string;
     disputeId?: string;
+    statusCode?: number;
+    errors?: Record<string, string[]>;
   }>;
   onDisputeCreated: (disputeId: string) => void;
 
@@ -120,6 +130,9 @@ export function CombinedIssueReportsModal({
   const [actionError, setActionError] = useState<string | null>(null);
   const [showEscalation, setShowEscalation] = useState(false);
   const [showDisputeCreation, setShowDisputeCreation] = useState(false);
+  const rejectReasonRef = useRef<HTMLTextAreaElement>(null);
+  const explanationRef = useRef<HTMLTextAreaElement>(null);
+  const proposedResolutionRef = useRef<HTMLTextAreaElement>(null);
 
   if (!isOpen) return null;
 
@@ -190,34 +203,41 @@ export function CombinedIssueReportsModal({
   const handleRespondSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setActionError(null);
+    const validationMessages: string[] = [];
 
     if (respondMode === null) {
-      setActionError(t('workspace.selectActionRequired', { defaultValue: 'Vui lòng chọn một hành động.' }));
-      return;
+      validationMessages.push(t('workspace.selectActionRequired', { defaultValue: 'Vui lòng chọn một hành động.' }));
     }
 
     if (respondMode === ContractReportResolutionAction.RejectIssue && !rejectReason.trim()) {
-      setActionError(t('workspace.reportRejectReasonRequired', { defaultValue: 'Vui lòng nhập lý do từ chối.' }));
-      return;
+      validationMessages.push(t('workspace.reportRejectReasonRequired', { defaultValue: 'Vui lòng nhập lý do từ chối.' }));
     }
 
     if (
       respondMode === ContractReportResolutionAction.ProvideExplanation &&
       !explanation.trim()
     ) {
-      setActionError(t('workspace.reportExplanationRequired', { defaultValue: 'Vui lòng nhập lời giải thích.' }));
-      return;
+      validationMessages.push(t('workspace.reportExplanationRequired', { defaultValue: 'Vui lòng nhập lời giải thích.' }));
     }
 
     if (
       respondMode === ContractReportResolutionAction.ProposeResolution &&
       !proposedResolution.trim()
     ) {
-      setActionError(
+      validationMessages.push(
         t('workspace.reportProposedResolutionRequired', { defaultValue: 'Vui lòng nhập đề xuất giải pháp.' })
       );
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('workspace.failedRespondError') });
+      if (respondMode === null) document.querySelector<HTMLElement>('[data-report-response-action]')?.focus();
+      else if (respondMode === ContractReportResolutionAction.RejectIssue) rejectReasonRef.current?.focus();
+      else if (respondMode === ContractReportResolutionAction.ProvideExplanation) explanationRef.current?.focus();
+      else proposedResolutionRef.current?.focus();
       return;
     }
+    if (respondMode === null) return;
 
     const result = await onRespond({
       resolutionAction: respondMode,
@@ -230,7 +250,12 @@ export function CombinedIssueReportsModal({
     if (result.success) {
       resetRespondMode();
     } else {
-      setActionError(result.message || t('workspace.failedRespondError', { defaultValue: 'Không thể gửi phản hồi.' }));
+      const fallback = result.message || t('workspace.failedRespondError', { defaultValue: 'Không thể gửi phản hồi.' });
+      if ([400, 409, 422].includes(result.statusCode ?? 0) || result.errors) {
+        showValidationToast(result, { fallback });
+      } else {
+        setActionError(fallback);
+      }
     }
   };
 
@@ -238,7 +263,9 @@ export function CombinedIssueReportsModal({
     setActionError(null);
     const result = await onConfirm(true);
     if (!result.success) {
-      setActionError(result.message || t('workspace.failedConfirmError', { defaultValue: 'Không thể xác nhận giải quyết.' }));
+      const fallback = result.message || t('workspace.failedConfirmError', { defaultValue: 'Không thể xác nhận giải quyết.' });
+      if ([400, 409, 422].includes(result.statusCode ?? 0) || result.errors) showValidationToast(result, { fallback });
+      else setActionError(fallback);
     }
   };
 
@@ -246,7 +273,9 @@ export function CombinedIssueReportsModal({
     setActionError(null);
     const result = await onConfirm(false);
     if (!result.success) {
-      setActionError(result.message || t('workspace.failedDeclineError', { defaultValue: 'Không thể từ chối giải pháp.' }));
+      const fallback = result.message || t('workspace.failedDeclineError', { defaultValue: 'Không thể từ chối giải pháp.' });
+      if ([400, 409, 422].includes(result.statusCode ?? 0) || result.errors) showValidationToast(result, { fallback });
+      else setActionError(fallback);
       return;
     }
     setShowEscalation(true);
@@ -671,7 +700,7 @@ export function CombinedIssueReportsModal({
                   <div className="pt-4 border-t border-border/60 space-y-3 mt-auto">
                     {/* Respondent Action Form */}
                     {respondentCanRespond && (
-                      <form onSubmit={handleRespondSubmit} className="space-y-4">
+                      <form onSubmit={handleRespondSubmit} noValidate className="space-y-4">
                         <div className="space-y-2">
                           <label className="block text-xs font-black uppercase tracking-wider text-text-muted">
                             {t('workspace.selectResponseAction', { defaultValue: 'Chọn hành động phản hồi' })}
@@ -683,6 +712,7 @@ export function CombinedIssueReportsModal({
                               return (
                                 <button
                                   key={opt.value}
+                                  data-report-response-action
                                   type="button"
                                   disabled={isResponding}
                                   onClick={() => setRespondMode(actionVal)}
@@ -702,6 +732,7 @@ export function CombinedIssueReportsModal({
 
                         {respondMode === ContractReportResolutionAction.RejectIssue && (
                           <textarea
+                            ref={rejectReasonRef}
                             value={rejectReason}
                             onChange={e => setRejectReason(e.target.value)}
                             placeholder={t('workspace.enterRejectReasonPlaceholder', { defaultValue: 'Nhập lý do từ chối...' })}
@@ -713,6 +744,7 @@ export function CombinedIssueReportsModal({
 
                         {respondMode === ContractReportResolutionAction.ProvideExplanation && (
                           <textarea
+                            ref={explanationRef}
                             value={explanation}
                             onChange={e => setExplanation(e.target.value)}
                             placeholder={t('workspace.enterExplanationPlaceholder', { defaultValue: 'Nhập lời giải thích...' })}
@@ -724,6 +756,7 @@ export function CombinedIssueReportsModal({
 
                         {respondMode === ContractReportResolutionAction.ProposeResolution && (
                           <textarea
+                            ref={proposedResolutionRef}
                             value={proposedResolution}
                             onChange={e => setProposedResolution(e.target.value)}
                             placeholder={t('workspace.enterProposedResolutionPlaceholder', { defaultValue: 'Nhập đề xuất giải pháp...' })}
@@ -771,7 +804,7 @@ export function CombinedIssueReportsModal({
 
                         <button
                           type="submit"
-                          disabled={isResponding || respondMode === null}
+                          disabled={isResponding}
                           className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black text-brand-foreground bg-brand hover:bg-brand-hover shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
                         >
                           {isResponding ? (

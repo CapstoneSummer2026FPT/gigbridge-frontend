@@ -55,6 +55,10 @@
     "completing": "Đang lưu thông tin..."
   },
   "errors": {
-    "setupFailed": "Không thể hoàn tất đăng ký hồ sơ. Vui lòng thử lại."
+    "setupFailed": "Không thể hoàn tất đăng ký hồ sơ. Vui lòng thử lại.",
+    "clientStep1Required": "Tên công ty và ngành nghề chính là bắt buộc.",
+    "freelancerStep1Required": "Chức danh, chuyên ngành chính và ít nhất một danh mục là bắt buộc.",
+    "locationRequired": "Địa điểm làm việc là bắt buộc.",
+    "bioRequired": "Mô tả bản thân là bắt buộc."
   }
 }

@@ -4,6 +4,7 @@ import {
   Check, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { currentLocalDate } from '../../../shared/utils/milestonePlanWorkflow';
 import '../styles/PostJobScreen.css';
@@ -40,7 +41,9 @@ export default function CreatePostJobContractScreen() {
 
   const handleSubmit = () => {
     if (!contractForm.title || !contractForm.budget || !contractForm.endDate) {
-      alert('Please fill in all contract details (Title, Budget, End Date)');
+      showValidationToast('Please fill in all contract details (Title, Budget, End Date)', {
+        fallback: 'Please complete all required contract details.',
+      });
       return;
     }
 

@@ -22,10 +22,12 @@ import {
   type MilestoneFileValidationError,
   type MilestoneSubmissionPayload,
 } from '../utils/milestoneUpload';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 interface SubmissionResult {
   success: boolean;
   message?: string;
+  errors?: Record<string, string[]>;
   statusCode?: number;
   transportError?: ApiTransportError;
 }
@@ -52,6 +54,7 @@ export function SubmitMilestoneModal({
 }: SubmitMilestoneModalProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +95,9 @@ export function SubmitMilestoneModal({
   const selectFile = (file: File): void => {
     const result = addMilestoneFile(files, file);
     if (result.error) {
-      setError(getValidationMessage(result.error));
+      const message = getValidationMessage(result.error);
+      showValidationToast(message, { fallback: message });
+      fileInputRef.current?.focus();
       return;
     }
     setFiles([...result.files]);
@@ -109,7 +114,9 @@ export function SubmitMilestoneModal({
     event.preventDefault();
     if (isSubmitting) return;
     if (event.dataTransfer.files.length !== 1) {
-      setError(t('workspace.oneFileAtATimeError'));
+      const message = t('workspace.oneFileAtATimeError');
+      showValidationToast(message, { fallback: message });
+      fileInputRef.current?.focus();
       return;
     }
     selectFile(event.dataTransfer.files[0]);
@@ -123,12 +130,17 @@ export function SubmitMilestoneModal({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const trimmedDescription = description.trim();
+    const validationMessages: string[] = [];
     if (trimmedDescription.length > 5000) {
-      setError(t('workspace.descriptionMaxLengthError'));
-      return;
+      validationMessages.push(t('workspace.descriptionMaxLengthError'));
     }
     if (files.length === 0) {
-      setError(t('workspace.chooseFilesBeforeSubmitError'));
+      validationMessages.push(t('workspace.chooseFilesBeforeSubmitError'));
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('workspace.failedSubmitDeliverableError') });
+      if (trimmedDescription.length > 5000) descriptionRef.current?.focus();
+      else fileInputRef.current?.focus();
       return;
     }
 
@@ -147,7 +159,12 @@ export function SubmitMilestoneModal({
         },
       );
       if (!result.success) {
-        setError(getSubmissionErrorMessage(result));
+        const failureMessage = getSubmissionErrorMessage(result);
+        if ([400, 409, 422].includes(result.statusCode ?? 0)) {
+          showValidationToast(result, { fallback: failureMessage });
+        } else {
+          setError(failureMessage);
+        }
         setSubmissionPhase('idle');
         setUploadProgress(null);
         return;
@@ -181,7 +198,7 @@ export function SubmitMilestoneModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} noValidate className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto custom-scrollbar">
           {error && (
             <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" /><span>{error}</span>
@@ -238,7 +255,7 @@ export function SubmitMilestoneModal({
               <label htmlFor="workspace-deliverable-description" className="text-xs font-black uppercase tracking-wider text-text-muted">{t('workspace.descriptionField')}</label>
               <span className="text-[10px] font-bold text-text-muted">{description.length}/5000</span>
             </div>
-            <textarea id="workspace-deliverable-description" value={description} onChange={event => setDescription(event.target.value)} maxLength={5000} rows={4} placeholder={t('workspace.addNotesPlaceholder')} disabled={isSubmitting} className="w-full bg-surface-card border border-border/80 focus:border-brand rounded-2xl p-3.5 text-xs font-medium text-text-primary focus:outline-none transition resize-none placeholder:text-text-muted/60" />
+            <textarea ref={descriptionRef} id="workspace-deliverable-description" value={description} onChange={event => setDescription(event.target.value)} maxLength={5000} rows={4} placeholder={t('workspace.addNotesPlaceholder')} disabled={isSubmitting} className="w-full bg-surface-card border border-border/80 focus:border-brand rounded-2xl p-3.5 text-xs font-medium text-text-primary focus:outline-none transition resize-none placeholder:text-text-muted/60" />
           </div>
 
           {submissionPhase !== 'idle' && (
@@ -247,7 +264,7 @@ export function SubmitMilestoneModal({
 
           <div className="pt-3 flex items-center justify-end gap-3 border-t border-border/60">
             <button type="button" onClick={onClose} disabled={isSubmitting} className="px-5 py-2.5 rounded-xl border border-border bg-surface-card hover:bg-surface-muted text-text-primary text-xs font-black transition cursor-pointer disabled:opacity-50">{t('common.cancel')}</button>
-            <button type="submit" disabled={isSubmitting || files.length === 0} className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-brand-foreground text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer">
+            <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-brand-foreground text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer">
               {isSubmitting ? (
                 <>
                   <Loader2 size={15} className="animate-spin" />

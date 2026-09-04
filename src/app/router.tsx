@@ -34,6 +34,7 @@ const ClientProfileScreen = lazy(() => import('../features/profile/screens/Clien
 const ProposalsInboxScreen = lazy(() => import('../features/proposals/screens/ProposalsInboxScreen'));
 const CreateProposalScreen = lazy(() => import('../features/proposals/screens/CreateProposalScreen'));
 const ScreenProposalAnswerQuestion = lazy(() => import('../features/proposals/screens/ScreenProposalAnswerQuestion'));
+const ProposalReviewSubmitScreen = lazy(() => import('../features/proposals/screens/ProposalReviewSubmitScreen'));
 const ProjectsListScreen = lazy(() => import('../features/workspace/screens/ProjectsListScreen'));
 const ProjectWorkspaceScreen = lazy(() => import('../features/workspace/screens/ProjectWorkspaceScreen'));
 const ReceiptsScreen = lazy(() => import('../features/receipts/screens/ReceiptsScreen'));
@@ -254,6 +255,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><NavigateToProposalCreate /></ProtectedRoute> },
       { path: 'proposals/:proposalId/edit', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
       { path: 'proposals/create/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ScreenProposalAnswerQuestion /></ProtectedRoute> },
+      { path: 'proposals/:proposalId/review', element: <ProtectedRoute requireAuth requireSetup><ProposalReviewSubmitScreen /></ProtectedRoute> },
 
       // Contracts - requires authentication and setup
       { path: 'contracts', element: <ProtectedRoute requireAuth requireSetup><ContractListRoute /></ProtectedRoute> },

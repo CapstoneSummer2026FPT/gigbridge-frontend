@@ -29,7 +29,6 @@ import {
   UserRoundCheck,
   Users,
   X,
-  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -49,15 +48,17 @@ import '../../premium/styles/premium.css';
 import '../styles/my-jobs-screen.css';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import { ConfirmationModal } from '../../../shared/components/ConfirmationModal';
-import { getAllowedJobPostVisibilities } from '../utils/jobPostEditing';
+import {
+  getAllowedJobPostVisibilities,
+  shouldConfirmPublicJobPostVisibilityChange,
+} from '../utils/jobPostEditing';
 
-type StatusFilter = 'all' | 'open' | 'draft' | 'closed' | 'cancelled';
+type StatusFilter = 'all' | 'open' | 'draft' | 'closed';
 
 const statusToFilter = (status?: number | null): StatusFilter => {
   if (status === JobPostStatus.Draft) return 'draft';
   if (status === JobPostStatus.Open) return 'open';
-  if (status === JobPostStatus.Closed) return 'closed';
-  if (status === JobPostStatus.Cancelled) return 'cancelled';
+  if (status === JobPostStatus.Closed || status === JobPostStatus.Cancelled) return 'closed';
   return 'open';
 };
 
@@ -76,18 +77,11 @@ const statusBadgeInfo = (status: number | null | undefined, t: any) => {
       dotClass: 'bg-emerald-500 animate-pulse',
     };
   }
-  if (status === JobPostStatus.Closed) {
+  if (status === JobPostStatus.Closed || status === JobPostStatus.Cancelled) {
     return {
       label: t('myJobs.status.closed', { defaultValue: 'Đã đóng' }),
       badgeClass: 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30',
       dotClass: 'bg-slate-500',
-    };
-  }
-  if (status === JobPostStatus.Cancelled) {
-    return {
-      label: t('myJobs.status.cancelled', { defaultValue: 'Đã hủy' }),
-      badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
-      dotClass: 'bg-rose-500',
     };
   }
   return {
@@ -135,8 +129,10 @@ export default function MyJobsScreen() {
   const [confirmAction, setConfirmAction] = useState<{
     isOpen: boolean;
     job?: GetMyJobPostDto;
-    actionType?: 'close' | 'cancel';
+    actionType?: 'close';
   }>({ isOpen: false });
+  const [visibilityConfirmationJob, setVisibilityConfirmationJob] =
+    useState<GetMyJobPostDto | null>(null);
 
   // Mouse Drag-to-Scroll for Status Ribbon
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -191,22 +187,13 @@ export default function MyJobsScreen() {
   const handleConfirmAction = async () => {
     if (!confirmAction.job || !confirmAction.actionType) return;
     const targetJob = confirmAction.job;
-    const action = confirmAction.actionType;
     setConfirmAction({ isOpen: false });
 
-    if (action === 'close') {
-      await patchStatus(
-        targetJob,
-        JobPostStatus.Closed,
-        t('myJobs.closeSuccess', { defaultValue: 'Đã đóng tin tuyển dụng.' })
-      );
-    } else if (action === 'cancel') {
-      await patchStatus(
-        targetJob,
-        JobPostStatus.Cancelled,
-        t('myJobs.cancelSuccess', { defaultValue: 'Đã hủy tin tuyển dụng.' })
-      );
-    }
+    await patchStatus(
+      targetJob,
+      JobPostStatus.Closed,
+      t('myJobs.closeSuccess', { defaultValue: 'Đã đóng tin tuyển dụng.' })
+    );
   };
 
   const loadJobs = async () => {
@@ -273,7 +260,6 @@ export default function MyJobsScreen() {
       open: 0,
       draft: 0,
       closed: 0,
-      cancelled: 0,
     };
 
     for (const job of jobs) {
@@ -304,11 +290,6 @@ export default function MyJobsScreen() {
         badge: String(counts.closed),
       },
       {
-        value: 'cancelled',
-        label: t('myJobs.filter.cancelled', { defaultValue: 'Đã hủy' }),
-        badge: String(counts.cancelled),
-      },
-      {
         value: 'all',
         label: t('myJobs.filter.all', { defaultValue: 'Tất cả trạng thái' }),
         badge: String(counts.all),
@@ -334,7 +315,7 @@ export default function MyJobsScreen() {
   );
 
   const getVisibilitySelectOptions = (job: GetMyJobPostDto): SelectOption[] => {
-    const allowed = new Set(getAllowedJobPostVisibilities(job.visibility));
+    const allowed = new Set(getAllowedJobPostVisibilities(job.status, job.visibility));
     return visibilitySelectOptions.filter(option => allowed.has(Number(option.value) as JobPostVisibility));
   };
 
@@ -390,9 +371,27 @@ export default function MyJobsScreen() {
     toast.success(t('myJobs.visibilityUpdated', { defaultValue: 'Đã cập nhật quyền riêng tư tin tuyển dụng.' }));
   };
 
+  const requestVisibilityChange = (
+    job: GetMyJobPostDto,
+    visibility: JobPostVisibility,
+  ): void => {
+    if (shouldConfirmPublicJobPostVisibilityChange(job.status, job.visibility, visibility)) {
+      setVisibilityConfirmationJob(job);
+      return;
+    }
+
+    void patchVisibility(job, visibility);
+  };
+
+  const handleConfirmPublicVisibility = async (): Promise<void> => {
+    if (!visibilityConfirmationJob) return;
+
+    await patchVisibility(visibilityConfirmationJob, JobPostVisibility.Public);
+    setVisibilityConfirmationJob(null);
+  };
+
   const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
   const canClose = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open;
-  const canCancel = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open || job.status === JobPostStatus.Draft;
   const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined;
 
   // Status Tab List for Mobile
@@ -400,7 +399,6 @@ export default function MyJobsScreen() {
     { key: 'open', label: 'Đang tuyển', count: counts.open, icon: CheckCircle2 },
     { key: 'draft', label: 'Bản nháp', count: counts.draft, icon: FileText },
     { key: 'closed', label: 'Đã đóng', count: counts.closed, icon: Ban },
-    { key: 'cancelled', label: 'Đã hủy', count: counts.cancelled, icon: XCircle },
     { key: 'all', label: 'Tất cả', count: counts.all, icon: Briefcase },
   ];
 
@@ -474,11 +472,11 @@ export default function MyJobsScreen() {
           <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-surface-card p-4 sm:p-5 space-y-1.5 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5 truncate">
-                <Ban size={13} className="shrink-0" /> {t('myJobs.metrics.closedCancelled', { defaultValue: 'Đã Đóng / Hủy' })}
+                <Ban size={13} className="shrink-0" /> {t('myJobs.metrics.closedJobs', { defaultValue: 'Đã Đóng' })}
               </span>
             </div>
-            <div className="text-3xl font-black text-text-primary tracking-tight">{counts.closed + counts.cancelled}</div>
-            <p className="text-[11px] font-semibold text-text-muted truncate">{t('myJobs.metrics.closedCancelledDesc', { defaultValue: 'Dự án đã kết thúc' })}</p>
+            <div className="text-3xl font-black text-text-primary tracking-tight">{counts.closed}</div>
+            <p className="text-[11px] font-semibold text-text-muted truncate">{t('myJobs.metrics.closedJobsDesc', { defaultValue: 'Dự án đã kết thúc' })}</p>
           </div>
         </div>
 
@@ -956,20 +954,9 @@ export default function MyJobsScreen() {
                           type="button"
                           onClick={() => setConfirmAction({ isOpen: true, job, actionType: 'close' })}
                           disabled={isPending}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-muted text-text-muted hover:text-text-primary transition-all text-xs font-bold cursor-pointer disabled:opacity-50 active:scale-95"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/60 transition-all text-xs font-extrabold cursor-pointer disabled:opacity-50 active:scale-95 shadow-2xs"
                         >
-                          <Ban size={13} /> {t('myJobs.actions.closeJob', { defaultValue: 'Đóng Tin' })}
-                        </button>
-                      )}
-
-                      {canCancel(job) && (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmAction({ isOpen: true, job, actionType: 'cancel' })}
-                          disabled={isPending}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all text-xs font-bold cursor-pointer disabled:opacity-50 active:scale-95"
-                        >
-                          <XCircle size={13} /> {t('myJobs.actions.cancelJob', { defaultValue: 'Hủy Tin' })}
+                          <Ban size={13} className="text-rose-500" /> {t('myJobs.actions.closeJob', { defaultValue: 'Đóng Tin' })}
                         </button>
                       )}
 
@@ -977,7 +964,7 @@ export default function MyJobsScreen() {
                         <div className="w-40 sm:w-40 shrink-0 min-w-[160px]">
                           <CustomSelect
                             value={String(job.visibility ?? JobPostVisibility.Public)}
-                            onChange={val => void patchVisibility(job, Number(val) as JobPostVisibility)}
+                            onChange={val => requestVisibilityChange(job, Number(val) as JobPostVisibility)}
                             options={getVisibilitySelectOptions(job)}
                             disabled={isPending || job.visibility === 3}
                             searchable={false}
@@ -1159,7 +1146,7 @@ export default function MyJobsScreen() {
                               type="button"
                               onClick={() => {
                                 setActiveMenuJobId(null);
-                                void patchVisibility(job, Number(opt.value) as JobPostVisibility);
+                                requestVisibilityChange(job, Number(opt.value) as JobPostVisibility);
                               }}
                               className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-left cursor-pointer ${String(job.visibility) === opt.value
                                 ? 'bg-brand/10 text-brand'
@@ -1172,35 +1159,22 @@ export default function MyJobsScreen() {
                             </button>
                           ))}
 
-                          {/* Close & Cancel Action Buttons */}
-                          {(canClose(job) || canCancel(job)) && <div className="border-t border-border/50 my-1" />}
-
+                          {/* Close Action Button */}
                           {canClose(job) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuJobId(null);
-                                setConfirmAction({ isOpen: true, job, actionType: 'close' });
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-muted text-xs font-bold text-text-muted hover:text-foreground text-left cursor-pointer"
-                            >
-                              <Ban size={14} className="text-amber-500 shrink-0" />
-                              <span>Đóng tin tuyển dụng</span>
-                            </button>
-                          )}
-
-                          {canCancel(job) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuJobId(null);
-                                setConfirmAction({ isOpen: true, job, actionType: 'cancel' });
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-rose-500/10 text-xs font-bold text-rose-500 text-left cursor-pointer"
-                            >
-                              <XCircle size={14} className="shrink-0" />
-                              <span>Hủy tin tuyển dụng</span>
-                            </button>
+                            <>
+                              <div className="border-t border-border/50 my-1" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuJobId(null);
+                                  setConfirmAction({ isOpen: true, job, actionType: 'close' });
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-rose-500/10 text-xs font-black text-rose-600 dark:text-rose-400 text-left cursor-pointer"
+                              >
+                                <Ban size={14} className="text-rose-500 shrink-0" />
+                                <span>Đóng tin tuyển dụng</span>
+                              </button>
+                            </>
                           )}
                         </div>
                       )}
@@ -1225,35 +1199,40 @@ export default function MyJobsScreen() {
         />
       )}
 
-      {/* Confirmation Modal for Close & Cancel Actions */}
+      {/* Confirmation Modal for Close Action */}
       <ConfirmationModal
         isOpen={confirmAction.isOpen}
         onClose={() => setConfirmAction({ isOpen: false })}
         onConfirm={() => void handleConfirmAction()}
         isLoading={pendingJobId === confirmAction.job?.jobPostsId}
-        variant={confirmAction.actionType === 'cancel' ? 'danger' : 'warning'}
-        icon={confirmAction.actionType === 'cancel' ? <XCircle size={22} /> : <Ban size={22} />}
-        title={
-          confirmAction.actionType === 'cancel'
-            ? t('myJobs.confirmCancelTitle', { defaultValue: 'Xác nhận hủy tin tuyển dụng' })
-            : t('myJobs.confirmCloseTitle', { defaultValue: 'Xác nhận đóng tin tuyển dụng' })
-        }
-        description={
-          confirmAction.actionType === 'cancel'
-            ? t('myJobs.confirmCancelDesc', {
-              defaultValue: 'Bạn có chắc chắn muốn hủy tin tuyển dụng "{{title}}"? Hành động hủy tin tuyển dụng không thể hoàn tác.',
-              title: confirmAction.job?.title || '',
-            })
-            : t('myJobs.confirmCloseDesc', {
-              defaultValue: 'Bạn có chắc chắn muốn đóng tin tuyển dụng "{{title}}"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.',
-              title: confirmAction.job?.title || '',
-            })
-        }
-        confirmText={
-          confirmAction.actionType === 'cancel'
-            ? t('myJobs.actions.cancelJob', { defaultValue: 'Hủy Tin' })
-            : t('myJobs.actions.closeJob', { defaultValue: 'Đóng Tin' })
-        }
+        variant="danger"
+        icon={<Ban size={22} className="text-rose-500" />}
+        title={t('myJobs.confirmCloseTitle', { defaultValue: 'Xác nhận đóng tin tuyển dụng' })}
+        description={t('myJobs.confirmCloseDesc', {
+          defaultValue: 'Bạn có chắc chắn muốn đóng tin tuyển dụng "{{title}}"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.',
+          title: confirmAction.job?.title || '',
+        })}
+        confirmText={t('myJobs.actions.closeJob', { defaultValue: 'Đóng Tin' })}
+      />
+
+      <ConfirmationModal
+        isOpen={visibilityConfirmationJob !== null}
+        onClose={() => setVisibilityConfirmationJob(null)}
+        onConfirm={() => void handleConfirmPublicVisibility()}
+        isLoading={pendingJobId === visibilityConfirmationJob?.jobPostsId}
+        variant="warning"
+        icon={<Globe size={22} />}
+        title={t('myJobs.confirmPublicVisibilityTitle', {
+          defaultValue: 'Chuyển tin sang Công khai?',
+        })}
+        description={t('myJobs.confirmPublicVisibilityDesc', {
+          defaultValue:
+            'Sau khi chuyển tin “{{title}}” từ Chỉ mời sang Công khai, bạn sẽ không thể chuyển lại sang Chỉ mời. Bạn có chắc chắn muốn tiếp tục?',
+          title: visibilityConfirmationJob?.title || '',
+        })}
+        confirmText={t('myJobs.confirmPublicVisibilityAction', {
+          defaultValue: 'Chuyển sang Công khai',
+        })}
       />
     </AppLayout>
   );

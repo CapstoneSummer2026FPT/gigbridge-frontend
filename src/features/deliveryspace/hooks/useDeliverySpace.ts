@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
+import type { ApiResponse } from '../../../types/common';
 import { onChatHubReconnected, retainChatHubConnection } from '../../../shared/realtime/chatHubConnection';
 import {
   ContractStatus,
@@ -30,6 +31,11 @@ export interface MilestoneCompletion {
   milestoneId: string;
   milestoneTitle: string;
   nextMilestoneTitle?: string | null;
+}
+
+export interface DeliveryActionFailure {
+  message: string;
+  response?: ApiResponse<unknown>;
 }
 
 interface RealtimePayload {
@@ -222,7 +228,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
 
   const readyToSubmitIds = useMemo(() => submittableWorkItemIds(drafts), [drafts]);
 
-  const submitSelected = useCallback(async (): Promise<string | null> => {
+  const submitSelected = useCallback(async (): Promise<DeliveryActionFailure | null> => {
     if (!contractId || !activeMilestone || readyToSubmitIds.length === 0) return null;
 
     setIsBusy(true);
@@ -238,7 +244,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
         { onUploadProgress: progress => setUploadProgress(progress.percent) },
       );
 
-      if (!response.success) return response.message ?? 'Submission failed.';
+      if (!response.success) return { message: response.message ?? 'Submission failed.', response };
 
       setDrafts({});
       await reloadMilestones();
@@ -272,7 +278,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
   const reviewSelected = useCallback(async (
     approve: boolean,
     reason?: string,
-  ): Promise<string | null> => {
+  ): Promise<DeliveryActionFailure | null> => {
     if (!contractId || !activeMilestone || selectedIds.length === 0) return null;
 
     setIsBusy(true);
@@ -282,7 +288,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
         : await contractPostAPI.requestWorkItemRevision(
             contractId, activeMilestone.id, [...selectedIds], reason ?? '');
 
-      if (!response.success) return response.message ?? 'Review failed.';
+      if (!response.success) return { message: response.message ?? 'Review failed.', response };
 
       setSelectedIds([]);
       if (response.data) {
