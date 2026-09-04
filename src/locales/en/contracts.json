@@ -725,6 +725,12 @@
       "freelancerNoteLabel": "Freelancer Note:",
       "deliverableFilesLabel": "Delivered Files ({{count}}):",
       "revisionReasonTitle": "Revision Reason from Client:",
+      "allDeliverablesApproved": "All deliverables have been approved",
+      "milestoneFullyCompleted": "This milestone is fully completed.",
+      "noItemsAwaitingReview": "No deliverables are currently awaiting your review",
+      "awaitingFreelancerSubmissionHint": "The freelancer is working and will submit deliverables here.",
+      "allReviewedBadge": "All approved",
+      "noPendingReviewHint": "No items awaiting review",
       "congratsTitle": "Congratulations!"
     },
     "planChangeRequest": {
