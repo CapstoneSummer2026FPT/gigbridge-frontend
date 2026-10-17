@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import '../styles/auth-screen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 
@@ -49,26 +50,27 @@ export default function ResetPasswordScreen() {
     setError('');
 
     if (!email) {
-      setError('Email address is required.');
+      showValidationToast('Email address is required.', { fallback: t('validation.required') });
       return;
     }
 
     if (!otp) {
-      setError('OTP verification code is required.');
+      showValidationToast('OTP verification code is required.', { fallback: t('validation.required') });
       return;
     }
 
     const meetsPasswordPolicy =
       /^(?=\S{8,}$)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).*$/.test(newPassword);
     if (!meetsPasswordPolicy) {
-      setError(
+      showValidationToast(
         'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.',
+        { fallback: t('validation.invalidFormat') },
       );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      showValidationToast('Passwords do not match.', { fallback: t('validation.passwordsNotMatch') });
       return;
     }
 
@@ -88,7 +90,11 @@ export default function ResetPasswordScreen() {
         toast.success('Password reset successfully!');
       } else {
         if (isMounted.current) {
-          setError(getErrorMessage(response));
+          if (isValidationResponse(response)) {
+            showValidationToast(response, { fallback: getErrorMessage(response) });
+          } else {
+            setError(getErrorMessage(response));
+          }
         }
       }
     } catch (err: unknown) {
@@ -226,7 +232,7 @@ export default function ResetPasswordScreen() {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {error && (
                 <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2 auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', whiteSpace: 'pre-line' }}>
                   <AlertCircle size={16} className="shrink-0 mt-0.5" />

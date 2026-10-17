@@ -2,6 +2,7 @@ import { RouterProvider } from 'react-router';
 import { router } from './router';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
+import InstallAppPrompt from '../shared/components/InstallAppPrompt';
 
 // Import global styles
 import '../styles/index.css';
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <>
       <RouterProvider router={router} />
+      <InstallAppPrompt />
       <SpeedInsights />
       <Analytics />
     </>

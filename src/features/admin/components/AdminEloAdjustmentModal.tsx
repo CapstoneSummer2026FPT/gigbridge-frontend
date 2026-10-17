@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { adminPostAPI } from '../../../api/adminAPI/POST';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { EloAdjustmentMode } from '../../../types/elo';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import '../styles/admin-elo-screen.css';
 
 export interface AdminEloAdjustmentTarget {
@@ -28,13 +29,15 @@ export function AdminEloAdjustmentModal({ target, onClose, onApplied }: AdminElo
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const amountRef = useRef<HTMLInputElement>(null);
 
   if (!target) return null;
 
   const submit = async () => {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setError(t('adminElo.adjustInvalidAmount'));
+      showValidationToast(t('adminElo.adjustInvalidAmount'), { fallback: t('adminElo.adjustInvalidAmount') });
+      amountRef.current?.focus();
       return;
     }
     setSubmitting(true);
@@ -49,6 +52,11 @@ export function AdminEloAdjustmentModal({ target, onClose, onApplied }: AdminElo
     });
     setSubmitting(false);
     if (!response.success) {
+      if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: response.message || t('adminElo.adjustError') });
+        amountRef.current?.focus();
+        return;
+      }
       setError(response.message || t('adminElo.adjustError'));
       return;
     }
@@ -103,11 +111,13 @@ export function AdminEloAdjustmentModal({ target, onClose, onApplied }: AdminElo
         <label>
           {t('adminElo.adjustAmount')}
           <input
+            ref={amountRef}
             type="number"
             min="0"
             step="any"
             value={amount}
             disabled={submitting}
+            aria-invalid={Boolean(error && !Number.isFinite(Number(amount)) || Number(amount) <= 0)}
             onChange={event => setAmount(event.target.value)}
           />
         </label>

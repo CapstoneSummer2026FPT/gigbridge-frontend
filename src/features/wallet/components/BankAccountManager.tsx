@@ -33,6 +33,7 @@ import { UserRole } from '../../../types/models/User';
 import { toast } from 'sonner';
 import '../styles/early-payout-screen.css';
 import '../styles/bank-account-manager.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 type BankFormState = {
   bankBin: string;
@@ -120,6 +121,9 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const bankSelectRef = useRef<HTMLButtonElement>(null);
+  const accountNameRef = useRef<HTMLInputElement>(null);
+  const accountNumberRef = useRef<HTMLInputElement>(null);
 
   const [bankAccounts, setBankAccounts] = useState<BankAccountResponse[]>([]);
   const [supportedBanks, setSupportedBanks] = useState<SupportedBankResponse[]>([]);
@@ -292,13 +296,13 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
 
     const accountNumber = bankForm.accountNumber.trim();
     const selectedDirectoryBank = supportedBanks.find(bank => bank.bin === bankForm.bankBin);
+    const validationMessages: string[] = [];
     if (!selectedDirectoryBank) {
-      setError(t('wallet.bankAccount.errorInvalidBank', { defaultValue: 'Vui lòng chọn ngân hàng hợp lệ.' }));
-      return;
+      validationMessages.push(t('wallet.bankAccount.errorInvalidBank', { defaultValue: 'Vui lòng chọn ngân hàng hợp lệ.' }));
     }
 
     const basePayload = {
-      bankBin: selectedDirectoryBank.bin,
+      bankBin: selectedDirectoryBank?.bin ?? '',
       accountName: bankForm.accountName.trim(),
     };
 
@@ -306,12 +310,16 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
       basePayload.accountName.length < 2 ||
       ((!editingBankId || editingBankRequiresAccountNumber) && !ACCOUNT_NUMBER_PATTERN.test(accountNumber))
     ) {
-      setError(t('wallet.bankAccount.errorInvalidHolderNumber', { defaultValue: 'Vui lòng nhập tên chủ tài khoản và số tài khoản hợp lệ.' }));
-      return;
+      validationMessages.push(t('wallet.bankAccount.errorInvalidHolderNumber', { defaultValue: 'Vui lòng nhập tên chủ tài khoản và số tài khoản hợp lệ.' }));
+    } else if (editingBankId && accountNumber && !ACCOUNT_NUMBER_PATTERN.test(accountNumber)) {
+      validationMessages.push(t('wallet.bankAccount.errorInvalidNewNumber', { defaultValue: 'Số tài khoản mới không hợp lệ.' }));
     }
 
-    if (editingBankId && accountNumber && !ACCOUNT_NUMBER_PATTERN.test(accountNumber)) {
-      setError(t('wallet.bankAccount.errorInvalidNewNumber', { defaultValue: 'Số tài khoản mới không hợp lệ.' }));
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('wallet.bankAccount.errorSaveAccount') });
+      if (!selectedDirectoryBank) bankSelectRef.current?.focus();
+      else if (basePayload.accountName.length < 2) accountNameRef.current?.focus();
+      else accountNumberRef.current?.focus();
       return;
     }
 
@@ -339,7 +347,9 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
       );
       await loadBankAccounts();
     } else {
-      setError(getResponseMessage(response.message, t('wallet.bankAccount.errorSaveAccount', { defaultValue: 'Không thể lưu tài khoản ngân hàng.' })));
+      const fallback = getResponseMessage(response.message, t('wallet.bankAccount.errorSaveAccount', { defaultValue: 'Không thể lưu tài khoản ngân hàng.' }));
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
     }
 
     setSavingBank(false);
@@ -355,7 +365,9 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
       setSuccess(t('wallet.bankAccount.defaultSuccess', { defaultValue: 'Đã đặt tài khoản mặc định.' }));
       await loadBankAccounts();
     } else {
-      setError(getResponseMessage(response.message, t('wallet.bankAccount.errorDefaultAccount', { defaultValue: 'Không thể đặt tài khoản mặc định.' })));
+      const fallback = getResponseMessage(response.message, t('wallet.bankAccount.errorDefaultAccount', { defaultValue: 'Không thể đặt tài khoản mặc định.' }));
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
     }
 
     setSavingBank(false);
@@ -374,7 +386,9 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
       }
       await loadBankAccounts();
     } else {
-      setError(getResponseMessage(response.message, t('wallet.bankAccount.deleteError', { defaultValue: 'Không thể xóa tài khoản đang dùng cho lệnh rút tiền.' })));
+      const fallback = getResponseMessage(response.message, t('wallet.bankAccount.deleteError', { defaultValue: 'Không thể xóa tài khoản đang dùng cho lệnh rút tiền.' }));
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
     }
 
     setSavingBank(false);
@@ -407,7 +421,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
     <div ref={containerRef} className="bam-wrapper">
       {/* Form Card: Add or Edit Bank Account (Chỉ hiển thị cho Freelancer, Ẩn đối với Client) */}
       {!isClient && (
-        <div className="bam-card bam-form-card">
+        <div className={`bam-card bam-form-card ${bankDropdownOpen ? 'is-dropdown-open' : ''}`}>
           <div className="bam-header">
             <div className="bam-header-left">
               <div className="bam-header-icon">
@@ -515,16 +529,17 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
             {/* Input Fields Column */}
             <div className="bam-form-fields">
               {/* Field 1: Custom Searchable Bank Selector */}
-              <div className="bam-field-group" ref={dropdownRef}>
+              <div className={`bam-field-group ${bankDropdownOpen ? 'is-dropdown-open' : ''}`} ref={dropdownRef}>
                 <label className="bam-field-label">
                   <Building2 size={14} className="text-[var(--brand,#494be7)]" />
                   <span>{t('wallet.bankAccount.bankLabel', { defaultValue: 'Ngân hàng thụ hưởng' })}</span>
                 </label>
 
-                <div className="bam-custom-select-container">
+                <div className={`bam-custom-select-container ${bankDropdownOpen ? 'is-open' : ''}`}>
                   {!selectedBank && <Landmark size={16} className="bam-input-icon" />}
 
                   <button
+                    ref={bankSelectRef}
                     type="button"
                     onClick={() => !directoryUnavailable && setBankDropdownOpen(!bankDropdownOpen)}
                     disabled={directoryUnavailable}
@@ -644,6 +659,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
                   </label>
                   <div className="bam-input-wrapper">
                     <input
+                      ref={accountNameRef}
                       value={bankForm.accountName}
                       onChange={event => handleBankFormChange('accountName', event.target.value.toUpperCase())}
                       placeholder={t('wallet.bankAccount.accountNamePlaceholder', { defaultValue: 'Ví dụ: NGUYEN VAN A' })}
@@ -660,6 +676,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
                   </label>
                   <div className="bam-input-wrapper">
                     <input
+                      ref={accountNumberRef}
                       value={bankForm.accountNumber}
                       onChange={event => handleBankFormChange('accountNumber', event.target.value)}
                       placeholder={

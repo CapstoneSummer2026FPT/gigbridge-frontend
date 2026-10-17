@@ -32,6 +32,7 @@ import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import '../../contracts/styles/manage-contract-screen.css';
 import '../../contracts/styles/esign-contracts-screen.css';
 import '../styles/admin-contract-audit-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 interface ComplianceRequirement {
   name: string;
@@ -72,6 +73,7 @@ export default function AdminContractAuditScreen() {
     endDate: '',
     esignContractPdfUrl: ''
   });
+  const contractTitleRef = useRef<HTMLInputElement>(null);
   const [isContractActionLoading, setIsContractActionLoading] = useState(false);
   const [contractActionError, setContractActionError] = useState<string | null>(null);
 
@@ -218,7 +220,8 @@ export default function AdminContractAuditScreen() {
   const handleUpdateContract = async () => {
     if (!editingContract) return;
     if (!contractForm.title.trim()) {
-      setContractActionError('Title is required');
+      showValidationToast('Title is required', { fallback: 'Title is required' });
+      contractTitleRef.current?.focus();
       return;
     }
     setIsContractActionLoading(true);
@@ -237,7 +240,8 @@ export default function AdminContractAuditScreen() {
         await loadContractsList();
         setEditingContract(null);
       } else {
-        setContractActionError(res.message || 'Failed to update contract');
+        if (isValidationResponse(res)) showValidationToast(res, { fallback: 'Failed to update contract' });
+        else setContractActionError(res.message || 'Failed to update contract');
       }
     } catch (err) {
       setContractActionError('An error occurred while updating the contract');
@@ -898,6 +902,7 @@ ${idx + 1}. ${c.title}
                 <div>
                   <label className="block text-xs font-bold text-text-muted mb-1">Title</label>
                   <input
+                    ref={contractTitleRef}
                     value={contractForm.title}
                     onChange={e => setContractForm({ ...contractForm, title: e.target.value })}
                     className="input-gb w-full py-2 text-xs font-semibold"

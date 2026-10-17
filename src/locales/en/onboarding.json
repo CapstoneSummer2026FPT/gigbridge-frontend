@@ -55,6 +55,10 @@
     "completing": "Saving Profile..."
   },
   "errors": {
-    "setupFailed": "Could not complete setup. Please try again."
+    "setupFailed": "Could not complete setup. Please try again.",
+    "clientStep1Required": "Company name and primary industry are required.",
+    "freelancerStep1Required": "Professional title, primary discipline, and at least one category are required.",
+    "locationRequired": "Work location is required.",
+    "bioRequired": "Personal bio is required."
   }
 }

@@ -9,6 +9,7 @@ import type { NegotiationMilestoneDto } from '../../../types/models/Message';
 import { formatGigCoin, formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { JOB_DURATION_UNITS, WORK_ITEM_DURATION_UNITS } from '../../jobs/utils/jobDuration';
+import { useUndoableDeleteScope } from '../../../shared/hooks/useUndoableDeleteScope';
 import '../styles/final-offer-editor.css';
 
 interface FinalOfferEditorProps {
@@ -47,6 +48,7 @@ export function FinalOfferEditor({
   onUseFreelancerMilestones,
 }: FinalOfferEditorProps) {
   const { t } = useTranslation();
+  const undoDeleteController = useUndoableDeleteScope();
   const [openMilestoneIndexes, setOpenMilestoneIndexes] = useState<number[]>(() => Array.from(new Set([
     ...(milestones.length ? [0] : []),
     ...advancedIndexes,
@@ -59,6 +61,31 @@ export function FinalOfferEditor({
       ...advancedIndexes,
     ])).sort((left, right) => left - right));
   }, [advancedIndexes]);
+
+  const handleSaveDraft = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
+    onSaveDraft();
+  };
+
+  const handleSubmit = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
+    onSubmit();
+  };
+
+  const handleClose = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
+    onClose();
+  };
+
+  const handleUseFreelancerMilestones = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
+    onUseFreelancerMilestones();
+  };
+
+  const handleUseJobPostMilestones = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
+    onUseJobPostMilestones();
+  };
 
   useEffect(() => {
     const firstErrorField = Object.keys(errors)[0];
@@ -77,7 +104,7 @@ export function FinalOfferEditor({
       aria-modal="true"
       aria-label={t('messages.finalOfferEditor.dialogLabel')}
       className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={e => { if (e.target === e.currentTarget) void handleClose(); }}
     >
       {/* Ambient blobs */}
       <div className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full blur-[120px] opacity-20 pointer-events-none bg-[var(--gb-cyan)]/40" />
@@ -145,7 +172,7 @@ export function FinalOfferEditor({
             <button
               type="button"
               disabled={saving}
-              onClick={onSaveDraft}
+              onClick={() => void handleSaveDraft()}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border/70 bg-background/70 px-4 py-2.5 text-xs font-black text-foreground hover:bg-muted transition disabled:opacity-50 cursor-pointer"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
@@ -179,7 +206,7 @@ export function FinalOfferEditor({
                 <div className="mb-3 flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
-                    onClick={onUseFreelancerMilestones}
+                    onClick={() => void handleUseFreelancerMilestones()}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted transition cursor-pointer"
                   >
                     <FileDown size={13} />
@@ -187,7 +214,7 @@ export function FinalOfferEditor({
                   </button>
                   <button
                     type="button"
-                    onClick={onUseJobPostMilestones}
+                    onClick={() => void handleUseJobPostMilestones()}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted transition cursor-pointer"
                   >
                     <FileDown size={13} />
@@ -197,6 +224,7 @@ export function FinalOfferEditor({
                 <NestedMilestonePlanEditor
                   value={milestones as EditableMilestonePlan[]}
                   onChange={value => onMilestonesChange(value as NegotiationMilestoneDto[])}
+                  undoDeleteController={undoDeleteController}
                   title={t('messages.finalOfferEditor.milestonePlan')}
                   description={t('messages.finalOfferEditor.milestoneDescription')}
                 expandedIndexes={openMilestoneIndexes}
@@ -272,14 +300,14 @@ export function FinalOfferEditor({
           <div className="flex items-center justify-end gap-3 border-t border-border/60 bg-background px-6 py-4 shrink-0">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => void handleClose()}
               className="rounded-xl border border-border/80 bg-transparent px-5 py-2.5 text-xs font-black text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
             >
               {t('messages.cancel')}
             </button>
             <button
               type="button"
-              onClick={onSubmit}
+              onClick={() => void handleSubmit()}
               disabled={loading || saving}
               className="inline-flex items-center gap-2 rounded-xl bg-[var(--gb-cyan)] px-6 py-2.5 text-xs font-black text-white shadow-lg shadow-[var(--gb-cyan)]/20 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
             >

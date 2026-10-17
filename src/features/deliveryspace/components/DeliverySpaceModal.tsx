@@ -16,16 +16,24 @@ import {
   ChevronRight,
   ArrowLeft,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { UserRole } from '../../../types/models/User';
-import { canSubmitWorkItem, isWorkItemAwaitingReview, type ContractWorkItem } from '../../../types/models/Contract';
+import {
+  MilestoneStatus,
+  canSubmitWorkItem,
+  isWorkItemAwaitingReview,
+  type ContractWorkItem,
+} from '../../../types/models/Contract';
 import { MILESTONE_FILE_ACCEPT } from '../utils/workItemSubmission';
 import { WorkItemStatusPill } from '../../../shared/components/WorkItemStatusPill';
+import { DeliveryLiveStatus } from './DeliveryLiveStatus';
 import { MilestoneCompletedModal } from './MilestoneCompletedModal';
 import { WorkItemSubmissionHistory } from './WorkItemSubmissionHistory';
+import { useDeliveryChangeToast } from '../hooks/useDeliveryChangeToast';
 import { useDeliverySpace } from '../hooks/useDeliverySpace';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 export interface DeliverySpaceModalProps {
   isOpen: boolean;
@@ -50,9 +58,12 @@ export function DeliverySpaceModal({
   const [isRevising, setIsRevising] = useState(false);
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null);
   const [mobileDetailView, setMobileDetailView] = useState(false);
+  const revisionReasonRef = useRef<HTMLTextAreaElement>(null);
 
   const space = useDeliverySpace(contractId, milestoneId);
   const isClient = role === UserRole.Client;
+
+  useDeliveryChangeToast(space.remoteChange);
 
   // Set default active work item when items load
   useEffect(() => {
@@ -103,9 +114,17 @@ export function DeliverySpaceModal({
   };
 
   const runSubmit = async () => {
+    if (space.readyToSubmitIds.length === 0) {
+      showValidationToast('Attach a file to at least one work item before submitting.', {
+        fallback: 'Prepare at least one work item before submitting.',
+      });
+      return;
+    }
     const failure = await space.submitSelected();
     if (failure) {
-      setFeedback(failure);
+      if (failure.response && isValidationResponse(failure.response)) {
+        showValidationToast(failure.response, { fallback: failure.message });
+      } else setFeedback(failure.message);
     } else {
       setFeedback(t('contracts.deliverySpace.submitSuccess', 'Đã nộp các sản phẩm thành công.'));
       onActionComplete?.();
@@ -113,6 +132,14 @@ export function DeliverySpaceModal({
   };
 
   const runReview = async (approve: boolean) => {
+    const validationMessages: string[] = [];
+    if (space.selectedIds.length === 0) validationMessages.push('Select at least one work item.');
+    if (!approve && !revisionReason.trim()) validationMessages.push('Enter the requested revision details.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required review details.' });
+      if (!approve && !revisionReason.trim()) revisionReasonRef.current?.focus();
+      return;
+    }
     const failure = await space.reviewSelected(approve, revisionReason);
     if (!failure) {
       setRevisionReason('');
@@ -120,11 +147,18 @@ export function DeliverySpaceModal({
       setFeedback(t('contracts.deliverySpace.reviewSuccess', 'Đã lưu kết quả đánh giá.'));
       onActionComplete?.();
     } else {
-      setFeedback(failure);
+      if (failure.response && isValidationResponse(failure.response)) {
+        showValidationToast(failure.response, { fallback: failure.message });
+        if (!approve) revisionReasonRef.current?.focus();
+      } else setFeedback(failure.message);
     }
   };
 
   const milestone = space.activeMilestone;
+  const isMilestoneComplete =
+    Number(milestone?.status) === MilestoneStatus.Completed ||
+    Number(milestone?.status) === MilestoneStatus.Approved ||
+    (space.workItems.length > 0 && space.deliveredCount === space.workItems.length);
   const progressPercent =
     space.workItems.length > 0 ? Math.round((space.deliveredCount / space.workItems.length) * 100) : 0;
 
@@ -163,6 +197,12 @@ export function DeliverySpaceModal({
                   <span className="text-[10px] font-black uppercase tracking-wider text-text-muted px-2.5 py-0.5 rounded-md bg-surface-muted border border-border">
                     {t('contracts.deliverySpace.wbsLedger', { defaultValue: 'WBS Ledger' })}
                   </span>
+                  <DeliveryLiveStatus
+                    status={space.liveStatus}
+                    lastSyncedAt={space.lastSyncedAt}
+                    isSyncing={space.isSyncing}
+                    onRefresh={space.refreshNow}
+                  />
                 </div>
 
                 <h2
@@ -309,8 +349,12 @@ export function DeliverySpaceModal({
                       </span>
                     </h3>
                     <span className="text-[10.5px] font-bold text-text-muted">
-                      {isClient
-                        ? t('contracts.deliverySpace.selectToReviewHint', { defaultValue: 'Tick chọn để duyệt' })
+                      {isMilestoneComplete
+                        ? t('contracts.deliverySpace.allReviewedBadge', { defaultValue: 'Đã nghiệm thu toàn bộ' })
+                        : isClient
+                        ? space.pendingReviewCount > 0
+                          ? t('contracts.deliverySpace.selectToReviewHint', { defaultValue: 'Tick chọn để duyệt' })
+                          : t('contracts.deliverySpace.noPendingReviewHint', { defaultValue: 'Không có mục chờ duyệt' })
                         : t('contracts.deliverySpace.selectToSubmitHint', { defaultValue: 'Chọn để nộp' })}
                     </span>
                   </div>
@@ -476,7 +520,7 @@ export function DeliverySpaceModal({
                           labels={labels}
                           onAttach={file => {
                             const failure = space.attachFile(currentActiveItem.workItemId, file);
-                            if (failure) setFeedback(t(`workspace.${failure}FileError`, 'Tệp tải lên không hợp lệ.'));
+                            if (failure) showValidationToast(t(`workspace.${failure}FileError`, 'Tệp tải lên không hợp lệ.'), { fallback: 'Tệp tải lên không hợp lệ.' });
                           }}
                           onDetach={fileName => space.detachFile(currentActiveItem.workItemId, fileName)}
                           onNoteChange={note => space.updateNote(currentActiveItem.workItemId, note)}
@@ -508,57 +552,109 @@ export function DeliverySpaceModal({
         {/* ═══ STICKY COMMAND TOOLBAR ═══ */}
         {space.usesWorkItems && !space.isDisputed && !space.isLoading && space.activeMilestone && (
           <div className="border-t border-border bg-surface p-4 sm:p-5 shrink-0 shadow-2xl space-y-3">
-            {isClient ? (
-              <div className="space-y-3">
-                {isRevising && (
-                  <div className="space-y-1.5 animate-in fade-in duration-150">
-                    <label className="text-[11px] font-black uppercase tracking-wider text-text-primary block">
-                      {t('contracts.deliverySpace.revisionReasonLabel', {
-                        defaultValue: 'Lý do & Nội dung yêu cầu chỉnh sửa chi tiết:',
-                      })}
-                    </label>
-                    <textarea
-                      value={revisionReason}
-                      onChange={event => setRevisionReason(event.target.value)}
-                      rows={2}
-                      placeholder={t('contracts.deliverySpace.revisionReasonPlaceholder', 'Nhập chi tiết yêu cầu chỉnh sửa cho freelancer...')}
-                      className="w-full rounded-xl border border-border bg-background p-3 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 placeholder:text-text-muted"
-                    />
+            {isMilestoneComplete ? (
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={20} />
                   </div>
-                )}
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs font-black text-text-primary px-3 py-1.5 rounded-xl bg-surface-muted border border-border">
-                    {t('contracts.deliverySpace.selectedCount', {
-                      count: space.selectedIds.length,
-                      total: space.workItems.length,
-                      defaultValue: `Đã chọn: ${space.selectedIds.length} / ${space.workItems.length} hạng mục`,
-                    })}
-                  </span>
-
-                  <div className="flex items-center gap-2.5">
-                    <button
-                      type="button"
-                      disabled={space.isBusy || space.selectedIds.length === 0 || (isRevising && !revisionReason.trim())}
-                      onClick={() => (isRevising ? void runReview(false) : setIsRevising(true))}
-                      className="rounded-xl border border-border bg-surface-muted hover:bg-surface text-text-primary px-4 py-2.5 text-xs font-black transition cursor-pointer disabled:opacity-40 shadow-2xs flex items-center gap-1.5 active:scale-95"
-                    >
-                      {space.isBusy ? <Loader2 size={14} className="animate-spin" /> : null}
-                      <span>{t('contracts.deliverySpace.requestRevision', 'Yêu Cầu Chỉnh Sửa')}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={space.isBusy || space.selectedIds.length === 0}
-                      onClick={() => void runReview(true)}
-                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 px-5 py-2.5 text-xs font-black text-white transition cursor-pointer disabled:opacity-40 shadow-md shadow-emerald-600/20 flex items-center gap-2"
-                    >
-                      {space.isBusy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                      <span>{t('contracts.deliverySpace.approveSelected', 'Duyệt Nghiệm Thu Mục Đã Chọn')}</span>
-                    </button>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-black text-text-primary">
+                      {t('contracts.deliverySpace.allDeliverablesApproved', 'Tất cả sản phẩm đã được duyệt nghiệm thu')}
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                      {t('contracts.deliverySpace.milestoneFullyCompleted', 'Milestone này đã hoàn thành toàn bộ công việc.')}
+                    </p>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-xl border border-border bg-surface-muted hover:bg-surface text-text-primary px-5 py-2.5 text-xs font-black transition cursor-pointer shadow-2xs active:scale-95 ml-auto"
+                >
+                  {t('common.close', 'Đóng')}
+                </button>
               </div>
+            ) : isClient ? (
+              space.pendingReviewCount === 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 flex items-center justify-center shrink-0">
+                      <Clock size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-black text-text-primary">
+                        {t('contracts.deliverySpace.noItemsAwaitingReview', 'Chưa có sản phẩm nào chờ bạn duyệt')}
+                      </p>
+                      <p className="text-[11px] sm:text-xs text-text-muted mt-0.5">
+                        {t('contracts.deliverySpace.awaitingFreelancerSubmissionHint', 'Freelancer đang thực hiện công việc và sẽ nộp sản phẩm tại đây.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-xl border border-border bg-surface-muted hover:bg-surface text-text-primary px-5 py-2.5 text-xs font-black transition cursor-pointer shadow-2xs active:scale-95 ml-auto"
+                  >
+                    {t('common.close', 'Đóng')}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {isRevising && (
+                    <div className="space-y-1.5 animate-in fade-in duration-150">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-text-primary block">
+                        {t('contracts.deliverySpace.revisionReasonLabel', {
+                          defaultValue: 'Lý do & Nội dung yêu cầu chỉnh sửa chi tiết:',
+                        })}
+                      </label>
+                      <textarea
+                        ref={revisionReasonRef}
+                        value={revisionReason}
+                        aria-invalid={!revisionReason.trim()}
+                        onChange={event => setRevisionReason(event.target.value)}
+                        rows={2}
+                        placeholder={t('contracts.deliverySpace.revisionReasonPlaceholder', 'Nhập chi tiết yêu cầu chỉnh sửa cho freelancer...')}
+                        className="w-full rounded-xl border border-border bg-background p-3 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 placeholder:text-text-muted"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-xs font-black text-text-primary px-3 py-1.5 rounded-xl bg-surface-muted border border-border">
+                      {t('contracts.deliverySpace.selectedCount', {
+                        count: space.selectedIds.length,
+                        total: space.workItems.length,
+                        defaultValue: `Đã chọn: ${space.selectedIds.length} / ${space.workItems.length} hạng mục`,
+                      })}
+                    </span>
+
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        disabled={space.isBusy || space.selectedIds.length === 0}
+                        onClick={() => (isRevising ? void runReview(false) : setIsRevising(true))}
+                        className="rounded-xl border border-border bg-surface-muted hover:bg-surface text-text-primary px-4 py-2.5 text-xs font-black transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs flex items-center gap-1.5 active:scale-95"
+                      >
+                        {space.isBusy ? <Loader2 size={14} className="animate-spin" /> : null}
+                        <span>{t('contracts.deliverySpace.requestRevision', 'Yêu Cầu Chỉnh Sửa')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={space.isBusy || space.selectedIds.length === 0}
+                        onClick={() => void runReview(true)}
+                        className="rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 px-5 py-2.5 text-xs font-black text-white transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-emerald-600/20 flex items-center gap-2"
+                      >
+                        {space.isBusy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                        <span>{t('contracts.deliverySpace.approveSelected', 'Duyệt Nghiệm Thu Mục Đã Chọn')}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -583,7 +679,7 @@ export function DeliverySpaceModal({
                   type="button"
                   disabled={space.isBusy || space.readyToSubmitIds.length === 0}
                   onClick={() => void runSubmit()}
-                  className="rounded-xl bg-brand hover:bg-brand-hover active:scale-95 px-6 py-2.5 text-xs font-black text-white transition cursor-pointer disabled:opacity-40 shadow-lg shadow-brand/25 flex items-center gap-2"
+                  className="rounded-xl bg-brand hover:bg-brand-hover active:scale-95 px-6 py-2.5 text-xs font-black text-white transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-brand/25 flex items-center gap-2"
                 >
                   {space.isBusy ? <Loader2 size={15} className="animate-spin" /> : <UploadCloud size={16} />}
                   <span>{t('contracts.deliverySpace.submitSelected', 'Nộp Các Sản Phẩm Đã Chuẩn Bị')}</span>

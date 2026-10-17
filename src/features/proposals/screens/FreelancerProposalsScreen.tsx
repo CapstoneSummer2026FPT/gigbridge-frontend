@@ -29,7 +29,7 @@ import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { ProposalStatus, type ProposalDto, type ProposalDetailDto, type ProposalMilestonePlanDto } from '../../../types/models/Proposal';
 import type { ProposalStatusFilter } from '../types';
-import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
+import { canEditProposal, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
 import { useProposalAnswersModal } from '../hooks/useProposalAnswersModal';
 import { ProposalAnswersModal } from '../components/ProposalAnswersModal';
 import { ConfirmationModal } from '../../../shared/components/ConfirmationModal';
@@ -617,7 +617,7 @@ export default function FreelancerProposalsScreen() {
 
                 {/* Actions Toolbar */}
                 <div className="flex flex-wrap items-center gap-2 pb-2">
-                  {canEditProposal(activeProposal.status) && (
+                  {!(activeProposal.hasAiInterview && !activeProposal.aiInterviewCompleted) && canEditProposal(activeProposal.status) && (
                     <button
                       type="button"
                       onClick={() => navigate(`/proposals/${activeProposal.proposalsId}/edit`)}
@@ -625,18 +625,7 @@ export default function FreelancerProposalsScreen() {
                       style={{ background: 'var(--brand)', boxShadow: '0 4px 14px -2px rgba(73,75,231,0.3)' }}
                     >
                       <Edit3 size={14} />
-                      <span>{t('inbox.continueEditing')}</span>
-                    </button>
-                  )}
-
-                  {canViewProposalAnswers(activeProposal.status) && (
-                    <button
-                      type="button"
-                      onClick={() => void answersModal.openModal(activeProposal.proposalsId, activeProposal.jobTitle, activeProposal.status, activeProposal.jobPostsId)}
-                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 sm:px-4 py-2 text-xs font-bold text-text-primary hover:border-brand/40 hover:text-brand transition-all cursor-pointer"
-                    >
-                      <FileText size={14} />
-                      <span>{t('inbox.viewAnswers')}</span>
+                      <span>{t('proposalQuestions.continueInterview') || 'Continue Interview'}</span>
                     </button>
                   )}
 
@@ -672,9 +661,7 @@ export default function FreelancerProposalsScreen() {
                     >
                       <Bot size={14} />
                       <span>
-                        {activeProposal.aiInterviewInProgress
-                          ? t('aiInterview.proposal.continueAction')
-                          : t('aiInterview.proposal.startAction')}
+                        {t('aiInterview.proposal.continueAction') || 'Continue AI Interview'}
                       </span>
                     </button>
                   )}

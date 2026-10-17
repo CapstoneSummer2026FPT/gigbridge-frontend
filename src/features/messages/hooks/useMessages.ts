@@ -50,6 +50,7 @@ import {
   updateMessageAttachmentUpload,
   type MessageAttachmentUploads,
 } from '../utils/messageUploadProgress';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -1620,7 +1621,9 @@ export function useMessages() {
         ...validation.advancedIndexes,
       ])).sort((left, right) => left - right));
     }
-    setAnchorNotice(t(`messages.finalOfferEditor.validation.${validation.firstError || 'milestoneRequired'}`));
+    showValidationToast(Object.values(translatedErrors), {
+      fallback: t(`messages.finalOfferEditor.validation.${validation.firstError || 'milestoneRequired'}`),
+    });
     const firstField = Object.keys(validation.errors)[0];
     if (firstField) {
       const parts = firstField.split('.');
@@ -1653,6 +1656,10 @@ export function useMessages() {
       });
       setDealMilestonesSaving(false);
       if (!res.success || !res.data) {
+        if (isValidationResponse(res)) {
+          showValidationToast(res, { fallback: t('messages.finalOfferEditor.submitFailed') });
+          return;
+        }
         throw new Error(res.message || t('messages.finalOfferEditor.submitFailed'));
       }
 
@@ -1694,7 +1701,11 @@ export function useMessages() {
     try {
       const response = await messagePutAPI.updateNegotiationMilestonePlan(activeConvId, { milestones: normalized });
       if (!response.success) {
-        setAnchorNotice(response.message || t('messages.finalOfferEditor.saveFailed'));
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: t('messages.finalOfferEditor.saveFailed') });
+        } else {
+          setAnchorNotice(response.message || t('messages.finalOfferEditor.saveFailed'));
+        }
         return;
       }
       const prepared = prepareNegotiationMilestonesForEditing(response.data || normalized);
@@ -2086,6 +2097,8 @@ export function useMessages() {
           setScheduleError(`This schedule changed. ${latest.data.remainingEdits} edit${latest.data.remainingEdits === 1 ? '' : 's'} remain. Review the latest card before retrying.`);
           setScheduleConflict({ version: latest.data.version, remainingEdits: latest.data.remainingEdits });
         } else setScheduleError(res.message || 'The schedule changed.');
+      } else if (res && isValidationResponse(res)) {
+        showValidationToast(res, { fallback: 'Unable to save schedule.' });
       } else setScheduleError(res?.message || 'Unable to save schedule.');
       setScheduleSaving(false); return;
     }

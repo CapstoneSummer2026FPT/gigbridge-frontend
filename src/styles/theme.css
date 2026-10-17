@@ -368,3 +368,24 @@
   min-width: 0;
   box-sizing: border-box;
 }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE SONNER TOASTER
+   ═══════════════════════════════════════════════ */
+[data-sonner-toaster] {
+  --width: 420px;
+  max-width: calc(100vw - 32px);
+}
+
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    --width: 100%;
+    width: calc(100vw - 24px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+  [data-sonner-toast] {
+    width: 100% !important;
+  }
+}

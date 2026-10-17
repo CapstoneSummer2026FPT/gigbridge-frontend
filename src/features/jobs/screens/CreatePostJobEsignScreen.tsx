@@ -13,6 +13,7 @@ import { SuccessMilestoneSetupModal } from '../components/SuccessMilestoneSetupM
 import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
 import '../styles/PostJobScreen.css';
 import { prepareESignPdfById, useESignPdf } from '../../contracts/hooks/useESignPdf';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 export default function CreatePostJobEsignScreen() {
   const navigate = useNavigate();
@@ -200,7 +201,9 @@ export default function CreatePostJobEsignScreen() {
     if (!canvas) return;
 
     if (isCanvasBlank(canvas)) {
-      toast.error('Please draw your signature before confirming.');
+      showValidationToast('Please draw your signature before confirming.', {
+        fallback: 'A signature is required.',
+      });
       return;
     }
 
@@ -214,7 +217,9 @@ export default function CreatePostJobEsignScreen() {
   const handleFinalize = async () => {
     if (submittingRef.current) return;
     if (!signatureImage || !document) {
-      toast.error('Please sign the document before submitting.');
+      showValidationToast('Please sign the document before submitting.', {
+        fallback: 'A signature is required.',
+      });
       return;
     }
 

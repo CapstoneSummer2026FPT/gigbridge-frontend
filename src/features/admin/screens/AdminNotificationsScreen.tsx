@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AlertCircle, Bell, CheckCircle, Send, Users } from 'lucide-react';
 import { adminAPI } from '../../../api/adminAPI';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import '../styles/admin-users-screen.css';
 
 type AdminBroadcastTarget = 0 | 1 | 2 | 3 | 4;
@@ -56,6 +57,9 @@ const isResolvedTarget = (
 ): target is ResolvedTarget => typeof target.userId === 'string';
 
 export default function AdminNotificationsScreen() {
+  const broadcastTitleRef = useRef<HTMLInputElement>(null);
+  const testTitleRef = useRef<HTMLInputElement>(null);
+  const targetEmailsRef = useRef<HTMLTextAreaElement>(null);
   const [broadcastForm, setBroadcastForm] = useState({
     target: 0 as BroadcastAudience,
     type: 10 as AdminNotificationType,
@@ -100,7 +104,8 @@ export default function AdminNotificationsScreen() {
 
   const handleSendBroadcast = async () => {
     if (!broadcastForm.title.trim()) {
-      setBroadcastStatus({ type: 'error', message: 'Title is required.' });
+      showValidationToast('Title is required.', { fallback: 'Title is required.' });
+      broadcastTitleRef.current?.focus();
       return;
     }
 
@@ -119,6 +124,10 @@ export default function AdminNotificationsScreen() {
       });
 
       if (!response.success) {
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: response.message || 'Failed to send broadcast.' });
+          return;
+        }
         setBroadcastStatus({
           type: 'error',
           message: response.message || 'Failed to send broadcast.',
@@ -171,14 +180,16 @@ export default function AdminNotificationsScreen() {
   };
 
   const handleSendTestNotification = async () => {
-    if (!testForm.title.trim()) {
-      setTestStatus({ type: 'error', message: 'Title is required.' });
-      return;
-    }
-
     const targetEmails = parseTargetEmails(testForm.targetEmails);
+    const validationMessages: string[] = [];
+    if (!testForm.title.trim()) validationMessages.push('Title is required.');
     if (testForm.targetMode === 'specific' && targetEmails.length === 0) {
-      setTestStatus({ type: 'error', message: 'Add at least one target user email.' });
+      validationMessages.push('Add at least one target user email.');
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required fields.' });
+      if (!testForm.title.trim()) testTitleRef.current?.focus();
+      else targetEmailsRef.current?.focus();
       return;
     }
 
@@ -206,13 +217,13 @@ export default function AdminNotificationsScreen() {
 
       const { resolvedUsers, missingEmails } = await resolveTargetEmails(targetEmails);
       if (resolvedUsers.length === 0) {
-        setTestStatus({
-          type: 'error',
-          message:
-            missingEmails.length > 0
-              ? `No users found for: ${missingEmails.join(', ')}`
-              : 'No users found for those emails.',
-        });
+        showValidationToast(
+          missingEmails.length > 0
+            ? `No users found for: ${missingEmails.join(', ')}`
+            : 'No users found for those emails.',
+          { fallback: 'No users found for those emails.' },
+        );
+        targetEmailsRef.current?.focus();
         return;
       }
 
@@ -321,11 +332,13 @@ export default function AdminNotificationsScreen() {
 
               <div className="space-y-3">
                 <input
+                  ref={broadcastTitleRef}
                   value={broadcastForm.title}
                   onChange={event =>
                     setBroadcastForm({ ...broadcastForm, title: event.target.value })
                   }
                   placeholder="Notification title"
+                  aria-invalid={!broadcastForm.title.trim()}
                   className="input-gb w-full px-3 py-2 text-sm"
                 />
                 <textarea
@@ -371,7 +384,7 @@ export default function AdminNotificationsScreen() {
                 <button
                   type="button"
                   onClick={() => void handleSendBroadcast()}
-                  disabled={isBroadcastSending || !broadcastForm.title.trim()}
+                  disabled={isBroadcastSending}
                   className="btn-cyan px-4 py-2 text-sm flex items-center gap-2 disabled:opacity-50"
                 >
                   <Send size={14} />
@@ -442,6 +455,7 @@ export default function AdminNotificationsScreen() {
 
               {testForm.targetMode === 'specific' && (
                 <textarea
+                  ref={targetEmailsRef}
                   value={testForm.targetEmails}
                   onChange={event =>
                     setTestForm({ ...testForm, targetEmails: event.target.value })
@@ -454,9 +468,11 @@ export default function AdminNotificationsScreen() {
 
               <div className="space-y-3">
                 <input
+                  ref={testTitleRef}
                   value={testForm.title}
                   onChange={event => setTestForm({ ...testForm, title: event.target.value })}
                   placeholder="Test title"
+                  aria-invalid={!testForm.title.trim()}
                   className="input-gb w-full px-3 py-2 text-sm"
                 />
                 <textarea
@@ -472,7 +488,7 @@ export default function AdminNotificationsScreen() {
                 <button
                   type="button"
                   onClick={() => void handleSendTestNotification()}
-                  disabled={isTestSending || !testForm.title.trim()}
+                  disabled={isTestSending}
                   className="btn-cyan px-4 py-2 text-sm flex items-center gap-2 disabled:opacity-50"
                 >
                   <Send size={14} />

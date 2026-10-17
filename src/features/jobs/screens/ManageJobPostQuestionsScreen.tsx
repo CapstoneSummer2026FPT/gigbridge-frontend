@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Check, ChevronDown, ChevronUp, FileQuestion, HelpCircle, LoaderCircle, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
+import { useUndoableDeleteScope, useUndoableListDelete } from '../../../shared/hooks/useUndoableDeleteScope';
 
 type QuestionDraft = JobPostQuestionDto & {
   isNew?: boolean;
@@ -27,10 +29,13 @@ const isDraftRuleFailure = (message?: string) =>
 export default function ManageJobPostQuestionsScreen() {
   const { t } = useTranslation();
   const { jobPostId = '' } = useParams();
+  const undoDeleteController = useUndoableDeleteScope();
+  const undoableListDelete = useUndoableListDelete(undoDeleteController);
   const DRAFT_RULE_MESSAGE = t('manageQuestions.draftRuleMessage', 'Chỉ bài đăng dạng bản nháp mới có thể cập nhật câu hỏi.');
   const navigate = useNavigate();
   const [originalQuestions, setOriginalQuestions] = useState<JobPostQuestionDto[]>([]);
   const [currentQuestions, setCurrentQuestions] = useState<QuestionDraft[]>([]);
+  const currentQuestionsRef = useRef<QuestionDraft[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,13 +56,19 @@ export default function ManageJobPostQuestionsScreen() {
 
     const ordered = orderQuestions(response.data);
     setOriginalQuestions(ordered);
-    setCurrentQuestions(ordered.map(toDraft));
+    const drafts = ordered.map(toDraft);
+    currentQuestionsRef.current = drafts;
+    setCurrentQuestions(drafts);
     setIsLoading(false);
   };
 
   useEffect(() => {
     loadQuestions();
   }, [jobPostId]);
+
+  useEffect(() => {
+    currentQuestionsRef.current = currentQuestions;
+  }, [currentQuestions]);
 
   const changedExistingQuestions = useMemo(() => {
     const originalById = new Map(originalQuestions.map(question => [question.jobPostQuestionsId, question]));
@@ -119,24 +130,44 @@ export default function ManageJobPostQuestionsScreen() {
     });
   };
 
-  const handleDeleteQuestion = async (question: QuestionDraft) => {
-    if (!window.confirm(t('manageQuestions.deleteQuestion', 'Bạn có chắc chắn muốn xóa câu hỏi này?'))) return;
+  const handleDeleteQuestion = (question: QuestionDraft): void => {
+    const index = currentQuestionsRef.current.findIndex(
+      item => item.jobPostQuestionsId === question.jobPostQuestionsId,
+    );
+    if (index < 0) return;
 
-    if (question.isNew) {
-      setCurrentQuestions(prev =>
-        normalizeDraftOrder(prev.filter(item => item.jobPostQuestionsId !== question.jobPostQuestionsId))
-      );
-      return;
-    }
-
-    const response = await jobAPI.deleteJobPostQuestion(jobPostId, question.jobPostQuestionsId);
-    if (!response.success) {
-      toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.unableToDelete', 'Không thể xóa câu hỏi.'));
-      return;
-    }
-
-    toast.success(t('manageQuestions.questionDeleted', 'Đã xóa câu hỏi thành công!'));
-    await loadQuestions();
+    undoableListDelete.scheduleDelete({
+      collectionKey: `manage-job-questions:${jobPostId}`,
+      index,
+      getItems: () => currentQuestionsRef.current,
+      setItems: nextQuestions => {
+        const normalizedQuestions = normalizeDraftOrder(nextQuestions);
+        currentQuestionsRef.current = normalizedQuestions;
+        setCurrentQuestions(normalizedQuestions);
+      },
+      getItemKey: item => item.jobPostQuestionsId,
+      normalize: normalizeDraftOrder,
+      message: t('undoDelete.questionDeleted', {
+        name: question.questionText.trim() || t('undoDelete.untitledQuestion'),
+      }),
+      undoLabel: t('undoDelete.action'),
+      commit: question.isNew ? undefined : async () => {
+        const response = await jobAPI.deleteJobPostQuestion(jobPostId, question.jobPostQuestionsId);
+        if (!response.success) {
+          throw new Error(isDraftRuleFailure(response.message)
+            ? DRAFT_RULE_MESSAGE
+            : response.message || t('manageQuestions.unableToDelete', 'Không thể xóa câu hỏi.'));
+        }
+        setOriginalQuestions(current => current.filter(
+          item => item.jobPostQuestionsId !== question.jobPostQuestionsId,
+        ));
+      },
+      onCommitError: error => {
+        toast.error(error instanceof Error
+          ? error.message
+          : t('manageQuestions.unableToDelete', 'Không thể xóa câu hỏi.'));
+      },
+    });
   };
 
   const validateQuestion = (question: QuestionDraft) => {
@@ -147,10 +178,13 @@ export default function ManageJobPostQuestionsScreen() {
   };
 
   const handleSave = async () => {
+    const deletesCommitted = await undoDeleteController.finalizeAll();
+    if (!deletesCommitted) return;
+
     const ordered = normalizeDraftOrder(currentQuestions);
     const validationError = ordered.map(validateQuestion).find(Boolean);
     if (validationError) {
-      toast.error(validationError);
+      showValidationToast(validationError, { fallback: t('validation.invalidFormat') });
       return;
     }
 
@@ -166,7 +200,9 @@ export default function ManageJobPostQuestionsScreen() {
 
       if (!response.success) {
         setIsSaving(false);
-        toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.unableToUpdateRequired', 'Không thể tạo câu hỏi mới.'));
+        const fallback = isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.unableToUpdateRequired');
+        if (isValidationResponse(response) || isDraftRuleFailure(response.message)) showValidationToast(response, { fallback });
+        else toast.error(fallback);
         return;
       }
     }
@@ -182,7 +218,9 @@ export default function ManageJobPostQuestionsScreen() {
       const response = await jobAPI.updateBulkJobPostQuestions(jobPostId, { questions: changed });
       if (!response.success) {
         setIsSaving(false);
-        toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.bulkUpdateFailed', 'Không thể cập nhật danh sách câu hỏi.'));
+        const fallback = isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.bulkUpdateFailed');
+        if (isValidationResponse(response) || isDraftRuleFailure(response.message)) showValidationToast(response, { fallback });
+        else toast.error(fallback);
         return;
       }
     }
@@ -201,6 +239,11 @@ export default function ManageJobPostQuestionsScreen() {
   const requiredCount = currentQuestions.filter(q => q.isRequired).length;
   const optionalCount = currentQuestions.length - requiredCount;
 
+  const handleBackToJobs = async (): Promise<void> => {
+    const deletesCommitted = await undoDeleteController.finalizeAll();
+    if (deletesCommitted) navigate('/jobs/my-jobs');
+  };
+
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -208,7 +251,7 @@ export default function ManageJobPostQuestionsScreen() {
         <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-[var(--brand)]/10 via-purple-500/5 to-card p-6 sm:p-8 shadow-sm">
           <button
             type="button"
-            onClick={() => navigate('/jobs/my-jobs')}
+            onClick={() => void handleBackToJobs()}
             className="mb-4 inline-flex items-center gap-2 text-xs font-black text-[var(--brand)] hover:opacity-80 transition-opacity bg-transparent border-none cursor-pointer"
           >
             <ArrowLeft size={15} /> {t('manageQuestions.backToMyJobs', 'Quay lại danh sách dự án')}

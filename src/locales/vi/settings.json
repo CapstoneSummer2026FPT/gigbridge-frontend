@@ -42,6 +42,7 @@
   "phoneNumber": "Số điện thoại",
   "identityCode": "Mã định danh (CMND/CCCD)",
   "identityCodePlaceholder": "Nhập 9 hoặc 12 chữ số",
+  "identityCodeInvalid": "Số định danh phải gồm 9 hoặc 12 chữ số.",
   "identityCodeHelp": "Thông tin riêng tư này sẽ tự động được dùng khi ký điện tử và hiển thị trên biên lai dự án.",
   "identityVerificationRequired": "Để lưu mã định danh này, hãy xác thực quyền sở hữu qua email của tài khoản đang đăng nhập.",
   "identityVerificationSend": "Gửi mã qua email",

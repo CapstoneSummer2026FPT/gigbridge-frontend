@@ -18,6 +18,7 @@ import '../styles/esign-document-signing-screen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { prepareESignPdfById } from '../hooks/useESignPdf';
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 type SigningStep = 'review' | 'capture' | 'confirm' | 'complete';
 type CaptureMethod = 'draw' | 'type' | 'initials';
@@ -38,6 +39,7 @@ export default function EsignDocumentSigningScreen() {
   const { user } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const typedSignatureInputRef = useRef<HTMLInputElement>(null);
+  const initialsInputRef = useRef<HTMLInputElement>(null);
 
   // State
   const [contract, setContract] = useState<ContractDto | null>(null);
@@ -224,7 +226,8 @@ export default function EsignDocumentSigningScreen() {
       if (captureMethod === 'draw') {
         signatureData = getCanvasSignatureData();
         if (!signatureData || signatureData === 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==') {
-          setError('Please draw your signature');
+          showValidationToast('Please draw your signature', { fallback: 'Please draw your signature' });
+          canvasRef.current?.focus();
           setSubmitting(false);
           submittingRef.current = false;
           return;
@@ -232,7 +235,8 @@ export default function EsignDocumentSigningScreen() {
         signatureType = SignatureType.Draw;
       } else if (captureMethod === 'type') {
         if (!typedSignatureName.trim()) {
-          setError('Please enter your name');
+          showValidationToast('Please enter your name', { fallback: 'Please enter your name' });
+          typedSignatureInputRef.current?.focus();
           setSubmitting(false);
           submittingRef.current = false;
           return;
@@ -241,7 +245,8 @@ export default function EsignDocumentSigningScreen() {
         signatureType = SignatureType.TypedName;
       } else if (captureMethod === 'initials') {
         if (!initialsInput.trim()) {
-          setError('Please enter your initials');
+          showValidationToast('Please enter your initials', { fallback: 'Please enter your initials' });
+          initialsInputRef.current?.focus();
           setSubmitting(false);
           submittingRef.current = false;
           return;
@@ -275,6 +280,10 @@ export default function EsignDocumentSigningScreen() {
           setTimeout(() => {
             setSigningStep('complete');
           }, 1500);
+          return;
+        }
+        if (isValidationResponse(signatureResponse)) {
+          showValidationToast(signatureResponse, { fallback: 'Failed to save signature' });
           return;
         }
         throw new Error(signatureResponse.message || 'Failed to save signature');
@@ -518,6 +527,7 @@ export default function EsignDocumentSigningScreen() {
                       width={400}
                       height={150}
                       className="signature-canvas"
+                      tabIndex={0}
                       onMouseDown={handleCanvasMouseDown}
                       onMouseMove={handleCanvasMouseMove}
                       onMouseUp={handleCanvasMouseUp}
@@ -547,6 +557,7 @@ export default function EsignDocumentSigningScreen() {
                   <div className="capture-area">
                     <p className="capture-label">{t('contracts.initialsInstructions')}</p>
                     <input
+                      ref={initialsInputRef}
                       type="text"
                       value={initialsInput}
                       onChange={(e) => setInitialsInput(e.target.value.toUpperCase().slice(0, 3))}

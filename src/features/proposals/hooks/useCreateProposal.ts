@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
-import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
 import {
@@ -20,10 +19,17 @@ import {
   calculateProposalDuration,
 } from '../utils/proposalTotals';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { showValidationToast } from '../../../shared/utils/validationToast';
+import { useUndoableDeleteScope } from '../../../shared/hooks/useUndoableDeleteScope';
 import {
   extractCustomWorkItems,
   resolveProposalMilestonePlan,
 } from '../utils/proposalMilestonePlan';
+import { resolveProposalContinueTarget } from '../utils/proposalFlow';
+import type {
+  ProposalNarrativeField,
+  ProposalNarrativeValues,
+} from '../components/ProposalNarrativeFields';
 import { parseJobDuration, computeWorkItemDurationSummary } from '../../jobs/utils/jobDuration';
 
 const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
@@ -68,6 +74,7 @@ const fetchJobPostDetailForFreelancer = async (id: string) => {
 export function useCreateProposal() {
   const navigate = useNavigate();
   const { t } = useTranslation(['proposals', 'common']);
+  const undoDeleteController = useUndoableDeleteScope();
   const tRef = useRef(t);
   useEffect(() => {
     tRef.current = t;
@@ -207,6 +214,27 @@ export function useCreateProposal() {
     setNarrativeErrors(prev => ({ ...prev, [field]: undefined }));
   };
 
+  const narrativeValues: ProposalNarrativeValues = {
+    coverLetter,
+    proposalApproach,
+    deliverables,
+    assumptions,
+    outOfScope,
+  };
+
+  const narrativeSetters: Record<ProposalNarrativeField, (value: string) => void> = {
+    coverLetter: setCoverLetter,
+    proposalApproach: setProposalApproach,
+    deliverables: setDeliverables,
+    assumptions: setAssumptions,
+    outOfScope: setOutOfScope,
+  };
+
+  const setNarrativeField = (field: ProposalNarrativeField, value: string) => {
+    narrativeSetters[field](value);
+    if (field === 'coverLetter' || field === 'proposalApproach') clearNarrativeError(field);
+  };
+
   const validateForSubmit = () => {
     setMilestoneErrors({});
     const fieldErrors: { coverLetter?: string; proposalApproach?: string } = {};
@@ -289,6 +317,9 @@ export function useCreateProposal() {
         response = await proposalPutAPI.updateProposal(draftProposalId, payload);
       }
       if (!response.success) { setError(response.message || t('createProposal.errLoadProposal')); return null; }
+      // Keep the loaded snapshot on the last persisted values so cancelling a later edit
+      // restores what the server holds instead of the original page load.
+      setProposal(previous => (previous ? { ...previous, ...payload } : previous));
       return draftProposalId;
     }
     if (!resolvedJobPostId) { setError(t('createProposal.errMissingJobId')); return null; }
@@ -320,6 +351,7 @@ export function useCreateProposal() {
   };
 
   const handleSaveDraft = async () => {
+    await undoDeleteController.finalizeAll();
     setSubmitting(true); setError('');
     const saved = await persistDraft();
     setSubmitting(false);
@@ -329,11 +361,14 @@ export function useCreateProposal() {
     }
   };
 
-  const handleSubmit = async () => {
+  // Step 1 -> step 2 (AI or manual interview) or straight to step 3 when the job post has
+  // no interview questions. The proposal stays Draft until it is submitted on step 3.
+  const handleContinue = async () => {
+    await undoDeleteController.finalizeAll();
     const validation = validateForSubmit();
     if (validation) {
-      toast.error(validation);
-      return setError(validation);
+      showValidationToast(validation, { fallback: t('validation.invalidFormat') });
+      return;
     }
     // Already-submitted proposals are read-only: don't re-PUT or re-enter the interview.
     if (proposal && !canEditProposal(proposal.status)) {
@@ -346,26 +381,65 @@ export function useCreateProposal() {
     if (!savedId || !resolvedJobPostId) return setSubmitting(false);
 
     if (jobPost?.hasAiInterview) {
+      const aiTarget = resolveProposalContinueTarget({
+        jobPostId: resolvedJobPostId,
+        proposalId: savedId,
+        hasAiInterview: true,
+        manualQuestionCount: 0,
+      });
       setSubmitting(false);
-      navigate(`/ai-interview/${resolvedJobPostId}?proposalId=${savedId}`);
+      navigate(aiTarget.path);
       return;
     }
 
     const questionsResponse = await jobGetAPI.getJobPostQuestions(resolvedJobPostId);
     if (!questionsResponse.success) {
       setSubmitting(false);
-      return setError(questionsResponse.message || 'Clarifying questions could not be loaded.');
+      return setError(questionsResponse.message || t('createProposal.errLoadQuestions'));
     }
-    if ((questionsResponse.data || []).length > 0) {
-      setSubmitting(false);
-      navigate(`/proposals/create/${resolvedJobPostId}/questions?proposalId=${savedId}`, { state: { proposalId: savedId, jobPostId: resolvedJobPostId } });
-      return;
-    }
-    const response = await proposalPatchAPI.updateProposalStatus(savedId, { status: ProposalStatus.Pending });
+
+    const target = resolveProposalContinueTarget({
+      jobPostId: resolvedJobPostId,
+      proposalId: savedId,
+      hasAiInterview: false,
+      manualQuestionCount: (questionsResponse.data || []).length,
+    });
     setSubmitting(false);
-    if (!response.success) return setError(response.message || 'Proposal was saved, but could not be submitted.');
-    toast.success(t('createProposal.submittedSuccessToast'));
-    navigate('/proposals', { state: { submittedProposalId: savedId } });
+    navigate(
+      target.path,
+      target.step === 'questions'
+        ? { state: { proposalId: savedId, jobPostId: resolvedJobPostId } }
+        : undefined,
+    );
+  };
+
+  /** Review step: validate and persist the draft in place, without navigating away. */
+  const handleSaveEdits = async (): Promise<boolean> => {
+    await undoDeleteController.finalizeAll();
+    const validation = validateForSubmit();
+    if (validation) {
+      showValidationToast(validation, { fallback: t('validation.invalidFormat') });
+      return false;
+    }
+    if (proposal && !canEditProposal(proposal.status)) {
+      toast.info(t('createProposal.readOnlyNotice', { status: getStatusLabel(proposal.status) }));
+      return false;
+    }
+    setSubmitting(true); setError('');
+    const savedId = await persistDraft();
+    setSubmitting(false);
+    if (!savedId) return false;
+    toast.success(t('createProposal.draftSavedToast'));
+    return true;
+  };
+
+  /** Review step: drop unsaved edits and restore the last persisted draft. */
+  const resetEdits = async (): Promise<void> => {
+    await undoDeleteController.finalizeAll();
+    setError('');
+    setMilestoneErrors({});
+    setNarrativeErrors({});
+    if (proposal) hydrateProposal(proposal);
   };
 
   const nestedMilestones = useMemo<EditableMilestonePlan[]>(() => resolvedPlan.milestonePlans.map(milestone => ({
@@ -423,7 +497,12 @@ export function useCreateProposal() {
     proposedDuration,
     nestedMilestones,
     updateNestedPlan,
+    undoDeleteController,
     handleSaveDraft,
-    handleSubmit,
+    handleContinue,
+    handleSaveEdits,
+    resetEdits,
+    narrativeValues,
+    setNarrativeField,
   };
 }

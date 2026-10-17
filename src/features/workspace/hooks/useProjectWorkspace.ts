@@ -71,6 +71,7 @@ interface WorkspaceProjectListItem {
 interface SubmitMilestoneDeliverableResult {
   success: boolean;
   message?: string;
+  errors?: Record<string, string[]>;
   statusCode?: number;
   transportError?: ApiTransportError;
 }
@@ -1009,6 +1010,7 @@ export function useProjectWorkspace(initialContractId: string) {
         statusCode: response.statusCode,
         transportError: response.transportError,
         message: response.message || 'Failed to submit deliverable.',
+        errors: response.errors,
       };
     }
 
@@ -1148,6 +1150,7 @@ export function useProjectWorkspace(initialContractId: string) {
         statusCode: response.statusCode,
         transportError: response.transportError,
         message: response.message || 'Failed to send work materials.',
+        errors: response.errors,
       };
     }
 

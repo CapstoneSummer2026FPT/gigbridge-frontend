@@ -22,11 +22,26 @@ export const canEditJobPostContent = (
 };
 
 export const getAllowedJobPostVisibilities = (
+  status: JobPostStatusValue,
   visibility: number | null | undefined,
 ): readonly JobPostVisibility[] => {
   const normalizedVisibility = normalizeVisibility(visibility);
 
   if (normalizedVisibility === 3) return [];
 
+  if (!isDraftJobPostStatus(status) && normalizedVisibility === JobPostVisibility.Public) {
+    return [JobPostVisibility.Public];
+  }
+
   return [JobPostVisibility.Public, JobPostVisibility.InviteOnly];
 };
+
+export const shouldConfirmPublicJobPostVisibilityChange = (
+  status: JobPostStatusValue,
+  currentVisibility: number | null | undefined,
+  requestedVisibility: JobPostVisibility,
+): boolean => (
+  !isDraftJobPostStatus(status) &&
+  normalizeVisibility(currentVisibility) === JobPostVisibility.InviteOnly &&
+  requestedVisibility === JobPostVisibility.Public
+);

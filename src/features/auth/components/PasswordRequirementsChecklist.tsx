@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Check, ShieldCheck } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 

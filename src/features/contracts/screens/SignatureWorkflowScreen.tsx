@@ -38,6 +38,7 @@ import { useESignDocumentRevisionEvent } from '../hooks/useESignDocumentRevision
 import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { IdentityEmailVerification } from '../../../shared/components/IdentityEmailVerification';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import '../styles/signature-workflow-screen.css';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
@@ -466,16 +467,32 @@ export default function SignatureWorkflowScreen() {
 
   const handleApplySignaturePreview = async (): Promise<void> => {
     const canvas = canvasRef.current;
-    if (!hasSignatureForDraft || (signatureDrawn && !canvas)) return;
+    if (!hasSignatureForDraft) {
+      const message = t('contracts.errors.drawSignatureFirst');
+      showValidationToast(message, { fallback: message });
+      canvasRef.current?.focus();
+      return;
+    }
+    if (signatureDrawn && !canvas) {
+      const message = t('contracts.errors.canvasNotAvailable');
+      showValidationToast(message, { fallback: message });
+      return;
+    }
 
     if (!identityCodeIsValid) {
       setIdentityTouched(true);
-      setSignaturePreviewError(t('contracts.errors.identityCodeLength'));
+      showValidationToast(t('contracts.errors.identityCodeLength'), {
+        fallback: t('contracts.errors.identityCodeLength'),
+      });
+      window.document.getElementById('signature-identity-code')?.focus();
       return;
     }
 
     if (!profileIdentityCode && !identityVerificationTicket) {
-      setError(t('contracts.errors.identityCodeLength'));
+      showValidationToast(t('contracts.errors.identityCodeLength'), {
+        fallback: t('contracts.errors.identityCodeLength'),
+      });
+      window.document.getElementById('signature-identity-code')?.focus();
       return;
     }
 
@@ -573,26 +590,38 @@ export default function SignatureWorkflowScreen() {
     if (!contract || !hasSignatureForDraft) return;
     if (submittingRef.current || signingInProgress) return;
 
+    const validationMessages: string[] = [];
     if (!signatureDrawn && !existingDraftImageUrl) {
-      setError(t('contracts.errors.drawSignatureFirst'));
-      return;
+      validationMessages.push(t('contracts.errors.drawSignatureFirst'));
     }
-
     if (!identityCodeIsValid) {
+      validationMessages.push(t('contracts.errors.identityCodeLength'));
       setIdentityTouched(true);
-      setError(t('contracts.errors.identityCodeLength'));
-      return;
     }
-
+    if (!profileIdentityCode && !identityVerificationTicket) {
+      validationMessages.push(t('contracts.errors.identityCodeLength'));
+    }
     if (!policyAccepted) {
-      setError(t('contracts.errors.acceptPolicyFirst'));
+      validationMessages.push(t('contracts.errors.acceptPolicyFirst'));
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('contracts.failedToSign') });
+      if (!identityCodeIsValid) {
+        window.document.getElementById('signature-identity-code')?.focus();
+      } else if (!policyAccepted) {
+        window.document.getElementById('signature-policy-consent')?.focus();
+      } else {
+        canvasRef.current?.focus();
+      }
       return;
     }
 
     try {
       const canvas = canvasRef.current;
       if (signatureDrawn && !canvas) {
-        setError(t('contracts.errors.canvasNotAvailable'));
+        showValidationToast(t('contracts.errors.canvasNotAvailable'), {
+          fallback: t('contracts.errors.canvasNotAvailable'),
+        });
         return;
       }
 
@@ -623,7 +652,11 @@ export default function SignatureWorkflowScreen() {
           await refreshAfterSigning();
           return;
         }
-        setError(response.message || t('contracts.failedToSign'));
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: t('contracts.failedToSign') });
+        } else {
+          setError(response.message || t('contracts.failedToSign'));
+        }
         return;
       }
 
@@ -1023,13 +1056,12 @@ export default function SignatureWorkflowScreen() {
                   }}
                   className="sw-form-input"
                   placeholder={t('contracts.identityCodePlaceholder')}
+                  aria-invalid={identityTouched && !identityCodeIsValid}
                 />
-                <p className={`sw-form-hint ${identityTouched && !identityCodeIsValid ? 'error' : ''}`}>
-                  {identityTouched && !identityCodeIsValid
-                    ? t('contracts.identityCodeInvalid')
-                    : profileIdentityCode
-                      ? t('contracts.identityCodeSavedHelp')
-                      : t('contracts.identityCodeHelp')}
+                <p className="sw-form-hint">
+                  {profileIdentityCode
+                    ? t('contracts.identityCodeSavedHelp')
+                    : t('contracts.identityCodeHelp')}
                 </p>
 
                 {!profileIdentityCode && (
@@ -1069,8 +1101,9 @@ export default function SignatureWorkflowScreen() {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                     onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleMouseUp}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleMouseUp}
+                  tabIndex={0}
                   />
                 </div>
                 <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', textAlign: 'center', margin: '0.25rem 0 0 0', fontWeight: 600 }}>
@@ -1083,7 +1116,7 @@ export default function SignatureWorkflowScreen() {
                 <button
                   type="button"
                   onClick={() => void handleApplySignaturePreview()}
-                  disabled={!hasSignatureForDraft || !identityCodeIsValid || isApplyingSignature}
+                  disabled={isApplyingSignature}
                   className="sw-btn-brand-subtle"
                 >
                   {isApplyingSignature ? <Loader size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -1140,13 +1173,7 @@ export default function SignatureWorkflowScreen() {
                 <button
                   type="button"
                   onClick={handleSubmitSignature}
-                  disabled={
-                    (!signatureDrawn && !existingDraftImageUrl) ||
-                    !identityCodeIsValid ||
-                    (!profileIdentityCode && !identityVerificationTicket) ||
-                    !policyAccepted ||
-                    signingInProgress
-                  }
+                  disabled={signingInProgress}
                   className="sw-btn-primary"
                   style={{ flex: 1 }}
                 >

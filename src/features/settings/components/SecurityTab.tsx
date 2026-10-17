@@ -4,6 +4,7 @@ import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { authPostAPI } from '../../../api/authAPI/POST';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 const messageFromError = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
@@ -12,6 +13,9 @@ export function SecurityTab() {
   const { t } = useTranslation();
   const cardRef = useRef<HTMLDivElement>(null);
   const strengthBarRef = useRef<HTMLDivElement>(null);
+  const currentPasswordRef = useRef<HTMLInputElement>(null);
+  const newPasswordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -63,12 +67,18 @@ export function SecurityTab() {
     setPasswordError(null);
     setPasswordSuccess(false);
 
+    const validationMessages: string[] = [];
     if (!currentPassword || !newPassword || !confirmNewPassword) {
-      setPasswordError(t('settings.passwordErrorRequired'));
-      return;
+      validationMessages.push(t('settings.passwordErrorRequired'));
     }
-    if (newPassword !== confirmNewPassword) {
-      setPasswordError(t('settings.passwordErrorMatch'));
+    if (newPassword && confirmNewPassword && newPassword !== confirmNewPassword) {
+      validationMessages.push(t('settings.passwordErrorMatch'));
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
+      if (!currentPassword) currentPasswordRef.current?.focus();
+      else if (!newPassword) newPasswordRef.current?.focus();
+      else confirmPasswordRef.current?.focus();
       return;
     }
 
@@ -79,7 +89,12 @@ export function SecurityTab() {
         const validationMessage = response.errors && typeof response.errors === 'object'
           ? Object.values(response.errors).flat().join(', ')
           : '';
-        setPasswordError(validationMessage || response.message || t('settings.passwordErrorUpdate'));
+        const message = validationMessage || response.message || t('settings.passwordErrorUpdate');
+        if (isValidationResponse(response)) {
+          showValidationToast(response.errors ? response : message, { fallback: message });
+        } else {
+          setPasswordError(message);
+        }
         return;
       }
 
@@ -140,13 +155,14 @@ export function SecurityTab() {
             </div>
           )}
 
-          <form onSubmit={handlePasswordUpdate} className="space-y-4 max-w-2xl">
+          <form onSubmit={handlePasswordUpdate} className="space-y-4 max-w-2xl" noValidate>
             {/* Current Password */}
             <div className="settings-form-group">
               <label className="settings-form-label">{t('settings.currentPassword')}</label>
               <div className="settings-input-wrapper">
                 <Lock size={16} className="settings-input-icon" />
                 <input
+                  ref={currentPasswordRef}
                   type={showPassword ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={event => setCurrentPassword(event.target.value)}
@@ -169,6 +185,7 @@ export function SecurityTab() {
               <div className="settings-input-wrapper">
                 <Lock size={16} className="settings-input-icon" />
                 <input
+                  ref={newPasswordRef}
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={event => setNewPassword(event.target.value)}
@@ -203,6 +220,7 @@ export function SecurityTab() {
               <div className="settings-input-wrapper">
                 <Lock size={16} className="settings-input-icon" />
                 <input
+                  ref={confirmPasswordRef}
                   type={showPassword ? 'text' : 'password'}
                   value={confirmNewPassword}
                   onChange={event => setConfirmNewPassword(event.target.value)}

@@ -29,6 +29,15 @@
     "yes": "Có",
     "no": "Không"
   },
+  "installApp": {
+    "title": "Cài đặt GigBridge",
+    "description": "Thêm vào màn hình chính để dùng như một ứng dụng",
+    "action": "Cài đặt",
+    "dismiss": "Để sau",
+    "iosTitle": "Cài đặt GigBridge trên iPhone",
+    "iosStep1": "1. Bấm nút Chia sẻ",
+    "iosStep2": "2. Chọn \"Thêm vào MH chính\""
+  },
   "fileUploadProgress": {
     "uploading": "Đang tải tệp lên...",
     "uploadingPercent": "Đang tải tệp lên... {{percent}}%",
@@ -77,8 +86,7 @@
     },
     "contractReports": "Báo Cáo Hợp Đồng",
     "contractsEsign": "Hợp Đồng & Ký Điện Tử",
-    "esign": "Ký Kết Điện Tử",
-    "assets": "Sản Phẩm Bàn Giao"
+    "esign": "Ký Kết Điện Tử"
   },
   "nav": {
     "dashboard": "Bảng Điều Khiển",
@@ -406,11 +414,29 @@
       "startAction": "Bắt đầu phỏng vấn AI",
       "continueAction": "Tiếp tục phỏng vấn AI"
     },
+    "placeholder": {
+      "skipped": "[Đã bỏ qua]",
+      "timedOut": "[Hết thời gian trả lời]",
+      "noAnswer": "[Không có câu trả lời]"
+    },
+    "timer": {
+      "critical": "Sắp hết 3 phút! Hệ thống sẽ tự động hoàn tất và chuyển câu hỏi khi về 00:00.",
+      "warning": "Còn dưới 30 giây cho câu hỏi này! Vui lòng chuẩn bị nộp câu trả lời.",
+      "expired": "Đã hết thời gian 3 phút cho câu hỏi này! Đang chuyển sang câu hỏi tiếp theo."
+    },
+    "tips": {
+      "quietRoomShort": "💡 Mẹo: Hãy phỏng vấn ở phòng kín để GigBridge AI nhận diện âm thanh chuẩn xác nhất."
+    },
+    "badge": {
+      "required": "Bắt buộc",
+      "optional": "Tùy chọn"
+    },
     "actions": {
       "start": "Bắt đầu phỏng vấn AI",
       "starting": "Đang bắt đầu phỏng vấn…",
       "browseToChoose": "Duyệt việc làm để chọn vị trí phỏng vấn",
       "answerQuestion": "Trả lời câu hỏi",
+      "skipQuestion": "Bỏ qua câu hỏi này",
       "retryAudio": "Thử phát lại câu hỏi",
       "hearAgain": "Nghe lại câu hỏi",
       "cancel": "Hủy",
@@ -422,6 +448,7 @@
       "goToProposals": "Đến trang đề xuất"
     },
     "errors": {
+      "questionRequired": "Câu hỏi này là bắt buộc. Vui lòng trả lời trước khi chuyển tiếp.",
       "chooseJob": "Hãy chọn một công việc trước khi bắt đầu phỏng vấn AI.",
       "startFailed": "Không thể bắt đầu cuộc phỏng vấn AI. Vui lòng thử lại.",
       "noQuestions": "Không thể bắt đầu cuộc phỏng vấn AI. Vì jobpost này không có câu hỏi phỏng vấn",
@@ -883,6 +910,16 @@
     "confirmCloseDesc": "Bạn có chắc chắn muốn đóng tin tuyển dụng \"{{title}}\"? Sau khi đóng, freelancer sẽ không thể nộp đề xuất mới.",
     "confirmCancelTitle": "Xác nhận hủy tin tuyển dụng",
     "confirmCancelDesc": "Bạn có chắc chắn muốn hủy tin tuyển dụng \"{{title}}\"? Hành động hủy tin tuyển dụng không thể hoàn tác."
+  },
+  "undoDelete": {
+    "action": "Hoàn tác",
+    "milestoneDeleted": "Đã xóa milestone “{{name}}”.",
+    "workItemDeleted": "Đã xóa hạng mục WBS “{{name}}”.",
+    "questionDeleted": "Đã xóa câu hỏi phỏng vấn “{{name}}”.",
+    "untitledMilestone": "Milestone chưa đặt tên",
+    "untitledWorkItem": "Hạng mục chưa đặt tên",
+    "untitledQuestion": "Câu hỏi chưa có nội dung",
+    "autoDeleteIn": "Tự động xóa sau {{seconds}}s"
   },
   "aiJobGeneratedModal": {
     "title": "Tạo Bài Đăng Tuyển Dụng AI Thành Công",

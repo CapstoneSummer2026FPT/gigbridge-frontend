@@ -8,6 +8,7 @@ import { MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import { AccountStatus, UserViolationType, type AdminDisputeDetail, type AdminDisputeListItem } from '../../../types/models/AdminDispute';
 import { DisputeMilestoneOutcome, DisputeResolution, DisputeStatus, EvidenceRequestTarget, type DisputeEvidence } from '../../../types/models/Dispute';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 export interface EvidenceRequestState {
   reason: string;
@@ -380,7 +381,9 @@ export function useAdminDisputeManagement() {
     setActionLoading(false);
 
     if (!response.success || !response.data) {
-      setError(apiError(response.statusCode, response.message));
+      const fallback = apiError(response.statusCode, response.message);
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
       return;
     }
 
@@ -391,7 +394,8 @@ export function useAdminDisputeManagement() {
   const requestEvidenceSubmit = async () => {
     if (!selectedDispute || actionLoading) return;
     if (!evidenceRequest.reason.trim()) {
-      setError('Evidence request reason is required.');
+      showValidationToast('Evidence request reason is required.', { fallback: 'Evidence request reason is required.' });
+      window.document.getElementById('admin-evidence-request-reason')?.focus();
       return;
     }
 
@@ -407,7 +411,9 @@ export function useAdminDisputeManagement() {
     setActionLoading(false);
 
     if (!response.success || !response.data) {
-      setError(apiError(response.statusCode, response.message));
+      const fallback = apiError(response.statusCode, response.message);
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
       return;
     }
 
@@ -419,8 +425,19 @@ export function useAdminDisputeManagement() {
 
   const resolveCase = async () => {
     if (!selectedDispute || actionLoading) return;
-    if (!resolutionNote.trim()) {
-      setError('Resolution Note is required.');
+    const relevantMilestoneIds = getRelevantMilestoneIds(selectedDispute, contractAction, selectedMilestoneIds);
+    const invalidMilestoneId = [...relevantMilestoneIds].find(allocationHasError);
+    const validationMessages: string[] = [];
+    if (!resolutionNote.trim()) validationMessages.push('Resolution Note is required.');
+    if (invalidMilestoneId) validationMessages.push('Every milestone allocation must match its locked amount and include required override reasons.');
+    if (violationHasError(clientViolation)) validationMessages.push('Client violation type and reason are required.');
+    if (violationHasError(freelancerViolation)) validationMessages.push('Freelancer violation type and reason are required.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Please review the dispute resolution' });
+      if (!resolutionNote.trim()) window.document.getElementById('admin-dispute-resolution-note')?.focus();
+      else if (invalidMilestoneId) window.document.querySelector<HTMLElement>(`[data-allocation-field="${invalidMilestoneId}"]`)?.focus();
+      else if (violationHasError(clientViolation)) window.document.querySelector<HTMLElement>('[data-client-violation-field]')?.focus();
+      else window.document.querySelector<HTMLElement>('[data-freelancer-violation-field]')?.focus();
       return;
     }
 
@@ -460,7 +477,9 @@ export function useAdminDisputeManagement() {
     setActionLoading(false);
 
     if (!response.success || !response.data) {
-      setError(apiError(response.statusCode, response.message));
+      const fallback = apiError(response.statusCode, response.message);
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
       return;
     }
 
@@ -512,7 +531,13 @@ export function useAdminDisputeManagement() {
   }, [contractAction, selectedDispute, showResolveDialog, selectedMilestoneIds]);
 
   const sendAdminDirective = async () => {
-    if (!selectedDispute || (!adminMessage.trim() && adminMessageFiles.length === 0) || sendingMessage) return;
+    if (!selectedDispute || sendingMessage) return;
+    if (!adminMessage.trim() && adminMessageFiles.length === 0) {
+      showValidationToast('Enter a directive or attach at least one file.', {
+        fallback: 'Enter a directive or attach at least one file.',
+      });
+      return;
+    }
     const conversationId =
       selectedDispute.conversations.disputeConversationId ||
       selectedDispute.conversations.workspaceConversationId;
@@ -530,7 +555,9 @@ export function useAdminDisputeManagement() {
 
     if (!response.success) {
       setSendingMessage(false);
-      setError(apiError(response.statusCode, response.message));
+      if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: response.message || 'Unable to send the directive.' });
+      } else setError(apiError(response.statusCode, response.message));
       return;
     }
 

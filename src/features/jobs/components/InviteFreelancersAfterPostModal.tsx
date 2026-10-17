@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, CheckCircle2, LoaderCircle, MapPin, Search, Send, Sparkles, UserPlus, Users, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -6,6 +6,7 @@ import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { jobInvitationAPI } from '../../../api/jobInvitationAPI';
 import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 interface InviteFreelancersAfterPostModalProps {
   jobPostId: string;
@@ -33,6 +34,7 @@ export function InviteFreelancersAfterPostModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const candidatesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -90,7 +92,12 @@ export function InviteFreelancersAfterPostModal({
 
   const submitInvites = async () => {
     if (!jobPostId || selectedIds.length === 0) {
+      showValidationToast(t('inviteModal.selectAtLeastOne'), {
+        fallback: 'Select at least one freelancer.',
+      });
+      candidatesRef.current?.focus();
       setError(t('inviteModal.selectAtLeastOne', 'Vui lòng chọn ít nhất 1 freelancer để gửi lời mời.'));
+      setError(null);
       return;
     }
 
@@ -104,7 +111,12 @@ export function InviteFreelancersAfterPostModal({
       });
 
       if (result.created.length === 0) {
+        showValidationToast(result.skipped[0]?.reason, {
+          fallback: 'Unable to send invitations.',
+        });
+        candidatesRef.current?.focus();
         setError(result.skipped[0]?.reason || 'Không thể gửi lời mời.');
+        setError(null);
         return;
       }
 
@@ -187,7 +199,7 @@ export function InviteFreelancersAfterPostModal({
                 <p className="text-xs text-muted-foreground">Thử tìm kiếm với từ khóa khác như kỹ năng hoặc chuyên môn.</p>
               </div>
             ) : (
-              <div className="space-y-2.5 sm:space-y-3">
+              <div ref={candidatesRef} tabIndex={-1} className="space-y-2.5 sm:space-y-3">
                 {freelancers.map(freelancer => {
                   const freelancerProfileId = getFreelancerProfileId(freelancer);
                   const checked = selectedIds.includes(freelancerProfileId);
@@ -312,7 +324,7 @@ export function InviteFreelancersAfterPostModal({
             <button
               type="button"
               onClick={submitInvites}
-              disabled={submitting || success || selectedIds.length === 0}
+              disabled={submitting || success}
               className="w-full rounded-xl bg-[var(--brand)] text-white px-5 py-3 text-xs font-black border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:opacity-95 transition-all"
             >
               {submitting ? <LoaderCircle className="animate-spin" size={16} /> : <Send size={15} />}

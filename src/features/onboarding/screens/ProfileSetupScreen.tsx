@@ -50,7 +50,7 @@ export default function ProfileSetupScreen() {
     handleMajorChange,
     toggleCategory,
     // Validation & Submit
-    canProceed,
+    validateCurrentStep,
     handleSubmit,
   } = useProfileSetup();
 
@@ -396,8 +396,10 @@ export default function ProfileSetupScreen() {
               {step === 1 ? (
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
-                  disabled={!canProceed()}
+                  onClick={() => {
+                    if (validateCurrentStep()) setStep(2);
+                  }}
+                  disabled={isTaxonomyLoading || Boolean(taxonomyError)}
                   className="profile-setup-btn-next"
                 >
                   {t('buttons.continue', { defaultValue: 'Tiếp tục' })}
@@ -407,7 +409,7 @@ export default function ProfileSetupScreen() {
                 <button
                   type="button"
                   onClick={() => void handleSubmit()}
-                  disabled={!canProceed() || isSubmitting}
+                  disabled={isSubmitting}
                   className="profile-setup-btn-next"
                 >
                   {isSubmitting ? (

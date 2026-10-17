@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   AlertCircle,
   ArrowRight,
@@ -18,6 +18,7 @@ import {
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import { FileTypeBadge } from '../../../shared/components/FileTypeBadge';
 import { DisputeEvidenceFilePicker } from '../../disputes/components/DisputeEvidenceFilePicker';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 const ISSUE_KEYS: Record<number, string> = {
   [ContractReportIssueType.PaymentIssue]: 'workspace.reportIssueTypePaymentIssue',
@@ -39,6 +40,8 @@ interface DisputeCreationModalProps {
     success: boolean;
     message?: string;
     disputeId?: string;
+    statusCode?: number;
+    errors?: Record<string, string[]>;
   }>;
   onCreated: (disputeId: string) => void;
 }
@@ -62,6 +65,11 @@ export function DisputeCreationModal({
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const resolutionRef = useRef<HTMLTextAreaElement>(null);
+  const declarationRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -83,31 +91,42 @@ export function DisputeCreationModal({
     const requiresPositiveAmount =
       report.issueType === ContractReportIssueType.PaymentIssue ||
       report.issueType === ContractReportIssueType.MilestoneIssue;
+    const validationMessages: string[] = [];
 
     if (!title.trim()) {
-      return setError(t('workspace.disputeTitleRequired', { defaultValue: 'Vui lòng nhập tiêu đề tranh chấp.' }));
+      validationMessages.push(t('workspace.disputeTitleRequired', { defaultValue: 'Vui lòng nhập tiêu đề tranh chấp.' }));
     }
     if (!description.trim()) {
-      return setError(t('workspace.disputeDescriptionRequired', { defaultValue: 'Vui lòng nhập mô tả chi tiết.' }));
+      validationMessages.push(t('workspace.disputeDescriptionRequired', { defaultValue: 'Vui lòng nhập mô tả chi tiết.' }));
     }
     if (!claimedAmount.trim() || !Number.isFinite(amount) || amount < 0) {
-      return setError(t('workspace.disputeClaimedAmountRequired', { defaultValue: 'Vui lòng nhập số tiền yêu cầu bồi thường hợp lệ.' }));
-    }
-    if (requiresPositiveAmount && amount <= 0) {
-      return setError(t('workspace.disputeClaimedAmountPositive', { defaultValue: 'Số tiền bồi thường phải lớn hơn 0.' }));
+      validationMessages.push(t('workspace.disputeClaimedAmountRequired', { defaultValue: 'Vui lòng nhập số tiền yêu cầu bồi thường hợp lệ.' }));
+    } else if (requiresPositiveAmount && amount <= 0) {
+      validationMessages.push(t('workspace.disputeClaimedAmountPositive', { defaultValue: 'Số tiền bồi thường phải lớn hơn 0.' }));
     }
     if (!requestedResolution.trim()) {
-      return setError(
+      validationMessages.push(
         t('workspace.disputeRequestedResolutionRequired', { defaultValue: 'Vui lòng nhập đề xuất giải pháp cho Admin.' })
       );
     }
     if (urgency === '') {
-      return setError(t('workspace.disputeUrgencyRequired', { defaultValue: 'Vui lòng chọn mức độ khẩn cấp.' }));
+      validationMessages.push(t('workspace.disputeUrgencyRequired', { defaultValue: 'Vui lòng chọn mức độ khẩn cấp.' }));
     }
     if (!declarationAccepted) {
-      return setError(
+      validationMessages.push(
         t('workspace.disputeDeclarationRequired', { defaultValue: 'Vui lòng xác nhận cam kết thông tin là sự thật.' })
       );
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('workspace.disputeEscalationFailed') });
+      if (!title.trim()) titleRef.current?.focus();
+      else if (!description.trim()) descriptionRef.current?.focus();
+      else if (!claimedAmount.trim() || !Number.isFinite(amount) || amount < 0 || (requiresPositiveAmount && amount <= 0)) amountRef.current?.focus();
+      else if (!requestedResolution.trim()) resolutionRef.current?.focus();
+      else if (urgency === '') document.querySelector<HTMLElement>('[data-dispute-urgency] button')?.focus();
+      else declarationRef.current?.focus();
+      return;
     }
 
     setError(null);
@@ -121,7 +140,12 @@ export function DisputeCreationModal({
       evidenceFiles,
     });
     if (!result.success || !result.disputeId) {
-      setError(result.message || t('workspace.disputeEscalationFailed', { defaultValue: 'Không thể tạo hồ sơ tranh chấp.' }));
+      const fallback = result.message || t('workspace.disputeEscalationFailed', { defaultValue: 'Không thể tạo hồ sơ tranh chấp.' });
+      if ([400, 409, 422].includes(result.statusCode ?? 0) || result.errors) {
+        showValidationToast(result, { fallback });
+      } else {
+        setError(fallback);
+      }
       return;
     }
     onCreated(result.disputeId);
@@ -231,7 +255,7 @@ export function DisputeCreationModal({
             <X size={16} />
           </button>
 
-          <form onSubmit={submit} className="flex flex-col gap-5 h-full">
+          <form onSubmit={submit} noValidate className="flex flex-col gap-5 h-full">
             {error && (
               <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-extrabold flex items-center gap-2.5 shadow-xs" role="alert">
                 <AlertCircle size={16} className="shrink-0" />
@@ -246,6 +270,7 @@ export function DisputeCreationModal({
               </label>
               <div className="relative bg-background rounded-xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <input
+                  ref={titleRef}
                   id="dispute-title-input"
                   value={title}
                   maxLength={200}
@@ -266,6 +291,7 @@ export function DisputeCreationModal({
               </div>
               <div className="relative bg-background rounded-xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <textarea
+                  ref={descriptionRef}
                   id="dispute-desc-textarea"
                   value={description}
                   maxLength={5000}
@@ -286,6 +312,7 @@ export function DisputeCreationModal({
                 </label>
                 <div className="relative bg-background rounded-xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                   <input
+                    ref={amountRef}
                     id="dispute-amount-input"
                     type="number"
                     min="0"
@@ -316,7 +343,7 @@ export function DisputeCreationModal({
             </div>
 
             {/* Requested Resolution Textarea */}
-            <div className="relative group space-y-1">
+              <div className="relative group space-y-1" data-dispute-urgency>
               <div className="flex items-center justify-between px-1">
                 <label htmlFor="dispute-resolution-textarea" className="block text-xs font-black uppercase tracking-wider text-text-muted">
                   {t('workspace.disputeRequestedResolution', { defaultValue: 'Yêu cầu Admin quyết định' })} <span className="text-destructive">*</span>
@@ -325,6 +352,7 @@ export function DisputeCreationModal({
               </div>
               <div className="relative bg-background rounded-xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <textarea
+                  ref={resolutionRef}
                   id="dispute-resolution-textarea"
                   value={requestedResolution}
                   maxLength={2000}
@@ -369,13 +397,16 @@ export function DisputeCreationModal({
                 files={evidenceFiles}
                 disabled={isSubmitting}
                 onChange={setEvidenceFiles}
-                onError={setError}
+                onError={message => {
+                  if (message) showValidationToast(message, { fallback: message });
+                }}
               />
             </div>
 
             {/* Truth Declaration Checkbox */}
             <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-surface-muted/40 border border-border/60 cursor-pointer text-xs font-bold text-text-primary hover:border-brand/30 transition">
               <input
+                ref={declarationRef}
                 type="checkbox"
                 checked={declarationAccepted}
                 onChange={e => setDeclarationAccepted(e.target.checked)}
@@ -403,7 +434,7 @@ export function DisputeCreationModal({
               <button
                 type="submit"
                 className="w-2/3 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black text-brand-foreground bg-brand hover:bg-brand-hover shadow-md hover:shadow-lg transition-all cursor-pointer group disabled:opacity-50"
-                disabled={isSubmitting || !declarationAccepted}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />

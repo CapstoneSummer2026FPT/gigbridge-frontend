@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { authAPI } from '../../api/authAPI';
 import { useTranslation } from '../../hooks/useTranslation';
+import { isValidationResponse, showValidationToast } from '../utils/validationToast';
 
 interface IdentityEmailVerificationProps {
   email: string;
@@ -25,11 +26,18 @@ export function IdentityEmailVerification({
   const [verifying, setVerifying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const otpInputRef = useRef<HTMLInputElement>(null);
   const normalizedIdentityCode = normalizeIdentityCode(identityCode);
   const identityIsValid = /^(?:\d{9}|\d{12})$/.test(normalizedIdentityCode);
 
   const sendCode = async () => {
-    if (!identityIsValid || !email) return;
+    const validationMessages: string[] = [];
+    if (!identityIsValid) validationMessages.push(t('settings:identityCodeInvalid'));
+    if (!email) validationMessages.push(t('validation.emailInvalid'));
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
+      return;
+    }
     setSending(true);
     setError(null);
     setMessage(null);
@@ -39,7 +47,9 @@ export function IdentityEmailVerification({
     });
     setSending(false);
     if (!response.success) {
-      setError(response.message || t('settings:identityVerificationSendError'));
+      const fallback = response.message || t('settings:identityVerificationSendError');
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
       return;
     }
     setCodeSent(true);
@@ -47,7 +57,14 @@ export function IdentityEmailVerification({
   };
 
   const verifyCode = async () => {
-    if (!identityIsValid || !/^\d{6}$/.test(otp)) return;
+    const validationMessages: string[] = [];
+    if (!identityIsValid) validationMessages.push(t('settings:identityCodeInvalid'));
+    if (!/^\d{6}$/.test(otp)) validationMessages.push(t('settings:identityVerificationInvalid'));
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('validation.invalidFormat') });
+      otpInputRef.current?.focus();
+      return;
+    }
     setVerifying(true);
     setError(null);
     const response = await authAPI.verifyOtp({
@@ -59,7 +76,9 @@ export function IdentityEmailVerification({
     setVerifying(false);
     const ticket = response.data?.verificationTicket;
     if (!response.success || !ticket) {
-      setError(response.message || t('settings:identityVerificationInvalid'));
+      const fallback = response.message || t('settings:identityVerificationInvalid');
+      if (isValidationResponse(response)) showValidationToast(response, { fallback });
+      else setError(fallback);
       return;
     }
     onVerified(ticket);
@@ -80,6 +99,7 @@ export function IdentityEmailVerification({
       <div className="flex flex-wrap gap-2">
         {codeSent && (
           <input
+            ref={otpInputRef}
             value={otp}
             onChange={event => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
             inputMode="numeric"
@@ -92,7 +112,7 @@ export function IdentityEmailVerification({
         <button
           type="button"
           onClick={() => void (codeSent ? verifyCode() : sendCode())}
-          disabled={!identityIsValid || sending || verifying || (codeSent && otp.length !== 6)}
+          disabled={sending || verifying}
           className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--brand,#494be7)] px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {sending || verifying ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}

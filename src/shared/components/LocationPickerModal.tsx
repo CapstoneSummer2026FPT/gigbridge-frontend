@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { MapPin, Navigation, Search, X, Loader2, Check, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { showValidationToast } from '../utils/validationToast';
 import './styles/location-picker.css';
 
 declare global {
@@ -50,6 +51,7 @@ export function LocationPickerModal({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerInstanceRef = useRef<any>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const leafletLoadedRef = useRef<boolean>(false);
 
   // Dynamic portal positioning calculation
@@ -358,7 +360,10 @@ export function LocationPickerModal({
   const handleApplyLocation = () => {
     const locationToApply = selectedAddress || searchText;
     if (!locationToApply.trim()) {
-      toast.error('Please select or enter a valid location.');
+      showValidationToast('Please select or enter a valid location.', {
+        fallback: 'Please select or enter a valid location.',
+      });
+      searchInputRef.current?.focus();
       return;
     }
     onSelect(locationToApply.trim());
@@ -422,10 +427,11 @@ export function LocationPickerModal({
               {/* Body */}
               <div className="lpm-body space-y-3">
                 {/* Search Input + GPS Button */}
-                <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 relative">
+                <form onSubmit={handleSearchSubmit} noValidate className="flex items-center gap-2 relative">
                   <div className="relative flex-1">
                     <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                     <input
+                      ref={searchInputRef}
                       type="text"
                       value={searchText}
                       onChange={(e) => setSearchText(e.target.value)}

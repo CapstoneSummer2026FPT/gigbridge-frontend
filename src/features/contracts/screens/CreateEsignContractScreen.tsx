@@ -11,6 +11,7 @@ import type { CreateContractDto } from '../../../types/models/Contract';
 import '../styles/create-esign-contract-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 interface ContractMilestoneDraft {
   title: string;
@@ -168,12 +169,21 @@ export default function CreateEsignContractScreen() {
     }
 
     setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    const firstInvalidField = Object.keys(errors)[0];
+    if (firstInvalidField) {
+      showValidationToast(Object.values(errors), { fallback: 'Please review the contract details' });
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(`[data-contract-field="${firstInvalidField}"]`)?.focus();
+      });
+      return false;
+    }
+
+    return true;
   };
 
   const handleGeneratePdf = async () => {
     if (!contractCreated) {
-      setError('Contract must be created first');
+      showValidationToast('Contract must be created first', { fallback: 'Contract must be created first' });
       return;
     }
 
@@ -221,6 +231,8 @@ export default function CreateEsignContractScreen() {
         });
         setSuccess('Contract created successfully');
         setStep('terms');
+      } else if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: 'Failed to create contract' });
       } else {
         setError('Failed to create contract');
       }
@@ -263,7 +275,7 @@ export default function CreateEsignContractScreen() {
     }
   };
 
-  const handleInputChange = (field: keyof CreateContractDto, value: any) => {
+  const handleInputChange = <K extends keyof CreateContractDto>(field: K, value: CreateContractDto[K]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -416,29 +428,29 @@ export default function CreateEsignContractScreen() {
             <div className="contract-section">
               <h2>{t('contracts.contractTerms')}</h2>
 
-              <form className="contract-form">
+              <form className="contract-form" noValidate>
                 <div className="form-group">
                   <label>{t('contracts.contractTitle')}</label>
                   <input
+                    data-contract-field="title"
                     type="text"
                     value={formData.title}
                     onChange={e => handleInputChange('title', e.target.value)}
                     placeholder="e.g., Web Development Project"
                     maxLength={255}
                   />
-                  {validationErrors.title && <span className="form-error">{validationErrors.title}</span>}
                   <span className="form-hint">{formData.title.length}/255 {t('contracts.characters')}</span>
                 </div>
 
                 <div className="form-group">
                   <label>{t('contracts.scope')}</label>
                   <textarea
+                    data-contract-field="description"
                     value={formData.description}
                     onChange={e => handleInputChange('description', e.target.value)}
                     placeholder="Define deliverables, boundaries, acceptance criteria, and responsibilities..."
                     rows={4}
                   />
-                  {validationErrors.description && <span className="form-error">{validationErrors.description}</span>}
                 </div>
 
                 <div className="form-row">
@@ -447,6 +459,7 @@ export default function CreateEsignContractScreen() {
                     <div className="input-with-prefix">
                       <span>$</span>
                       <input
+                        data-contract-field="totalBudget"
                         type="number"
                         value={formData.totalBudget}
                         onChange={e => handleInputChange('totalBudget', parseFloat(e.target.value) || 0)}
@@ -455,7 +468,6 @@ export default function CreateEsignContractScreen() {
                         step="0.01"
                       />
                     </div>
-                    {validationErrors.totalBudget && <span className="form-error">{validationErrors.totalBudget}</span>}
                   </div>
                 </div>
 
@@ -463,36 +475,40 @@ export default function CreateEsignContractScreen() {
                   <div className="form-group">
                     <label>{t('contracts.startDate')}</label>
                     <input
+                      data-contract-field="startDate"
                       type="date"
                       value={formData.startDate}
                       onChange={e => handleInputChange('startDate', e.target.value)}
                     />
-                    {validationErrors.startDate && <span className="form-error">{validationErrors.startDate}</span>}
                   </div>
 
                   <div className="form-group">
                     <label>{t('contracts.endDateOptional')}</label>
                     <input
+                      data-contract-field="endDate"
                       type="date"
                       value={formData.endDate}
                       onChange={e => handleInputChange('endDate', e.target.value)}
                     />
-                    {validationErrors.endDate && <span className="form-error">{validationErrors.endDate}</span>}
                   </div>
                 </div>
 
                 <div className="form-group">
                   <label>{t('contracts.paymentTerms')}</label>
                   <textarea
+                    data-contract-field="paymentTerms"
                     value={paymentTerms}
                     onChange={e => setPaymentTerms(e.target.value)}
                     placeholder="Describe escrow funding, approval, release, and revision rules..."
                     rows={3}
                   />
-                  {validationErrors.paymentTerms && <span className="form-error">{validationErrors.paymentTerms}</span>}
                 </div>
 
-                <div className="contract-milestone-editor">
+                <div
+                  className="contract-milestone-editor"
+                  data-contract-field="milestones"
+                  tabIndex={-1}
+                >
                   <div className="milestone-editor-header">
                     <div>
                       <h3>{t('contracts.milestones')}</h3>
@@ -510,18 +526,18 @@ export default function CreateEsignContractScreen() {
                     </button>
                   </div>
 
-                  {validationErrors.milestones && <span className="form-error">{validationErrors.milestones}</span>}
-
                   <div className="milestone-draft-list">
                     {milestoneDrafts.map((milestone, index) => (
                       <div className="milestone-draft-row" key={`milestone-draft-${index}`}>
                         <input
+                          data-contract-field={`milestoneTitle${index}`}
                           type="text"
                           value={milestone.title}
                           onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, title: e.target.value } : item))}
                           placeholder={t('contracts.milestoneTitle')}
                         />
                         <input
+                          data-contract-field={`milestoneAmount${index}`}
                           type="number"
                           value={milestone.amount}
                           onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, amount: parseFloat(e.target.value) || 0 } : item))}
@@ -529,6 +545,7 @@ export default function CreateEsignContractScreen() {
                           placeholder={t('contracts.amount')}
                         />
                         <input
+                          data-contract-field={`milestoneDueDate${index}`}
                           type="date"
                           value={milestone.dueDate}
                           onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, dueDate: e.target.value } : item))}

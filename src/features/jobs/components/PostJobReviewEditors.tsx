@@ -217,9 +217,9 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
   const {
     form,
     milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
-    expandedMilestone, setExpandedMilestone, questions, setQuestions,
+    expandedMilestone, setExpandedMilestone, questions, addQuestion, deleteQuestion,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver,
-    handleDragEnd, MAX_QUESTION_LENGTH,
+    handleDragEnd, MAX_QUESTION_LENGTH, undoDeleteController,
   } = controller;
 
   return (
@@ -241,6 +241,7 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
         expandedIndex={expandedMilestone}
         onExpandedChange={setExpandedMilestone}
         errors={milestoneErrors}
+        undoDeleteController={undoDeleteController}
         durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
         workItemDurationUnits={WORK_ITEM_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
         uiCopy={{
@@ -298,7 +299,7 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
         </div>
         {questions.map((question, index) => (
           <article
-            key={index}
+            key={question.clientId}
             draggable
             onDragStart={event => handleDragStart(event, index)}
             onDragOver={event => handleDragOver(event, index)}
@@ -315,7 +316,7 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
                   questionNumber={index + 1}
                   onChange={isRequired => updateQuestion(index, { isRequired })}
                 />
-                <button type="button" onClick={() => setQuestions(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={t('postJob.deleteQuestion')}><Trash2 size={14} /></button>
+                <button type="button" onClick={() => deleteQuestion(index)} aria-label={t('postJob.deleteQuestion')}><Trash2 size={14} /></button>
               </div>
             </div>
             <textarea
@@ -331,7 +332,7 @@ export function PostJobHiringPlanReviewEditor({ controller }: EditorProps) {
           </article>
         ))}
         {questions.length === 0 && <p className="rounded-xl border border-dashed border-border p-7 text-center text-xs text-muted-foreground">{t('postJob.noQuestions')}</p>}
-        <button type="button" className="job-post-button job-post-button--secondary w-full" onClick={() => setQuestions(current => [...current, { questionText: '', isRequired: true }])}>
+        <button type="button" className="job-post-button job-post-button--secondary w-full" onClick={() => addQuestion()}>
           <Plus size={15} />{t('postJob.addQuestion')}
         </button>
       </div>

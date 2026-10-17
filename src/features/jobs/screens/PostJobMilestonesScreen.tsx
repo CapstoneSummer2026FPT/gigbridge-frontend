@@ -29,7 +29,7 @@ export default function PostJobMilestonesScreen() {
   const {
     form, previewTitle, errorMessage, isDraftInitializing, draftError,
     milestonePlans, milestonePlansWithDeadlines, setMilestonePlans, milestoneErrors, setMilestoneErrors,
-    expandedMilestones, setExpandedMilestones, questions, setQuestions,
+    expandedMilestones, setExpandedMilestones, questions, addQuestion, deleteQuestion,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver, handleDragEnd,
     MAX_QUESTION_LENGTH, milestonePlanTotal, milestoneTotalWeeks, expectedDurationWeeks,
     isBudgetExceeded, isDurationExceeded, isActionDisabled,
@@ -38,6 +38,7 @@ export default function PostJobMilestonesScreen() {
     submitDraftFlow, renderSubmitLabel, retryAutosave, navigateWizard,
     isBudgetExceededPromptOpen, handleBudgetExceededConfirm, handleBudgetExceededCancel,
     hasAiInterview, setHasAiInterview,
+    undoDeleteController,
   } = usePostJob();
 
   const questionCount = questions.filter(question => question.questionText.trim()).length;
@@ -188,6 +189,7 @@ export default function PostJobMilestonesScreen() {
               expandedIndexes={expandedMilestones}
               onExpandedIndexesChange={setExpandedMilestones}
               errors={milestoneErrors}
+              undoDeleteController={undoDeleteController}
               durationUnits={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
               workItemDurationUnits={WORK_ITEM_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
               uiCopy={{
@@ -342,7 +344,7 @@ export default function PostJobMilestonesScreen() {
                   <button
                     type="button"
                     key={idx}
-                    onClick={() => setQuestions(current => [...current, { questionText: preset, isRequired: true }])}
+                    onClick={() => addQuestion(preset)}
                     className="text-left text-xs font-bold rounded-xl border border-border/80 bg-card px-3.5 py-2 text-foreground hover:border-[var(--brand)] hover:text-[var(--brand)] hover:shadow-xs transition-all cursor-pointer"
                   >
                     + {preset}
@@ -354,7 +356,7 @@ export default function PostJobMilestonesScreen() {
             {/* Questions List */}
             {questions.map((question, index) => (
               <article
-                key={index}
+                key={question.clientId}
                 draggable
                 onDragStart={event => handleDragStart(event, index)}
                 onDragOver={event => handleDragOver(event, index)}
@@ -379,7 +381,7 @@ export default function PostJobMilestonesScreen() {
                     />
                     <button
                       type="button"
-                      onClick={() => setQuestions(current => current.filter((_, itemIndex) => itemIndex !== index))}
+                      onClick={() => deleteQuestion(index)}
                       aria-label={t('postJob.deleteQuestion', 'Xóa câu hỏi')}
                       className="rounded-lg p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
                     >
@@ -414,7 +416,7 @@ export default function PostJobMilestonesScreen() {
             <button
               type="button"
               className="w-full rounded-2xl border-2 border-dashed border-[var(--brand)]/40 bg-[var(--brand)]/5 py-3.5 font-extrabold text-xs text-[var(--brand)] hover:border-[var(--brand)] hover:bg-[var(--brand)]/10 transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-              onClick={() => setQuestions(current => [...current, { questionText: '', isRequired: true }])}
+              onClick={() => addQuestion()}
             >
               <Plus size={16} />{t('postJob.addQuestion', 'Thêm câu hỏi mới')}
             </button>

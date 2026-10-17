@@ -29,6 +29,15 @@
     "yes": "Yes",
     "no": "No"
   },
+  "installApp": {
+    "title": "Install GigBridge",
+    "description": "Add it to your home screen to use it like an app",
+    "action": "Install",
+    "dismiss": "Not now",
+    "iosTitle": "Install GigBridge on iPhone",
+    "iosStep1": "1. Tap the Share button",
+    "iosStep2": "2. Choose \"Add to Home Screen\""
+  },
   "fileUploadProgress": {
     "uploading": "Uploading files...",
     "uploadingPercent": "Uploading files... {{percent}}%",
@@ -77,8 +86,7 @@
     },
     "contractReports": "Contract Reports",
     "contractsEsign": "Contracts & E-sign",
-    "esign": "E-sign Agreements",
-    "assets": "Assets & Deliverables"
+    "esign": "E-sign Agreements"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -409,11 +417,29 @@
       "startAction": "Start AI interview",
       "continueAction": "Continue AI interview"
     },
+    "placeholder": {
+      "skipped": "[Skipped]",
+      "timedOut": "[Timed out]",
+      "noAnswer": "[No answer provided]"
+    },
+    "timer": {
+      "critical": "Almost out of time (3 mins)! Your answer will automatically submit at 00:00.",
+      "warning": "Under 30 seconds remaining for this question! Please wrap up your answer.",
+      "expired": "3-minute time limit reached! Moving to the next question."
+    },
+    "tips": {
+      "quietRoomShort": "💡 Tip: Interview in a quiet room so GigBridge AI can transcribe your voice accurately."
+    },
+    "badge": {
+      "required": "Required",
+      "optional": "Optional"
+    },
     "actions": {
       "start": "Start AI Interview",
       "starting": "Starting interview…",
       "browseToChoose": "Browse jobs to choose an interview role",
       "answerQuestion": "Answer question",
+      "skipQuestion": "Skip Question",
       "retryAudio": "Retry question audio",
       "hearAgain": "Hear question again",
       "cancel": "Cancel",
@@ -425,6 +451,7 @@
       "goToProposals": "Go to proposals"
     },
     "errors": {
+      "questionRequired": "This question is required. Please provide an answer before proceeding.",
       "chooseJob": "Choose a job before starting an AI interview.",
       "startFailed": "The AI interview could not be started. Please try again.",
       "noQuestions": "Cannot start AI interview. Because this job post does not have interview questions.",
@@ -888,6 +915,16 @@
     "confirmCloseDesc": "Are you sure you want to close job post \"{{title}}\"? Once closed, freelancers will no longer be able to submit new proposals.",
     "confirmCancelTitle": "Confirm cancelling job post",
     "confirmCancelDesc": "Are you sure you want to cancel job post \"{{title}}\"? Cancelling a job post cannot be undone."
+  },
+  "undoDelete": {
+    "action": "Undo",
+    "milestoneDeleted": "Milestone “{{name}}” deleted.",
+    "workItemDeleted": "Work item “{{name}}” deleted.",
+    "questionDeleted": "Interview question “{{name}}” deleted.",
+    "untitledMilestone": "Untitled milestone",
+    "untitledWorkItem": "Untitled work item",
+    "untitledQuestion": "Untitled question",
+    "autoDeleteIn": "Auto-deleting in {{seconds}}s"
   },
   "aiJobGeneratedModal": {
     "title": "AI Job Post Generated",

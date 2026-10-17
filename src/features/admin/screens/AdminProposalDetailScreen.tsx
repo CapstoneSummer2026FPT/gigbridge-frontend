@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -18,6 +18,7 @@ import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { adminPatchAPI } from '../../../api/adminAPI/PATCH';
 import { adminPostAPI } from '../../../api/adminAPI/POST';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { AdminProposalDetail } from '../../../types/models/AdminProposal';
 import {
@@ -129,6 +130,8 @@ export default function AdminProposalDetailScreen() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
     if (!proposalId) {
@@ -168,6 +171,15 @@ export default function AdminProposalDetailScreen() {
 
   const apply = async () => {
     if (!action || !proposalId) return;
+    const requiredValue = action === 'note' ? note : reason;
+    if (!requiredValue.trim()) {
+      showValidationToast(action === 'note' ? 'Enter an internal note.' : 'Enter a moderation reason.', {
+        fallback: 'Complete the required field.',
+      });
+      if (action === 'note') noteRef.current?.focus();
+      else reasonRef.current?.focus();
+      return;
+    }
     setBusy(true);
     setActionError('');
 
@@ -182,7 +194,13 @@ export default function AdminProposalDetailScreen() {
         setData(response.data);
         closeAction();
       } else {
-        setActionError(response.statusCode === 409 ? `Conflict: ${response.message}` : response.message || 'The action could not be completed.');
+        if (isValidationResponse(response)) {
+          showValidationToast(response, { fallback: response.message || 'The action could not be completed.' });
+          if (action === 'note') noteRef.current?.focus();
+          else reasonRef.current?.focus();
+        } else {
+          setActionError(response.statusCode === 409 ? `Conflict: ${response.message}` : response.message || 'The action could not be completed.');
+        }
       }
     } catch {
       setActionError('The action could not be completed. Please try again.');
@@ -569,8 +587,8 @@ export default function AdminProposalDetailScreen() {
             </header>
 
             <div className="space-y-3">
-              {action !== 'note' && <textarea className="input-gb w-full min-h-28 text-sm" autoFocus aria-label="Moderation reason" placeholder="Required reason" value={reason} onChange={event => setReason(event.target.value)} />}
-              <textarea className="input-gb w-full min-h-28 text-sm" autoFocus={action === 'note'} aria-label="Internal note" placeholder={action === 'note' ? 'Required private note' : 'Optional private note'} value={note} onChange={event => setNote(event.target.value)} />
+              {action !== 'note' && <textarea ref={reasonRef} className="input-gb w-full min-h-28 text-sm" autoFocus aria-invalid={!reason.trim()} aria-label="Moderation reason" placeholder="Required reason" value={reason} onChange={event => setReason(event.target.value)} />}
+              <textarea ref={noteRef} className="input-gb w-full min-h-28 text-sm" autoFocus={action === 'note'} aria-invalid={action === 'note' && !note.trim()} aria-label="Internal note" placeholder={action === 'note' ? 'Required private note' : 'Optional private note'} value={note} onChange={event => setNote(event.target.value)} />
             </div>
 
             {actionError && <p className="mt-3 rounded-lg border border-red/30 bg-red/5 p-3 text-sm text-red" role="alert">{actionError}</p>}
@@ -578,7 +596,7 @@ export default function AdminProposalDetailScreen() {
             <div className="flex justify-end gap-3 mt-5">
               <button className="glass-button px-4 py-2 rounded-lg text-sm text-secondary" onClick={closeAction}>Cancel</button>
               <button
-                disabled={busy || (action === 'note' ? !note.trim() : !reason.trim())}
+                disabled={busy}
                 className={`${action === 'invalidate' ? 'btn-red' : 'btn-cyan'} px-5 py-2 text-sm disabled:opacity-50`}
                 onClick={() => void apply()}
               >

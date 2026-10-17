@@ -40,6 +40,7 @@ import {
   FileUploadProgress,
   type FileUploadPhase,
 } from '../../../shared/components/FileUploadProgress';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 export default function ProjectWorkspaceScreen() {
   const { t } = useTranslation();
@@ -102,6 +103,8 @@ export default function ProjectWorkspaceScreen() {
   const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const withdrawalRequestInFlightRef = useRef(false);
   const productFileInputRef = useRef<HTMLInputElement>(null);
+  const productLinkInputRef = useRef<HTMLInputElement>(null);
+  const productNoteInputRef = useRef<HTMLTextAreaElement>(null);
 
   const {
     isWorkspaceLoading,
@@ -310,7 +313,8 @@ export default function ProjectWorkspaceScreen() {
 
     if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
       setProductFile(null);
-      setProductError(t('workspace.fileSizeValidationError'));
+      const message = t('workspace.fileSizeValidationError');
+      showValidationToast(message, { fallback: message });
       if (productFileInputRef.current) {
         productFileInputRef.current.value = '';
       }
@@ -325,15 +329,14 @@ export default function ProjectWorkspaceScreen() {
 
     const trimmedNote = productNote.trim();
     const trimmedLink = productLink.trim();
+    const validationMessages: string[] = [];
 
     if (trimmedNote.length > 2000) {
-      setProductError(t('workspace.noteMaxLengthError'));
-      return;
+      validationMessages.push(t('workspace.noteMaxLengthError'));
     }
 
     if (productMode === 'file' && !productFile) {
-      setProductError(t('workspace.chooseFileBeforeSendError'));
-      return;
+      validationMessages.push(t('workspace.chooseFileBeforeSendError'));
     }
 
     if (productMode === 'link') {
@@ -343,9 +346,16 @@ export default function ProjectWorkspaceScreen() {
           throw new Error(t('workspace.invalidUrlProtocolError'));
         }
       } catch {
-        setProductError(t('workspace.enterValidHttpLinkError'));
-        return;
+        validationMessages.push(t('workspace.enterValidHttpLinkError'));
       }
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('workspace.failedSendMaterialsError') });
+      if (trimmedNote.length > 2000) productNoteInputRef.current?.focus();
+      else if (productMode === 'file') productFileInputRef.current?.focus();
+      else productLinkInputRef.current?.focus();
+      return;
     }
 
     const submittedMode = productMode;
@@ -379,7 +389,11 @@ export default function ProjectWorkspaceScreen() {
             : result.transportError === 'network'
               ? t('fileUploadError.network')
               : result.message || t('workspace.failedSendMaterialsError');
-        setProductError(failureMessage);
+        if ([400, 409, 422].includes(result.statusCode ?? 0)) {
+          showValidationToast(result, { fallback: failureMessage });
+        } else {
+          setProductError(failureMessage);
+        }
         setProductSubmissionPhase('idle');
         setProductUploadProgress(null);
         return;
@@ -516,7 +530,12 @@ export default function ProjectWorkspaceScreen() {
       }
 
       const response = await createReport(workspaceContractId, input);
-      return { success: response.success, message: response.message };
+      return {
+        success: response.success,
+        message: response.message,
+        statusCode: response.statusCode,
+        errors: response.errors,
+      };
     },
     [createReport, t, workspaceContractId],
   );
@@ -553,7 +572,12 @@ export default function ProjectWorkspaceScreen() {
       }
 
       const response = await respondToReport(workspaceContractId, viewReportId, input);
-      return { success: response.success, message: response.message };
+      return {
+        success: response.success,
+        message: response.message,
+        statusCode: response.statusCode,
+        errors: response.errors,
+      };
     },
     [respondToReport, t, viewReportId, workspaceContractId],
   );
@@ -565,7 +589,12 @@ export default function ProjectWorkspaceScreen() {
       }
 
       const response = await confirmResolution(workspaceContractId, viewReportId, isAccepted);
-      return { success: response.success, message: response.message };
+      return {
+        success: response.success,
+        message: response.message,
+        statusCode: response.statusCode,
+        errors: response.errors,
+      };
     },
     [confirmResolution, t, viewReportId, workspaceContractId],
   );
@@ -580,6 +609,8 @@ export default function ProjectWorkspaceScreen() {
       success: response.success,
       message: response.message,
       disputeId: response.data?.id,
+      statusCode: response.statusCode,
+      errors: response.errors,
     };
   }, [escalateToDispute, selectedReport, t, workspaceContractId]);
 
@@ -922,7 +953,7 @@ export default function ProjectWorkspaceScreen() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSendProductMaterials} className="p-6 space-y-5">
+            <form onSubmit={handleSendProductMaterials} noValidate className="p-6 space-y-5">
               {productError && (
                 <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
                   <AlertCircle size={16} className="shrink-0" />
@@ -1030,6 +1061,7 @@ export default function ProjectWorkspaceScreen() {
                     {t('workspace.workMaterialLinkField')} <span className="text-destructive">*</span>
                   </label>
                   <input
+                    ref={productLinkInputRef}
                     id="workspace-product-link"
                     type="url"
                     value={productLink ?? ''}
@@ -1050,6 +1082,7 @@ export default function ProjectWorkspaceScreen() {
                   <span className="text-[10px] font-bold text-text-muted">{(productNote ?? '').length}/2000</span>
                 </div>
                 <textarea
+                  ref={productNoteInputRef}
                   id="workspace-product-note"
                   value={productNote ?? ''}
                   onChange={(event) => setProductNote(event.target.value)}
@@ -1083,11 +1116,7 @@ export default function ProjectWorkspaceScreen() {
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    isSendingProduct ||
-                    (productMode === 'file' && !productFile) ||
-                    (productMode === 'link' && !productLink.trim())
-                  }
+                  disabled={isSendingProduct}
                   className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-brand-foreground text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer"
                 >
                   {isSendingProduct ? (
@@ -1191,12 +1220,18 @@ function WorkspacePromptModal({
 }: WorkspacePromptModalProps) {
   const [value, setValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const valueInputRef = useRef<HTMLTextAreaElement>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (required && !value.trim()) return;
+    if (required && !value.trim()) {
+      const message = placeholder || 'Please enter the required information.';
+      showValidationToast(message, { fallback: message });
+      valueInputRef.current?.focus();
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onConfirm(value.trim());
@@ -1224,8 +1259,9 @@ function WorkspacePromptModal({
           </button>
         </div>
         {description && <p className="text-xs text-muted-foreground mb-4">{description}</p>}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <textarea
+            ref={valueInputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder || 'Enter details...'}
@@ -1244,7 +1280,7 @@ function WorkspacePromptModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || (required && !value.trim())}
+              disabled={isSubmitting}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 ${btnColor}`}
             >
               {isSubmitting && <Loader2 size={14} className="animate-spin" />}

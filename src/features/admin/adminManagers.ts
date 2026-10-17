@@ -8,7 +8,6 @@ import {
   Flag,
   HelpCircle,
   History,
-  Layers,
   LayoutDashboard,
   Shield,
   ShieldAlert,
@@ -63,13 +62,11 @@ export const ADMIN_MANAGERS: readonly AdminManagerDefinition[] = [
   { id: 'users', labelKey: 'nav.allUsers', fallbackLabel: 'Quản Lý Người Dùng', descriptionKey: 'adminDashboard.descriptions.users', fallbackDescription: 'Review profiles, access, reports, and enforcement history', path: '/admin/users', icon: Users, group: 'users', showInNavigation: true, showOnDashboard: true },
   { id: 'elo-history', labelKey: 'adminElo.navHistory', fallbackLabel: 'Lịch Sử Điểm Elo', descriptionKey: 'adminDashboard.descriptions.eloHistory', fallbackDescription: 'Inspect every Elo transaction across the platform', path: '/admin/elo/history', icon: History, group: 'users', showInNavigation: true, showOnDashboard: true },
 
-  // 3. Marketplace Workflows (Job -> Proposal -> Contract & E-sign -> Deliverable)
+  // 3. Marketplace Workflows (Job -> Proposal -> Contract & E-sign)
   { id: 'jobs', labelKey: 'nav.jobPosts', fallbackLabel: 'Bài Đăng Việc Làm', descriptionKey: 'adminDashboard.descriptions.jobs', fallbackDescription: 'Review job posts and their moderation state', path: '/admin/jobs', icon: Briefcase, group: 'marketplace', showInNavigation: true, showOnDashboard: true },
   { id: 'proposals', labelKey: 'nav.proposals', fallbackLabel: 'Đề Xuất Ứng Tuyển', descriptionKey: 'adminDashboard.descriptions.proposals', fallbackDescription: 'Inspect proposal lifecycle and moderation records', path: '/admin/proposals', icon: FileText, group: 'marketplace', showInNavigation: true, showOnDashboard: true },
   { id: 'contracts', labelKey: 'adminNav.contractsEsign', fallbackLabel: 'Hợp Đồng & Ký Điện Tử', descriptionKey: 'adminDashboard.descriptions.contracts', fallbackDescription: 'Inspect contract, milestone, escrow, and e-sign workflows', path: '/admin/contracts', icon: FileCheck2, group: 'marketplace', showInNavigation: true, showOnDashboard: true },
   { id: 'esign', labelKey: 'adminNav.esign', fallbackLabel: 'Ký Kết Điện Tử', descriptionKey: 'adminDashboard.descriptions.esign', fallbackDescription: 'Review electronic agreement and signature state', path: '/admin/contracts/esign', icon: FileText, group: 'marketplace', showInNavigation: false, showOnDashboard: false },
-  { id: 'assets', labelKey: 'adminNav.assets', fallbackLabel: 'Sản Phẩm Bàn Giao', descriptionKey: 'adminDashboard.descriptions.assets', fallbackDescription: 'Inspect platform deliverables and handoff assets', path: '/admin/assets', icon: Layers, group: 'marketplace', showInNavigation: true, showOnDashboard: true },
-
   // 4. Financial Operations (empty / removed)
 
   // 5. Moderation, Disputes & Reputation

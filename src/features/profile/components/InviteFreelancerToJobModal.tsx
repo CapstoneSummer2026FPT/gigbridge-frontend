@@ -7,6 +7,7 @@ import { jobInvitationAPI } from '../../../api/jobInvitationAPI';
 import { JobPostStatus, type GetMyJobPostDto } from '../../../types/models/Job';
 import type { JobInvitationDto } from '../../../types/jobInvitation';
 import '../styles/invite-freelancer-modal.css';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 export interface InviteFreelancerData {
   freelancerId: string;
@@ -144,7 +145,10 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
     setError('');
 
     if (!hasValidJobs) {
-      setError('Please select at least one job that has not already been invited.');
+      showValidationToast('Please select at least one job that has not already been invited.', {
+        fallback: 'Please select a valid job.',
+      });
+      contentRef.current?.focus();
       return;
     }
 
@@ -160,7 +164,7 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
       const createdJobIds = result.created.map(getInvitationJobPostId).filter(Boolean);
       if (createdJobIds.length === 0) {
         const reason = result.skipped[0]?.reason || 'No invitations were sent.';
-        setError(reason);
+        showValidationToast(reason, { fallback: 'No invitations were sent.' });
         return;
       }
 
@@ -249,7 +253,7 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
           )}
         </AnimatePresence>
 
-        <div className="invite-freelancer-content-grid" ref={contentRef}>
+        <div className="invite-freelancer-content-grid" ref={contentRef} tabIndex={-1}>
           <div className="invite-grid-col">
             <section className="invite-section">
               <h3 className="invite-section-title">Freelancer Information</h3>

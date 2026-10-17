@@ -7,6 +7,14 @@ import "./styles/index.css";
 registerChunkLoadRecovery();
 const sentryEnabled = initializeSentry();
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Installability degrades gracefully without a service worker.
+    });
+  });
+}
+
 const application = sentryEnabled ? (
   <Sentry.ErrorBoundary
     fallback={({ resetError }) => (

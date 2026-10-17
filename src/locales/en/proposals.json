@@ -135,6 +135,44 @@
     "continueInterview": "Continue Interview",
     "skipAndContinue": "Skip & Continue"
   },
+  "proposalStepper": {
+    "label": "Proposal submission steps",
+    "details": "1. Proposal details",
+    "interview": "2. Interview questions",
+    "review": "3. Review & submit",
+    "skipped": "Skipped",
+    "goToReview": "Go to review"
+  },
+  "proposalSubmitReview": {
+    "eyebrow": "Step 3 of 3",
+    "title": "Review & submit your proposal",
+    "subtitle": "Project request",
+    "loading": "Loading your proposal...",
+    "backToProposals": "Back to My Proposals",
+    "detailsSectionTitle": "Proposal details",
+    "interviewSectionTitle": "Interview questions & answers",
+    "readOnlyAnswers": "Read-only",
+    "editDetails": "Edit",
+    "doneEdit": "Done",
+    "cancelEdit": "Cancel",
+    "notProvided": "Not provided",
+    "yourAnswer": "Your answer",
+    "loadingAnswers": "Loading your interview answers...",
+    "retry": "Try again",
+    "errLoadAnswers": "Interview questions could not be loaded.",
+    "errSubmit": "Your proposal could not be submitted. It is still saved as a draft.",
+    "noQuestionsTitle": "No interview questions",
+    "noQuestionsBody": "This project request did not include interview questions, so this step was skipped.",
+    "answerState": {
+      "answered": "Answered",
+      "timedOut": "Timed out",
+      "skipped": "Skipped"
+    },
+    "answerEmpty": {
+      "timedOut": "No answer was recorded before the timer ran out.",
+      "skipped": "This optional question was skipped or timed out."
+    }
+  },
   "proposalReview": {
     "titleWord1": "Proposal",
     "titleWord2": "Review",
@@ -390,6 +428,10 @@
     }
   },
   "createProposal": {
+    "continue": "Continue",
+    "saving": "Saving...",
+    "saveAndExit": "Save & Exit",
+    "errLoadQuestions": "Clarifying questions could not be loaded.",
     "newProposal": "New Proposal",
     "editProposal": "Edit Proposal",
     "submitProposalTitle": "Submit Your Proposal",

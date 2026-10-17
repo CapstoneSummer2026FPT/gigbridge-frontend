@@ -1,13 +1,17 @@
-import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { UserRole } from '../../../types/models/User';
+import { MilestoneStatus } from '../../../types/models/Contract';
+import { DeliveryLiveStatus } from '../components/DeliveryLiveStatus';
 import { MilestoneCompletedModal } from '../components/MilestoneCompletedModal';
 import { WorkItemDeliveryRow } from '../components/WorkItemDeliveryRow';
 import { WorkItemReviewRow } from '../components/WorkItemReviewRow';
+import { useDeliveryChangeToast } from '../hooks/useDeliveryChangeToast';
 import { useDeliverySpace } from '../hooks/useDeliverySpace';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 /**
  * The milestone's delivery ledger, shared by both parties.
@@ -25,9 +29,12 @@ const DeliverySpaceScreen = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [revisionReason, setRevisionReason] = useState('');
   const [isRevising, setIsRevising] = useState(false);
+  const revisionReasonRef = useRef<HTMLTextAreaElement>(null);
 
   const space = useDeliverySpace(contractId, milestoneId);
   const isClient = role === UserRole.Client;
+
+  useDeliveryChangeToast(space.remoteChange);
 
   const labels: Record<string, string> = {
     todo: t('contracts.workItemStatus.todo', 'To do'),
@@ -72,19 +79,46 @@ const DeliverySpaceScreen = () => {
   }
 
   const milestone = space.activeMilestone;
+  const isMilestoneComplete =
+    Number(milestone?.status) === MilestoneStatus.Completed ||
+    Number(milestone?.status) === MilestoneStatus.Approved ||
+    (space.workItems.length > 0 && space.deliveredCount === space.workItems.length);
 
   const runSubmit = async () => {
+    if (space.readyToSubmitIds.length === 0) {
+      showValidationToast('Attach a file to at least one work item before submitting.', {
+        fallback: 'Prepare at least one work item before submitting.',
+      });
+      return;
+    }
     const failure = await space.submitSelected();
-    setFeedback(failure ?? t('contracts.deliverySpace.submitSuccess', 'Deliverables submitted.'));
+    if (failure?.response && isValidationResponse(failure.response)) {
+      showValidationToast(failure.response, { fallback: failure.message });
+      return;
+    }
+    setFeedback(failure?.message ?? t('contracts.deliverySpace.submitSuccess', 'Deliverables submitted.'));
   };
 
   const runReview = async (approve: boolean) => {
+    const validationMessages: string[] = [];
+    if (space.selectedIds.length === 0) validationMessages.push('Select at least one work item.');
+    if (!approve && !revisionReason.trim()) validationMessages.push('Enter the requested revision details.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required review details.' });
+      if (!approve && !revisionReason.trim()) revisionReasonRef.current?.focus();
+      return;
+    }
     const failure = await space.reviewSelected(approve, revisionReason);
     if (!failure) {
       setRevisionReason('');
       setIsRevising(false);
     }
-    setFeedback(failure ?? t('contracts.deliverySpace.reviewSuccess', 'Review saved.'));
+    if (failure?.response && isValidationResponse(failure.response)) {
+      showValidationToast(failure.response, { fallback: failure.message });
+      if (!approve) revisionReasonRef.current?.focus();
+      return;
+    }
+    setFeedback(failure?.message ?? t('contracts.deliverySpace.reviewSuccess', 'Review saved.'));
   };
 
   return (
@@ -98,14 +132,22 @@ const DeliverySpaceScreen = () => {
         {t('contracts.deliverySpace.backToWorkspace', 'Back to workspace')}
       </button>
 
-      <header className="mb-5">
-        <h1 className="text-lg font-semibold text-slate-900">{milestone.title}</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {t('contracts.deliverySpace.progress', 'Approved')}: {space.deliveredCount}/{space.workItems.length}
-          {space.pendingReviewCount > 0
-            ? ` · ${space.pendingReviewCount} ${t('contracts.deliverySpace.awaitingReview', 'awaiting review')}`
-            : ''}
-        </p>
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-slate-900">{milestone.title}</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('contracts.deliverySpace.progress', 'Approved')}: {space.deliveredCount}/{space.workItems.length}
+            {space.pendingReviewCount > 0
+              ? ` · ${space.pendingReviewCount} ${t('contracts.deliverySpace.awaitingReview', 'awaiting review')}`
+              : ''}
+          </p>
+        </div>
+        <DeliveryLiveStatus
+          status={space.liveStatus}
+          lastSyncedAt={space.lastSyncedAt}
+          isSyncing={space.isSyncing}
+          onRefresh={space.refreshNow}
+        />
       </header>
 
       {/* A disputed contract rejects every submit and review server-side. Say so, rather than
@@ -149,7 +191,7 @@ const DeliverySpaceScreen = () => {
               labels={labels}
               onAttach={file => {
                 const failure = space.attachFile(workItem.workItemId, file);
-                if (failure) setFeedback(t(`workspace.${failure}FileError`, 'That file was rejected.'));
+                if (failure) showValidationToast(t(`workspace.${failure}FileError`, 'That file was rejected.'), { fallback: 'That file was rejected.' });
               }}
               onDetach={fileName => space.detachFile(workItem.workItemId, fileName)}
               onNoteChange={note => space.updateNote(workItem.workItemId, note)}
@@ -159,44 +201,93 @@ const DeliverySpaceScreen = () => {
 
       {space.usesWorkItems && !space.isDisputed ? (
         <div className="sticky bottom-0 mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
-          {isClient ? (
-            <div className="space-y-3">
-              {isRevising ? (
-                <textarea
-                  value={revisionReason}
-                  onChange={event => setRevisionReason(event.target.value)}
-                  rows={2}
-                  placeholder={t('contracts.deliverySpace.revisionReasonPlaceholder',
-                    'Explain what needs to change')}
-                  className="w-full rounded-lg border border-slate-200 p-2 text-sm"
-                />
-              ) : null}
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-sm text-slate-600">
-                  {space.selectedIds.length} {t('contracts.deliverySpace.selected', 'selected')}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={space.isBusy || space.selectedIds.length === 0 ||
-                      (isRevising && !revisionReason.trim())}
-                    onClick={() => (isRevising ? void runReview(false) : setIsRevising(true))}
-                    className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
-                  >
-                    {t('contracts.deliverySpace.requestRevision', 'Request revision')}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={space.isBusy || space.selectedIds.length === 0}
-                    onClick={() => void runReview(true)}
-                    className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {t('contracts.deliverySpace.approveSelected', 'Approve selected')}
-                  </button>
+          {isMilestoneComplete ? (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {t('contracts.deliverySpace.allDeliverablesApproved', 'All deliverables have been approved')}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {t('contracts.deliverySpace.milestoneFullyCompleted', 'This milestone is fully completed.')}
+                  </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                {t('common.close', 'Close')}
+              </button>
             </div>
+          ) : isClient ? (
+            space.pendingReviewCount === 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
+                    <Clock size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {t('contracts.deliverySpace.noItemsAwaitingReview', 'No deliverables are currently awaiting your review')}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {t('contracts.deliverySpace.awaitingFreelancerSubmissionHint', 'The freelancer is working and will submit deliverables here.')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  {t('common.close', 'Close')}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {isRevising ? (
+                  <textarea
+                    ref={revisionReasonRef}
+                    value={revisionReason}
+                    aria-invalid={!revisionReason.trim()}
+                    onChange={event => setRevisionReason(event.target.value)}
+                    rows={2}
+                    placeholder={t('contracts.deliverySpace.revisionReasonPlaceholder',
+                      'Explain what needs to change')}
+                    className="w-full rounded-lg border border-slate-200 p-2 text-sm"
+                  />
+                ) : null}
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm text-slate-600">
+                    {space.selectedIds.length} {t('contracts.deliverySpace.selected', 'selected')}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={space.isBusy || space.selectedIds.length === 0}
+                      onClick={() => (isRevising ? void runReview(false) : setIsRevising(true))}
+                      className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {t('contracts.deliverySpace.requestRevision', 'Request revision')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={space.isBusy || space.selectedIds.length === 0}
+                      onClick={() => void runReview(true)}
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {t('contracts.deliverySpace.approveSelected', 'Approve selected')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-slate-600">
@@ -207,7 +298,7 @@ const DeliverySpaceScreen = () => {
                 type="button"
                 disabled={space.isBusy || space.readyToSubmitIds.length === 0}
                 onClick={() => void runSubmit()}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t('contracts.deliverySpace.submitSelected', 'Submit selected')}
               </button>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
-import { onChatHubReconnected, retainChatHubConnection } from '../../../shared/realtime/chatHubConnection';
+import type { ApiResponse } from '../../../types/common';
 import {
   ContractStatus,
   MilestoneDeliveryMode,
@@ -12,6 +12,13 @@ import {
   type ContractWorkItem,
   type Milestone,
 } from '../../../types/models/Contract';
+import type { DeliveryRealtimePayload } from '../services/deliveryRealtime';
+import {
+  buildMilestoneSignature,
+  describeRemoteChange,
+  type DeliveryRemoteChange,
+} from '../utils/deliveryChanges';
+import { useDeliverySync } from './useDeliverySync';
 import {
   addFileToDraft,
   buildWorkItemSubmissionFormData,
@@ -32,19 +39,16 @@ export interface MilestoneCompletion {
   nextMilestoneTitle?: string | null;
 }
 
-interface RealtimePayload {
-  eventId?: string;
-  contractId?: string;
-  ContractId?: string;
-  milestoneId?: string;
-  MilestoneId?: string;
-  milestoneTitle?: string;
-  approvedAt?: string;
-  nextMilestoneTitle?: string | null;
+export interface DeliveryActionFailure {
+  message: string;
+  response?: ApiResponse<unknown>;
 }
 
-const readContractId = (payload?: RealtimePayload): string =>
-  payload ? String(payload.contractId ?? payload.ContractId ?? '') : '';
+/**
+ * Whether an update came from something this user just did or from the background. Only the
+ * background kind is announced — telling people what they themselves just clicked is noise.
+ */
+type DeliveryUpdateOrigin = 'local' | 'remote';
 
 /**
  * Picks the milestone the user most likely came to work on: the one named in the route, else the
@@ -83,13 +87,41 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
   const [isBusy, setIsBusy] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [completion, setCompletion] = useState<MilestoneCompletion | null>(null);
+  const [remoteChange, setRemoteChange] = useState<DeliveryRemoteChange | null>(null);
 
   // The same completion arrives twice — once in this browser's own HTTP response and once over
   // SignalR. Remembering which ones were handled keeps the modal to a single appearance without
   // making either transport authoritative, so it still works when one of them is unavailable.
   const handledCompletionsRef = useRef<Set<string>>(new Set());
-  const contractIdRef = useRef<string | undefined>(contractId);
-  contractIdRef.current = contractId;
+  const milestonesRef = useRef<Milestone[]>([]);
+  const signatureRef = useRef('');
+
+  /**
+   * The single place a fetched milestone list reaches state.
+   *
+   * Most refreshes return exactly what is already on screen — a poll on a quiet contract, or three
+   * overlapping signals for one action — so an unchanged snapshot is dropped before it can
+   * re-render the tree. A changed one that came from the background is also diffed, because the
+   * user needs to be told that the other party moved; their own action already told them.
+   */
+  const applyMilestones = useCallback((next: Milestone[], origin: DeliveryUpdateOrigin) => {
+    const signature = buildMilestoneSignature(next);
+    if (signature === signatureRef.current) return;
+
+    const previous = milestonesRef.current;
+    signatureRef.current = signature;
+    milestonesRef.current = next;
+    setMilestones(next);
+
+    // A selection made before the other party moved can name work items that no longer exist;
+    // acting on it could only produce a server-side rejection.
+    const liveIds = new Set(next.flatMap(milestone => milestone.workItems.map(item => item.workItemId)));
+    setSelectedIds(current => current.filter(id => liveIds.has(id)));
+
+    if (origin !== 'remote') return;
+    const change = describeRemoteChange(previous, next);
+    if (change) setRemoteChange({ ...change, at: Date.now() });
+  }, []);
 
   const load = useCallback(async () => {
     if (!contractId) return;
@@ -106,69 +138,47 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
     }
 
     setContract(contractResponse.data ?? null);
-    setMilestones(milestoneResponse.success ? milestoneResponse.data ?? [] : []);
+    applyMilestones(milestoneResponse.success ? milestoneResponse.data ?? [] : [], 'local');
     setError(milestoneResponse.success ? null : milestoneResponse.message ?? null);
     setIsLoading(false);
-  }, [contractId]);
+  }, [contractId, applyMilestones]);
 
   useEffect(() => {
+    // A different contract must not be diffed against the previous one's snapshot.
+    signatureRef.current = '';
+    milestonesRef.current = [];
     setIsLoading(true);
     void load();
   }, [load]);
 
-  const reloadMilestones = useCallback(async () => {
+  const reloadMilestones = useCallback(async (origin: DeliveryUpdateOrigin = 'local') => {
     if (!contractId) return;
     const response = await contractGetAPI.getMilestonesByContract(contractId);
-    if (response.success) setMilestones(response.data ?? []);
-  }, [contractId]);
+    if (response.success) applyMilestones(response.data ?? [], origin);
+  }, [contractId, applyMilestones]);
 
-  // Realtime. Every payload is filtered on contractId so another contract's traffic — which arrives
-  // on the same shared connection — never reloads this screen.
-  useEffect(() => {
-    if (!contractId) return undefined;
+  const handleMilestoneCompleted = useCallback((payload: DeliveryRealtimePayload) => {
+    const eventId = payload.eventId
+      ?? `MilestoneAutoCompleted:${payload.milestoneId ?? ''}:${payload.approvedAt ?? ''}`;
+    if (handledCompletionsRef.current.has(eventId)) return;
+    handledCompletionsRef.current.add(eventId);
 
-    const lease = retainChatHubConnection();
-    const { connection } = lease;
-    let disposed = false;
-
-    const handleWorkItemEvent = (payload?: RealtimePayload): void => {
-      if (readContractId(payload) !== contractIdRef.current) return;
-      void reloadMilestones();
-    };
-
-    const handleCompleted = (payload?: RealtimePayload): void => {
-      if (readContractId(payload) !== contractIdRef.current) return;
-      void reloadMilestones();
-
-      const eventId = payload?.eventId
-        ?? `MilestoneAutoCompleted:${payload?.milestoneId ?? ''}:${payload?.approvedAt ?? ''}`;
-      if (handledCompletionsRef.current.has(eventId)) return;
-      handledCompletionsRef.current.add(eventId);
-
-      setCompletion({
-        eventId,
-        milestoneId: String(payload?.milestoneId ?? payload?.MilestoneId ?? ''),
-        milestoneTitle: String(payload?.milestoneTitle ?? ''),
-        nextMilestoneTitle: payload?.nextMilestoneTitle ?? null,
-      });
-    };
-
-    const events = ['WorkItemSubmitted', 'WorkItemReviewed', 'WorkItemUpdated', 'MilestoneStatusChanged'];
-    events.forEach(event => connection.on(event, handleWorkItemEvent));
-    connection.on('MilestoneAutoCompleted', handleCompleted);
-
-    const stopReconnect = onChatHubReconnected(() => {
-      if (!disposed) void reloadMilestones();
+    setCompletion({
+      eventId,
+      milestoneId: String(payload.milestoneId ?? ''),
+      milestoneTitle: String(payload.milestoneTitle ?? ''),
+      nextMilestoneTitle: payload.nextMilestoneTitle ?? null,
     });
+  }, []);
 
-    return () => {
-      disposed = true;
-      events.forEach(event => connection.off(event, handleWorkItemEvent));
-      connection.off('MilestoneAutoCompleted', handleCompleted);
-      stopReconnect();
-      lease.release();
-    };
-  }, [contractId, reloadMilestones]);
+  // Hub frames, the notification socket and a paced poll all land here; see useDeliverySync for
+  // why the screen leans on more than one of them.
+  const sync = useDeliverySync({
+    contractId,
+    isPaused: isBusy,
+    onSync: () => reloadMilestones('remote'),
+    onMilestoneCompleted: handleMilestoneCompleted,
+  });
 
   const activeMilestone = useMemo(
     () => resolveActiveMilestone(milestones, activeMilestoneId ?? routeMilestoneId),
@@ -222,7 +232,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
 
   const readyToSubmitIds = useMemo(() => submittableWorkItemIds(drafts), [drafts]);
 
-  const submitSelected = useCallback(async (): Promise<string | null> => {
+  const submitSelected = useCallback(async (): Promise<DeliveryActionFailure | null> => {
     if (!contractId || !activeMilestone || readyToSubmitIds.length === 0) return null;
 
     setIsBusy(true);
@@ -238,7 +248,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
         { onUploadProgress: progress => setUploadProgress(progress.percent) },
       );
 
-      if (!response.success) return response.message ?? 'Submission failed.';
+      if (!response.success) return { message: response.message ?? 'Submission failed.', response };
 
       setDrafts({});
       await reloadMilestones();
@@ -272,7 +282,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
   const reviewSelected = useCallback(async (
     approve: boolean,
     reason?: string,
-  ): Promise<string | null> => {
+  ): Promise<DeliveryActionFailure | null> => {
     if (!contractId || !activeMilestone || selectedIds.length === 0) return null;
 
     setIsBusy(true);
@@ -282,7 +292,7 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
         : await contractPostAPI.requestWorkItemRevision(
             contractId, activeMilestone.id, [...selectedIds], reason ?? '');
 
-      if (!response.success) return response.message ?? 'Review failed.';
+      if (!response.success) return { message: response.message ?? 'Review failed.', response };
 
       setSelectedIds([]);
       if (response.data) {
@@ -323,6 +333,13 @@ export const useDeliverySpace = (contractId?: string, routeMilestoneId?: string)
     completion,
     pendingReviewCount,
     deliveredCount,
+    /** Health of the live connection, for the indicator in the header. */
+    liveStatus: sync.status,
+    lastSyncedAt: sync.lastSyncedAt,
+    isSyncing: sync.isSyncing,
+    refreshNow: sync.syncNow,
+    /** The other party's most recent move, for the screens to announce. */
+    remoteChange,
     selectMilestone,
     attachFile,
     detachFile,

@@ -23,6 +23,7 @@ import {
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { adminPostAPI } from '../../../api/adminAPI/POST';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { ReportAreaTabs } from '../components/ReportAreaTabs';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
@@ -57,6 +58,8 @@ export default function AdminContractReportDetailScreen() {
   const [disputeId, setDisputeId] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const disputeIdRef = useRef<HTMLInputElement>(null);
 
   // GSAP Entrance Animations
   usePageGSAP({
@@ -86,7 +89,16 @@ export default function AdminContractReportDetailScreen() {
   }, [reportId]);
 
   const apply = async () => {
-    if (!action || !reason.trim()) return;
+    if (!action) return;
+    const validationMessages: string[] = [];
+    if (!reason.trim()) validationMessages.push('Enter a reason for this action.');
+    if (action === 'link' && !disputeId.trim()) validationMessages.push('Enter the dispute ID to link.');
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required fields.' });
+      if (!reason.trim()) reasonRef.current?.focus();
+      else disputeIdRef.current?.focus();
+      return;
+    }
     setBusy(true);
     setError('');
     let r;
@@ -132,6 +144,11 @@ export default function AdminContractReportDetailScreen() {
       setExtra('');
       setDisputeId('');
     } else {
+      if (isValidationResponse(r)) {
+        showValidationToast(r, { fallback: r.message || 'Action failed.' });
+        reasonRef.current?.focus();
+        return;
+      }
       setError(r.message || 'Action failed.');
     }
   };
@@ -555,7 +572,9 @@ export default function AdminContractReportDetailScreen() {
                   <div>
                     <label className="block text-xs font-bold text-text-muted mb-1">Dispute ID</label>
                     <input
+                      ref={disputeIdRef}
                       className="input-gb w-full py-2 text-xs font-semibold"
+                      aria-invalid={!disputeId.trim()}
                       value={disputeId}
                       onChange={e => setDisputeId(e.target.value)}
                       placeholder="Enter existing dispute ID..."
@@ -568,7 +587,9 @@ export default function AdminContractReportDetailScreen() {
                     {action === 'info' ? 'Message' : 'Reason or Summary'}
                   </label>
                   <textarea
+                    ref={reasonRef}
                     className="input-gb w-full py-2 text-xs font-semibold"
+                    aria-invalid={!reason.trim()}
                     rows={3}
                     value={reason}
                     onChange={e => setReason(e.target.value)}
@@ -596,7 +617,7 @@ export default function AdminContractReportDetailScreen() {
                 </button>
                 <button
                   type="button"
-                  disabled={busy || !reason.trim() || (action === 'link' && !disputeId.trim())}
+                  disabled={busy}
                   onClick={apply}
                   className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition cursor-pointer shadow-sm ${
                     action === 'dismiss' || action === 'escalate' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand hover:opacity-90'

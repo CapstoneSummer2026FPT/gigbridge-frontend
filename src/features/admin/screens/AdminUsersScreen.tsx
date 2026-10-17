@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag, Wallet, Folder, Crown } from 'lucide-react';
@@ -10,6 +10,7 @@ import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfilePreviewDrawer } from '../components/UserProfilePreviewDrawer';
 import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
 import '../styles/admin-users-screen.css';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 
 type UserFilter = 'all' | 'client' | 'freelancer' | 'premium' | 'admin' | 'banned';
 type UserSort = 'name' | 'joined' | 'status';
@@ -96,6 +97,9 @@ export default function AdminUsersScreen() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: 'ban' | 'unban' | 'clearSuspension', user: User } | null>(null);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '' });
+  const createFullNameRef = useRef<HTMLInputElement>(null);
+  const createEmailRef = useRef<HTMLInputElement>(null);
+  const createPasswordRef = useRef<HTMLInputElement>(null);
 
   const previewUserId = searchParams.get('preview');
   const openPreview = (user: User) => {
@@ -262,14 +266,19 @@ export default function AdminUsersScreen() {
     const email = createForm.email.trim();
     const password = createForm.password;
     const phoneNumber = createForm.phoneNumber.trim();
+    const validationMessages: string[] = [];
 
-    if (!fullName || !email || !password) {
-      setCreateError('Full name, email, and password are required.');
-      return;
-    }
+    if (!fullName) validationMessages.push('Full name is required.');
+    if (!email) validationMessages.push('Email is required.');
+    if (!password) validationMessages.push('Password is required.');
 
-    if (password.length < 6) {
-      setCreateError('Password must be at least 6 characters.');
+    if (password && password.length < 6) validationMessages.push('Password must be at least 6 characters.');
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Please review the user details' });
+      if (!fullName) createFullNameRef.current?.focus();
+      else if (!email) createEmailRef.current?.focus();
+      else createPasswordRef.current?.focus();
       return;
     }
 
@@ -290,7 +299,8 @@ export default function AdminUsersScreen() {
       setShowCreateUser(false);
       setCreateForm(initialCreateForm);
     } else {
-      setCreateError(response.message || 'Failed to create user.');
+      if (isValidationResponse(response)) showValidationToast(response, { fallback: 'Failed to create user.' });
+      else setCreateError(response.message || 'Failed to create user.');
     }
 
     setCreatingUser(false);
@@ -689,6 +699,7 @@ export default function AdminUsersScreen() {
                     <div className="sm:col-span-2">
                       <label className="text-xs text-secondary mb-2 block">Full Name</label>
                       <input
+                        ref={createFullNameRef}
                         type="text"
                         value={createForm.fullName}
                         onChange={e => setCreateForm({ ...createForm, fullName: e.target.value })}
@@ -701,6 +712,7 @@ export default function AdminUsersScreen() {
                       <div className="relative">
                         <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                         <input
+                          ref={createEmailRef}
                           type="email"
                           value={createForm.email}
                           onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
@@ -768,6 +780,7 @@ export default function AdminUsersScreen() {
                     <div className="relative">
                       <KeyRound size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                       <input
+                        ref={createPasswordRef}
                         type="password"
                         value={createForm.password}
                         onChange={e => setCreateForm({ ...createForm, password: e.target.value })}

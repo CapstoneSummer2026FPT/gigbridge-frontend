@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   BarChart,
   Bar,
@@ -13,7 +13,6 @@ import {
   Filter,
   X,
   Receipt,
-  AlertCircle,
   Inbox,
 } from 'lucide-react';
 import type {
@@ -31,6 +30,7 @@ import { AnalyticsChartPanel } from './AnalyticsChartPanel';
 import { AnalyticsPagination } from './AnalyticsPagination';
 import { SeriesTable } from './SeriesTable';
 import { useTranslation } from '../../../../hooks/useTranslation';
+import { showValidationToast } from '../../../../shared/utils/validationToast';
 
 export interface AdminTransactionsTabProps {
   data: AdminTransactionPage;
@@ -59,6 +59,8 @@ export function AdminTransactionsTab({
     contractId: filters.contractId ?? '',
   });
   const [textFilterError, setTextFilterError] = useState<string | null>(null);
+  const userIdRef = useRef<HTMLInputElement>(null);
+  const contractIdRef = useRef<HTMLInputElement>(null);
 
   const countRows = useMemo(() => pivot(data.countSeries ?? []), [data.countSeries]);
   const typeKeys = useMemo(
@@ -101,7 +103,11 @@ export function AdminTransactionsTab({
     const contractId = textFilters.contractId.trim();
 
     if ((userId && !UUID_REGEX.test(userId)) || (contractId && !UUID_REGEX.test(contractId))) {
-      setTextFilterError(t('adminAnalytics.transactions.uuidError', { defaultValue: 'User ID and Contract ID must be valid 36-character UUIDs.' }));
+      const message = t('adminAnalytics.transactions.uuidError', { defaultValue: 'User ID and Contract ID must be valid 36-character UUIDs.' });
+      setTextFilterError(message);
+      showValidationToast(message, { fallback: message });
+      if (userId && !UUID_REGEX.test(userId)) userIdRef.current?.focus();
+      else contractIdRef.current?.focus();
       return;
     }
     setTextFilterError(null);
@@ -192,6 +198,7 @@ export function AdminTransactionsTab({
           <label>
             <span>{t('adminAnalytics.transactions.gateway', { defaultValue: 'Payment Gateway' })}</span>
             <input
+              ref={userIdRef}
               value={textFilters.gateway}
               onChange={e => setTextFilters(curr => ({ ...curr, gateway: e.target.value }))}
               placeholder="e.g. Stripe, VNPay..."
@@ -201,6 +208,7 @@ export function AdminTransactionsTab({
           <label>
             <span>{t('adminAnalytics.transactions.userId', { defaultValue: 'User UUID' })}</span>
             <input
+              ref={contractIdRef}
               value={textFilters.userId}
               onChange={e => setTextFilters(curr => ({ ...curr, userId: e.target.value }))}
               placeholder="UUID"
@@ -220,11 +228,6 @@ export function AdminTransactionsTab({
         </div>
 
         <div className="analytics-filter-footer">
-          {textFilterError && (
-            <span className="analytics-filter-error" role="alert">
-              <AlertCircle size={14} /> {textFilterError}
-            </span>
-          )}
           <button type="submit" className="analytics-primary-btn">
             <Filter size={14} />
             <span>{t('adminAnalytics.transactions.applyFilters', { defaultValue: 'Apply Filters' })}</span>

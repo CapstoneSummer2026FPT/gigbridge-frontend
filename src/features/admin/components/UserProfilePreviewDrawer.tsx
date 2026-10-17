@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { adminPostAPI } from '../../../api/adminAPI/POST';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
+import { isValidationResponse, showValidationToast } from '../../../shared/utils/validationToast';
 import {
   AccountStatus,
   UserViolationType,
@@ -114,11 +115,27 @@ export function UserProfilePreviewDrawer({ userId, onClose, onChanged }: UserPro
 
   const applyAction = async () => {
     if (!action || !data) return;
+    const validationMessages: string[] = [];
+    const tokenAmount = Number(walletAmount);
+    if (action === 'wallet' && (!Number.isFinite(tokenAmount) || tokenAmount <= 0)) {
+      validationMessages.push('Enter an amount greater than zero.');
+    }
+    if (action !== 'wallet' && !reason.trim()) {
+      validationMessages.push('A reason is required.');
+    }
+    if (action === 'suspend' && !suspendedUntil) {
+      validationMessages.push('Select a suspension end date.');
+    }
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: 'Complete the required fields.' });
+      if (action === 'wallet') drawerRef.current?.querySelector<HTMLInputElement>('[aria-label="Token amount"]')?.focus();
+      else if (action === 'suspend' && !suspendedUntil) drawerRef.current?.querySelector<HTMLInputElement>('[aria-label="Suspension end"]')?.focus();
+      else drawerRef.current?.querySelector<HTMLTextAreaElement>('[aria-label="Reason"]')?.focus();
+      return;
+    }
     setBusy(true); setActionError('');
     let response;
     if (action === 'wallet') {
-      const tokenAmount = Number(walletAmount);
-      if (!Number.isFinite(tokenAmount) || tokenAmount <= 0) { setActionError('Enter an amount greater than zero.'); setBusy(false); return; }
       const payload = { tokenAmount, note: reason.trim() || `Admin ${walletDirection} adjustment`, idempotencyKey: crypto.randomUUID() };
       response = walletDirection === 'credit' ? await adminPostAPI.creditWallet(userId, payload) : await adminPostAPI.debitWallet(userId, payload);
     } else if (action === 'clear') response = await adminPostAPI.clearUserSuspension(userId, reason.trim());
@@ -129,7 +146,12 @@ export function UserProfilePreviewDrawer({ userId, onClose, onChanged }: UserPro
       response = await adminPostAPI.enforceUser(userId, action, payload);
     }
     if (!response.success) {
+      if (isValidationResponse(response)) {
+        showValidationToast(response, { fallback: response.message || 'The action could not be completed.' });
+        drawerRef.current?.querySelector<HTMLTextAreaElement>('[aria-label="Reason"]')?.focus();
+      } else {
       setActionError(response.statusCode === 409 ? `Conflict: ${response.message}` : response.message || 'The action could not be completed.');
+      }
     } else {
       setAction(null); setReason(''); setSuspendedUntil(''); setWalletAmount('');
       await load(); await onChanged?.();
@@ -137,10 +159,8 @@ export function UserProfilePreviewDrawer({ userId, onClose, onChanged }: UserPro
     setBusy(false);
   };
 
-  const actionReady = action === 'wallet'
-    ? Number(walletAmount) > 0
-    : Boolean(reason.trim()) && (action !== 'suspend' || Boolean(suspendedUntil));
   const protectedAdmin = data?.role === 2;
+  const actionReady = true;
   const errorTitle = error?.status === 404 ? 'User not found' : error?.status === 401 || error?.status === 403 ? 'Access denied' : 'Profile Preview could not be loaded';
 
   return createPortal(

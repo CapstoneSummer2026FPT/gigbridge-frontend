@@ -13,6 +13,7 @@ import type { Milestone } from '../../../types/models/Contract';
 import { ContractReportIssueType } from '../../../types/models/ReportContract';
 import { CustomSelect, type SelectOption } from '../../../shared/components/CustomSelect';
 import { FileTypeBadge } from '../../../shared/components/FileTypeBadge';
+import { showValidationToast } from '../../../shared/utils/validationToast';
 
 interface RaiseIssueModalProps {
   contractId: string;
@@ -24,7 +25,12 @@ interface RaiseIssueModalProps {
     desiredResolution: string;
     milestoneId?: string | null;
     attachments?: File[];
-  }) => Promise<{ success: boolean; message?: string }>;
+  }) => Promise<{
+    success: boolean;
+    message?: string;
+    statusCode?: number;
+    errors?: Record<string, string[]>;
+  }>;
   isSubmitting: boolean;
 }
 
@@ -45,6 +51,8 @@ export function RaiseIssueModal({
   const [milestonesLoaded, setMilestonesLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const resolutionRef = useRef<HTMLTextAreaElement>(null);
 
   const loadMilestones = async () => {
     if (milestonesLoaded) return;
@@ -110,24 +118,28 @@ export function RaiseIssueModal({
 
     const trimmedDescription = description.trim();
     const trimmedDesiredResolution = desiredResolution.trim();
+    const validationMessages: string[] = [];
 
     if (!trimmedDescription) {
-      setError(t('workspace.reportDescriptionRequired') || 'Vui lòng nhập mô tả sự cố.');
-      return;
+      validationMessages.push(t('workspace.reportDescriptionRequired') || 'Vui lòng nhập mô tả sự cố.');
     }
 
     if (!trimmedDesiredResolution) {
-      setError(t('workspace.reportDesiredResolutionRequired') || 'Vui lòng nhập giải pháp đề xuất.');
-      return;
+      validationMessages.push(t('workspace.reportDesiredResolutionRequired') || 'Vui lòng nhập giải pháp đề xuất.');
     }
 
     if (trimmedDescription.length > 5000) {
-      setError(t('workspace.reportDescriptionMaxLength') || 'Mô tả không vượt quá 5000 ký tự.');
-      return;
+      validationMessages.push(t('workspace.reportDescriptionMaxLength') || 'Mô tả không vượt quá 5000 ký tự.');
     }
 
     if (trimmedDesiredResolution.length > 5000) {
-      setError(t('workspace.reportDesiredResolutionMaxLength') || 'Giải pháp đề xuất không vượt quá 5000 ký tự.');
+      validationMessages.push(t('workspace.reportDesiredResolutionMaxLength') || 'Giải pháp đề xuất không vượt quá 5000 ký tự.');
+    }
+
+    if (validationMessages.length > 0) {
+      showValidationToast(validationMessages, { fallback: t('workspace.failedSubmitReportError') });
+      if (!trimmedDescription || trimmedDescription.length > 5000) descriptionRef.current?.focus();
+      else resolutionRef.current?.focus();
       return;
     }
 
@@ -143,7 +155,12 @@ export function RaiseIssueModal({
       resetForm();
       onClose();
     } else {
-      setError(result.message || t('workspace.failedSubmitReportError') || 'Không thể gửi báo cáo.');
+      const fallback = result.message || t('workspace.failedSubmitReportError') || 'Không thể gửi báo cáo.';
+      if ([400, 409, 422].includes(result.statusCode ?? 0) || result.errors) {
+        showValidationToast(result, { fallback });
+      } else {
+        setError(fallback);
+      }
     }
   };
 
@@ -255,7 +272,7 @@ export function RaiseIssueModal({
             <X size={16} />
           </button>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 sm:gap-5">
             {error && (
               <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-extrabold flex items-center gap-2.5 shadow-xs" role="alert">
                 <AlertCircle size={16} className="shrink-0" />
@@ -305,6 +322,7 @@ export function RaiseIssueModal({
               </div>
               <div className="relative bg-surface-card rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <textarea
+                  ref={descriptionRef}
                   id="rc-description"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
@@ -327,6 +345,7 @@ export function RaiseIssueModal({
               </div>
               <div className="relative bg-surface-card rounded-2xl border border-border focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all shadow-xs">
                 <textarea
+                  ref={resolutionRef}
                   id="rc-desired-resolution"
                   value={desiredResolution}
                   onChange={e => setDesiredResolution(e.target.value)}
@@ -409,7 +428,7 @@ export function RaiseIssueModal({
               <button
                 type="submit"
                 className="w-2/3 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black text-brand-foreground bg-brand hover:bg-brand-hover shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group disabled:opacity-50"
-                disabled={isSubmitting || !description.trim() || !desiredResolution.trim()}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
